@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#20242a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SelfStorage</title>
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/app.css">
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand-mark" aria-hidden="true">S</div>
+      <div class="brand-copy">
+        <strong>SelfStorage</strong>
+        <span>System magazynowy</span>
+      </div>
+      <div id="networkBadge" class="network-badge online">
+        <span class="network-dot"></span>
+        <span id="networkText">Online</span>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section id="screenLogin" class="screen active">
+        <div class="hero-card">
+          <div class="eyebrow">LOGOWANIE</div>
+          <h1>Podaj PIN ekipy</h1>
+          <p>Po zalogowaniu zeskanujesz kod QR magazynu i rozpoczniesz wizytę.</p>
+
+          <label class="field-label" for="pinInput">PIN</label>
+          <input id="pinInput" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+          <button id="loginBtn" class="btn btn-primary" disabled>Zaloguj</button>
+        </div>
+      </section>
+
+      <section id="screenWarehouse" class="screen">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">ZALOGOWANO</div>
+            <h2 id="teamName">Ekipa</h2>
+            <p id="teamRole">EKIPA</p>
+          </div>
+        </div>
+
+        <div class="panel scan-panel">
+          <div class="scan-symbol" aria-hidden="true">⌗</div>
+          <h3>Zeskanuj magazyn</h3>
+          <p>Zeskanuj kod QR umieszczony przy magazynie, aby rozpocząć wizytę.</p>
+          <button id="openScannerBtn" class="btn btn-primary">Otwórz skaner</button>
+
+          <div class="divider"><span>lub</span></div>
+
+          <label class="field-label" for="warehouseCodeInput">Kod magazynu</label>
+          <input id="warehouseCodeInput" class="text-input" type="text" autocomplete="off" autocapitalize="characters" placeholder="np. MAG-TL7A2Q">
+          <button id="manualWarehouseBtn" class="btn btn-secondary">Zatwierdź kod</button>
+        </div>
+
+        <button id="logoutBtn" class="btn btn-ghost danger-text">Wyloguj</button>
+      </section>
+
+      <section id="screenVisit" class="screen">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">AKTYWNA WIZYTA</div>
+            <h2 id="visitWarehouse">Magazyn</h2>
+            <p id="visitId">—</p>
+          </div>
+        </div>
+
+        <div class="visit-info-grid">
+          <div class="stat-card">
+            <span>EKIPA</span>
+            <strong id="visitTeam">—</strong>
+          </div>
+          <div class="stat-card">
+            <span>MAGAZYN</span>
+            <strong id="visitWarehouseShort">—</strong>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <button id="pobranieBtn" class="action-card action-pick">
+            <span class="action-kicker">OPERACJA</span>
+            <strong>Pobranie</strong>
+            <small>Części zabierane z magazynu</small>
+          </button>
+
+          <button id="zwrotBtn" class="action-card action-return">
+            <span class="action-kicker">OPERACJA</span>
+            <strong>Zwrot</strong>
+            <small>Części oddawane do magazynu</small>
+          </button>
+
+          <button id="inventoryBtn" class="action-card action-inventory hidden">
+            <span class="action-kicker">TRYB</span>
+            <strong>Inwentaryzacja</strong>
+            <small>Dla kierownika i administratora</small>
+          </button>
+        </div>
+
+        <button id="finishVisitBtn" class="btn btn-danger">Zakończ wizytę</button>
+      </section>
+
+      <section id="screenDone" class="screen done-screen">
+        <div class="done-icon">✓</div>
+        <h2>Wizyta zakończona</h2>
+        <p>Dziękuję i życzę miłej pracy.</p>
+      </section>
+    </main>
+  </div>
+
+  <div id="scannerModal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">SKANER</div>
+          <h3>Kod QR magazynu</h3>
+        </div>
+        <button id="closeScannerBtn" class="icon-btn" aria-label="Zamknij">×</button>
+      </div>
+      <div id="reader" class="reader"></div>
+      <p class="camera-note">Jeśli aparat nie ruszy, zamknij skaner i wpisz kod magazynu ręcznie.</p>
+    </div>
+  </div>
+
+  <div id="finishModal" class="modal" aria-hidden="true">
+    <div class="modal-card compact">
+      <div class="eyebrow">POTWIERDZENIE</div>
+      <h3>Na pewno zakończyć wizytę?</h3>
+      <p>Po zakończeniu wrócisz do ekranu logowania.</p>
+      <div class="modal-actions">
+        <button id="finishNoBtn" class="btn btn-secondary">Nie</button>
+        <button id="finishYesBtn" class="btn btn-danger">Tak</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="loading" aria-hidden="true">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <span id="loadingText">Proszę czekać…</span>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
