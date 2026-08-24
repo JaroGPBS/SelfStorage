@@ -103,6 +103,13 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function cleanScannerValue(value) {
+  return String(value || '')
+    .replace(/\u0000/g, '')
+    .replace(/^\][A-Z0-9]{2}/, '')
+    .trim();
+}
+
 function getParts() {
   return Array.isArray(state.startData?.czesci) ? state.startData.czesci : [];
 }
@@ -303,7 +310,7 @@ async function openCodeScanner(mode) {
   const isPart = mode === 'part';
   $('scannerTitle').textContent = isPart ? 'Kod części' : 'Kod QR magazynu';
   $('scannerNote').textContent = isPart
-    ? 'Skieruj aparat na kod QR lub kod kreskowy części.'
+    ? 'Skieruj aparat na kod QR lub Code128 części.'
     : 'Skieruj aparat na kod QR magazynu.';
 
   $('scannerModal').classList.add('show');
@@ -312,14 +319,28 @@ async function openCodeScanner(mode) {
   try {
     await startScanner(async code => {
       const activeMode = scannerMode;
-      await closeScanner();
 
       if (activeMode === 'part') {
-        processPartInput(code);
-      } else {
-        await startVisit(code);
+        const result = findPart(code);
+
+        if (!result.part) {
+          const shortCode = cleanScannerValue(code).slice(0, 42);
+          $('scannerNote').textContent = result.ambiguous
+            ? 'Kod pasuje do kilku części. Zeskanuj dokładniejszy kod.'
+            : `Nieznany kod: ${shortCode || '—'}. Zeskanuj ponownie.`;
+          showToast('Nie rozpoznano części. Skaner pozostaje otwarty.', true);
+          return false;
+        }
+
+        await closeScanner();
+        openQuantityModal(result.part, currentOperationType(), 'add', { reopenScanner: true });
+        return true;
       }
-    });
+
+      await closeScanner();
+      await startVisit(code);
+      return true;
+    }, { mode: isPart ? 'part' : 'warehouse' });
   } catch (error) {
     await closeScanner();
     showToast(`Nie udało się uruchomić aparatu. ${messageFromError(error)}`, true);
@@ -466,16 +487,40 @@ function switchOperationType(type) {
 }
 
 function findPart(value) {
-  const raw = String(value || '').trim();
+  const raw = cleanScannerValue(value);
   if (!raw) return { part: null, ambiguous: false };
 
-  const possibleCode = raw.includes('—') ? raw.split('—')[0].trim() : raw;
-  const normalizedCode = normalizeText(possibleCode);
-  const normalizedRaw = normalizeText(raw);
   const parts = getParts();
+  const normalizedRaw = normalizeText(raw);
+  const chunks = [raw];
 
-  const exactCode = parts.find(part => normalizeText(part.kod) === normalizedCode);
-  if (exactCode) return { part: exactCode, ambiguous: false };
+  if (raw.includes('—')) chunks.push(raw.split('—')[0].trim());
+  chunks.push(...raw.split(/[\r\n\t |;,]+/g).filter(Boolean));
+
+  const normalizedCandidates = new Set(chunks.map(normalizeText).filter(Boolean));
+
+  const exactCodeMatches = parts.filter(part =>
+    normalizedCandidates.has(normalizeText(part.kod))
+  );
+
+  if (exactCodeMatches.length === 1) {
+    return { part: exactCodeMatches[0], ambiguous: false };
+  }
+  if (exactCodeMatches.length > 1) {
+    return { part: null, ambiguous: true };
+  }
+
+  const containedCodeMatches = parts.filter(part => {
+    const code = normalizeText(part.kod);
+    return code.length >= 6 && normalizedRaw.includes(code);
+  });
+
+  if (containedCodeMatches.length === 1) {
+    return { part: containedCodeMatches[0], ambiguous: false };
+  }
+  if (containedCodeMatches.length > 1) {
+    return { part: null, ambiguous: true };
+  }
 
   const exactName = parts.find(part => normalizeText(part.nazwa) === normalizedRaw);
   if (exactName) return { part: exactName, ambiguous: false };
@@ -490,11 +535,11 @@ function findPart(value) {
 }
 
 function processPartInput(value) {
-  if (!state.operationDraft) return;
+  if (!state.operationDraft) return false;
 
   if (isDraftLocked()) {
     showToast('Ta sesja była już wysyłana. Możesz tylko ponowić wysyłkę.', true);
-    return;
+    return false;
   }
 
   const result = findPart(value);
@@ -506,14 +551,15 @@ function processPartInput(value) {
         : 'Nieznana część. Zeskanuj ponownie lub wyszukaj część z listy.',
       true
     );
-    return;
+    return false;
   }
 
   $('partSearchInput').value = '';
   openQuantityModal(result.part, currentOperationType(), 'add');
+  return true;
 }
 
-function openQuantityModal(part, type, mode) {
+function openQuantityModal(part, type, mode, options = {}) {
   if (!state.operationDraft || isDraftLocked()) return;
 
   const list = getDraftList(type);
@@ -523,7 +569,8 @@ function openQuantityModal(part, type, mode) {
     part,
     type,
     mode,
-    existingQty: existing?.ilosc || 0
+    existingQty: existing?.ilosc || 0,
+    reopenScanner: Boolean(options.reopenScanner)
   };
 
   $('quantityTypeLabel').textContent = type;
@@ -564,6 +611,7 @@ function confirmQuantity() {
     return;
   }
 
+  const reopenScanner = Boolean(quantityTarget.reopenScanner);
   const list = getDraftList(quantityTarget.type);
   const existing = list.find(item => item.kod === quantityTarget.part.kod);
 
@@ -582,7 +630,11 @@ function confirmQuantity() {
   persist();
   closeQuantityModal();
   renderOperation();
-  showToast('Część dodana do listy.');
+  showToast(existing ? 'Ilość została dodana.' : 'Część dodana do listy.');
+
+  if (reopenScanner && state.operationDraft && !isDraftLocked()) {
+    setTimeout(() => openCodeScanner('part'), 180);
+  }
 }
 
 function deletePart(code, type) {
