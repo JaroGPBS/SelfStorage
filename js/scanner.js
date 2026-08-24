@@ -34,15 +34,46 @@ function loadScannerLibrary() {
   return loaderPromise;
 }
 
-export async function startScanner(onCode) {
+function getFormats() {
+  const formats = window.Html5QrcodeSupportedFormats;
+  if (!formats) return undefined;
+
+  return [
+    formats.QR_CODE,
+    formats.CODE_128
+  ];
+}
+
+function buildQrBox(mode) {
+  return (viewfinderWidth, viewfinderHeight) => {
+    if (mode === 'warehouse') {
+      const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
+      return { width: edge, height: edge };
+    }
+
+    const width = Math.floor(Math.min(viewfinderWidth * 0.9, 380));
+    const height = Math.floor(Math.min(viewfinderHeight * 0.42, 220));
+    return {
+      width: Math.max(width, 220),
+      height: Math.max(height, 130)
+    };
+  };
+}
+
+export async function startScanner(onCode, options = {}) {
   await loadScannerLibrary();
 
   if (typeof window.Html5Qrcode === 'undefined') {
     throw new Error('Moduł skanera nie został załadowany.');
   }
 
+  const mode = options.mode === 'warehouse' ? 'warehouse' : 'part';
+
   if (!scanner) {
-    scanner = new window.Html5Qrcode('reader');
+    const formatsToSupport = getFormats();
+    scanner = formatsToSupport
+      ? new window.Html5Qrcode('reader', { formatsToSupport, verbose: false })
+      : new window.Html5Qrcode('reader');
   }
 
   locked = false;
@@ -50,20 +81,31 @@ export async function startScanner(onCode) {
   await scanner.start(
     { facingMode: 'environment' },
     {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1
+      fps: 12,
+      qrbox: buildQrBox(mode),
+      disableFlip: false
     },
     async decodedText => {
       if (locked) return;
 
-      const code = String(decodedText || '').trim();
+      const code = String(decodedText || '').replace(/\u0000/g, '').trim();
       if (!code) return;
 
       locked = true;
 
       try {
-        await onCode(code);
+        const accepted = await onCode(code);
+
+        if (accepted === false) {
+          setTimeout(() => {
+            locked = false;
+          }, 650);
+          return;
+        }
+
+        if (navigator.vibrate) {
+          navigator.vibrate(45);
+        }
       } catch (error) {
         locked = false;
         throw error;
