@@ -4,6 +4,7 @@ const STATE_KEY = 'selfstorage_state_v1';
 const QUEUE_KEY = 'selfstorage_offline_queue_v1';
 let syncRunning = false;
 let offlineSendBusy = false;
+let autoSyncTimer = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -126,8 +127,8 @@ function showOfflineSavedModal() {
 
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
-    if (element.textContent?.trim() === 'v0.6') {
-      element.textContent = 'v0.7';
+    if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
+      element.textContent = 'v0.8';
       break;
     }
   }
@@ -172,6 +173,23 @@ function buildPayloadFromState(state) {
       ilosc: item.ilosc
     }))
   };
+}
+
+function updateNetworkText() {
+  const text = $('networkText');
+  const badge = $('networkBadge');
+  if (!text || !badge) return;
+
+  const count = loadQueue().length;
+  badge.classList.toggle('offline', !navigator.onLine);
+
+  if (!navigator.onLine) {
+    text.textContent = count ? `Offline • ${count}` : 'Offline';
+  } else if (count) {
+    text.textContent = `Online • ${count}`;
+  } else {
+    text.textContent = 'Online';
+  }
 }
 
 function renderQueueNotice() {
@@ -231,21 +249,14 @@ function renderQueueNotice() {
   updateNetworkText();
 }
 
-function updateNetworkText() {
-  const text = $('networkText');
-  const badge = $('networkBadge');
-  if (!text || !badge) return;
+function scheduleAutoSync(delay = 400) {
+  if (!navigator.onLine || !loadQueue().length || syncRunning) return;
 
-  const count = loadQueue().length;
-  badge.classList.toggle('offline', !navigator.onLine);
-
-  if (!navigator.onLine) {
-    text.textContent = count ? `Offline • ${count}` : 'Offline';
-  } else if (count) {
-    text.textContent = `Online • ${count}`;
-  } else {
-    text.textContent = 'Online';
-  }
+  window.clearTimeout(autoSyncTimer);
+  autoSyncTimer = window.setTimeout(() => {
+    autoSyncTimer = null;
+    flushQueue(false);
+  }, delay);
 }
 
 function queueCurrentDraftOffline() {
@@ -315,6 +326,7 @@ async function flushQueue(manual = false) {
   renderQueueNotice();
 
   let sent = 0;
+  let failed = false;
 
   for (const item of [...queue]) {
     const current = loadQueue();
@@ -344,6 +356,7 @@ async function flushQueue(manual = false) {
         saveQueue(afterError);
       }
 
+      failed = true;
       renderQueueNotice();
 
       if (manual) {
@@ -363,6 +376,10 @@ async function flushQueue(manual = false) {
         ? `Wysłano ${sent} oper. • ${left} nadal oczekuje.`
         : `Synchronizacja zakończona. Wysłano ${sent} oper.`
     );
+  }
+
+  if (failed && navigator.onLine && loadQueue().length) {
+    scheduleAutoSync(15000);
   }
 }
 
@@ -404,10 +421,13 @@ function initOfflineQueue() {
 
   window.addEventListener('online', () => {
     updateNetworkText();
-    window.setTimeout(() => flushQueue(false), 350);
+    renderQueueNotice();
+    scheduleAutoSync(250);
   });
 
   window.addEventListener('offline', () => {
+    window.clearTimeout(autoSyncTimer);
+    autoSyncTimer = null;
     updateNetworkText();
     renderQueueNotice();
   });
@@ -415,11 +435,29 @@ function initOfflineQueue() {
   window.addEventListener('pageshow', () => {
     renderQueueNotice();
     updateNetworkText();
+    scheduleAutoSync(500);
   });
 
-  if (navigator.onLine && loadQueue().length) {
-    window.setTimeout(() => flushQueue(false), 700);
-  }
+  window.addEventListener('focus', () => {
+    renderQueueNotice();
+    updateNetworkText();
+    scheduleAutoSync(300);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    renderQueueNotice();
+    updateNetworkText();
+    scheduleAutoSync(300);
+  });
+
+  window.setInterval(() => {
+    if (document.visibilityState === 'visible' && navigator.onLine && loadQueue().length) {
+      scheduleAutoSync(100);
+    }
+  }, 10000);
+
+  scheduleAutoSync(700);
 }
 
 document.addEventListener('DOMContentLoaded', initOfflineQueue);
