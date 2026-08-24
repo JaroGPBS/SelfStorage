@@ -1,8 +1,59 @@
 let scanner = null;
 let locked = false;
 let loaderPromise = null;
+let audioContext = null;
 
 const SCANNER_SRC = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+
+function prepareScanAudio() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!audioContext) {
+      audioContext = new AudioContextClass();
+    }
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume().catch(() => {});
+    }
+  } catch (error) {
+    console.warn('Nie udało się przygotować dźwięku skanera.', error);
+  }
+}
+
+function playScanBeep() {
+  try {
+    if (!audioContext) {
+      prepareScanAudio();
+    }
+
+    if (!audioContext) return;
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume().catch(() => {});
+    }
+
+    const now = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1050, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.09, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.125);
+  } catch (error) {
+    console.warn('Nie udało się odtworzyć dźwięku skanera.', error);
+  }
+}
 
 function loadScannerLibrary() {
   if (typeof window.Html5Qrcode !== 'undefined') {
@@ -61,6 +112,7 @@ function buildQrBox(mode) {
 }
 
 export async function startScanner(onCode, options = {}) {
+  prepareScanAudio();
   await loadScannerLibrary();
 
   if (typeof window.Html5Qrcode === 'undefined') {
@@ -102,6 +154,8 @@ export async function startScanner(onCode, options = {}) {
           }, 650);
           return;
         }
+
+        playScanBeep();
 
         if (navigator.vibrate) {
           navigator.vibrate(45);
