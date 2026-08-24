@@ -12,8 +12,6 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/app-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./css/app.css">
-
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
   <script type="module" src="./js/app.js"></script>
 </head>
 <body>
@@ -137,29 +135,18 @@
         </div>
 
         <div class="operation-summary-strip">
-          <div class="summary-pill pick">
-            <span>Pobranie</span>
-            <strong id="pobranieCount">0 poz.</strong>
-          </div>
-          <div class="summary-pill return">
-            <span>Zwrot</span>
-            <strong id="zwrotCount">0 poz.</strong>
-          </div>
+          <div class="summary-pill pick"><span>Pobranie</span><strong id="pobranieCount">0 poz.</strong></div>
+          <div class="summary-pill return"><span>Zwrot</span><strong id="zwrotCount">0 poz.</strong></div>
         </div>
 
         <div class="panel part-add-panel">
           <div class="part-add-title">
-            <div>
-              <div class="eyebrow" id="activeOperationEyebrow">POBRANIE</div>
-              <h3>Dodaj część</h3>
-            </div>
+            <div><div class="eyebrow" id="activeOperationEyebrow">POBRANIE</div><h3>Dodaj część</h3></div>
             <div id="activeOperationBadge" class="type-badge pick">Pobranie</div>
           </div>
 
           <button id="openPartScannerBtn" class="btn btn-primary">Skanuj kod części</button>
-
           <div class="divider"><span>lub wpisz ręcznie</span></div>
-
           <label class="field-label" for="partSearchInput">Kod lub nazwa części</label>
           <input id="partSearchInput" class="text-input" type="text" autocomplete="off" list="partSuggestions" placeholder="np. MG-FR-0015">
           <datalist id="partSuggestions"></datalist>
@@ -167,18 +154,12 @@
         </div>
 
         <div class="list-head">
-          <div>
-            <div class="eyebrow" id="listEyebrow">LISTA POBRANIA</div>
-            <h3 id="listTitle">Pobrane części</h3>
-          </div>
+          <div><div class="eyebrow" id="listEyebrow">LISTA POBRANIA</div><h3 id="listTitle">Pobrane części</h3></div>
           <span id="activeListCount" class="list-count">0</span>
         </div>
 
         <div id="operationList" class="operation-list"></div>
-        <div id="operationEmpty" class="empty-state">
-          <strong>Brak części</strong>
-          <span>Zeskanuj lub wyszukaj pierwszą część.</span>
-        </div>
+        <div id="operationEmpty" class="empty-state"><strong>Brak części</strong><span>Zeskanuj lub wyszukaj pierwszą część.</span></div>
 
         <div class="panel comment-panel">
           <label class="field-label" for="operationComment">Komentarz do tej sesji</label>
@@ -200,10 +181,7 @@
   <div id="scannerModal" class="modal" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-head">
-        <div>
-          <div class="eyebrow">SKANER</div>
-          <h3 id="scannerTitle">Kod QR magazynu</h3>
-        </div>
+        <div><div class="eyebrow">SKANER</div><h3 id="scannerTitle">Kod QR magazynu</h3></div>
         <button id="closeScannerBtn" class="icon-btn" aria-label="Zamknij">×</button>
       </div>
       <div id="reader" class="reader"></div>
@@ -217,14 +195,9 @@
       <h3 id="quantityPartName">Część</h3>
       <p id="quantityPartCode" class="mono-text">—</p>
       <div id="existingQuantityInfo" class="existing-info hidden"></div>
-
       <label class="field-label" for="quantityInput">Ilość</label>
       <input id="quantityInput" class="quantity-input" type="number" inputmode="numeric" min="1" step="1" autocomplete="off" placeholder="Wpisz ilość">
-
-      <div class="modal-actions">
-        <button id="quantityCancelBtn" class="btn btn-secondary">Anuluj</button>
-        <button id="quantityAddBtn" class="btn btn-primary">Dodaj</button>
-      </div>
+      <div class="modal-actions"><button id="quantityCancelBtn" class="btn btn-secondary">Anuluj</button><button id="quantityAddBtn" class="btn btn-primary">Dodaj</button></div>
     </div>
   </div>
 
@@ -233,10 +206,7 @@
       <div class="eyebrow">PODSUMOWANIE SESJI</div>
       <h3>Sprawdź przed wysłaniem</h3>
       <div id="reviewContent" class="review-content"></div>
-      <div class="modal-actions">
-        <button id="reviewCancelBtn" class="btn btn-secondary">Wróć</button>
-        <button id="reviewSendBtn" class="btn btn-success">Wyślij</button>
-      </div>
+      <div class="modal-actions"><button id="reviewCancelBtn" class="btn btn-secondary">Wróć</button><button id="reviewSendBtn" class="btn btn-success">Wyślij</button></div>
     </div>
   </div>
 
@@ -245,24 +215,18 @@
       <div class="eyebrow">POTWIERDZENIE</div>
       <h3>Na pewno zakończyć wizytę?</h3>
       <p>Po zakończeniu wrócisz do ekranu logowania.</p>
-      <div class="modal-actions">
-        <button id="finishNoBtn" class="btn btn-secondary">Nie</button>
-        <button id="finishYesBtn" class="btn btn-danger">Tak</button>
-      </div>
+      <div class="modal-actions"><button id="finishNoBtn" class="btn btn-secondary">Nie</button><button id="finishYesBtn" class="btn btn-danger">Tak</button></div>
     </div>
   </div>
 
   <div id="loading" class="loading" aria-hidden="true">
-    <div class="loading-card">
-      <div class="spinner"></div>
-      <span id="loadingText">Proszę czekać…</span>
-    </div>
+    <div class="loading-card"><div class="spinner"></div><span id="loadingText">Proszę czekać…</span></div>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div style="position:fixed;left:50%;bottom:max(8px, env(safe-area-inset-bottom));transform:translateX(-50%);z-index:19;pointer-events:none;user-select:none;opacity:.72;">
     <img src="./icons/jaro-signature.svg" alt="Created by Jaro" style="display:block;width:132px;height:auto;">
   </div>
-  <div style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.3</div>
+  <div style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.4</div>
 </body>
 </html>
