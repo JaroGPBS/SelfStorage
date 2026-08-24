@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v3';
+const CACHE_NAME = 'selfstorage-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -33,28 +33,25 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const request = event.request;
-
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-
   if (url.pathname.startsWith('/api')) return;
+  if (url.origin !== self.location.origin) return;
 
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.match(request).then(cached => {
-        const network = fetch(request)
-          .then(response => {
-            if (response && response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-            }
-            return response;
-          })
-          .catch(() => cached);
+  event.respondWith(
+    caches.match(request).then(cached => {
+      const network = fetch(request)
+        .then(response => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => cached);
 
-        return cached || network;
-      })
-    );
-  }
+      return cached || network;
+    })
+  );
 });
