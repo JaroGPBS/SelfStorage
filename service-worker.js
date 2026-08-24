@@ -1,4 +1,6 @@
-const CACHE_NAME = 'selfstorage-shell-v11';
+const CACHE_NAME = 'selfstorage-shell-v12';
+const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+
 const APP_SHELL = [
   './',
   './index.html',
@@ -14,9 +16,25 @@ const APP_SHELL = [
   './icons/jaro-signature.svg'
 ];
 
+async function cacheScannerLibrary(cache) {
+  try {
+    const request = new Request(SCANNER_LIBRARY_URL, {
+      mode: 'no-cors',
+      cache: 'no-store'
+    });
+    const response = await fetch(request);
+    await cache.put(SCANNER_LIBRARY_URL, response.clone());
+  } catch (error) {
+    console.warn('Nie udało się wstępnie zapisać biblioteki skanera w cache.', error);
+  }
+}
+
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then(async cache => {
+      await cache.addAll(APP_SHELL);
+      await cacheScannerLibrary(cache);
+    })
   );
   self.skipWaiting();
 });
@@ -37,6 +55,25 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
+
+  if (url.href === SCANNER_LIBRARY_URL) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async cache => {
+        const cached = await cache.match(SCANNER_LIBRARY_URL);
+        if (cached) return cached;
+
+        try {
+          const response = await fetch(request);
+          await cache.put(SCANNER_LIBRARY_URL, response.clone());
+          return response;
+        } catch (error) {
+          return Response.error();
+        }
+      })
+    );
+    return;
+  }
+
   if (url.pathname.startsWith('/api')) return;
   if (url.origin !== self.location.origin) return;
 
