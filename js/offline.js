@@ -191,7 +191,7 @@ function showSyncSuccessModal() {
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
     if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.12';
+      element.textContent = 'v0.13';
       element.style.fontSize = '13px';
       element.style.fontWeight = '600';
       element.style.opacity = '.85';
@@ -316,7 +316,7 @@ function renderQueueNotice() {
     } else if (failed) {
       text.textContent = `${queue.length} oper. w pamięci telefonu • ponawiam automatycznie`;
     } else if (navigator.onLine) {
-      text.textContent = `${queue.length} oper. zapisana lokalnie • synchronizacja za chwilę`;
+      text.textContent = `${queue.length} oper. zapisana lokalnie • trwa wysyłanie w tle`;
     } else {
       text.textContent = `${queue.length} oper. zapisana lokalnie`;
     }
@@ -358,7 +358,7 @@ function scheduleRetry() {
   scheduleAutoSync(delay, true);
 }
 
-function queueCurrentDraftOffline() {
+function queueCurrentDraft() {
   if (offlineSendBusy) return;
   offlineSendBusy = true;
 
@@ -367,7 +367,7 @@ function queueCurrentDraftOffline() {
 
   if (!payload) {
     offlineSendBusy = false;
-    showToast('Nie udało się przygotować operacji do zapisu offline.', true);
+    showToast('Nie udało się przygotować operacji do zapisu.', true);
     return;
   }
 
@@ -400,10 +400,22 @@ function queueCurrentDraftOffline() {
   reviewModal?.classList.remove('show');
   reviewModal?.setAttribute('aria-hidden', 'true');
 
+  document.dispatchEvent(new CustomEvent('selfstorage:draft-queued', {
+    detail: { online: navigator.onLine }
+  }));
+
   retryIndex = 0;
   updateNetworkText();
   renderQueueNotice();
-  showOfflineSavedModal();
+  offlineSendBusy = false;
+
+  if (!navigator.onLine) {
+    showOfflineSavedModal();
+    return;
+  }
+
+  showToast('Operacja zapisana. Wysyłam w tle.');
+  window.setTimeout(() => flushQueue(true), 80);
 }
 
 async function verifyServerConnection() {
@@ -523,11 +535,11 @@ async function flushQueue(manual = false) {
 function interceptCriticalClicks(event) {
   const sendButton = event.target.closest?.('#reviewSendBtn');
 
-  if (sendButton && !navigator.onLine) {
+  if (sendButton) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    queueCurrentDraftOffline();
+    queueCurrentDraft();
     return;
   }
 
