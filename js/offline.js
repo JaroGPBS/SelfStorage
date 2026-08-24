@@ -2,8 +2,13 @@ import { api } from './api.js';
 
 const STATE_KEY = 'selfstorage_state_v1';
 const QUEUE_KEY = 'selfstorage_offline_queue_v1';
+const SYNC_LOCK_KEY = 'selfstorage_sync_lock_v1';
 const AUTO_SYNC_DELAY_MS = 5000;
 const RETRY_DELAYS_MS = [5000, 5000, 10000, 15000, 30000];
+const SYNC_LOCK_TTL_MS = 75000;
+const INSTANCE_ID = window.crypto?.randomUUID
+  ? window.crypto.randomUUID()
+  : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 let syncRunning = false;
 let connectionCheckRunning = false;
@@ -50,6 +55,52 @@ function loadQueue() {
 
 function saveQueue(queue) {
   return writeJson(QUEUE_KEY, queue);
+}
+
+function acquireSyncLock() {
+  const now = Date.now();
+  const current = readJson(SYNC_LOCK_KEY, null);
+
+  if (
+    current?.ownerId &&
+    current.ownerId !== INSTANCE_ID &&
+    Number(current.expiresAt || 0) > now
+  ) {
+    return false;
+  }
+
+  const lock = {
+    ownerId: INSTANCE_ID,
+    expiresAt: now + SYNC_LOCK_TTL_MS
+  };
+
+  if (!writeJson(SYNC_LOCK_KEY, lock)) {
+    return true;
+  }
+
+  const confirmed = readJson(SYNC_LOCK_KEY, null);
+  return confirmed?.ownerId === INSTANCE_ID;
+}
+
+function refreshSyncLock() {
+  const current = readJson(SYNC_LOCK_KEY, null);
+  if (current?.ownerId !== INSTANCE_ID) return;
+
+  writeJson(SYNC_LOCK_KEY, {
+    ownerId: INSTANCE_ID,
+    expiresAt: Date.now() + SYNC_LOCK_TTL_MS
+  });
+}
+
+function releaseSyncLock() {
+  try {
+    const current = readJson(SYNC_LOCK_KEY, null);
+    if (current?.ownerId === INSTANCE_ID) {
+      localStorage.removeItem(SYNC_LOCK_KEY);
+    }
+  } catch (error) {
+    console.warn('Nie udało się zwolnić blokady synchronizacji.', error);
+  }
 }
 
 function messageFromError(error) {
@@ -206,18 +257,6 @@ function showSyncSuccessModal() {
   modal.classList.add('show');
   modal.setAttribute('aria-hidden', 'false');
   window.setTimeout(() => $('syncSuccessOkBtn')?.focus(), 80);
-}
-
-function setDisplayedVersion() {
-  for (const element of document.querySelectorAll('body > div')) {
-    if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.14';
-      element.style.fontSize = '13px';
-      element.style.fontWeight = '600';
-      element.style.opacity = '.85';
-      break;
-    }
-  }
 }
 
 function currentVisitId() {
@@ -474,87 +513,103 @@ async function flushQueue(manual = false) {
     return;
   }
 
-  clearAutoSyncTimer();
-
-  if (!manual) {
-    const serverReady = await verifyServerConnection();
-    if (!serverReady) {
-      scheduleRetry();
-      return;
-    }
-  }
-
-  syncRunning = true;
-  renderQueueNotice();
-
-  let sent = 0;
-  let failed = false;
-
-  for (const item of [...queue]) {
-    const current = loadQueue();
-    const currentIndex = current.findIndex(entry => entry.idSesji === item.idSesji);
-    if (currentIndex < 0) continue;
-
-    current[currentIndex].status = 'WYSYŁANIE';
-    current[currentIndex].lastError = null;
-    saveQueue(current);
-    renderQueueNotice();
-
-    try {
-      await api.saveSession(item.payload);
-
-      const afterSuccess = loadQueue().filter(entry => entry.idSesji !== item.idSesji);
-      saveQueue(afterSuccess);
-      sent += 1;
-      retryIndex = 0;
-      renderQueueNotice();
-    } catch (error) {
-      const afterError = loadQueue();
-      const failedIndex = afterError.findIndex(entry => entry.idSesji === item.idSesji);
-
-      if (failedIndex >= 0) {
-        afterError[failedIndex].status = manual ? 'BŁĄD' : 'OCZEKUJE_NA_WYSŁANIE';
-        afterError[failedIndex].lastError = messageFromError(error);
-        afterError[failedIndex].lastTryAt = new Date().toISOString();
-        saveQueue(afterError);
-      }
-
-      failed = true;
-      renderQueueNotice();
-
-      if (manual) {
-        hideSendingWindow();
-        showToast(`Nie udało się wysłać. ${messageFromError(error)} Aplikacja będzie próbować dalej.`, true);
-      }
-      break;
-    }
-  }
-
-  syncRunning = false;
-  renderQueueNotice();
-
-  if (sent > 0) {
-    const left = loadQueue().length;
-    if (left) {
-      hideSendingWindow();
-      showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
-    } else {
-      showSyncSuccessModal();
-    }
-  } else if (manual) {
+  if (!acquireSyncLock()) {
     hideSendingWindow();
-  }
-
-  if (!loadQueue().length) {
-    retryIndex = 0;
-    clearAutoSyncTimer();
+    if (manual) showToast('Synchronizacja już trwa.');
+    renderQueueNotice();
     return;
   }
 
-  if (failed && navigator.onLine) {
-    scheduleRetry();
-  } else if (navigator.onLine) {
-    scheduleAutoSync(AUTO_SYNC_DELAY_MS);
+  try {
+    clearAutoSyncTimer();
+
+    if (!manual) {
+      const serverReady = await verifyServerConnection();
+      if (!serverReady) {
+        scheduleRetry();
+        return;
+      }
+    }
+
+    syncRunning = true;
+    renderQueueNotice();
+
+    let sent = 0;
+    let failed = false;
+
+    for (const item of [...queue]) {
+      const current = loadQueue();
+      const currentIndex = current.findIndex(entry => entry.idSesji === item.idSesji);
+      if (currentIndex < 0) continue;
+
+      current[currentIndex].status = 'WYSYŁANIE';
+      current[currentIndex].lastError = null;
+      current[currentIndex].lastTryAt = new Date().toISOString();
+      saveQueue(current);
+      refreshSyncLock();
+      renderQueueNotice();
+
+      try {
+        await api.saveSession(item.payload);
+
+        const afterSuccess = loadQueue().filter(entry => entry.idSesji !== item.idSesji);
+        saveQueue(afterSuccess);
+        sent += 1;
+        retryIndex = 0;
+        refreshSyncLock();
+        renderQueueNotice();
+      } catch (error) {
+        const afterError = loadQueue();
+        const failedIndex = afterError.findIndex(entry => entry.idSesji === item.idSesji);
+
+        if (failedIndex >= 0) {
+          afterError[failedIndex].status = manual ? 'BŁĄD' : 'OCZEKUJE_NA_WYSŁANIE';
+          afterError[failedIndex].lastError = messageFromError(error);
+          afterError[failedIndex].lastTryAt = new Date().toISOString();
+          saveQueue(afterError);
+        }
+
+        failed = true;
+        renderQueueNotice();
+
+        if (manual) {
+          hideSendingWindow();
+          showToast(`Nie udało się wysłać. ${messageFromError(error)} Aplikacja będzie próbować dalej.`, true);
+        }
+        break;
+      }
+    }
+
+    syncRunning = false;
+    renderQueueNotice();
+
+    if (sent > 0) {
+      const left = loadQueue().length;
+      if (left) {
+        hideSendingWindow();
+        showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
+      } else {
+        showSyncSuccessModal();
+      }
+    } else if (manual) {
+      hideSendingWindow();
+    }
+
+    if (!loadQueue().length) {
+      retryIndex = 0;
+      clearAutoSyncTimer();
+      return;
+    }
+
+    if (failed && navigator.onLine) {
+      scheduleRetry();
+    } else if (navigator.onLine) {
+      scheduleAutoSync(AUTO_SYNC_DELAY_MS);
+    }
+  } finally {
+    syncRunning = false;
+    releaseSyncLock();
+    renderQueueNotice();
   }
 }
 
@@ -596,7 +651,6 @@ function requestAutomaticSync(force = false) {
 }
 
 function initOfflineQueue() {
-  setDisplayedVersion();
   createOfflineSavedModal();
   createSyncSuccessModal();
   document.addEventListener('click', interceptCriticalClicks, true);
@@ -627,6 +681,12 @@ function initOfflineQueue() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     requestAutomaticSync(false);
+  });
+
+  window.addEventListener('storage', event => {
+    if (event.key !== QUEUE_KEY && event.key !== SYNC_LOCK_KEY) return;
+    renderQueueNotice();
+    updateNetworkText();
   });
 
   window.setInterval(() => {
