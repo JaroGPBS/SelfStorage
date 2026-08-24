@@ -16,7 +16,7 @@ function loadScannerLibrary() {
 
     if (existing) {
       existing.addEventListener('load', resolve, { once: true });
-      existing.addEventListener('error', () => reject(new Error('Nie udało się pobrać modułu skanera.')), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Nie udało się załadować modułu skanera.')), { once: true });
       return;
     }
 
@@ -24,7 +24,7 @@ function loadScannerLibrary() {
     script.src = SCANNER_SRC;
     script.async = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Nie udało się pobrać modułu skanera.'));
+    script.onerror = () => reject(new Error('Nie udało się załadować modułu skanera.'));
     document.head.appendChild(script);
   }).catch(error => {
     loaderPromise = null;
