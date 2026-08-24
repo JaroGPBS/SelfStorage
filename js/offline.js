@@ -65,6 +65,74 @@ function showToast(message, isError = false) {
   }, 3800);
 }
 
+function createOfflineSavedModal() {
+  let modal = $('offlineSavedModal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'offlineSavedModal';
+  modal.className = 'modal';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'offlineSavedTitle');
+
+  const card = document.createElement('div');
+  card.className = 'modal-card compact';
+
+  const eyebrow = document.createElement('div');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = 'ZAPIS OFFLINE';
+
+  const title = document.createElement('h3');
+  title.id = 'offlineSavedTitle';
+  title.textContent = 'Operacja zapisana w telefonie';
+
+  const text = document.createElement('p');
+  text.textContent = 'Brak internetu. Operacja jest bezpiecznie zapisana i czeka na wysłanie. Po odzyskaniu połączenia aplikacja wyśle ją automatycznie.';
+
+  const info = document.createElement('div');
+  info.className = 'existing-info';
+  info.textContent = 'Nie wyłączaj pamięci aplikacji ani nie czyść danych przeglądarki przed synchronizacją.';
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+
+  const button = document.createElement('button');
+  button.id = 'offlineSavedOkBtn';
+  button.type = 'button';
+  button.className = 'btn btn-primary';
+  button.textContent = 'OK';
+  button.addEventListener('click', () => {
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+    window.location.reload();
+  });
+
+  actions.appendChild(button);
+  card.append(eyebrow, title, text, info, actions);
+  modal.appendChild(card);
+  document.body.appendChild(modal);
+
+  return modal;
+}
+
+function showOfflineSavedModal() {
+  const modal = createOfflineSavedModal();
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  window.setTimeout(() => $('offlineSavedOkBtn')?.focus(), 80);
+}
+
+function setDisplayedVersion() {
+  for (const element of document.querySelectorAll('body > div')) {
+    if (element.textContent?.trim() === 'v0.6') {
+      element.textContent = 'v0.7';
+      break;
+    }
+  }
+}
+
 function currentVisitId() {
   return loadState()?.visit?.idWizyty || null;
 }
@@ -222,12 +290,9 @@ function queueCurrentDraftOffline() {
   reviewModal?.classList.remove('show');
   reviewModal?.setAttribute('aria-hidden', 'true');
 
-  showToast('Brak internetu. Operacja zapisana w telefonie i czeka na wysłanie.');
   updateNetworkText();
-
-  window.setTimeout(() => {
-    window.location.reload();
-  }, 950);
+  renderQueueNotice();
+  showOfflineSavedModal();
 }
 
 async function flushQueue(manual = false) {
@@ -331,6 +396,8 @@ function interceptCriticalClicks(event) {
 }
 
 function initOfflineQueue() {
+  setDisplayedVersion();
+  createOfflineSavedModal();
   document.addEventListener('click', interceptCriticalClicks, true);
   renderQueueNotice();
   updateNetworkText();
