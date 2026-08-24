@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v13';
+const CACHE_NAME = 'selfstorage-shell-v14';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 
 const APP_SHELL = [
