@@ -2,9 +2,12 @@ import { api } from './api.js';
 
 const STATE_KEY = 'selfstorage_state_v1';
 const QUEUE_KEY = 'selfstorage_offline_queue_v1';
+const RETRY_DELAYS_MS = [800, 1500, 3000, 5000, 8000, 15000];
+
 let syncRunning = false;
 let offlineSendBusy = false;
 let autoSyncTimer = null;
+let retryIndex = 0;
 
 function $(id) {
   return document.getElementById(id);
@@ -128,7 +131,7 @@ function showOfflineSavedModal() {
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
     if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.8';
+      element.textContent = 'v0.9';
       break;
     }
   }
@@ -185,6 +188,8 @@ function updateNetworkText() {
 
   if (!navigator.onLine) {
     text.textContent = count ? `Offline • ${count}` : 'Offline';
+  } else if (syncRunning && count) {
+    text.textContent = `Wysyłam • ${count}`;
   } else if (count) {
     text.textContent = `Online • ${count}`;
   } else {
@@ -220,7 +225,10 @@ function renderQueueNotice() {
     button.type = 'button';
     button.className = 'small-btn';
     button.textContent = 'Wyślij teraz';
-    button.addEventListener('click', () => flushQueue(true));
+    button.addEventListener('click', () => {
+      retryIndex = 0;
+      flushQueue(true);
+    });
 
     notice.append(copy, button);
 
@@ -235,9 +243,13 @@ function renderQueueNotice() {
   const failed = queue.filter(item => item.status === 'BŁĄD').length;
   const text = $('offlineQueueText');
   if (text) {
-    text.textContent = failed
-      ? `${queue.length} oper. w pamięci telefonu • ${failed} wymaga ponowienia`
-      : `${queue.length} oper. zapisana lokalnie`;
+    if (syncRunning) {
+      text.textContent = `${queue.length} oper. • trwa synchronizacja`;
+    } else if (failed) {
+      text.textContent = `${queue.length} oper. w pamięci telefonu • ponawiam automatycznie`;
+    } else {
+      text.textContent = `${queue.length} oper. zapisana lokalnie`;
+    }
   }
 
   const button = $('offlineSyncNowBtn');
@@ -249,14 +261,34 @@ function renderQueueNotice() {
   updateNetworkText();
 }
 
-function scheduleAutoSync(delay = 400) {
+function clearAutoSyncTimer() {
+  if (autoSyncTimer) {
+    window.clearTimeout(autoSyncTimer);
+    autoSyncTimer = null;
+  }
+}
+
+function scheduleAutoSync(delay = 300) {
   if (!navigator.onLine || !loadQueue().length || syncRunning) return;
 
-  window.clearTimeout(autoSyncTimer);
+  clearAutoSyncTimer();
   autoSyncTimer = window.setTimeout(() => {
     autoSyncTimer = null;
     flushQueue(false);
   }, delay);
+}
+
+function scheduleRetry() {
+  if (!navigator.onLine || !loadQueue().length) return;
+
+  const delay = RETRY_DELAYS_MS[Math.min(retryIndex, RETRY_DELAYS_MS.length - 1)];
+  retryIndex = Math.min(retryIndex + 1, RETRY_DELAYS_MS.length - 1);
+  scheduleAutoSync(delay);
+}
+
+function triggerFastSync(delay = 150) {
+  retryIndex = 0;
+  scheduleAutoSync(delay);
 }
 
 function queueCurrentDraftOffline() {
@@ -301,6 +333,7 @@ function queueCurrentDraftOffline() {
   reviewModal?.classList.remove('show');
   reviewModal?.setAttribute('aria-hidden', 'true');
 
+  retryIndex = 0;
   updateNetworkText();
   renderQueueNotice();
   showOfflineSavedModal();
@@ -315,14 +348,17 @@ async function flushQueue(manual = false) {
     return;
   }
 
-  let queue = loadQueue();
+  const queue = loadQueue();
   if (!queue.length) {
+    retryIndex = 0;
+    clearAutoSyncTimer();
     if (manual) showToast('Nie ma operacji oczekujących na wysłanie.');
     renderQueueNotice();
     return;
   }
 
   syncRunning = true;
+  clearAutoSyncTimer();
   renderQueueNotice();
 
   let sent = 0;
@@ -344,13 +380,14 @@ async function flushQueue(manual = false) {
       const afterSuccess = loadQueue().filter(entry => entry.idSesji !== item.idSesji);
       saveQueue(afterSuccess);
       sent += 1;
+      retryIndex = 0;
       renderQueueNotice();
     } catch (error) {
       const afterError = loadQueue();
       const failedIndex = afterError.findIndex(entry => entry.idSesji === item.idSesji);
 
       if (failedIndex >= 0) {
-        afterError[failedIndex].status = 'BŁĄD';
+        afterError[failedIndex].status = manual ? 'BŁĄD' : 'OCZEKUJE_NA_WYSŁANIE';
         afterError[failedIndex].lastError = messageFromError(error);
         afterError[failedIndex].lastTryAt = new Date().toISOString();
         saveQueue(afterError);
@@ -360,7 +397,7 @@ async function flushQueue(manual = false) {
       renderQueueNotice();
 
       if (manual) {
-        showToast(`Nie udało się wysłać. ${messageFromError(error)}`, true);
+        showToast(`Nie udało się wysłać. ${messageFromError(error)} Aplikacja będzie próbować dalej.`, true);
       }
       break;
     }
@@ -378,8 +415,16 @@ async function flushQueue(manual = false) {
     );
   }
 
-  if (failed && navigator.onLine && loadQueue().length) {
-    scheduleAutoSync(15000);
+  if (!loadQueue().length) {
+    retryIndex = 0;
+    clearAutoSyncTimer();
+    return;
+  }
+
+  if (failed && navigator.onLine) {
+    scheduleRetry();
+  } else if (navigator.onLine) {
+    scheduleAutoSync(250);
   }
 }
 
@@ -406,6 +451,7 @@ function interceptCriticalClicks(event) {
 
   if (navigator.onLine) {
     showToast('Najpierw wysyłam operacje zapisane w telefonie.');
+    retryIndex = 0;
     flushQueue(true);
   } else {
     showToast('Masz niewysłane operacje. Zakończenie wizyty wymaga najpierw synchronizacji.', true);
@@ -422,12 +468,12 @@ function initOfflineQueue() {
   window.addEventListener('online', () => {
     updateNetworkText();
     renderQueueNotice();
-    scheduleAutoSync(250);
+    triggerFastSync(100);
   });
 
   window.addEventListener('offline', () => {
-    window.clearTimeout(autoSyncTimer);
-    autoSyncTimer = null;
+    clearAutoSyncTimer();
+    retryIndex = 0;
     updateNetworkText();
     renderQueueNotice();
   });
@@ -435,29 +481,35 @@ function initOfflineQueue() {
   window.addEventListener('pageshow', () => {
     renderQueueNotice();
     updateNetworkText();
-    scheduleAutoSync(500);
+    triggerFastSync(150);
   });
 
   window.addEventListener('focus', () => {
     renderQueueNotice();
     updateNetworkText();
-    scheduleAutoSync(300);
+    triggerFastSync(100);
   });
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     renderQueueNotice();
     updateNetworkText();
-    scheduleAutoSync(300);
+    triggerFastSync(100);
   });
 
   window.setInterval(() => {
-    if (document.visibilityState === 'visible' && navigator.onLine && loadQueue().length) {
+    if (
+      document.visibilityState === 'visible' &&
+      navigator.onLine &&
+      loadQueue().length &&
+      !syncRunning &&
+      !autoSyncTimer
+    ) {
       scheduleAutoSync(100);
     }
-  }, 10000);
+  }, 3000);
 
-  scheduleAutoSync(700);
+  triggerFastSync(300);
 }
 
 document.addEventListener('DOMContentLoaded', initOfflineQueue);
