@@ -71,6 +71,24 @@ function showToast(message, isError = false) {
   }, 3800);
 }
 
+function showSendingWindow() {
+  const loading = $('loading');
+  const text = $('loadingText');
+  if (!loading || !text) return;
+
+  text.innerHTML = '<strong>Wysyłanie</strong><br>Proszę o cierpliwość :)';
+  loading.classList.add('show');
+  loading.setAttribute('aria-hidden', 'false');
+}
+
+function hideSendingWindow() {
+  const loading = $('loading');
+  if (!loading) return;
+
+  loading.classList.remove('show');
+  loading.setAttribute('aria-hidden', 'true');
+}
+
 function createOfflineSavedModal() {
   let modal = $('offlineSavedModal');
   if (modal) return modal;
@@ -178,6 +196,8 @@ function createSyncSuccessModal() {
 }
 
 function showSyncSuccessModal() {
+  hideSendingWindow();
+
   const offlineModal = $('offlineSavedModal');
   offlineModal?.classList.remove('show');
   offlineModal?.setAttribute('aria-hidden', 'true');
@@ -191,7 +211,7 @@ function showSyncSuccessModal() {
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
     if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.13';
+      element.textContent = 'v0.14';
       element.style.fontSize = '13px';
       element.style.fontWeight = '600';
       element.style.opacity = '.85';
@@ -414,7 +434,7 @@ function queueCurrentDraft() {
     return;
   }
 
-  showToast('Operacja zapisana. Wysyłam w tle.');
+  showSendingWindow();
   window.setTimeout(() => flushQueue(true), 80);
 }
 
@@ -438,6 +458,7 @@ async function flushQueue(manual = false) {
   if (syncRunning || connectionCheckRunning) return;
 
   if (!navigator.onLine) {
+    hideSendingWindow();
     if (manual) showToast('Brak internetu. Operacje pozostają bezpiecznie w telefonie.', true);
     renderQueueNotice();
     return;
@@ -445,6 +466,7 @@ async function flushQueue(manual = false) {
 
   const queue = loadQueue();
   if (!queue.length) {
+    hideSendingWindow();
     retryIndex = 0;
     clearAutoSyncTimer();
     if (manual) showToast('Nie ma operacji oczekujących na wysłanie.');
@@ -501,6 +523,7 @@ async function flushQueue(manual = false) {
       renderQueueNotice();
 
       if (manual) {
+        hideSendingWindow();
         showToast(`Nie udało się wysłać. ${messageFromError(error)} Aplikacja będzie próbować dalej.`, true);
       }
       break;
@@ -513,10 +536,13 @@ async function flushQueue(manual = false) {
   if (sent > 0) {
     const left = loadQueue().length;
     if (left) {
+      hideSendingWindow();
       showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
     } else {
       showSyncSuccessModal();
     }
+  } else if (manual) {
+    hideSendingWindow();
   }
 
   if (!loadQueue().length) {
@@ -583,6 +609,7 @@ function initOfflineQueue() {
   });
 
   window.addEventListener('offline', () => {
+    hideSendingWindow();
     clearAutoSyncTimer();
     retryIndex = 0;
     updateNetworkText();
