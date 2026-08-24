@@ -1,10 +1,13 @@
-const CACHE_NAME = 'selfstorage-shell-v15';
+const CACHE_NAME = 'selfstorage-shell-v16';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LOCAL_DATA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const API_CACHE_DB = 'selfstorage-api-cache-v1';
 const API_CACHE_STORE = 'entries';
 const TEAM_CACHE_KEY = 'team';
 const START_DATA_CACHE_KEY = 'startData';
+const WAREHOUSE_CACHE_PREFIX = 'warehouse:';
+const PENDING_VISIT_PREFIX = 'pendingVisit:';
+const pendingVisitSyncs = new Map();
 
 const APP_SHELL = [
   './',
@@ -113,6 +116,125 @@ async function readResponseJson(response) {
   }
 }
 
+function normalizeWarehouseCode(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function pendingVisitKey(visitId) {
+  return `${PENDING_VISIT_PREFIX}${String(visitId || '')}`;
+}
+
+async function postApiPayload(incoming) {
+  return fetch('/api', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(incoming)
+  });
+}
+
+async function cacheWarehouse(code, warehouse) {
+  const cleanCode = normalizeWarehouseCode(code);
+  if (!cleanCode || !warehouse) return;
+
+  await writeApiCache(`${WAREHOUSE_CACHE_PREFIX}${cleanCode}`, {
+    warehouse,
+    verifiedAt: Date.now()
+  });
+}
+
+async function syncPendingVisitStart(visitId) {
+  const id = String(visitId || '').trim();
+  if (!id) return true;
+
+  if (pendingVisitSyncs.has(id)) {
+    return pendingVisitSyncs.get(id);
+  }
+
+  const promise = (async () => {
+    const key = pendingVisitKey(id);
+    const pending = await readApiCache(key);
+    if (!pending?.incoming) return true;
+
+    try {
+      const response = await postApiPayload(pending.incoming);
+      const data = await readResponseJson(response);
+
+      if (!response.ok || !data?.ok) {
+        return false;
+      }
+
+      const code = pending.incoming?.payload?.kodMagazynu;
+      if (data.magazyn) {
+        await cacheWarehouse(code, data.magazyn);
+      }
+
+      await deleteApiCache(key);
+      return true;
+    } catch (error) {
+      console.warn('Nie udało się zsynchronizować rozpoczęcia wizyty.', error);
+      return false;
+    }
+  })().finally(() => {
+    pendingVisitSyncs.delete(id);
+  });
+
+  pendingVisitSyncs.set(id, promise);
+  return promise;
+}
+
+async function handleStartVisitRequest(request, incoming, event) {
+  const code = normalizeWarehouseCode(incoming?.payload?.kodMagazynu);
+  const visitId = String(incoming?.payload?.idWizyty || '').trim();
+
+  if (code && visitId) {
+    try {
+      const cached = await readApiCache(`${WAREHOUSE_CACHE_PREFIX}${code}`);
+
+      if (cached?.warehouse && isFresh(cached)) {
+        await writeApiCache(pendingVisitKey(visitId), {
+          incoming,
+          createdAt: Date.now()
+        });
+
+        const syncPromise = syncPendingVisitStart(visitId);
+        event?.waitUntil(syncPromise);
+
+        return jsonResponse({
+          ok: true,
+          idWizyty: visitId,
+          start: new Date().toISOString(),
+          status: 'AKTYWNA',
+          magazyn: cached.warehouse,
+          localCache: true
+        });
+      }
+    } catch (error) {
+      console.warn('Nie udało się użyć lokalnej pamięci magazynu.', error);
+    }
+  }
+
+  const response = await fetch(request);
+  const data = await readResponseJson(response);
+
+  if (response.ok && data?.ok && code && data?.magazyn) {
+    try {
+      await cacheWarehouse(code, data.magazyn);
+    } catch (error) {
+      console.warn('Nie udało się zapisać magazynu w pamięci telefonu.', error);
+    }
+  }
+
+  return response;
+}
+
+async function ensureVisitStartBeforeRequest(incoming) {
+  const visitId = String(incoming?.payload?.idWizyty || '').trim();
+  if (!visitId) return true;
+  return syncPendingVisitStart(visitId);
+}
+
 async function handleLoginRequest(request, incoming) {
   const pin = String(incoming?.payload?.pin || '').trim();
 
@@ -191,7 +313,7 @@ async function handleStartDataRequest(request, incoming) {
   return response;
 }
 
-async function handleApiRequest(request) {
+async function handleApiRequest(request, event) {
   let incoming;
 
   try {
@@ -206,6 +328,20 @@ async function handleApiRequest(request) {
 
   if (incoming?.action === 'POBIERZ_DANE_STARTOWE') {
     return handleStartDataRequest(request, incoming);
+  }
+
+  if (incoming?.action === 'SKAN_MAGAZYNU') {
+    return handleStartVisitRequest(request, incoming, event);
+  }
+
+  if (incoming?.action === 'ZAPISZ_SESJE' || incoming?.action === 'ZAKONCZ_WIZYTE') {
+    const visitReady = await ensureVisitStartBeforeRequest(incoming);
+    if (!visitReady) {
+      return jsonResponse({
+        ok: false,
+        error: 'Rozpoczęcie wizyty nie zostało jeszcze potwierdzone przez serwer. Aplikacja ponowi próbę automatycznie.'
+      });
+    }
   }
 
   return fetch(request);
@@ -251,7 +387,7 @@ self.addEventListener('fetch', event => {
 
   if (url.pathname.startsWith('/api')) {
     if (request.method === 'POST') {
-      event.respondWith(handleApiRequest(request));
+      event.respondWith(handleApiRequest(request, event));
     }
     return;
   }
