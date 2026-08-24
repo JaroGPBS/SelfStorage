@@ -2,6 +2,8 @@ import { api } from './api.js';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 
+const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
+
 const state = {
   team: null,
   startData: null,
@@ -27,6 +29,55 @@ function showScreen(id) {
 
 function persist() {
   saveState(state);
+}
+
+function readStartDataCache() {
+  try {
+    const raw = localStorage.getItem(START_DATA_CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    console.warn('Nie udało się odczytać lokalnej pamięci danych startowych.', error);
+    return {};
+  }
+}
+
+function loadCachedStartData(teamId) {
+  if (!teamId) return null;
+  const entry = readStartDataCache()[teamId];
+  return entry?.data || null;
+}
+
+function saveCachedStartData(teamId, data) {
+  if (!teamId || !data) return;
+
+  try {
+    const cache = readStartDataCache();
+    cache[teamId] = {
+      savedAt: new Date().toISOString(),
+      data
+    };
+    localStorage.setItem(START_DATA_CACHE_KEY, JSON.stringify(cache));
+  } catch (error) {
+    console.warn('Nie udało się zapisać lokalnej pamięci danych startowych.', error);
+  }
+}
+
+async function refreshStartDataInBackground(teamId) {
+  if (!teamId || !navigator.onLine) return;
+
+  try {
+    const freshData = await api.getStartData(teamId);
+    saveCachedStartData(teamId, freshData);
+
+    if (state.team?.id === teamId) {
+      state.startData = freshData;
+      persist();
+    }
+  } catch (error) {
+    console.warn('Odświeżenie danych startowych w tle nie powiodło się.', error);
+  }
 }
 
 function restore() {
@@ -202,6 +253,7 @@ async function ensurePartData() {
   setLoading(true, 'Pobieranie listy części…');
   try {
     state.startData = await api.getStartData(state.team.id);
+    saveCachedStartData(state.team.id, state.startData);
     persist();
     return getParts().length > 0;
   } catch (error) {
@@ -229,10 +281,10 @@ async function login() {
 
   try {
     const loginResult = await api.login(pin);
-    const startData = await api.getStartData(loginResult.ekipa.id);
+    const team = loginResult.ekipa;
 
-    state.team = loginResult.ekipa;
-    state.startData = startData;
+    state.team = team;
+    state.startData = loadCachedStartData(team.id);
     state.visit = null;
     state.pendingStart = null;
     state.operationDraft = null;
@@ -241,6 +293,8 @@ async function login() {
     $('pinInput').value = '';
     $('loginBtn').disabled = true;
     renderWarehouse();
+
+    refreshStartDataInBackground(team.id);
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -722,6 +776,15 @@ function closeReview() {
   $('reviewModal').setAttribute('aria-hidden', 'true');
 }
 
+function handleDraftQueued() {
+  if (!state.operationDraft) return;
+
+  state.operationDraft = null;
+  persist();
+  closeReview();
+  renderVisit();
+}
+
 async function sendSession() {
   if (!state.operationDraft || !state.team || !state.visit) return;
 
@@ -884,6 +947,7 @@ function bindEvents() {
     showToast('Inwentaryzację dołączymy po zakończeniu Pobranie / Zwrot.');
   });
 
+  document.addEventListener('selfstorage:draft-queued', handleDraftQueued);
   window.addEventListener('online', updateNetworkUi);
   window.addEventListener('offline', updateNetworkUi);
 }
