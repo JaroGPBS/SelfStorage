@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v17';
+const CACHE_NAME = 'selfstorage-shell-v18';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LOCAL_DATA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const API_CACHE_DB = 'selfstorage-api-cache-v1';
@@ -8,6 +8,7 @@ const START_DATA_CACHE_KEY = 'startData';
 const WAREHOUSE_CACHE_PREFIX = 'warehouse:';
 const PENDING_VISIT_PREFIX = 'pendingVisit:';
 const pendingVisitSyncs = new Map();
+const authChecks = new Map();
 
 const APP_SHELL = [
   './',
@@ -18,6 +19,7 @@ const APP_SHELL = [
   './js/storage.js',
   './js/scanner.js',
   './js/offline.js',
+  './js/auth.js',
   './manifest.webmanifest',
   './icons/app-icon.svg',
   './icons/gpbs-logo.svg',
@@ -113,6 +115,17 @@ async function readResponseJson(response) {
     return await response.clone().json();
   } catch {
     return null;
+  }
+}
+
+async function notifyClients(message) {
+  const windows = await self.clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true
+  });
+
+  for (const client of windows) {
+    client.postMessage(message);
   }
 }
 
@@ -235,7 +248,86 @@ async function ensureVisitStartBeforeRequest(incoming) {
   return syncPendingVisitStart(visitId);
 }
 
-async function handleLoginRequest(request, incoming) {
+function sameTeamData(cachedTeam, serverTeam) {
+  return String(cachedTeam?.id || '') === String(serverTeam?.id || '') &&
+    String(cachedTeam?.nazwa || '') === String(serverTeam?.nazwa || '') &&
+    String(cachedTeam?.rola || '') === String(serverTeam?.rola || '');
+}
+
+async function verifyCachedLogin(incoming, pinHash, cachedTeam) {
+  const teamId = String(cachedTeam?.id || '').trim();
+  if (!teamId) return false;
+
+  if (authChecks.has(teamId)) {
+    return authChecks.get(teamId);
+  }
+
+  const promise = (async () => {
+    try {
+      const response = await postApiPayload(incoming);
+      const data = await readResponseJson(response);
+
+      if (!response.ok || !data?.ok || !data?.ekipa) {
+        const current = await readApiCache(TEAM_CACHE_KEY);
+        if (current?.pinHash === pinHash) {
+          await deleteApiCache(TEAM_CACHE_KEY);
+        }
+
+        await notifyClients({
+          type: 'AUTH_REJECTED',
+          message: data?.error || data?.message || 'PIN jest nieprawidłowy lub ekipa nie jest aktywna.'
+        });
+        return false;
+      }
+
+      const serverTeam = data.ekipa;
+      await writeApiCache(TEAM_CACHE_KEY, {
+        pinHash,
+        team: serverTeam,
+        verifiedAt: Date.now()
+      });
+
+      if (!sameTeamData(cachedTeam, serverTeam)) {
+        if (String(cachedTeam?.id || '') !== String(serverTeam?.id || '')) {
+          await deleteApiCache(START_DATA_CACHE_KEY);
+        }
+
+        await notifyClients({
+          type: 'AUTH_REFRESH_REQUIRED',
+          message: 'Dane ekipy zostały zmienione. Zaloguj się ponownie.'
+        });
+        return false;
+      }
+
+      await notifyClients({ type: 'AUTH_VERIFIED', idEkipy: teamId });
+      return true;
+    } catch (error) {
+      console.warn('Weryfikacja logowania w tle nie powiodła się.', error);
+      await notifyClients({
+        type: 'AUTH_UNAVAILABLE',
+        message: 'Nie udało się sprawdzić uprawnień. Sprawdź internet i zaloguj się ponownie.'
+      });
+      return false;
+    }
+  })().finally(() => {
+    authChecks.delete(teamId);
+  });
+
+  authChecks.set(teamId, promise);
+  return promise;
+}
+
+async function waitForPendingAuth(teamId) {
+  const id = String(teamId || '').trim();
+  if (!id) return false;
+
+  const pending = authChecks.get(id);
+  if (!pending) return true;
+
+  return pending;
+}
+
+async function handleLoginRequest(request, incoming, event) {
   const pin = String(incoming?.payload?.pin || '').trim();
 
   if (/^\d{4}$/.test(pin)) {
@@ -243,11 +335,15 @@ async function handleLoginRequest(request, incoming) {
       const pinHash = await hashPin(pin);
       const cached = await readApiCache(TEAM_CACHE_KEY);
 
-      if (cached?.pinHash === pinHash && cached?.team && isFresh(cached)) {
+      if (cached?.pinHash === pinHash && cached?.team) {
+        const verification = verifyCachedLogin(incoming, pinHash, cached.team);
+        event?.waitUntil(verification);
+
         return jsonResponse({
           ok: true,
           ekipa: cached.team,
-          localCache: true
+          localCache: true,
+          authPending: true
         });
       }
     } catch (error) {
@@ -273,6 +369,8 @@ async function handleLoginRequest(request, incoming) {
       if (teamChanged) {
         await deleteApiCache(START_DATA_CACHE_KEY);
       }
+
+      await notifyClients({ type: 'AUTH_VERIFIED', idEkipy: data.ekipa.id });
     } catch (error) {
       console.warn('Nie udało się zapisać lokalnej pamięci ekipy.', error);
     }
@@ -323,7 +421,7 @@ async function handleApiRequest(request, event) {
   }
 
   if (incoming?.action === 'LOGIN') {
-    return handleLoginRequest(request, incoming);
+    return handleLoginRequest(request, incoming, event);
   }
 
   if (incoming?.action === 'POBIERZ_DANE_STARTOWE') {
@@ -331,6 +429,14 @@ async function handleApiRequest(request, event) {
   }
 
   if (incoming?.action === 'SKAN_MAGAZYNU') {
+    const authReady = await waitForPendingAuth(incoming?.payload?.idEkipy);
+    if (!authReady) {
+      return jsonResponse({
+        ok: false,
+        error: 'Brak aktywnych uprawnień. Zaloguj się ponownie.'
+      });
+    }
+
     return handleStartVisitRequest(request, incoming, event);
   }
 
