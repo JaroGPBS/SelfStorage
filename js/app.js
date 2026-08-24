@@ -1,15 +1,18 @@
 import { api } from './api.js';
 import { loadState, saveState, clearState } from './storage.js';
-import { startWarehouseScanner, stopWarehouseScanner } from './scanner.js';
+import { startScanner, stopScanner } from './scanner.js';
 
 const state = {
   team: null,
   startData: null,
   visit: null,
-  pendingStart: null
+  pendingStart: null,
+  operationDraft: null
 };
 
 let toastTimer = null;
+let scannerMode = null;
+let quantityTarget = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -19,6 +22,7 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(screen => {
     screen.classList.toggle('active', screen.id === id);
   });
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 function persist() {
@@ -33,6 +37,7 @@ function restore() {
   state.startData = saved.startData || null;
   state.visit = saved.visit || null;
   state.pendingStart = saved.pendingStart || null;
+  state.operationDraft = saved.operationDraft || null;
 }
 
 function resetState() {
@@ -40,6 +45,7 @@ function resetState() {
   state.startData = null;
   state.visit = null;
   state.pendingStart = null;
+  state.operationDraft = null;
   clearState();
 }
 
@@ -59,7 +65,7 @@ function showToast(message, isError = false) {
 
   toastTimer = setTimeout(() => {
     toast.classList.remove('show');
-  }, 3200);
+  }, 3400);
 }
 
 function messageFromError(error) {
@@ -72,6 +78,65 @@ function updateNetworkUi() {
   const online = navigator.onLine;
   $('networkBadge').classList.toggle('offline', !online);
   $('networkText').textContent = online ? 'Online' : 'Offline';
+}
+
+function randomToken(length = 12) {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID().replaceAll('-', '').slice(0, length).toUpperCase();
+  }
+  return Math.random().toString(36).slice(2, 2 + length).toUpperCase();
+}
+
+function makeVisitId() {
+  return `WIZ-APP-${Date.now()}-${randomToken(12)}`;
+}
+
+function makeSessionId() {
+  return `SES-APP-${Date.now()}-${randomToken(12)}`;
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function getParts() {
+  return Array.isArray(state.startData?.czesci) ? state.startData.czesci : [];
+}
+
+function getDraftList(type) {
+  if (!state.operationDraft) return [];
+  return type === 'ZWROT'
+    ? state.operationDraft.zwrot
+    : state.operationDraft.pobranie;
+}
+
+function currentOperationType() {
+  return state.operationDraft?.activeType === 'ZWROT' ? 'ZWROT' : 'POBRANIE';
+}
+
+function draftItemCount() {
+  if (!state.operationDraft) return 0;
+  return state.operationDraft.pobranie.length + state.operationDraft.zwrot.length;
+}
+
+function hasDraftData() {
+  if (!state.operationDraft) return false;
+  return draftItemCount() > 0 || Boolean(String(state.operationDraft.komentarz || '').trim());
+}
+
+function isDraftLocked() {
+  return Boolean(state.operationDraft?.operationTime);
+}
+
+function cleanEmptyDraft() {
+  if (state.operationDraft && !hasDraftData()) {
+    state.operationDraft = null;
+    persist();
+  }
 }
 
 function renderWarehouse() {
@@ -91,15 +156,53 @@ function renderVisit() {
   const canInventory = ['KIEROWNIK', 'ADMIN'].includes(state.team?.rola);
   $('inventoryBtn').classList.toggle('hidden', !canInventory);
 
+  const showDraft = Boolean(
+    state.operationDraft &&
+    state.operationDraft.idWizyty === state.visit?.idWizyty &&
+    hasDraftData()
+  );
+
+  $('draftNotice').classList.toggle('hidden', !showDraft);
+
+  if (showDraft) {
+    const pob = state.operationDraft.pobranie.length;
+    const zwr = state.operationDraft.zwrot.length;
+    $('draftNoticeText').textContent = `Pobranie: ${pob} poz. • Zwrot: ${zwr} poz.`;
+  }
+
   showScreen('screenVisit');
 }
 
-function makeVisitId() {
-  const random = window.crypto?.randomUUID
-    ? window.crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase()
-    : Math.random().toString(36).slice(2, 14).toUpperCase();
+function buildPartSuggestions() {
+  const datalist = $('partSuggestions');
+  datalist.replaceChildren();
 
-  return `WIZ-APP-${Date.now()}-${random}`;
+  for (const part of getParts()) {
+    const option = document.createElement('option');
+    option.value = `${part.kod} — ${part.nazwa}`;
+    datalist.appendChild(option);
+  }
+}
+
+async function ensurePartData() {
+  if (getParts().length > 0) return true;
+
+  if (!navigator.onLine || !state.team) {
+    showToast('Brak lokalnej listy części. Połącz się z internetem.', true);
+    return false;
+  }
+
+  setLoading(true, 'Pobieranie listy części…');
+  try {
+    state.startData = await api.getStartData(state.team.id);
+    persist();
+    return getParts().length > 0;
+  } catch (error) {
+    showToast(messageFromError(error), true);
+    return false;
+  } finally {
+    setLoading(false);
+  }
 }
 
 async function login() {
@@ -125,6 +228,7 @@ async function login() {
     state.startData = startData;
     state.visit = null;
     state.pendingStart = null;
+    state.operationDraft = null;
     persist();
 
     $('pinInput').value = '';
@@ -180,6 +284,7 @@ async function startVisit(code) {
       magazyn: result.magazyn
     };
     state.pendingStart = null;
+    state.operationDraft = null;
     persist();
 
     $('warehouseCodeInput').value = '';
@@ -192,14 +297,28 @@ async function startVisit(code) {
   }
 }
 
-async function openScanner() {
+async function openCodeScanner(mode) {
+  scannerMode = mode;
+
+  const isPart = mode === 'part';
+  $('scannerTitle').textContent = isPart ? 'Kod części' : 'Kod QR magazynu';
+  $('scannerNote').textContent = isPart
+    ? 'Skieruj aparat na kod QR lub kod kreskowy części.'
+    : 'Skieruj aparat na kod QR magazynu.';
+
   $('scannerModal').classList.add('show');
   $('scannerModal').setAttribute('aria-hidden', 'false');
 
   try {
-    await startWarehouseScanner(async code => {
+    await startScanner(async code => {
+      const activeMode = scannerMode;
       await closeScanner();
-      await startVisit(code);
+
+      if (activeMode === 'part') {
+        processPartInput(code);
+      } else {
+        await startVisit(code);
+      }
     });
   } catch (error) {
     await closeScanner();
@@ -209,17 +328,410 @@ async function openScanner() {
 
 async function closeScanner() {
   try {
-    await stopWarehouseScanner();
+    await stopScanner();
   } catch (error) {
     console.warn('Błąd przy zamykaniu skanera.', error);
   }
 
+  scannerMode = null;
   $('scannerModal').classList.remove('show');
   $('scannerModal').setAttribute('aria-hidden', 'true');
 }
 
+async function beginOperation(type) {
+  if (!state.team || !state.visit) return;
+  if (!(await ensurePartData())) return;
+
+  if (!state.operationDraft || state.operationDraft.idWizyty !== state.visit.idWizyty) {
+    state.operationDraft = {
+      idSesji: makeSessionId(),
+      idWizyty: state.visit.idWizyty,
+      activeType: type === 'ZWROT' ? 'ZWROT' : 'POBRANIE',
+      pobranie: [],
+      zwrot: [],
+      komentarz: '',
+      operationTime: null
+    };
+  } else {
+    state.operationDraft.activeType = type === 'ZWROT' ? 'ZWROT' : 'POBRANIE';
+  }
+
+  persist();
+  buildPartSuggestions();
+  renderOperation();
+}
+
+function renderOperation() {
+  if (!state.operationDraft || !state.visit) {
+    renderVisit();
+    return;
+  }
+
+  const type = currentOperationType();
+  const isReturn = type === 'ZWROT';
+  const list = getDraftList(type);
+  const locked = isDraftLocked();
+
+  $('operationWarehouse').textContent = state.visit.magazyn?.nazwa || 'Magazyn';
+  $('operationTeam').textContent = `Ekipa ${state.team?.nazwa || '—'}`;
+
+  $('tabPobranie').classList.toggle('active', !isReturn);
+  $('tabZwrot').classList.toggle('active', isReturn);
+
+  $('activeOperationEyebrow').textContent = type;
+  $('activeOperationBadge').textContent = isReturn ? 'Zwrot' : 'Pobranie';
+  $('activeOperationBadge').classList.toggle('pick', !isReturn);
+  $('activeOperationBadge').classList.toggle('return', isReturn);
+
+  $('listEyebrow').textContent = isReturn ? 'LISTA ZWROTU' : 'LISTA POBRANIA';
+  $('listTitle').textContent = isReturn ? 'Zwracane części' : 'Pobierane części';
+
+  const pobQty = state.operationDraft.pobranie.reduce((sum, item) => sum + item.ilosc, 0);
+  const zwrQty = state.operationDraft.zwrot.reduce((sum, item) => sum + item.ilosc, 0);
+  $('pobranieCount').textContent = `${state.operationDraft.pobranie.length} poz. / ${pobQty} szt.`;
+  $('zwrotCount').textContent = `${state.operationDraft.zwrot.length} poz. / ${zwrQty} szt.`;
+  $('activeListCount').textContent = String(list.length);
+
+  $('operationComment').value = state.operationDraft.komentarz || '';
+  $('operationComment').disabled = locked;
+  $('openPartScannerBtn').disabled = locked;
+  $('manualPartBtn').disabled = locked;
+  $('partSearchInput').disabled = locked;
+  $('reviewSessionBtn').textContent = locked ? 'Wyślij ponownie' : 'Podsumowanie i wyślij';
+
+  renderPartList(list, type, locked);
+  showScreen('screenOperation');
+}
+
+function renderPartList(list, type, locked) {
+  const container = $('operationList');
+  container.replaceChildren();
+  $('operationEmpty').classList.toggle('hidden', list.length > 0);
+
+  list.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'part-row';
+
+    const main = document.createElement('div');
+    main.className = 'part-main';
+
+    const name = document.createElement('strong');
+    name.textContent = item.nazwa;
+
+    const code = document.createElement('span');
+    code.textContent = item.kod;
+
+    main.append(name, code);
+
+    const side = document.createElement('div');
+    side.className = 'part-side';
+
+    const qty = document.createElement('div');
+    qty.className = 'qty-badge';
+    qty.textContent = item.ilosc;
+    side.appendChild(qty);
+
+    if (!locked) {
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+
+      const edit = document.createElement('button');
+      edit.className = 'row-btn';
+      edit.type = 'button';
+      edit.textContent = '✎';
+      edit.setAttribute('aria-label', `Edytuj ${item.nazwa}`);
+      edit.addEventListener('click', () => openQuantityModal(item, type, 'replace'));
+
+      const del = document.createElement('button');
+      del.className = 'row-btn delete';
+      del.type = 'button';
+      del.textContent = '×';
+      del.setAttribute('aria-label', `Usuń ${item.nazwa}`);
+      del.addEventListener('click', () => deletePart(item.kod, type));
+
+      actions.append(edit, del);
+      side.appendChild(actions);
+    }
+
+    row.append(main, side);
+    container.appendChild(row);
+  });
+}
+
+function switchOperationType(type) {
+  if (!state.operationDraft) return;
+  state.operationDraft.activeType = type === 'ZWROT' ? 'ZWROT' : 'POBRANIE';
+  persist();
+  renderOperation();
+}
+
+function findPart(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return { part: null, ambiguous: false };
+
+  const possibleCode = raw.includes('—') ? raw.split('—')[0].trim() : raw;
+  const normalizedCode = normalizeText(possibleCode);
+  const normalizedRaw = normalizeText(raw);
+  const parts = getParts();
+
+  const exactCode = parts.find(part => normalizeText(part.kod) === normalizedCode);
+  if (exactCode) return { part: exactCode, ambiguous: false };
+
+  const exactName = parts.find(part => normalizeText(part.nazwa) === normalizedRaw);
+  if (exactName) return { part: exactName, ambiguous: false };
+
+  const matches = parts.filter(part =>
+    normalizeText(part.kod).includes(normalizedRaw) ||
+    normalizeText(part.nazwa).includes(normalizedRaw)
+  );
+
+  if (matches.length === 1) return { part: matches[0], ambiguous: false };
+  return { part: null, ambiguous: matches.length > 1 };
+}
+
+function processPartInput(value) {
+  if (!state.operationDraft) return;
+
+  if (isDraftLocked()) {
+    showToast('Ta sesja była już wysyłana. Możesz tylko ponowić wysyłkę.', true);
+    return;
+  }
+
+  const result = findPart(value);
+
+  if (!result.part) {
+    showToast(
+      result.ambiguous
+        ? 'Znaleziono kilka pasujących części. Wpisz dokładniejszy kod lub nazwę.'
+        : 'Nieznana część. Zeskanuj ponownie lub wyszukaj część z listy.',
+      true
+    );
+    return;
+  }
+
+  $('partSearchInput').value = '';
+  openQuantityModal(result.part, currentOperationType(), 'add');
+}
+
+function openQuantityModal(part, type, mode) {
+  if (!state.operationDraft || isDraftLocked()) return;
+
+  const list = getDraftList(type);
+  const existing = list.find(item => item.kod === part.kod);
+
+  quantityTarget = {
+    part,
+    type,
+    mode,
+    existingQty: existing?.ilosc || 0
+  };
+
+  $('quantityTypeLabel').textContent = type;
+  $('quantityPartName').textContent = part.nazwa;
+  $('quantityPartCode').textContent = part.kod;
+
+  const isReplace = mode === 'replace';
+  $('existingQuantityInfo').classList.toggle('hidden', !existing);
+
+  if (existing) {
+    $('existingQuantityInfo').textContent = isReplace
+      ? `Aktualna ilość: ${existing.ilosc} szt.`
+      : `Ta część jest już na liście: ${existing.ilosc} szt. Wpisz ilość dodatkową.`;
+  }
+
+  $('quantityInput').value = isReplace && existing ? String(existing.ilosc) : '';
+  $('quantityAddBtn').textContent = isReplace ? 'Zapisz' : 'Dodaj';
+
+  $('quantityModal').classList.add('show');
+  $('quantityModal').setAttribute('aria-hidden', 'false');
+
+  setTimeout(() => $('quantityInput').focus(), 80);
+}
+
+function closeQuantityModal() {
+  quantityTarget = null;
+  $('quantityInput').value = '';
+  $('quantityModal').classList.remove('show');
+  $('quantityModal').setAttribute('aria-hidden', 'true');
+}
+
+function confirmQuantity() {
+  if (!quantityTarget || !state.operationDraft) return;
+
+  const qty = Number($('quantityInput').value);
+  if (!Number.isInteger(qty) || qty < 1) {
+    showToast('Ilość musi być liczbą całkowitą większą od zera.', true);
+    return;
+  }
+
+  const list = getDraftList(quantityTarget.type);
+  const existing = list.find(item => item.kod === quantityTarget.part.kod);
+
+  if (existing) {
+    existing.ilosc = quantityTarget.mode === 'replace'
+      ? qty
+      : existing.ilosc + qty;
+  } else {
+    list.push({
+      kod: quantityTarget.part.kod,
+      nazwa: quantityTarget.part.nazwa,
+      ilosc: qty
+    });
+  }
+
+  persist();
+  closeQuantityModal();
+  renderOperation();
+  showToast('Część dodana do listy.');
+}
+
+function deletePart(code, type) {
+  if (!state.operationDraft || isDraftLocked()) return;
+
+  const list = getDraftList(type);
+  const index = list.findIndex(item => item.kod === code);
+  if (index >= 0) list.splice(index, 1);
+
+  persist();
+  renderOperation();
+}
+
+function saveCommentFromUi() {
+  if (!state.operationDraft || isDraftLocked()) return;
+  state.operationDraft.komentarz = $('operationComment').value;
+  persist();
+}
+
+function backToVisit() {
+  saveCommentFromUi();
+  cleanEmptyDraft();
+  renderVisit();
+}
+
+function appendReviewSection(parent, title, type, items) {
+  if (!items.length) return;
+
+  const section = document.createElement('div');
+  section.className = 'review-section';
+
+  const head = document.createElement('div');
+  head.className = `review-section-head ${type}`;
+  head.textContent = title;
+  section.appendChild(head);
+
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'review-row';
+
+    const name = document.createElement('strong');
+    name.textContent = `${item.nazwa} (${item.kod})`;
+
+    const qty = document.createElement('span');
+    qty.textContent = `${item.ilosc} szt.`;
+
+    row.append(name, qty);
+    section.appendChild(row);
+  });
+
+  parent.appendChild(section);
+}
+
+function openReview() {
+  if (!state.operationDraft) return;
+  saveCommentFromUi();
+
+  if (draftItemCount() === 0) {
+    showToast('Dodaj przynajmniej jedną część.', true);
+    return;
+  }
+
+  const content = $('reviewContent');
+  content.replaceChildren();
+
+  appendReviewSection(content, 'Pobranie', 'pick', state.operationDraft.pobranie);
+  appendReviewSection(content, 'Zwrot', 'return', state.operationDraft.zwrot);
+
+  const comment = String(state.operationDraft.komentarz || '').trim();
+  if (comment) {
+    const box = document.createElement('div');
+    box.className = 'review-comment';
+
+    const label = document.createElement('span');
+    label.textContent = 'Komentarz';
+
+    const value = document.createElement('strong');
+    value.textContent = comment;
+
+    box.append(label, value);
+    content.appendChild(box);
+  }
+
+  $('reviewSendBtn').textContent = isDraftLocked() ? 'Wyślij ponownie' : 'Wyślij';
+  $('reviewModal').classList.add('show');
+  $('reviewModal').setAttribute('aria-hidden', 'false');
+}
+
+function closeReview() {
+  $('reviewModal').classList.remove('show');
+  $('reviewModal').setAttribute('aria-hidden', 'true');
+}
+
+async function sendSession() {
+  if (!state.operationDraft || !state.team || !state.visit) return;
+
+  if (!navigator.onLine) {
+    showToast('Wysyłanie offline dodamy w kolejnym etapie. Teraz potrzebny jest internet.', true);
+    return;
+  }
+
+  if (draftItemCount() === 0) {
+    showToast('Brak części do wysłania.', true);
+    return;
+  }
+
+  if (!state.operationDraft.operationTime) {
+    state.operationDraft.operationTime = new Date().toISOString();
+    persist();
+  }
+
+  const draft = state.operationDraft;
+  closeReview();
+  setLoading(true, 'Zapisywanie operacji…');
+
+  try {
+    await api.saveSession({
+      idSesji: draft.idSesji,
+      idWizyty: state.visit.idWizyty,
+      dataCzasOperacji: draft.operationTime,
+      idEkipy: state.team.id,
+      idMagazynu: state.visit.magazyn.id,
+      komentarz: String(draft.komentarz || '').trim(),
+      pobranie: draft.pobranie.map(item => ({ kod: item.kod, ilosc: item.ilosc })),
+      zwrot: draft.zwrot.map(item => ({ kod: item.kod, ilosc: item.ilosc }))
+    });
+
+    state.operationDraft = null;
+    persist();
+    renderVisit();
+    showToast('Operacja została zapisana.');
+  } catch (error) {
+    persist();
+    renderOperation();
+    showToast(`${messageFromError(error)} Spróbuj wysłać ponownie bez zmiany zawartości.`, true);
+  } finally {
+    setLoading(false);
+  }
+}
+
 async function finishVisit() {
   if (!state.team || !state.visit) return;
+
+  cleanEmptyDraft();
+
+  if (hasDraftData()) {
+    showToast('Masz niedokończoną operację. Najpierw ją wyślij.', true);
+    return;
+  }
 
   if (!navigator.onLine) {
     showToast('Zakończenie wizyty wymaga teraz internetu.', true);
@@ -272,18 +784,45 @@ function bindEvents() {
 
   $('loginBtn').addEventListener('click', login);
   $('logoutBtn').addEventListener('click', logout);
-  $('openScannerBtn').addEventListener('click', openScanner);
+  $('openWarehouseScannerBtn').addEventListener('click', () => openCodeScanner('warehouse'));
   $('closeScannerBtn').addEventListener('click', closeScanner);
 
-  $('manualWarehouseBtn').addEventListener('click', () => {
-    startVisit($('warehouseCodeInput').value);
-  });
-
+  $('manualWarehouseBtn').addEventListener('click', () => startVisit($('warehouseCodeInput').value));
   $('warehouseCodeInput').addEventListener('keydown', event => {
     if (event.key === 'Enter') startVisit(event.target.value);
   });
 
+  $('pobranieBtn').addEventListener('click', () => beginOperation('POBRANIE'));
+  $('zwrotBtn').addEventListener('click', () => beginOperation('ZWROT'));
+  $('resumeDraftBtn').addEventListener('click', () => beginOperation(state.operationDraft?.activeType || 'POBRANIE'));
+
+  $('tabPobranie').addEventListener('click', () => switchOperationType('POBRANIE'));
+  $('tabZwrot').addEventListener('click', () => switchOperationType('ZWROT'));
+  $('openPartScannerBtn').addEventListener('click', () => openCodeScanner('part'));
+  $('manualPartBtn').addEventListener('click', () => processPartInput($('partSearchInput').value));
+  $('partSearchInput').addEventListener('keydown', event => {
+    if (event.key === 'Enter') processPartInput(event.target.value);
+  });
+
+  $('quantityCancelBtn').addEventListener('click', closeQuantityModal);
+  $('quantityAddBtn').addEventListener('click', confirmQuantity);
+  $('quantityInput').addEventListener('keydown', event => {
+    if (event.key === 'Enter') confirmQuantity();
+  });
+
+  $('operationComment').addEventListener('input', saveCommentFromUi);
+  $('operationBackBtn').addEventListener('click', backToVisit);
+  $('operationBackBottomBtn').addEventListener('click', backToVisit);
+  $('reviewSessionBtn').addEventListener('click', openReview);
+  $('reviewCancelBtn').addEventListener('click', closeReview);
+  $('reviewSendBtn').addEventListener('click', sendSession);
+
   $('finishVisitBtn').addEventListener('click', () => {
+    cleanEmptyDraft();
+    if (hasDraftData()) {
+      showToast('Masz niedokończoną operację. Najpierw ją wyślij.', true);
+      return;
+    }
     $('finishModal').classList.add('show');
     $('finishModal').setAttribute('aria-hidden', 'false');
   });
@@ -295,16 +834,8 @@ function bindEvents() {
 
   $('finishYesBtn').addEventListener('click', finishVisit);
 
-  $('pobranieBtn').addEventListener('click', () => {
-    showToast('Pobranie dołączymy w następnym etapie.');
-  });
-
-  $('zwrotBtn').addEventListener('click', () => {
-    showToast('Zwrot dołączymy w następnym etapie.');
-  });
-
   $('inventoryBtn').addEventListener('click', () => {
-    showToast('Inwentaryzację dołączymy po Pobranie / Zwrot.');
+    showToast('Inwentaryzację dołączymy po zakończeniu Pobranie / Zwrot.');
   });
 
   window.addEventListener('online', updateNetworkUi);
