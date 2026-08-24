@@ -333,7 +333,7 @@ async function openCodeScanner(mode) {
         }
 
         await closeScanner();
-        openQuantityModal(result.part, currentOperationType(), 'add', { reopenScanner: true });
+        openQuantityModal(result.part, currentOperationType(), 'add');
         return true;
       }
 
@@ -559,7 +559,7 @@ function processPartInput(value) {
   return true;
 }
 
-function openQuantityModal(part, type, mode, options = {}) {
+function openQuantityModal(part, type, mode) {
   if (!state.operationDraft || isDraftLocked()) return;
 
   const list = getDraftList(type);
@@ -569,8 +569,7 @@ function openQuantityModal(part, type, mode, options = {}) {
     part,
     type,
     mode,
-    existingQty: existing?.ilosc || 0,
-    reopenScanner: Boolean(options.reopenScanner)
+    existingQty: existing?.ilosc || 0
   };
 
   $('quantityTypeLabel').textContent = type;
@@ -611,7 +610,6 @@ function confirmQuantity() {
     return;
   }
 
-  const reopenScanner = Boolean(quantityTarget.reopenScanner);
   const list = getDraftList(quantityTarget.type);
   const existing = list.find(item => item.kod === quantityTarget.part.kod);
 
@@ -631,10 +629,6 @@ function confirmQuantity() {
   closeQuantityModal();
   renderOperation();
   showToast(existing ? 'Ilość została dodana.' : 'Część dodana do listy.');
-
-  if (reopenScanner && state.operationDraft && !isDraftLocked()) {
-    setTimeout(() => openCodeScanner('part'), 180);
-  }
 }
 
 function deletePart(code, type) {
