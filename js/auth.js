@@ -21,6 +21,7 @@ function showCenteredAuthMessage(message) {
   const modal = document.createElement('div');
   modal.id = 'authMessageModal';
   modal.className = 'modal show';
+  modal.style.alignItems = 'center';
   modal.setAttribute('aria-hidden', 'false');
   modal.setAttribute('role', 'dialog');
   modal.setAttribute('aria-modal', 'true');
