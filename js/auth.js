@@ -14,18 +14,42 @@ function setDisplayedVersion() {
   }
 }
 
+function showCenteredAuthMessage(message) {
+  const existing = document.getElementById('authMessageModal');
+  existing?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'authMessageModal';
+  modal.className = 'modal show';
+  modal.setAttribute('aria-hidden', 'false');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+
+  const card = document.createElement('div');
+  card.className = 'modal-card compact';
+  card.style.textAlign = 'center';
+
+  const title = document.createElement('h3');
+  title.textContent = message;
+  title.style.margin = '0';
+
+  card.appendChild(title);
+  modal.appendChild(card);
+  document.body.appendChild(modal);
+
+  window.setTimeout(() => {
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+    window.setTimeout(() => modal.remove(), 250);
+  }, 5000);
+}
+
 function showStoredAuthMessage() {
   const message = sessionStorage.getItem(AUTH_MESSAGE_KEY);
   if (!message) return;
 
   sessionStorage.removeItem(AUTH_MESSAGE_KEY);
-
-  const toast = document.getElementById('toast');
-  if (!toast) return;
-
-  toast.textContent = message;
-  toast.classList.add('error', 'show');
-  window.setTimeout(() => toast.classList.remove('show'), 5000);
+  showCenteredAuthMessage(message);
 }
 
 function forceLogout(message) {
