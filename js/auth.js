@@ -1,6 +1,6 @@
 const STATE_KEY = 'selfstorage_state_v1';
 const AUTH_MESSAGE_KEY = 'selfstorage_auth_message_v1';
-const INVALID_AUTH_MESSAGE = 'Nieprawidłowe dane. Skontaktuj się z administratorem.';
+const INVALID_AUTH_MESSAGE = 'Konto nie aktywne\nSkontaktuj się z adminem.';
 
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
@@ -33,6 +33,7 @@ function showCenteredAuthMessage(message) {
   const title = document.createElement('h3');
   title.textContent = message;
   title.style.margin = '0';
+  title.style.whiteSpace = 'pre-line';
 
   card.appendChild(title);
   modal.appendChild(card);
