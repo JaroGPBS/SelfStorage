@@ -1,5 +1,5 @@
 const API_URL = '/api';
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 25000;
 
 async function request(action, payload = {}) {
   const controller = new AbortController();
@@ -58,6 +58,10 @@ export const api = {
       kodMagazynu,
       idWizyty
     });
+  },
+
+  saveSession(payload) {
+    return request('ZAPISZ_SESJE', payload);
   },
 
   endVisit({ idEkipy, idWizyty }) {
