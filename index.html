@@ -56,7 +56,7 @@
           <div class="scan-symbol" aria-hidden="true">⌗</div>
           <h3>Zeskanuj magazyn</h3>
           <p>Zeskanuj kod QR umieszczony przy magazynie, aby rozpocząć wizytę.</p>
-          <button id="openScannerBtn" class="btn btn-primary">Otwórz skaner</button>
+          <button id="openWarehouseScannerBtn" class="btn btn-primary">Otwórz skaner</button>
 
           <div class="divider"><span>lub</span></div>
 
@@ -88,6 +88,14 @@
           </div>
         </div>
 
+        <div id="draftNotice" class="draft-notice hidden">
+          <div>
+            <strong>Niedokończona operacja</strong>
+            <span id="draftNoticeText">Masz zapisane pozycje.</span>
+          </div>
+          <button id="resumeDraftBtn" class="small-btn">Wznów</button>
+        </div>
+
         <div class="action-grid">
           <button id="pobranieBtn" class="action-card action-pick">
             <span class="action-kicker">OPERACJA</span>
@@ -111,6 +119,74 @@
         <button id="finishVisitBtn" class="btn btn-danger">Zakończ wizytę</button>
       </section>
 
+      <section id="screenOperation" class="screen">
+        <div class="operation-head">
+          <button id="operationBackBtn" class="back-chip" aria-label="Wróć">‹</button>
+          <div>
+            <div class="eyebrow">OPERACJA MAGAZYNOWA</div>
+            <h2 id="operationWarehouse">Magazyn</h2>
+            <p id="operationTeam">Ekipa</p>
+          </div>
+        </div>
+
+        <div class="operation-tabs" role="tablist" aria-label="Typ operacji">
+          <button id="tabPobranie" class="operation-tab pick active" data-operation-type="POBRANIE">Pobranie</button>
+          <button id="tabZwrot" class="operation-tab return" data-operation-type="ZWROT">Zwrot</button>
+        </div>
+
+        <div class="operation-summary-strip">
+          <div class="summary-pill pick">
+            <span>Pobranie</span>
+            <strong id="pobranieCount">0 poz.</strong>
+          </div>
+          <div class="summary-pill return">
+            <span>Zwrot</span>
+            <strong id="zwrotCount">0 poz.</strong>
+          </div>
+        </div>
+
+        <div class="panel part-add-panel">
+          <div class="part-add-title">
+            <div>
+              <div class="eyebrow" id="activeOperationEyebrow">POBRANIE</div>
+              <h3>Dodaj część</h3>
+            </div>
+            <div id="activeOperationBadge" class="type-badge pick">Pobranie</div>
+          </div>
+
+          <button id="openPartScannerBtn" class="btn btn-primary">Skanuj kod części</button>
+
+          <div class="divider"><span>lub wpisz ręcznie</span></div>
+
+          <label class="field-label" for="partSearchInput">Kod lub nazwa części</label>
+          <input id="partSearchInput" class="text-input" type="text" autocomplete="off" list="partSuggestions" placeholder="np. MG-FR-0015">
+          <datalist id="partSuggestions"></datalist>
+          <button id="manualPartBtn" class="btn btn-secondary">Znajdź część</button>
+        </div>
+
+        <div class="list-head">
+          <div>
+            <div class="eyebrow" id="listEyebrow">LISTA POBRANIA</div>
+            <h3 id="listTitle">Pobrane części</h3>
+          </div>
+          <span id="activeListCount" class="list-count">0</span>
+        </div>
+
+        <div id="operationList" class="operation-list"></div>
+        <div id="operationEmpty" class="empty-state">
+          <strong>Brak części</strong>
+          <span>Zeskanuj lub wyszukaj pierwszą część.</span>
+        </div>
+
+        <div class="panel comment-panel">
+          <label class="field-label" for="operationComment">Komentarz do tej sesji</label>
+          <textarea id="operationComment" class="comment-input" rows="3" placeholder="Opcjonalnie"></textarea>
+        </div>
+
+        <button id="reviewSessionBtn" class="btn btn-success">Podsumowanie i wyślij</button>
+        <button id="operationBackBottomBtn" class="btn btn-ghost">Wróć do wizyty</button>
+      </section>
+
       <section id="screenDone" class="screen done-screen">
         <div class="done-icon">✓</div>
         <h2>Wizyta zakończona</h2>
@@ -124,12 +200,41 @@
       <div class="modal-head">
         <div>
           <div class="eyebrow">SKANER</div>
-          <h3>Kod QR magazynu</h3>
+          <h3 id="scannerTitle">Kod QR magazynu</h3>
         </div>
         <button id="closeScannerBtn" class="icon-btn" aria-label="Zamknij">×</button>
       </div>
       <div id="reader" class="reader"></div>
-      <p class="camera-note">Jeśli aparat nie ruszy, zamknij skaner i wpisz kod magazynu ręcznie.</p>
+      <p id="scannerNote" class="camera-note">Skieruj aparat na kod.</p>
+    </div>
+  </div>
+
+  <div id="quantityModal" class="modal" aria-hidden="true">
+    <div class="modal-card compact">
+      <div class="eyebrow" id="quantityTypeLabel">POBRANIE</div>
+      <h3 id="quantityPartName">Część</h3>
+      <p id="quantityPartCode" class="mono-text">—</p>
+      <div id="existingQuantityInfo" class="existing-info hidden"></div>
+
+      <label class="field-label" for="quantityInput">Ilość</label>
+      <input id="quantityInput" class="quantity-input" type="number" inputmode="numeric" min="1" step="1" autocomplete="off" placeholder="Wpisz ilość">
+
+      <div class="modal-actions">
+        <button id="quantityCancelBtn" class="btn btn-secondary">Anuluj</button>
+        <button id="quantityAddBtn" class="btn btn-primary">Dodaj</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reviewModal" class="modal" aria-hidden="true">
+    <div class="modal-card review-card">
+      <div class="eyebrow">PODSUMOWANIE SESJI</div>
+      <h3>Sprawdź przed wysłaniem</h3>
+      <div id="reviewContent" class="review-content"></div>
+      <div class="modal-actions">
+        <button id="reviewCancelBtn" class="btn btn-secondary">Wróć</button>
+        <button id="reviewSendBtn" class="btn btn-success">Wyślij</button>
+      </div>
     </div>
   </div>
 
