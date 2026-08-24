@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v5';
+const CACHE_NAME = 'selfstorage-shell-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const APP_SHELL = [
   './js/api.js',
   './js/storage.js',
   './js/scanner.js',
+  './js/offline.js',
   './manifest.webmanifest',
   './icons/app-icon.svg',
   './icons/gpbs-logo.svg',
