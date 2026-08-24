@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v2';
+const CACHE_NAME = 'selfstorage-shell-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -8,7 +8,9 @@ const APP_SHELL = [
   './js/storage.js',
   './js/scanner.js',
   './manifest.webmanifest',
-  './icons/app-icon.svg'
+  './icons/app-icon.svg',
+  './icons/gpbs-logo.svg',
+  './icons/jaro-signature.svg'
 ];
 
 self.addEventListener('install', event => {
