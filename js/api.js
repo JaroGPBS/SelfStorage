@@ -1,9 +1,24 @@
 const API_URL = '/api';
 const REQUEST_TIMEOUT_MS = 25000;
+const SAVE_SESSION_TIMEOUT_MS = 60000;
 
-async function request(action, payload = {}) {
+function isSafeDuplicateSessionResponse(action, data) {
+  if (action !== 'ZAPISZ_SESJE') return false;
+
+  const status = String(data?.status || '').trim().toUpperCase();
+  const message = String(data?.error || data?.message || data?.szczegoly || '').trim().toLowerCase();
+
+  if (status === 'DUPLIKAT' && !message.includes('zawartość sesji jest inna')) {
+    return true;
+  }
+
+  return message.includes('sesja była już zapisana') &&
+    !message.includes('zawartość sesji jest inna');
+}
+
+async function request(action, payload = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(API_URL, {
@@ -29,6 +44,14 @@ async function request(action, payload = {}) {
     }
 
     if (!data?.ok) {
+      if (isSafeDuplicateSessionResponse(action, data)) {
+        return {
+          ...data,
+          ok: true,
+          duplicate: true
+        };
+      }
+
       throw new Error(data?.error || 'Operacja nie powiodła się.');
     }
 
@@ -61,7 +84,7 @@ export const api = {
   },
 
   saveSession(payload) {
-    return request('ZAPISZ_SESJE', payload);
+    return request('ZAPISZ_SESJE', payload, SAVE_SESSION_TIMEOUT_MS);
   },
 
   endVisit({ idEkipy, idWizyty }) {
