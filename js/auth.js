@@ -1,5 +1,6 @@
 const STATE_KEY = 'selfstorage_state_v1';
 const AUTH_MESSAGE_KEY = 'selfstorage_auth_message_v1';
+const INVALID_AUTH_MESSAGE = 'Nieprawidłowe dane. Skontaktuj się z administratorem.';
 
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
@@ -24,14 +25,14 @@ function showStoredAuthMessage() {
 
   toast.textContent = message;
   toast.classList.add('error', 'show');
-  window.setTimeout(() => toast.classList.remove('show'), 6000);
+  window.setTimeout(() => toast.classList.remove('show'), 5000);
 }
 
 function forceLogout(message) {
   localStorage.removeItem(STATE_KEY);
   sessionStorage.setItem(
     AUTH_MESSAGE_KEY,
-    message || 'Brak aktywnych uprawnień. Zaloguj się ponownie.'
+    message || INVALID_AUTH_MESSAGE
   );
   window.location.reload();
 }
@@ -41,7 +42,7 @@ function handleAuthMessage(event) {
   if (!data || typeof data !== 'object') return;
 
   if (data.type === 'AUTH_REJECTED') {
-    forceLogout(data.message || 'PIN jest nieprawidłowy lub ekipa nie jest aktywna.');
+    forceLogout(INVALID_AUTH_MESSAGE);
     return;
   }
 
@@ -51,7 +52,7 @@ function handleAuthMessage(event) {
   }
 
   if (data.type === 'AUTH_REFRESH_REQUIRED') {
-    forceLogout(data.message || 'Dane ekipy zostały zmienione. Zaloguj się ponownie.');
+    forceLogout(INVALID_AUTH_MESSAGE);
   }
 }
 
