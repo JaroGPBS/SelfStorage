@@ -130,10 +130,68 @@ function showOfflineSavedModal() {
   window.setTimeout(() => $('offlineSavedOkBtn')?.focus(), 80);
 }
 
+function createSyncSuccessModal() {
+  let modal = $('syncSuccessModal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'syncSuccessModal';
+  modal.className = 'modal';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'syncSuccessTitle');
+
+  const card = document.createElement('div');
+  card.className = 'modal-card compact';
+
+  const eyebrow = document.createElement('div');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = 'SYNCHRONIZACJA ZAKOŃCZONA';
+
+  const title = document.createElement('h3');
+  title.id = 'syncSuccessTitle';
+  title.textContent = 'Wysłano';
+
+  const text = document.createElement('p');
+  text.textContent = 'Wszystkie oczekujące operacje zostały poprawnie wysłane i zapisane w systemie.';
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+
+  const button = document.createElement('button');
+  button.id = 'syncSuccessOkBtn';
+  button.type = 'button';
+  button.className = 'btn btn-success';
+  button.textContent = 'OK';
+  button.addEventListener('click', () => {
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+  });
+
+  actions.appendChild(button);
+  card.append(eyebrow, title, text, actions);
+  modal.appendChild(card);
+  document.body.appendChild(modal);
+
+  return modal;
+}
+
+function showSyncSuccessModal() {
+  const offlineModal = $('offlineSavedModal');
+  offlineModal?.classList.remove('show');
+  offlineModal?.setAttribute('aria-hidden', 'true');
+
+  const modal = createSyncSuccessModal();
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  window.setTimeout(() => $('syncSuccessOkBtn')?.focus(), 80);
+}
+
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
     if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.10';
+      element.textContent = 'v0.11';
       element.style.fontSize = '13px';
       element.style.fontWeight = '600';
       element.style.opacity = '.85';
@@ -442,11 +500,11 @@ async function flushQueue(manual = false) {
 
   if (sent > 0) {
     const left = loadQueue().length;
-    showToast(
-      left
-        ? `Wysłano ${sent} oper. • ${left} nadal oczekuje.`
-        : `Synchronizacja zakończona. Wysłano ${sent} oper.`
-    );
+    if (left) {
+      showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
+    } else {
+      showSyncSuccessModal();
+    }
   }
 
   if (!loadQueue().length) {
@@ -502,6 +560,7 @@ function requestAutomaticSync(force = false) {
 function initOfflineQueue() {
   setDisplayedVersion();
   createOfflineSavedModal();
+  createSyncSuccessModal();
   document.addEventListener('click', interceptCriticalClicks, true);
   renderQueueNotice();
   updateNetworkText();
