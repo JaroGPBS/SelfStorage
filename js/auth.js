@@ -5,7 +5,7 @@ const INVALID_AUTH_MESSAGE = 'Nieprawidłowe dane. Skontaktuj się z administrat
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
     if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.15';
+      element.textContent = 'v0.16';
       element.style.fontSize = '13px';
       element.style.fontWeight = '600';
       element.style.opacity = '.85';
