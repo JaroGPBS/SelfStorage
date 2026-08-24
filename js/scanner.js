@@ -1,7 +1,7 @@
 let scanner = null;
 let locked = false;
 
-export async function startWarehouseScanner(onCode) {
+export async function startScanner(onCode) {
   if (typeof window.Html5Qrcode === 'undefined') {
     throw new Error('Moduł skanera nie został załadowany.');
   }
@@ -26,13 +26,19 @@ export async function startWarehouseScanner(onCode) {
       if (!code) return;
 
       locked = true;
-      await onCode(code);
+
+      try {
+        await onCode(code);
+      } catch (error) {
+        locked = false;
+        throw error;
+      }
     },
     () => {}
   );
 }
 
-export async function stopWarehouseScanner() {
+export async function stopScanner() {
   try {
     if (scanner && scanner.isScanning) {
       await scanner.stop();
@@ -41,3 +47,7 @@ export async function stopWarehouseScanner() {
     locked = false;
   }
 }
+
+// Zgodność z pierwszą wersją aplikacji.
+export const startWarehouseScanner = startScanner;
+export const stopWarehouseScanner = stopScanner;
