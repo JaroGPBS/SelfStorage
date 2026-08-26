@@ -233,7 +233,13 @@ body:has(#screenVisit.active) .app-main {
 }
 
 #screenVisit .action-card strong {
-  margin-bottom: 1.5px;
+  margin-bottom: 0;
+}
+
+#screenVisit .action-card small {
+  display: block;
+  margin-top: 0;
+  line-height: 1.05;
 }
 
 #screenVisit #finishVisitBtn {
