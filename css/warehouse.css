@@ -141,6 +141,19 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 /* Aktywna wizyta — zwarty nagłówek bez powielonych kafelków ekipy i magazynu. */
+body:has(#screenVisit.active) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(#screenVisit.active) .app-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 body:has(#screenVisit.active) .app-main {
   padding-top: 6px;
 }
@@ -246,6 +259,17 @@ body:has(#screenLogin.active) .app-signature {
   position: fixed;
   left: 50%;
   bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 1;
+  min-height: 0;
+  padding: 0;
+  transform: translateX(-50%);
+}
+
+/* Na aktywnej wizycie podpis również jest przypięty do ekranu, bez przewijania strony. */
+body:has(#screenVisit.active) .app-signature {
+  position: fixed;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
   z-index: 1;
   min-height: 0;
   padding: 0;
