@@ -187,49 +187,47 @@ function keepSaveButtonLabel() {
   });
 }
 
-function installOperationModeStyles() {
-  if ($('operationFlowStyles')) return;
+function syncOperationPresentation() {
+  const state = readJson(STATE_KEY, null);
+  const draft = state?.operationDraft;
+  if (!draft) return;
 
-  const style = document.createElement('style');
-  style.id = 'operationFlowStyles';
-  style.textContent = `
-    #screenOperation .operation-tabs-compact {
-      display: block;
-      margin-bottom: 12px;
-      padding: 4px;
-    }
+  const type = draft.activeType === 'ZWROT' ? 'ZWROT' : 'POBRANIE';
+  const list = type === 'ZWROT'
+    ? (Array.isArray(draft.zwrot) ? draft.zwrot : [])
+    : (Array.isArray(draft.pobranie) ? draft.pobranie : []);
 
-    #screenOperation .operation-tab {
-      display: none;
-    }
+  const title = $('operationModeTitle');
+  const expectedTitle = `${type} - ${list.length} poz.`;
+  if (title && title.textContent !== expectedTitle) {
+    title.textContent = expectedTitle;
+  }
 
-    #screenOperation .operation-tab.active {
-      width: 100%;
-      min-height: 62px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      padding: 9px 12px;
-      pointer-events: none;
-      cursor: default;
-    }
+  const listTitle = $('listTitle');
+  if (listTitle && listTitle.textContent !== 'Lista części') {
+    listTitle.textContent = 'Lista części';
+  }
+}
 
-    #screenOperation .operation-tab.active > span {
-      font-size: 20px;
-      font-weight: 900;
-      letter-spacing: .8px;
-      text-transform: uppercase;
-    }
+function observeOperationPresentation() {
+  const screen = $('screenOperation');
+  if (!screen) return;
 
-    #screenOperation .operation-tab.active > small {
-      font-size: 11px;
-      font-weight: 800;
-      opacity: .86;
-      white-space: nowrap;
+  const observer = new MutationObserver(() => {
+    if (screen.classList.contains('active')) {
+      syncOperationPresentation();
     }
-  `;
-  document.head.appendChild(style);
+  });
+
+  observer.observe(screen, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ['class']
+  });
+
+  syncOperationPresentation();
 }
 
 function suppressBlockingSyncSuccess() {
@@ -254,9 +252,9 @@ function suppressBlockingSyncSuccess() {
 }
 
 function initOperationFlow() {
-  installOperationModeStyles();
   document.addEventListener('click', interceptOperationClicks, true);
   keepSaveButtonLabel();
+  observeOperationPresentation();
   suppressBlockingSyncSuccess();
 }
 
