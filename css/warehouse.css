@@ -202,6 +202,10 @@ body:has(#screenVisit.active) .app-main {
   padding: 8px 18px;
 }
 
+#screenVisit .action-kicker {
+  margin-bottom: 4px;
+}
+
 #screenVisit .action-card strong {
   margin-bottom: 1.5px;
 }
