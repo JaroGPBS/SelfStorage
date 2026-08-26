@@ -16,6 +16,7 @@
   <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/auth.js"></script>
+  <script type="module" src="./js/admin-ui.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -92,22 +93,28 @@
         </div>
 
         <div class="action-grid">
-          <button id="pobranieBtn" class="action-card action-pick">
-            <span class="action-kicker">OPERACJA</span>
-            <strong>Pobranie</strong>
-            <small>Części zabierane z magazynu</small>
-          </button>
-
           <button id="zwrotBtn" class="action-card action-return">
             <span class="action-kicker">OPERACJA</span>
             <strong>Zwrot</strong>
             <small>Części oddawane do magazynu</small>
           </button>
 
+          <button id="pobranieBtn" class="action-card action-pick">
+            <span class="action-kicker">OPERACJA</span>
+            <strong>Pobranie</strong>
+            <small>Części zabierane z magazynu</small>
+          </button>
+
           <button id="inventoryBtn" class="action-card action-inventory hidden">
             <span class="action-kicker">TRYB</span>
             <strong>Inwentaryzacja</strong>
             <small>Dla kierownika i administratora</small>
+          </button>
+
+          <button id="settingsBtn" class="action-card action-settings hidden" type="button" disabled>
+            <span class="action-kicker">ADMIN</span>
+            <strong>Ustawienia</strong>
+            <small>Funkcja zostanie dodana później</small>
           </button>
         </div>
 
