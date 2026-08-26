@@ -197,8 +197,9 @@ body:has(#screenVisit.active) .app-main {
 }
 
 #screenVisit .action-card {
+  height: 80px;
   min-height: 80px;
-  padding: 15px 18px;
+  padding: 8px 18px;
 }
 
 #screenVisit .action-settings {
