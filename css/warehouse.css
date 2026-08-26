@@ -1,0 +1,177 @@
+/* Ekran wyboru magazynu — lekkie, odseparowane poprawki wizualne. */
+
+body:has(#screenWarehouse.active) .app-main {
+  min-height: calc(100dvh - 126px);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+#screenWarehouse {
+  min-height: calc(100dvh - 168px);
+}
+
+.warehouse-login-line {
+  margin: 0 2px;
+}
+
+.warehouse-login-copy {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.warehouse-login-copy .eyebrow {
+  margin: 0;
+  color: #8fb9f2;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  text-transform: capitalize;
+}
+
+.warehouse-login-copy .eyebrow::after {
+  content: ": ";
+  white-space: pre;
+}
+
+.warehouse-login-copy #teamRole {
+  order: 2;
+  display: inline-block;
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: lowercase;
+}
+
+.warehouse-login-copy #teamRole::first-letter {
+  text-transform: uppercase;
+}
+
+.warehouse-login-copy #teamRole::after {
+  content: " - ";
+  white-space: pre;
+}
+
+.warehouse-login-copy #teamName {
+  order: 3;
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.warehouse-scan-area {
+  margin-top: 48px;
+  text-align: center;
+}
+
+.warehouse-scan-title {
+  max-width: 440px;
+  margin: 0 auto 26px;
+  font-size: 27px;
+  line-height: 1.2;
+}
+
+.warehouse-scan-btn {
+  min-height: 64px;
+  margin-top: 0;
+  font-size: 18px;
+}
+
+.warehouse-manual-details {
+  margin-top: 10px;
+}
+
+.warehouse-manual-toggle {
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #3a414b;
+  color: #dce2e8;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.warehouse-manual-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.warehouse-manual-toggle::marker {
+  content: "";
+}
+
+.warehouse-manual-details[open] .warehouse-manual-toggle {
+  background: #343b44;
+}
+
+.warehouse-manual-form {
+  margin-top: 12px;
+  text-align: left;
+}
+
+.warehouse-manual-form .text-input {
+  min-height: 50px;
+}
+
+.warehouse-confirm-btn {
+  min-height: 46px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+#screenWarehouse #logoutBtn {
+  min-height: 42px;
+  margin-top: auto;
+  font-size: 14px;
+}
+
+.app-signature {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0 4px;
+  opacity: .52;
+  pointer-events: none;
+  user-select: none;
+}
+
+.app-signature img {
+  display: block;
+  width: 100px;
+  height: auto;
+}
+
+/* Na logowaniu zostawiamy podpis widoczny przy dole, ale bez wpływu na układ. */
+body:has(#screenLogin.active) .app-signature {
+  position: fixed;
+  left: 50%;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 1;
+  min-height: 0;
+  padding: 0;
+  transform: translateX(-50%);
+}
+
+@media (max-height: 650px) {
+  .warehouse-scan-area {
+    margin-top: 28px;
+  }
+
+  .warehouse-scan-title {
+    margin-bottom: 18px;
+    font-size: 24px;
+  }
+}
