@@ -1,5 +1,18 @@
 /* Ekran wyboru magazynu — lekkie, odseparowane poprawki wizualne. */
 
+body:has(#screenWarehouse.active) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(#screenWarehouse.active) .app-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 body:has(#screenWarehouse.active) .app-main {
   min-height: calc(100dvh - 126px);
   padding-top: 8px;
@@ -259,6 +272,17 @@ body:has(#screenLogin.active) .app-signature {
   position: fixed;
   left: 50%;
   bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 1;
+  min-height: 0;
+  padding: 0;
+  transform: translateX(-50%);
+}
+
+/* Na ekranie wyboru magazynu podpis jest widoczny bez przewijania strony. */
+body:has(#screenWarehouse.active) .app-signature {
+  position: fixed;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
   z-index: 1;
   min-height: 0;
   padding: 0;
