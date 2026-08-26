@@ -196,6 +196,16 @@ body:has(#screenVisit.active) .app-main {
   margin-top: 0;
 }
 
+#screenVisit .action-settings {
+  background: linear-gradient(145deg, #444b55, #343a42);
+  opacity: .55;
+  cursor: default;
+}
+
+#screenVisit .action-settings:disabled {
+  opacity: .55;
+}
+
 .app-signature {
   min-height: 50px;
   display: flex;
