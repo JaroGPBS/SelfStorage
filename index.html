@@ -183,14 +183,14 @@
     </div>
   </div>
 
-  <div id="scannerModal" class="modal" aria-hidden="true">
+  <div id="scannerModal" class="modal" aria-hidden="true" style="align-items:flex-start;padding-top:max(16px, env(safe-area-inset-top));">
     <div class="modal-card">
       <div class="modal-head">
-        <div><div class="eyebrow">SKANER</div><h3 id="scannerTitle">Kod QR magazynu</h3></div>
+        <div><h3 id="scannerTitle">Kod QR magazynu</h3></div>
         <button id="closeScannerBtn" class="icon-btn" aria-label="Zamknij">×</button>
       </div>
       <div id="reader" class="reader"></div>
-      <p id="scannerNote" class="camera-note">Skieruj aparat na kod.</p>
+      <p id="scannerNote" class="camera-note" style="display:none;">Skieruj aparat na kod.</p>
     </div>
   </div>
 
