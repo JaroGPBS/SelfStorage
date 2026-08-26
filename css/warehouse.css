@@ -256,6 +256,169 @@ body:has(#screenVisit.active) .app-main {
   opacity: .55;
 }
 
+/* Operacja magazynowa — tylko elementy potrzebne podczas skanowania części. */
+body:has(#screenOperation.active) .app-main {
+  padding-top: 10px;
+}
+
+#screenOperation .operation-head-minimal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 2px 12px;
+}
+
+#screenOperation .operation-screen-title {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 1.3px;
+}
+
+#screenOperation .operation-back-text {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #363d46;
+  color: #f4f6f8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+#screenOperation .operation-tabs-compact {
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-bottom: 12px;
+  padding: 4px;
+}
+
+#screenOperation .operation-tab {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 10px;
+}
+
+#screenOperation .operation-tab > span {
+  font-size: 15px;
+}
+
+#screenOperation .operation-tab > small {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: .82;
+  white-space: nowrap;
+}
+
+#screenOperation .operation-add-area {
+  margin-bottom: 16px;
+}
+
+#screenOperation .operation-scan-btn {
+  min-height: 58px;
+  margin-top: 0;
+  font-size: 17px;
+}
+
+#screenOperation .part-manual-details {
+  margin-top: 10px;
+}
+
+#screenOperation .part-manual-toggle,
+#screenOperation .operation-comment-toggle {
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: transparent;
+  color: #c8d0da;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+#screenOperation .part-manual-toggle {
+  color: #ef9696;
+}
+
+#screenOperation .part-manual-toggle::-webkit-details-marker,
+#screenOperation .operation-comment-toggle::-webkit-details-marker {
+  display: none;
+}
+
+#screenOperation .part-manual-toggle::marker,
+#screenOperation .operation-comment-toggle::marker {
+  content: "";
+}
+
+#screenOperation .part-manual-details[open] .part-manual-toggle,
+#screenOperation .operation-comment-details[open] .operation-comment-toggle {
+  background: rgba(255,255,255,.035);
+}
+
+#screenOperation .part-manual-form {
+  margin-top: 10px;
+}
+
+#screenOperation .part-manual-form .text-input {
+  min-height: 50px;
+}
+
+#screenOperation .part-manual-confirm {
+  min-height: 46px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+#screenOperation .operation-list-head {
+  margin: 0 2px 8px;
+}
+
+#screenOperation .operation-list-head h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+#screenOperation .operation-empty {
+  margin-bottom: 14px;
+  padding: 16px 14px;
+}
+
+#screenOperation .operation-empty strong {
+  margin-bottom: 0;
+}
+
+#screenOperation .operation-comment-details {
+  margin-top: 14px;
+}
+
+#screenOperation .operation-comment-body {
+  margin-top: 10px;
+}
+
+#screenOperation .operation-comment-body .comment-input {
+  min-height: 74px;
+}
+
+#screenOperation .operation-review-btn {
+  margin-top: 16px;
+}
+
+#screenOperation .operation-back-bottom {
+  min-height: 44px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
 .app-signature {
   min-height: 50px;
   display: flex;
