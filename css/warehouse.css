@@ -196,6 +196,11 @@ body:has(#screenVisit.active) .app-main {
   margin-top: 0;
 }
 
+#screenVisit .action-card {
+  min-height: 98px;
+  padding: 15px 18px;
+}
+
 #screenVisit .action-settings {
   background: linear-gradient(145deg, #444b55, #343a42);
   opacity: .55;
