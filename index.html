@@ -17,7 +17,7 @@
   <script type="module" src="./js/auth.js"></script>
 </head>
 <body>
-  <div class="app-shell" style="padding-bottom:max(62px, env(safe-area-inset-bottom));">
+  <div class="app-shell">
     <header class="app-header">
       <div class="brand-mark" aria-hidden="true" style="width:110px;height:64px;border:0;border-radius:0;background:none;box-shadow:none;display:flex;align-items:center;justify-content:center;flex:0 0 110px;">
         <img src="./icons/gpbs-logo.svg" alt="" style="display:block;width:110px;height:auto;max-height:64px;object-fit:contain;">
@@ -44,25 +44,25 @@
       </section>
 
       <section id="screenWarehouse" class="screen">
-        <div class="section-head">
-          <div>
+        <div class="section-head warehouse-login-line">
+          <div class="warehouse-login-copy">
             <div class="eyebrow">ZALOGOWANO</div>
             <h2 id="teamName">Ekipa</h2>
             <p id="teamRole">EKIPA</p>
           </div>
         </div>
 
-        <div class="panel scan-panel">
-          <div class="scan-symbol" aria-hidden="true">⌗</div>
-          <h3>Zeskanuj magazyn</h3>
-          <p>Zeskanuj kod QR umieszczony przy magazynie, aby rozpocząć wizytę.</p>
-          <button id="openWarehouseScannerBtn" class="btn btn-primary">Otwórz skaner</button>
+        <div class="warehouse-scan-area">
+          <h2 class="warehouse-scan-title">Zeskanuj kod magazynu aby rozpocząć wizytę</h2>
+          <button id="openWarehouseScannerBtn" class="btn btn-primary warehouse-scan-btn">Otwórz skaner</button>
 
-          <div class="divider"><span>lub</span></div>
-
-          <label class="field-label" for="warehouseCodeInput">Kod magazynu</label>
-          <input id="warehouseCodeInput" class="text-input" type="text" autocomplete="off" autocapitalize="characters" placeholder="np. MAG-TL7A2Q">
-          <button id="manualWarehouseBtn" class="btn btn-secondary">Zatwierdź kod</button>
+          <details class="warehouse-manual-details">
+            <summary class="warehouse-manual-toggle">Wpisz kod magazynu</summary>
+            <div class="warehouse-manual-form">
+              <input id="warehouseCodeInput" class="text-input" type="text" autocomplete="off" autocapitalize="characters" placeholder="Kod magazynu">
+              <button id="manualWarehouseBtn" class="btn btn-secondary warehouse-confirm-btn">Zatwierdź kod</button>
+            </div>
+          </details>
         </div>
 
         <button id="logoutBtn" class="btn btn-ghost danger-text">Wyloguj</button>
@@ -176,6 +176,10 @@
         <p>Dziękuję i życzę miłej pracy.</p>
       </section>
     </main>
+
+    <div class="app-signature" aria-hidden="true">
+      <img src="./icons/jaro-signature.svg" alt="Created by Jaro">
+    </div>
   </div>
 
   <div id="scannerModal" class="modal" aria-hidden="true">
@@ -224,9 +228,6 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <div style="position:fixed;left:50%;bottom:max(8px, env(safe-area-inset-bottom));transform:translateX(-50%);z-index:19;pointer-events:none;user-select:none;opacity:.72;">
-    <img src="./icons/jaro-signature.svg" alt="Created by Jaro" style="display:block;width:132px;height:auto;">
-  </div>
   <div style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.9</div>
 </body>
 </html>
