@@ -84,7 +84,7 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 .warehouse-manual-details {
-  margin-top: 18px;
+  margin-top: 30px;
 }
 
 .warehouse-manual-toggle {
