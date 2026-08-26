@@ -187,6 +187,51 @@ function keepSaveButtonLabel() {
   });
 }
 
+function installOperationModeStyles() {
+  if ($('operationFlowStyles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'operationFlowStyles';
+  style.textContent = `
+    #screenOperation .operation-tabs-compact {
+      display: block;
+      margin-bottom: 12px;
+      padding: 4px;
+    }
+
+    #screenOperation .operation-tab {
+      display: none;
+    }
+
+    #screenOperation .operation-tab.active {
+      width: 100%;
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 9px 12px;
+      pointer-events: none;
+      cursor: default;
+    }
+
+    #screenOperation .operation-tab.active > span {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+    }
+
+    #screenOperation .operation-tab.active > small {
+      font-size: 11px;
+      font-weight: 800;
+      opacity: .86;
+      white-space: nowrap;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function suppressBlockingSyncSuccess() {
   const closeIfShown = () => {
     const modal = $('syncSuccessModal');
@@ -209,6 +254,7 @@ function suppressBlockingSyncSuccess() {
 }
 
 function initOperationFlow() {
+  installOperationModeStyles();
   document.addEventListener('click', interceptOperationClicks, true);
   keepSaveButtonLabel();
   suppressBlockingSyncSuccess();
