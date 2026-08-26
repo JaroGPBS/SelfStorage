@@ -88,16 +88,16 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 .warehouse-manual-toggle {
-  min-height: 36px;
+  min-height: 42px;
   display: grid;
   place-items: center;
   width: 100%;
-  padding: 6px 12px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #3a414b;
-  color: #dce2e8;
-  font-size: 13px;
+  border-radius: 13px;
+  background: transparent;
+  color: #ef9696;
+  font-size: 14px;
   font-weight: 800;
   cursor: pointer;
   list-style: none;
@@ -113,7 +113,7 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 .warehouse-manual-details[open] .warehouse-manual-toggle {
-  background: #343b44;
+  background: rgba(239,150,150,.04);
 }
 
 .warehouse-manual-form {
@@ -134,6 +134,9 @@ body:has(#screenWarehouse.active) .app-main {
 #screenWarehouse #logoutBtn {
   min-height: 42px;
   margin-top: auto;
+  background: #3a414b;
+  border: 1px solid var(--line);
+  color: #dce2e8;
   font-size: 14px;
 }
 
