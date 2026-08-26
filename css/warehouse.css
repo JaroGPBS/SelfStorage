@@ -210,6 +210,10 @@ body:has(#screenVisit.active) .app-main {
   margin-bottom: 1.5px;
 }
 
+#screenVisit #finishVisitBtn {
+  margin-top: 0;
+}
+
 #screenVisit .action-settings {
   background: linear-gradient(145deg, #444b55, #343a42);
   opacity: .55;
