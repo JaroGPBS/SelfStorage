@@ -11,7 +11,7 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 .warehouse-login-line {
-  margin: 0 2px;
+  margin: 12px 2px 0;
 }
 
 .warehouse-login-copy {
@@ -66,13 +66,13 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 .warehouse-scan-area {
-  margin-top: 48px;
+  margin-top: 82px;
   text-align: center;
 }
 
 .warehouse-scan-title {
   max-width: 440px;
-  margin: 0 auto 26px;
+  margin: 0 auto 34px;
   font-size: 27px;
   line-height: 1.2;
 }
@@ -84,7 +84,7 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 .warehouse-manual-details {
-  margin-top: 10px;
+  margin-top: 18px;
 }
 
 .warehouse-manual-toggle {
@@ -117,7 +117,7 @@ body:has(#screenWarehouse.active) .app-main {
 }
 
 .warehouse-manual-form {
-  margin-top: 12px;
+  margin-top: 14px;
   text-align: left;
 }
 
@@ -127,7 +127,7 @@ body:has(#screenWarehouse.active) .app-main {
 
 .warehouse-confirm-btn {
   min-height: 46px;
-  margin-top: 10px;
+  margin-top: 12px;
   font-size: 14px;
 }
 
