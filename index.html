@@ -123,19 +123,19 @@
       </section>
 
       <section id="screenOperation" class="screen">
-        <div class="operation-head operation-head-minimal">
-          <div class="eyebrow operation-screen-title">OPERACJA MAGAZYNOWA</div>
-          <button id="operationBackBtn" class="operation-back-text" type="button">Cofnij</button>
+        <div class="operation-head operation-head-minimal" style="margin-bottom:14px;">
+          <div id="operationModeTitle" style="font-size:25px;font-weight:900;line-height:1.1;letter-spacing:.5px;">POBRANIE - 0 poz.</div>
+          <button id="operationBackBtn" class="hidden" type="button" aria-hidden="true" tabindex="-1">Cofnij</button>
           <span id="operationWarehouse" class="hidden" aria-hidden="true">Magazyn</span>
           <span id="operationTeam" class="hidden" aria-hidden="true">Ekipa</span>
         </div>
 
-        <div class="operation-tabs operation-tabs-compact" role="tablist" aria-label="Typ operacji">
-          <button id="tabZwrot" class="operation-tab return" data-operation-type="ZWROT">
+        <div class="operation-tabs operation-tabs-compact hidden" aria-hidden="true">
+          <button id="tabZwrot" class="operation-tab return hidden" data-operation-type="ZWROT" tabindex="-1">
             <span>Zwrot</span>
             <small id="zwrotCount">0 poz.</small>
           </button>
-          <button id="tabPobranie" class="operation-tab pick active" data-operation-type="POBRANIE">
+          <button id="tabPobranie" class="operation-tab pick active hidden" data-operation-type="POBRANIE" tabindex="-1">
             <span>Pobranie</span>
             <small id="pobranieCount">0 poz.</small>
           </button>
@@ -144,29 +144,28 @@
         <div class="operation-add-area">
           <span id="activeOperationEyebrow" class="hidden" aria-hidden="true">POBRANIE</span>
           <span id="activeOperationBadge" class="hidden" aria-hidden="true">Pobranie</span>
-
           <button id="openPartScannerBtn" class="btn btn-primary operation-scan-btn">Skanuj kod części</button>
-
-          <details class="part-manual-details">
-            <summary class="part-manual-toggle">Wpisz kod ręcznie</summary>
-            <div class="part-manual-form">
-              <input id="partSearchInput" class="text-input" type="text" autocomplete="off" list="partSuggestions" placeholder="Kod lub nazwa części">
-              <datalist id="partSuggestions"></datalist>
-              <button id="manualPartBtn" class="btn btn-secondary part-manual-confirm">Znajdź część</button>
-            </div>
-          </details>
         </div>
 
         <div class="list-head operation-list-head">
           <div>
             <div id="listEyebrow" class="hidden" aria-hidden="true">LISTA POBRANIA</div>
-            <h3 id="listTitle">Pobrane części</h3>
+            <h3 id="listTitle">Lista części</h3>
           </div>
           <span id="activeListCount" class="hidden" aria-hidden="true">0</span>
         </div>
 
         <div id="operationList" class="operation-list"></div>
         <div id="operationEmpty" class="empty-state operation-empty"><strong>Brak części</strong></div>
+
+        <details class="part-manual-details">
+          <summary class="part-manual-toggle">Wpisz kod ręcznie</summary>
+          <div class="part-manual-form">
+            <input id="partSearchInput" class="text-input" type="text" autocomplete="off" list="partSuggestions" placeholder="Kod lub nazwa części">
+            <datalist id="partSuggestions"></datalist>
+            <button id="manualPartBtn" class="btn btn-secondary part-manual-confirm">Znajdź część</button>
+          </div>
+        </details>
 
         <details class="operation-comment-details">
           <summary class="operation-comment-toggle">Dodaj komentarz</summary>
