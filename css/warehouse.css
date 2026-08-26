@@ -140,6 +140,62 @@ body:has(#screenWarehouse.active) .app-main {
   font-size: 14px;
 }
 
+/* Aktywna wizyta — zwarty nagłówek bez powielonych kafelków ekipy i magazynu. */
+body:has(#screenVisit.active) .app-main {
+  padding-top: 6px;
+}
+
+#screenVisit .visit-head {
+  margin: 0 2px 14px;
+}
+
+.visit-status-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.visit-status-label {
+  color: #8fb9f2;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.visit-status-separator {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.visit-status-line #visitTeam {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+#screenVisit .visit-id {
+  margin: 5px 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+#screenVisit .visit-warehouse-name {
+  margin: 0 0 16px;
+  font-size: 30px;
+  line-height: 1.05;
+}
+
+#screenVisit .action-grid {
+  margin-top: 0;
+}
+
 .app-signature {
   min-height: 50px;
   display: flex;
