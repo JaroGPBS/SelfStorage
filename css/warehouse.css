@@ -203,7 +203,7 @@ body:has(#screenVisit.active) .app-main {
 }
 
 #screenVisit .action-card strong {
-  margin-bottom: 2.5px;
+  margin-bottom: 1.5px;
 }
 
 #screenVisit .action-settings {
