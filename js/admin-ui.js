@@ -18,7 +18,7 @@ function ensureVehiclePartsButton() {
   kicker.textContent = 'AUTO';
 
   const title = document.createElement('strong');
-  title.textContent = 'Części w aucie';
+  title.textContent = 'Części na aucie';
 
   const description = document.createElement('small');
   description.textContent = 'Funkcja zostanie dodana później';
