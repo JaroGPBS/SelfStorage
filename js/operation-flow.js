@@ -315,6 +315,141 @@ function trackAddedPart(event) {
   }, 0);
 }
 
+function installOperationStyles() {
+  if ($('operationCompactStyles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'operationCompactStyles';
+  style.textContent = `
+    body:has(#screenOperation.active) .app-header {
+      height: 48px;
+      gap: 10px;
+    }
+
+    body:has(#screenOperation.active) .app-header .brand-mark,
+    body:has(#screenOperation.active) .app-header .brand-copy {
+      display: none !important;
+    }
+
+    body:has(#screenOperation.active) #operationModeTitle {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin: 0;
+      font-size: 18px !important;
+      font-weight: 900 !important;
+      line-height: 1.1 !important;
+      letter-spacing: .35px !important;
+      white-space: nowrap;
+    }
+
+    body:has(#screenOperation.active) #operationModeTitle.return {
+      color: #7bd29d;
+    }
+
+    body:has(#screenOperation.active) #operationModeTitle.pick {
+      color: #efb666;
+    }
+
+    body:has(#screenOperation.active) .network-badge {
+      flex: 0 0 auto;
+      margin-left: auto;
+    }
+
+    body:has(#screenOperation.active) .app-main {
+      min-height: calc(100dvh - 48px);
+      padding-top: 12px;
+    }
+
+    #screenOperation.active .operation-head-minimal {
+      display: none;
+    }
+
+    #screenOperation .operation-list {
+      gap: 0;
+      border-top: 1px solid var(--line);
+    }
+
+    #screenOperation .part-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 11px 2px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+    }
+
+    #screenOperation .part-main strong {
+      display: block;
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    #screenOperation .part-main span {
+      display: none;
+    }
+
+    #screenOperation .part-side {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    #screenOperation .qty-badge {
+      min-width: 56px;
+      height: 34px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: #313740;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #screenOperation .qty-badge::after {
+      content: " szt.";
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 2px;
+      color: var(--muted);
+    }
+
+    #screenOperation .row-actions {
+      display: flex;
+      gap: 0;
+    }
+
+    #screenOperation .row-btn:not(.delete) {
+      display: none;
+    }
+
+    #screenOperation .row-btn.delete {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #ff6969;
+      font-size: 25px;
+      font-weight: 900;
+      line-height: 1;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function observeOperationPresentation() {
   const screen = $('screenOperation');
   if (!screen) return;
@@ -363,6 +498,7 @@ function suppressBlockingSyncSuccess() {
 }
 
 function initOperationFlow() {
+  installOperationStyles();
   document.addEventListener('click', interceptOperationClicks, true);
   document.addEventListener('click', trackAddedPart);
   keepSaveButtonLabel();
