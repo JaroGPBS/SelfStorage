@@ -1,5 +1,6 @@
 const STATE_KEY = 'selfstorage_state_v1';
 const QUEUE_KEY = 'selfstorage_offline_queue_v1';
+const RECENT_PART_KEY = 'selfstorage_recent_part_v1';
 
 let saveBusy = false;
 
@@ -156,7 +157,37 @@ function guardOperationChange(event) {
   return true;
 }
 
+function confirmPartDelete(event) {
+  const deleteButton = event.target.closest?.('#screenOperation .row-btn.delete');
+  if (!deleteButton) return false;
+
+  const name = deleteButton.closest('.part-row')?.querySelector('.part-main strong')?.textContent?.trim() || 'tę część';
+  const confirmed = window.confirm(`Usunąć „${name}” z listy?`);
+  if (confirmed) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  return true;
+}
+
+function openQuantityFromBadge(event) {
+  const qty = event.target.closest?.('#screenOperation .qty-badge');
+  if (!qty) return false;
+
+  const editButton = qty.closest('.part-row')?.querySelector('.row-btn:not(.delete)');
+  if (!editButton) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  editButton.click();
+  return true;
+}
+
 function interceptOperationClicks(event) {
+  if (confirmPartDelete(event)) return;
+  if (openQuantityFromBadge(event)) return;
   if (guardOperationChange(event)) return;
 
   const saveButton = event.target.closest?.('#reviewSessionBtn');
@@ -187,20 +218,31 @@ function keepSaveButtonLabel() {
   });
 }
 
-function syncOperationPresentation() {
+function currentOperationData() {
   const state = readJson(STATE_KEY, null);
   const draft = state?.operationDraft;
-  if (!draft) return;
+  if (!draft) return null;
 
   const type = draft.activeType === 'ZWROT' ? 'ZWROT' : 'POBRANIE';
   const list = type === 'ZWROT'
     ? (Array.isArray(draft.zwrot) ? draft.zwrot : [])
     : (Array.isArray(draft.pobranie) ? draft.pobranie : []);
 
+  return { state, draft, type, list };
+}
+
+function syncOperationPresentation() {
+  const data = currentOperationData();
+  if (!data) return;
+
+  const { type, list } = data;
   const title = $('operationModeTitle');
   const expectedTitle = `${type} - ${list.length} poz.`;
-  if (title && title.textContent !== expectedTitle) {
-    title.textContent = expectedTitle;
+
+  if (title) {
+    if (title.textContent !== expectedTitle) title.textContent = expectedTitle;
+    title.classList.toggle('return', type === 'ZWROT');
+    title.classList.toggle('pick', type !== 'ZWROT');
   }
 
   const listTitle = $('listTitle');
@@ -209,13 +251,80 @@ function syncOperationPresentation() {
   }
 }
 
+function syncCompactOperationHeader() {
+  const screen = $('screenOperation');
+  const title = $('operationModeTitle');
+  const header = document.querySelector('.app-header');
+  const origin = screen?.querySelector('.operation-head-minimal');
+  const network = $('networkBadge');
+
+  if (!screen || !title || !header || !origin || !network) return;
+
+  if (screen.classList.contains('active')) {
+    if (title.parentElement !== header) {
+      header.insertBefore(title, network);
+    }
+  } else if (title.parentElement !== origin) {
+    origin.prepend(title);
+  }
+}
+
+function readRecentParts() {
+  const value = readJson(RECENT_PART_KEY, {});
+  return value && typeof value === 'object' ? value : {};
+}
+
+function rememberRecentlyAddedPart() {
+  const data = currentOperationData();
+  if (!data) return;
+
+  const code = String($('quantityPartCode')?.textContent || '').trim();
+  if (!code) return;
+
+  const recent = readRecentParts();
+  recent[data.type] = code;
+  writeJson(RECENT_PART_KEY, recent);
+}
+
+function reorderOperationRows() {
+  const data = currentOperationData();
+  const container = $('operationList');
+  if (!data || !container) return;
+
+  const recentCode = String(readRecentParts()[data.type] || '').trim();
+  if (!recentCode) return;
+
+  const rows = Array.from(container.querySelectorAll('.part-row'));
+  const recentRow = rows.find(row =>
+    String(row.querySelector('.part-main span')?.textContent || '').trim() === recentCode
+  );
+
+  if (recentRow && container.firstElementChild !== recentRow) {
+    container.prepend(recentRow);
+  }
+}
+
+function trackAddedPart(event) {
+  const button = event.target.closest?.('#quantityAddBtn');
+  if (!button || button.textContent.trim() !== 'Dodaj') return;
+
+  rememberRecentlyAddedPart();
+  window.setTimeout(() => {
+    syncOperationPresentation();
+    reorderOperationRows();
+  }, 0);
+}
+
 function observeOperationPresentation() {
   const screen = $('screenOperation');
   if (!screen) return;
 
   const observer = new MutationObserver(() => {
+    syncCompactOperationHeader();
+
     if (screen.classList.contains('active')) {
       syncOperationPresentation();
+      reorderOperationRows();
     }
   });
 
@@ -227,7 +336,9 @@ function observeOperationPresentation() {
     attributeFilter: ['class']
   });
 
+  syncCompactOperationHeader();
   syncOperationPresentation();
+  reorderOperationRows();
 }
 
 function suppressBlockingSyncSuccess() {
@@ -253,6 +364,7 @@ function suppressBlockingSyncSuccess() {
 
 function initOperationFlow() {
   document.addEventListener('click', interceptOperationClicks, true);
+  document.addEventListener('click', trackAddedPart);
   keepSaveButtonLabel();
   observeOperationPresentation();
   suppressBlockingSyncSuccess();
