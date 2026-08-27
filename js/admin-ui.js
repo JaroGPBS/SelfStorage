@@ -1,4 +1,5 @@
 import { loadState } from './storage.js';
+import './install.js';
 
 function ensureVehiclePartsButton() {
   const grid = document.querySelector('#screenVisit .action-grid');
