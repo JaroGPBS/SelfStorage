@@ -79,14 +79,26 @@ function ensureAdminWarehousePicker() {
   picker = document.createElement('div');
   picker.id = 'adminWarehousePicker';
   picker.className = 'admin-warehouse-picker hidden';
+  picker.style.width = '100%';
+  picker.style.maxWidth = '520px';
+  picker.style.margin = '0 auto';
 
   const title = document.createElement('h2');
   title.className = 'admin-warehouse-title';
   title.textContent = 'Wybierz magazyn';
+  title.style.margin = '0 0 20px';
+  title.style.fontSize = '26px';
+  title.style.lineHeight = '1.15';
 
   const list = document.createElement('div');
   list.id = 'adminWarehouseList';
   list.className = 'admin-warehouse-list';
+  list.style.display = 'grid';
+  list.style.gap = '9px';
+  list.style.maxHeight = 'min(42dvh, 340px)';
+  list.style.overflowY = 'auto';
+  list.style.padding = '1px 2px';
+  list.style.overscrollBehavior = 'contain';
 
   picker.append(title, list);
   scanArea.prepend(picker);
@@ -114,8 +126,16 @@ function renderAdminWarehousePicker(saved) {
   for (const warehouse of warehouses) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'admin-warehouse-btn';
+    button.className = 'btn btn-secondary admin-warehouse-btn';
     button.textContent = warehouse.nazwa;
+    button.style.minHeight = '58px';
+    button.style.margin = '0';
+    button.style.background = '#303844';
+    button.style.border = '1px solid #4f8ee8';
+    button.style.color = '#f4f6f8';
+    button.style.fontSize = '17px';
+    button.style.fontWeight = '850';
+    button.style.letterSpacing = '.3px';
     button.addEventListener('click', () => startWarehouseFromPicker(warehouse.kod));
     list.appendChild(button);
   }
@@ -125,18 +145,37 @@ function renderAdminWarehousePicker(saved) {
 
 function updateWarehouseControls(saved, role) {
   const screenWarehouse = document.getElementById('screenWarehouse');
+  const scanArea = document.querySelector('#screenWarehouse .warehouse-scan-area');
+  const scanTitle = document.querySelector('#screenWarehouse .warehouse-scan-title');
   const scannerButton = document.getElementById('openWarehouseScannerBtn');
+  const manualDetails = document.querySelector('#screenWarehouse .warehouse-manual-details');
   const picker = ensureAdminWarehousePicker();
-  if (!screenWarehouse || !scannerButton || !picker) return;
+  if (!screenWarehouse || !scanArea || !scanTitle || !scannerButton || !manualDetails || !picker) return;
 
   const isAdmin = role === 'ADMIN';
   screenWarehouse.classList.toggle('admin-warehouse-mode', isAdmin);
   picker.classList.toggle('hidden', !isAdmin);
+  scanTitle.style.display = isAdmin ? 'none' : '';
+  manualDetails.style.display = isAdmin ? 'none' : '';
+  scanArea.style.marginTop = isAdmin ? '34px' : '';
 
   scannerButton.textContent = isAdmin ? 'Skanuj kod magazynu' : 'Otwórz skaner';
 
   if (isAdmin) {
+    scannerButton.style.minHeight = '44px';
+    scannerButton.style.marginTop = '22px';
+    scannerButton.style.background = '#343b44';
+    scannerButton.style.border = '1px solid var(--line)';
+    scannerButton.style.color = '#dce2e8';
+    scannerButton.style.fontSize = '14px';
     renderAdminWarehousePicker(saved);
+  } else {
+    scannerButton.style.minHeight = '';
+    scannerButton.style.marginTop = '';
+    scannerButton.style.background = '';
+    scannerButton.style.border = '';
+    scannerButton.style.color = '';
+    scannerButton.style.fontSize = '';
   }
 }
 
