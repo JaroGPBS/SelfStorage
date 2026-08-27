@@ -185,39 +185,6 @@ function openQuantityFromBadge(event) {
   return true;
 }
 
-function interceptOperationClicks(event) {
-  if (confirmPartDelete(event)) return;
-  if (openQuantityFromBadge(event)) return;
-  if (guardOperationChange(event)) return;
-
-  const saveButton = event.target.closest?.('#reviewSessionBtn');
-  if (!saveButton) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  saveCurrentOperation();
-}
-
-function keepSaveButtonLabel() {
-  const button = $('reviewSessionBtn');
-  if (!button) return;
-
-  const setLabel = () => {
-    if (button.textContent !== 'Zapisz operację') {
-      button.textContent = 'Zapisz operację';
-    }
-  };
-
-  setLabel();
-  const observer = new MutationObserver(setLabel);
-  observer.observe(button, {
-    childList: true,
-    characterData: true,
-    subtree: true
-  });
-}
-
 function currentOperationData() {
   const state = readJson(STATE_KEY, null);
   const draft = state?.operationDraft;
@@ -229,6 +196,48 @@ function currentOperationData() {
     : (Array.isArray(draft.pobranie) ? draft.pobranie : []);
 
   return { state, draft, type, list };
+}
+
+function returnFromEmptyOperation() {
+  const data = currentOperationData();
+  if (data?.list?.length) return false;
+
+  const comment = $('operationComment');
+  if (comment) comment.value = '';
+
+  const backButton = $('operationBackBottomBtn');
+  if (backButton) backButton.click();
+  return true;
+}
+
+function interceptOperationClicks(event) {
+  if (confirmPartDelete(event)) return;
+  if (openQuantityFromBadge(event)) return;
+  if (guardOperationChange(event)) return;
+
+  const actionButton = event.target.closest?.('#reviewSessionBtn');
+  if (!actionButton) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
+  if (returnFromEmptyOperation()) return;
+  saveCurrentOperation();
+}
+
+function syncPrimaryAction() {
+  const button = $('reviewSessionBtn');
+  const data = currentOperationData();
+  if (!button || !data) return;
+
+  const hasParts = data.list.length > 0;
+  const expected = hasParts
+    ? (data.type === 'ZWROT' ? 'Zapisz Zwrot' : 'Zapisz Pobranie')
+    : 'Wróć';
+
+  if (button.textContent !== expected) button.textContent = expected;
+  button.classList.toggle('operation-back-action', !hasParts);
 }
 
 function syncOperationPresentation() {
@@ -249,6 +258,8 @@ function syncOperationPresentation() {
   if (listTitle && listTitle.textContent !== 'Lista części') {
     listTitle.textContent = 'Lista części';
   }
+
+  syncPrimaryAction();
 }
 
 function syncCompactOperationHeader() {
@@ -315,14 +326,79 @@ function trackAddedPart(event) {
   }, 0);
 }
 
+function buildOperationLayout() {
+  const screen = $('screenOperation');
+  if (!screen) return;
+
+  if (!$('operationScrollArea')) {
+    const listHead = screen.querySelector('.operation-list-head');
+    const list = $('operationList');
+    const empty = $('operationEmpty');
+
+    if (listHead && list && empty) {
+      const scrollArea = document.createElement('div');
+      scrollArea.id = 'operationScrollArea';
+      scrollArea.className = 'operation-scroll-area';
+      listHead.before(scrollArea);
+      scrollArea.append(listHead, list, empty);
+    }
+  }
+
+  if (!$('operationBottomControls')) {
+    const scanButton = $('openPartScannerBtn');
+    const manual = screen.querySelector('.part-manual-details');
+    const comment = screen.querySelector('.operation-comment-details');
+    const action = $('reviewSessionBtn');
+
+    if (scanButton && manual && comment && action) {
+      const controls = document.createElement('div');
+      controls.id = 'operationBottomControls';
+      controls.className = 'operation-bottom-controls';
+
+      const smallRow = document.createElement('div');
+      smallRow.className = 'operation-small-actions';
+
+      screen.appendChild(controls);
+      controls.appendChild(scanButton);
+      smallRow.append(manual, comment);
+      controls.append(smallRow, action);
+
+      manual.addEventListener('toggle', () => {
+        if (manual.open) comment.removeAttribute('open');
+      });
+      comment.addEventListener('toggle', () => {
+        if (comment.open) manual.removeAttribute('open');
+      });
+    }
+  }
+
+  $('operationBackBottomBtn')?.classList.add('hidden');
+}
+
 function installOperationStyles() {
   if ($('operationCompactStyles')) return;
 
   const style = document.createElement('style');
   style.id = 'operationCompactStyles';
   style.textContent = `
+    body:has(#screenOperation.active) {
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    body:has(#screenOperation.active) .app-shell {
+      height: 100dvh;
+      min-height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
     body:has(#screenOperation.active) .app-header {
       height: 48px;
+      flex: 0 0 48px;
       gap: 10px;
     }
 
@@ -356,12 +432,33 @@ function installOperationStyles() {
     }
 
     body:has(#screenOperation.active) .app-main {
-      min-height: calc(100dvh - 48px);
-      padding-top: 12px;
+      flex: 1 1 auto;
+      height: auto;
+      min-height: 0;
+      padding-top: 8px;
+      padding-bottom: 0;
+      overflow: hidden;
     }
 
-    #screenOperation.active .operation-head-minimal {
-      display: none;
+    #screenOperation.active {
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #screenOperation.active .operation-head-minimal,
+    #screenOperation .operation-add-area,
+    #screenOperation #operationBackBottomBtn {
+      display: none !important;
+    }
+
+    #screenOperation .operation-scroll-area {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 2px 8px 0;
     }
 
     #screenOperation .operation-list {
@@ -446,6 +543,57 @@ function installOperationStyles() {
       font-weight: 900;
       line-height: 1;
     }
+
+    #screenOperation .operation-bottom-controls {
+      flex: 0 0 auto;
+      padding: 8px 0 max(4px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      background: rgba(29,32,37,.98);
+    }
+
+    #screenOperation .operation-bottom-controls .operation-scan-btn {
+      min-height: 58px;
+      margin: 0;
+      font-size: 17px;
+    }
+
+    #screenOperation .operation-small-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    #screenOperation .operation-small-actions details {
+      min-width: 0;
+      margin: 0;
+    }
+
+    #screenOperation .operation-small-actions details[open] {
+      grid-column: 1 / -1;
+    }
+
+    #screenOperation .operation-small-actions .part-manual-toggle,
+    #screenOperation .operation-small-actions .operation-comment-toggle {
+      min-height: 40px;
+      padding: 7px 8px;
+      font-size: 12px;
+    }
+
+    #screenOperation .operation-small-actions .part-manual-form,
+    #screenOperation .operation-small-actions .operation-comment-body {
+      margin-top: 8px;
+    }
+
+    #screenOperation .operation-bottom-controls #reviewSessionBtn {
+      min-height: 48px;
+      margin-top: 8px;
+    }
+
+    #screenOperation .operation-bottom-controls #reviewSessionBtn.operation-back-action {
+      background: #3a414b;
+      border: 1px solid var(--line);
+    }
   `;
   document.head.appendChild(style);
 }
@@ -498,10 +646,10 @@ function suppressBlockingSyncSuccess() {
 }
 
 function initOperationFlow() {
+  buildOperationLayout();
   installOperationStyles();
   document.addEventListener('click', interceptOperationClicks, true);
   document.addEventListener('click', trackAddedPart);
-  keepSaveButtonLabel();
   observeOperationPresentation();
   suppressBlockingSyncSuccess();
 }
