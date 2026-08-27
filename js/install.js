@@ -4,6 +4,17 @@ function isStandaloneMode() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 
+async function lockPortraitOrientation() {
+  if (!screen.orientation?.lock) return;
+
+  try {
+    await screen.orientation.lock('portrait-primary');
+  } catch {
+    // W zwykłej karcie przeglądarki blokada może być niedostępna.
+    // Manifest PWA nadal wymusza pion po uruchomieniu zainstalowanej aplikacji.
+  }
+}
+
 function ensureInstallButton() {
   let button = document.getElementById('installAppBtn');
   if (button) return button;
@@ -63,9 +74,17 @@ window.addEventListener('beforeinstallprompt', event => {
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   updateInstallButton();
+  lockPortraitOrientation();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    lockPortraitOrientation();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   ensureInstallButton();
   updateInstallButton();
+  lockPortraitOrientation();
 });
