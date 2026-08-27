@@ -469,6 +469,11 @@ body:has(#screenVisit.active) .app-signature {
   transform: translateX(-50%);
 }
 
+/* Na ekranie operacji podpis nie zajmuje miejsca w strefie sterowania. */
+body:has(#screenOperation.active) .app-signature {
+  display: none !important;
+}
+
 @media (max-height: 650px) {
   .warehouse-scan-area {
     margin-top: 28px;
