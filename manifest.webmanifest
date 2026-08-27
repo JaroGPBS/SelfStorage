@@ -1,6 +1,7 @@
 {
   "name": "SelfStorage",
   "short_name": "SelfStorage",
+  "id": "./",
   "description": "Aplikacja magazynowa dla ekip serwisowych",
   "lang": "pl",
   "start_url": "./",
@@ -11,10 +12,22 @@
   "theme_color": "#20242a",
   "icons": [
     {
+      "src": "./icons/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
       "src": "./icons/app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
