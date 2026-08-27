@@ -18,9 +18,11 @@ function ensureInstallButton() {
   button.textContent = 'Zainstaluj aplikację';
   button.setAttribute('aria-hidden', 'true');
   button.style.marginTop = '12px';
-  button.style.background = '#343a42';
-  button.style.border = '1px solid var(--line)';
-  button.style.color = '#f4f6f8';
+  button.style.background = 'linear-gradient(135deg, #6654d9, #8468f5)';
+  button.style.border = '1px solid #9b8aff';
+  button.style.color = '#ffffff';
+  button.style.fontWeight = '800';
+  button.style.boxShadow = '0 5px 16px rgba(124, 92, 255, .24)';
 
   loginButton.insertAdjacentElement('afterend', button);
   button.addEventListener('click', installApp);
