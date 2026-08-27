@@ -4,12 +4,32 @@ function isStandaloneMode() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 
-function getInstallButton() {
-  return document.getElementById('installAppBtn');
+function ensureInstallButton() {
+  let button = document.getElementById('installAppBtn');
+  if (button) return button;
+
+  const loginButton = document.getElementById('loginBtn');
+  if (!loginButton?.parentElement) return null;
+
+  button = document.createElement('button');
+  button.id = 'installAppBtn';
+  button.type = 'button';
+  button.className = 'btn btn-secondary hidden';
+  button.textContent = 'Zainstaluj aplikację';
+  button.setAttribute('aria-hidden', 'true');
+  button.style.marginTop = '12px';
+  button.style.background = '#343a42';
+  button.style.border = '1px solid var(--line)';
+  button.style.color = '#f4f6f8';
+
+  loginButton.insertAdjacentElement('afterend', button);
+  button.addEventListener('click', installApp);
+
+  return button;
 }
 
 function updateInstallButton() {
-  const button = getInstallButton();
+  const button = ensureInstallButton();
   if (!button) return;
 
   const canInstall = Boolean(deferredInstallPrompt) && !isStandaloneMode();
@@ -44,9 +64,6 @@ window.addEventListener('appinstalled', () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  const button = getInstallButton();
-  if (!button) return;
-
-  button.addEventListener('click', installApp);
+  ensureInstallButton();
   updateInstallButton();
 });
