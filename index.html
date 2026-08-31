@@ -16,7 +16,7 @@
   <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js"></script>
-  <script type="module" src="./js/manual-part.js"></script>
+  <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js"></script>
   <script type="module" src="./js/admin-ui.js"></script>
 </head>
@@ -162,9 +162,8 @@
         <details class="part-manual-details">
           <summary class="part-manual-toggle">Wpisz kod ręcznie</summary>
           <div class="part-manual-form">
-            <input id="partSearchInput" class="text-input" type="text" autocomplete="off" list="partSuggestions" placeholder="Kod lub nazwa części">
-            <datalist id="partSuggestions"></datalist>
-            <button id="manualPartBtn" class="btn btn-secondary part-manual-confirm">Znajdź część</button>
+            <input id="partSearchInput" class="text-input" type="text" autocomplete="off" autocapitalize="characters" placeholder="Kod części">
+            <button id="manualPartBtn" class="btn btn-secondary part-manual-confirm">Zatwierdź kod</button>
           </div>
         </details>
 
