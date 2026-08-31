@@ -23,6 +23,94 @@
     .toast.show {
       transform: translate(-50%, -50%);
     }
+
+    .instruction-link-btn {
+      width: auto;
+      min-height: 36px;
+      padding: 7px 12px;
+      border-radius: 10px;
+      color: #b8c2ce;
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(255,255,255,.08);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .instruction-link-btn:active {
+      transform: scale(.98);
+    }
+
+    .login-instruction-wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .visit-head {
+      gap: 12px;
+    }
+
+    .visit-instruction-btn {
+      flex: 0 0 auto;
+      margin-left: auto;
+      margin-top: 2px;
+    }
+
+    .instruction-card {
+      width: min(92vw, 500px);
+      max-height: 82dvh;
+      overflow: auto;
+      padding: 20px;
+    }
+
+    .instruction-card .modal-head {
+      margin-bottom: 8px;
+    }
+
+    .instruction-rule {
+      margin: 12px 0 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(79,142,232,.12);
+      border: 1px solid rgba(79,142,232,.28);
+      color: #d9e9ff;
+      font-size: 14px;
+      font-weight: 900;
+      text-align: center;
+      letter-spacing: .2px;
+    }
+
+    .instruction-list {
+      margin: 0;
+      padding-left: 24px;
+      color: #e9edf2;
+    }
+
+    .instruction-list li {
+      margin: 0 0 11px;
+      padding-left: 3px;
+      line-height: 1.42;
+      font-size: 14px;
+    }
+
+    .instruction-list li:last-child {
+      margin-bottom: 0;
+    }
+
+    .instruction-note {
+      margin: 15px 0 0;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
+      color: #aeb8c4;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .instruction-close-btn {
+      margin-top: 18px;
+      min-height: 48px;
+    }
   </style>
   <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/offline.js"></script>
@@ -55,6 +143,9 @@
 
           <input id="pinInput" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
           <button id="loginBtn" class="btn btn-primary" disabled>Zaloguj</button>
+          <div class="login-instruction-wrap">
+            <button id="loginInstructionBtn" class="instruction-link-btn" type="button">ⓘ Instrukcja</button>
+          </div>
         </div>
       </section>
 
@@ -95,6 +186,7 @@
             <h2 id="visitWarehouse" class="visit-warehouse-name">Magazyn</h2>
             <span id="visitWarehouseShort" class="hidden" aria-hidden="true">—</span>
           </div>
+          <button id="visitInstructionBtn" class="instruction-link-btn visit-instruction-btn" type="button">ⓘ Instrukcja</button>
         </div>
 
         <div id="draftNotice" class="draft-notice hidden">
@@ -243,11 +335,94 @@
     </div>
   </div>
 
+  <div id="instructionModal" class="modal" aria-hidden="true">
+    <div class="modal-card instruction-card" role="dialog" aria-modal="true" aria-labelledby="instructionTitle">
+      <div class="modal-head">
+        <div>
+          <div id="instructionEyebrow" class="eyebrow">INSTRUKCJA</div>
+          <h3 id="instructionTitle">Jak korzystać z aplikacji</h3>
+        </div>
+        <button id="instructionCloseIcon" class="icon-btn" type="button" aria-label="Zamknij">×</button>
+      </div>
+      <div id="instructionContent"></div>
+      <button id="instructionCloseBtn" class="btn btn-secondary instruction-close-btn" type="button">Zamknij</button>
+    </div>
+  </div>
+
   <div id="loading" class="loading" aria-hidden="true">
     <div class="loading-card"><div class="spinner"></div><span id="loadingText">Proszę czekać…</span></div>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.9</div>
+
+  <script>
+    (() => {
+      const modal = document.getElementById('instructionModal');
+      const title = document.getElementById('instructionTitle');
+      const content = document.getElementById('instructionContent');
+      const loginBtn = document.getElementById('loginInstructionBtn');
+      const visitBtn = document.getElementById('visitInstructionBtn');
+      const closeIcon = document.getElementById('instructionCloseIcon');
+      const closeBtn = document.getElementById('instructionCloseBtn');
+
+      const loginInstruction = `
+        <ol class="instruction-list">
+          <li>Wpisz swój <strong>4-cyfrowy PIN</strong> i kliknij „Zaloguj”.</li>
+          <li>Zeskanuj <strong>kod QR magazynu</strong>, w którym rozpoczynasz pracę.</li>
+          <li>Jeżeli kodu nie można zeskanować, możesz wpisać kod magazynu ręcznie.</li>
+          <li>Po poprawnym rozpoznaniu magazynu rozpocznie się <strong>aktywna wizyta</strong>.</li>
+        </ol>`;
+
+      const visitInstruction = `
+        <div class="instruction-rule">ZASADA WIZYTY: ZWROT → POBRANIE</div>
+        <ol class="instruction-list">
+          <li><strong>Najpierw wykonaj ZWROT.</strong> Jeżeli nie masz nic do zwrotu, przejdź od razu do pobrania.</li>
+          <li>Dopiero po zakończeniu zwrotu wykonaj <strong>POBRANIE</strong> potrzebnych części.</li>
+          <li>Każdą część zeskanuj. Gdy skanowanie nie jest możliwe, wpisz jej <strong>pełny kod ręcznie</strong>.</li>
+          <li>Wpisz rzeczywistą liczbę zwracanych lub pobieranych sztuk.</li>
+          <li>Przed zapisaniem sprawdź <strong>kod części i ilość</strong>, a następnie zapisz operację.</li>
+          <li>Po zakończeniu wszystkich zwrotów i pobrań kliknij <strong>„Zakończ wizytę”</strong>.</li>
+        </ol>
+        <div class="instruction-note">Dodawaj tylko części, które fizycznie masz przed sobą.</div>`;
+
+      function openInstruction(kind) {
+        if (!modal || !title || !content) return;
+
+        if (kind === 'visit') {
+          title.textContent = 'Instrukcja wizyty';
+          content.innerHTML = visitInstruction;
+        } else {
+          title.textContent = 'Jak rozpocząć';
+          content.innerHTML = loginInstruction;
+        }
+
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        closeIcon?.focus();
+      }
+
+      function closeInstruction() {
+        if (!modal) return;
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      loginBtn?.addEventListener('click', () => openInstruction('login'));
+      visitBtn?.addEventListener('click', () => openInstruction('visit'));
+      closeIcon?.addEventListener('click', closeInstruction);
+      closeBtn?.addEventListener('click', closeInstruction);
+
+      modal?.addEventListener('click', event => {
+        if (event.target === modal) closeInstruction();
+      });
+
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && modal?.classList.contains('show')) {
+          closeInstruction();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
