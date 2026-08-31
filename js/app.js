@@ -211,7 +211,8 @@ function renderVisit() {
   $('visitTeam').textContent = state.team?.nazwa || '—';
   $('visitId').textContent = state.visit?.idWizyty || '—';
 
-  const canInventory = ['KIEROWNIK', 'ADMIN'].includes(state.team?.rola);
+  const role = String(state.team?.rola || '').trim().toUpperCase();
+  const canInventory = ['KIEROWNIK', 'KOORDYNATOR', 'ADMIN'].includes(role);
   $('inventoryBtn').classList.toggle('hidden', !canInventory);
 
   const showDraft = Boolean(
