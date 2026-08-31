@@ -5,6 +5,12 @@ const ADMIN_WAREHOUSE_FALLBACK = [
   { id: 'BOX01', nazwa: 'TULUZA', kod: 'MAG-TL7A2Q', aktywny: true }
 ];
 
+function normalizeRoleLabel(value) {
+  const role = String(value || '').trim().toUpperCase();
+  if (role === 'KIEROWNIK') return 'KOORDYNATOR';
+  return role;
+}
+
 function ensureVehiclePartsButton() {
   const grid = document.querySelector('#screenVisit .action-grid');
   if (!grid) return null;
@@ -182,12 +188,28 @@ function updateWarehouseControls(saved, role) {
 function updateRoleControls() {
   const settingsBtn = document.getElementById('settingsBtn');
   const vehiclePartsBtn = ensureVehiclePartsButton();
+  const inventoryBtn = document.getElementById('inventoryBtn');
+  const roleLabel = document.getElementById('teamRole');
 
   const saved = loadState();
-  const role = String(saved?.team?.rola || '').trim().toUpperCase();
+  const rawRole = String(saved?.team?.rola || '').trim().toUpperCase();
+  const role = normalizeRoleLabel(rawRole);
+  const canInventory = role === 'KOORDYNATOR' || role === 'ADMIN';
+
+  if (roleLabel && role) {
+    roleLabel.textContent = role;
+  }
 
   if (settingsBtn) {
     settingsBtn.classList.toggle('hidden', role !== 'ADMIN');
+  }
+
+  if (inventoryBtn) {
+    inventoryBtn.classList.toggle('hidden', !canInventory);
+    const description = inventoryBtn.querySelector('small');
+    if (description) {
+      description.textContent = 'Dla koordynatora i administratora';
+    }
   }
 
   if (vehiclePartsBtn) {
