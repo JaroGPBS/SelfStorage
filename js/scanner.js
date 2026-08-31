@@ -95,19 +95,10 @@ function getFormats() {
   ];
 }
 
-function buildQrBox(mode) {
+function buildQrBox() {
   return (viewfinderWidth, viewfinderHeight) => {
-    if (mode === 'warehouse') {
-      const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
-      return { width: edge, height: edge };
-    }
-
-    const width = Math.floor(Math.min(viewfinderWidth * 0.9, 380));
-    const height = Math.floor(Math.min(viewfinderHeight * 0.42, 220));
-    return {
-      width: Math.max(width, 220),
-      height: Math.max(height, 130)
-    };
+    const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
+    return { width: edge, height: edge };
   };
 }
 
