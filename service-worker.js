@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v61';
+const CACHE_NAME = 'selfstorage-shell-v62';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LOCAL_DATA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const API_CACHE_DB = 'selfstorage-api-cache-v1';
@@ -163,9 +163,25 @@ async function cacheWarehouse(code, warehouse) {
   });
 }
 
+function visitSyncOk() {
+  return {
+    ok: true,
+    retryable: false,
+    error: null
+  };
+}
+
+function visitSyncError(error, retryable) {
+  return {
+    ok: false,
+    retryable: Boolean(retryable),
+    error: String(error || 'Nie udało się potwierdzić rozpoczęcia wizyty.').trim()
+  };
+}
+
 async function syncPendingVisitStart(visitId) {
   const id = String(visitId || '').trim();
-  if (!id) return true;
+  if (!id) return visitSyncOk();
 
   if (pendingVisitSyncs.has(id)) {
     return pendingVisitSyncs.get(id);
@@ -174,14 +190,30 @@ async function syncPendingVisitStart(visitId) {
   const promise = (async () => {
     const key = pendingVisitKey(id);
     const pending = await readApiCache(key);
-    if (!pending?.incoming) return true;
+    if (!pending?.incoming) return visitSyncOk();
 
     try {
       const response = await postApiPayload(pending.incoming);
       const data = await readResponseJson(response);
 
-      if (!response.ok || !data?.ok) {
-        return false;
+      if (!response.ok) {
+        const error = data?.error || data?.message || `Błąd HTTP ${response.status}`;
+        await writeApiCache(key, {
+          ...pending,
+          lastError: error,
+          lastTryAt: Date.now()
+        });
+        return visitSyncError(error, true);
+      }
+
+      if (!data?.ok) {
+        const error = data?.error || data?.message || 'Serwer odrzucił rozpoczęcie wizyty.';
+        await writeApiCache(key, {
+          ...pending,
+          lastError: error,
+          lastTryAt: Date.now()
+        });
+        return visitSyncError(error, false);
       }
 
       const code = pending.incoming?.payload?.kodMagazynu;
@@ -190,10 +222,24 @@ async function syncPendingVisitStart(visitId) {
       }
 
       await deleteApiCache(key);
-      return true;
+      return visitSyncOk();
     } catch (error) {
       console.warn('Nie udało się zsynchronizować rozpoczęcia wizyty.', error);
-      return false;
+
+      try {
+        await writeApiCache(key, {
+          ...pending,
+          lastError: error?.message || String(error),
+          lastTryAt: Date.now()
+        });
+      } catch (cacheError) {
+        console.warn('Nie udało się zapisać błędu synchronizacji wizyty.', cacheError);
+      }
+
+      return visitSyncError(
+        'Nie udało się połączyć z serwerem. Aplikacja ponowi próbę automatycznie.',
+        true
+      );
     }
   })().finally(() => {
     pendingVisitSyncs.delete(id);
@@ -214,7 +260,9 @@ async function handleStartVisitRequest(request, incoming, event) {
       if (cached?.warehouse && isFresh(cached)) {
         await writeApiCache(pendingVisitKey(visitId), {
           incoming,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          lastError: null,
+          lastTryAt: null
         });
 
         const syncPromise = syncPendingVisitStart(visitId);
@@ -250,7 +298,7 @@ async function handleStartVisitRequest(request, incoming, event) {
 
 async function ensureVisitStartBeforeRequest(incoming) {
   const visitId = String(incoming?.payload?.idWizyty || '').trim();
-  if (!visitId) return true;
+  if (!visitId) return visitSyncOk();
   return syncPendingVisitStart(visitId);
 }
 
@@ -447,11 +495,31 @@ async function handleApiRequest(request, event) {
   }
 
   if (incoming?.action === 'ZAPISZ_SESJE' || incoming?.action === 'ZAKONCZ_WIZYTE') {
-    const visitReady = await ensureVisitStartBeforeRequest(incoming);
-    if (!visitReady) {
+    const visitState = await ensureVisitStartBeforeRequest(incoming);
+
+    if (!visitState.ok) {
+      const visitId = String(incoming?.payload?.idWizyty || '').trim();
+
+      if (!visitState.retryable && incoming?.action === 'ZAKONCZ_WIZYTE') {
+        await notifyClients({
+          type: 'VISIT_START_REJECTED',
+          visitId,
+          message: visitState.error
+        });
+      }
+
+      if (visitState.retryable) {
+        return jsonResponse({
+          ok: false,
+          code: 'VISIT_START_PENDING',
+          error: visitState.error || 'Rozpoczęcie wizyty nie zostało jeszcze potwierdzone przez serwer. Aplikacja ponowi próbę automatycznie.'
+        });
+      }
+
       return jsonResponse({
         ok: false,
-        error: 'Rozpoczęcie wizyty nie zostało jeszcze potwierdzone przez serwer. Aplikacja ponowi próbę automatycznie.'
+        code: 'VISIT_START_REJECTED',
+        error: `Serwer odrzucił rozpoczęcie wizyty: ${visitState.error}`
       });
     }
   }
@@ -491,6 +559,17 @@ self.addEventListener('activate', event => {
     ))
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', event => {
+  const data = event?.data;
+  if (!data || typeof data !== 'object') return;
+
+  if (data.type === 'CLEAR_PENDING_VISIT') {
+    const visitId = String(data.visitId || '').trim();
+    if (!visitId) return;
+    event.waitUntil(deleteApiCache(pendingVisitKey(visitId)));
+  }
 });
 
 self.addEventListener('fetch', event => {
