@@ -226,9 +226,7 @@ function syncPrimaryAction() {
   if (!button || !data) return;
 
   const hasParts = data.list.length > 0;
-  const expected = hasParts
-    ? (data.type === 'ZWROT' ? 'Zapisz Zwrot' : 'Zapisz Pobranie')
-    : 'Wróć';
+  const expected = hasParts ? 'Zakończ' : 'Cofnij';
 
   if (button.textContent !== expected) button.textContent = expected;
   button.classList.toggle('operation-back-action', !hasParts);
