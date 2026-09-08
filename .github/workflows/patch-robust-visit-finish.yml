@@ -1,4 +1,4 @@
-name: Remove success toasts
+name: Fix quantity modal keyboard
 
 on:
   push:
@@ -15,13 +15,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Remove success toasts
-        run: python3 .github/scripts/patch_remove_success_toasts.py
+      - name: Patch quantity modal
+        run: python3 .github/scripts/patch_quantity_keyboard.py
 
-      - name: Commit cleanup
+      - name: Commit keyboard fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js/app.js js/operation-flow.js js/offline.js service-worker.js
-          git commit -m "Remove nonessential success toasts"
+          git add js/app.js css/app.css service-worker.js
+          git commit -m "Keep quantity dialog above Android keyboard"
           git push
