@@ -1,0 +1,521 @@
+from pathlib import Path
+import re
+
+offline_path = Path('js/offline.js')
+text = offline_path.read_text()
+
+def replace_once(old, new, label):
+    global text
+    if old not in text:
+        raise SystemExit(f'Missing block: {label}')
+    text = text.replace(old, new, 1)
+
+replace_once(
+    "const SYNC_LOCK_KEY = 'selfstorage_sync_lock_v1';\nconst AUTO_SYNC_DELAY_MS = 5000;",
+    "const SYNC_LOCK_KEY = 'selfstorage_sync_lock_v1';\nconst FINISH_REQUEST_KEY = 'selfstorage_pending_finish_v1';\nconst AUTO_SYNC_DELAY_MS = 5000;\nconst FINISH_RETRY_DELAYS_MS = [0, 1500, 4000];\nconst FINISH_RETRY_AFTER_FAILURE_MS = 10000;",
+    'finish constants'
+)
+
+replace_once(
+    "let autoSyncTimer = null;\nlet retryIndex = 0;",
+    "let autoSyncTimer = null;\nlet retryIndex = 0;\nlet finishRunning = false;\nlet finishRetryTimer = null;",
+    'finish state vars'
+)
+
+replace_once(
+    "function saveQueue(queue) {\n  return writeJson(QUEUE_KEY, queue);\n}\n",
+    """function saveQueue(queue) {
+  return writeJson(QUEUE_KEY, queue);
+}
+
+function loadPendingFinish() {
+  const value = readJson(FINISH_REQUEST_KEY, null);
+  return value && typeof value === 'object' ? value : null;
+}
+
+function savePendingFinish(value) {
+  return writeJson(FINISH_REQUEST_KEY, value);
+}
+
+function clearPendingFinish() {
+  try {
+    localStorage.removeItem(FINISH_REQUEST_KEY);
+  } catch (error) {
+    console.warn('Nie udało się usunąć oczekującego zakończenia wizyty.', error);
+  }
+}
+
+function closeFinishModal() {
+  const modal = $('finishModal');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden', 'true');
+}
+
+function openFinishModal() {
+  const modal = $('finishModal');
+  modal?.classList.add('show');
+  modal?.setAttribute('aria-hidden', 'false');
+}
+
+function draftHasAnyData(state) {
+  const draft = state?.operationDraft;
+  if (!draft) return false;
+
+  const pickup = Array.isArray(draft.pobranie) ? draft.pobranie.length : 0;
+  const returns = Array.isArray(draft.zwrot) ? draft.zwrot.length : 0;
+  const comment = String(draft.komentarz || '').trim();
+  return pickup + returns > 0 || Boolean(comment);
+}
+""",
+    'pending finish helpers'
+)
+
+replace_once(
+    """function queueForCurrentVisit() {
+  const visitId = currentVisitId();
+  if (!visitId) return [];
+  return loadQueue().filter(item => item?.payload?.idWizyty === visitId);
+}
+""",
+    """function queueForVisit(visitId) {
+  const id = String(visitId || '').trim();
+  if (!id) return [];
+  return loadQueue().filter(item => String(item?.payload?.idWizyty || '').trim() === id);
+}
+
+function queueForCurrentVisit() {
+  return queueForVisit(currentVisitId());
+}
+""",
+    'queueForVisit'
+)
+
+replace_once(
+    """function scheduleAutoSync(delay = AUTO_SYNC_DELAY_MS, force = false) {
+  if (!navigator.onLine || !loadQueue().length || syncRunning || connectionCheckRunning) return;
+  if (autoSyncTimer && !force) return;
+
+  if (force) clearAutoSyncTimer();
+
+  autoSyncTimer = window.setTimeout(() => {
+    autoSyncTimer = null;
+    flushQueue(false);
+  }, delay);
+}
+
+function scheduleRetry() {
+  if (!navigator.onLine || !loadQueue().length) return;
+
+  const delay = RETRY_DELAYS_MS[Math.min(retryIndex, RETRY_DELAYS_MS.length - 1)];
+  retryIndex = Math.min(retryIndex + 1, RETRY_DELAYS_MS.length - 1);
+  scheduleAutoSync(delay, true);
+}
+""",
+    """function hasPendingWork() {
+  return loadQueue().length > 0 || Boolean(loadPendingFinish());
+}
+
+function scheduleAutoSync(delay = AUTO_SYNC_DELAY_MS, force = false) {
+  if (!navigator.onLine || !hasPendingWork() || syncRunning || connectionCheckRunning || finishRunning) return;
+  if (autoSyncTimer && !force) return;
+
+  if (force) clearAutoSyncTimer();
+
+  autoSyncTimer = window.setTimeout(() => {
+    autoSyncTimer = null;
+    if (loadQueue().length) {
+      flushQueue(false);
+    } else {
+      finishPendingVisit(false);
+    }
+  }, delay);
+}
+
+function scheduleRetry() {
+  if (!navigator.onLine || !hasPendingWork()) return;
+
+  const delay = RETRY_DELAYS_MS[Math.min(retryIndex, RETRY_DELAYS_MS.length - 1)];
+  retryIndex = Math.min(retryIndex + 1, RETRY_DELAYS_MS.length - 1);
+  scheduleAutoSync(delay, true);
+}
+""",
+    'sync scheduler'
+)
+
+pattern = re.compile(r"function queueCurrentDraft\(\) \{.*?\n\}\n\nasync function verifyServerConnection", re.S)
+match = pattern.search(text)
+if not match:
+    raise SystemExit('Missing block: queueCurrentDraft')
+replacement = """function queueCurrentDraft(options = {}) {
+  if (offlineSendBusy) return false;
+  offlineSendBusy = true;
+
+  const forFinish = Boolean(options.forFinish);
+  const state = loadState();
+  const payload = buildPayloadFromState(state);
+
+  if (!payload) {
+    offlineSendBusy = false;
+    if (!forFinish) showToast('Nie udało się przygotować operacji do zapisu.', true);
+    return false;
+  }
+
+  const queue = loadQueue();
+  const existingIndex = queue.findIndex(item => item.idSesji === payload.idSesji);
+  const queuedItem = {
+    idSesji: payload.idSesji,
+    payload,
+    status: 'OCZEKUJE_NA_WYSŁANIE',
+    createdAt: new Date().toISOString(),
+    lastError: null
+  };
+
+  if (existingIndex >= 0) {
+    queue[existingIndex] = queuedItem;
+  } else {
+    queue.push(queuedItem);
+  }
+
+  if (!saveQueue(queue)) {
+    offlineSendBusy = false;
+    if (!forFinish) showToast('Nie udało się zapisać operacji w pamięci telefonu.', true);
+    return false;
+  }
+
+  state.operationDraft = null;
+  saveState(state);
+
+  const reviewModal = $('reviewModal');
+  reviewModal?.classList.remove('show');
+  reviewModal?.setAttribute('aria-hidden', 'true');
+
+  document.dispatchEvent(new CustomEvent('selfstorage:draft-queued', {
+    detail: { online: navigator.onLine }
+  }));
+
+  retryIndex = 0;
+  updateNetworkText();
+  renderQueueNotice();
+  offlineSendBusy = false;
+
+  if (forFinish) {
+    return true;
+  }
+
+  if (!navigator.onLine) {
+    showOfflineSavedModal();
+    return true;
+  }
+
+  showSendingWindow();
+  window.setTimeout(() => flushQueue(true), 80);
+  return true;
+}
+
+async function verifyServerConnection"""
+text = text[:match.start()] + replacement + text[match.end():]
+
+marker = "async function flushQueue(manual = false) {"
+if marker not in text:
+    raise SystemExit('Missing block: flushQueue marker')
+finish_functions = """function clearFinishRetryTimer() {
+  if (!finishRetryTimer) return;
+  window.clearTimeout(finishRetryTimer);
+  finishRetryTimer = null;
+}
+
+function scheduleFinishRetry(delay = FINISH_RETRY_AFTER_FAILURE_MS) {
+  if (!navigator.onLine || !loadPendingFinish() || finishRunning || finishRetryTimer) return;
+
+  finishRetryTimer = window.setTimeout(() => {
+    finishRetryTimer = null;
+    finishPendingVisit(false);
+  }, delay);
+}
+
+async function finishPendingVisit(manual = false) {
+  if (finishRunning) return false;
+
+  const pending = loadPendingFinish();
+  if (!pending?.visitId || !pending?.teamId) return false;
+
+  if (queueForVisit(pending.visitId).length) {
+    scheduleAutoSync(0, true);
+    return false;
+  }
+
+  if (!navigator.onLine) {
+    hideSendingWindow();
+    return false;
+  }
+
+  finishRunning = true;
+  clearFinishRetryTimer();
+  if (manual) showSendingWindow();
+
+  let lastError = null;
+
+  try {
+    for (const delay of FINISH_RETRY_DELAYS_MS) {
+      if (delay > 0) {
+        await new Promise(resolve => window.setTimeout(resolve, delay));
+      }
+
+      try {
+        await api.endVisit({
+          idEkipy: pending.teamId,
+          idWizyty: pending.visitId
+        });
+
+        clearPendingFinish();
+        clearFinishRetryTimer();
+        hideSendingWindow();
+
+        document.dispatchEvent(new CustomEvent('selfstorage:visit-finished', {
+          detail: {
+            idWizyty: pending.visitId,
+            recovered: true
+          }
+        }));
+
+        return true;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (manual) {
+      hideSendingWindow();
+      showToast(`Nie udało się jeszcze zakończyć wizyty. ${messageFromError(lastError)} Aplikacja będzie próbować dalej.`, true);
+    }
+
+    scheduleFinishRetry();
+    return false;
+  } finally {
+    finishRunning = false;
+  }
+}
+
+async function requestFinishVisit() {
+  const state = loadState();
+  const visitId = String(state?.visit?.idWizyty || '').trim();
+  const teamId = String(state?.team?.id || '').trim();
+
+  if (!visitId || !teamId) {
+    closeFinishModal();
+    return;
+  }
+
+  const pending = {
+    visitId,
+    teamId,
+    requestedAt: new Date().toISOString()
+  };
+
+  if (!savePendingFinish(pending)) {
+    showToast('Nie udało się zapisać żądania zakończenia wizyty w pamięci telefonu.', true);
+    return;
+  }
+
+  closeFinishModal();
+
+  if (draftHasAnyData(state)) {
+    const draft = state.operationDraft;
+    const partCount =
+      (Array.isArray(draft?.pobranie) ? draft.pobranie.length : 0) +
+      (Array.isArray(draft?.zwrot) ? draft.zwrot.length : 0);
+
+    if (partCount === 0) {
+      clearPendingFinish();
+      showToast('Masz komentarz bez części. Usuń go albo dodaj część przed zakończeniem wizyty.', true);
+      return;
+    }
+
+    if (!queueCurrentDraft({ forFinish: true })) {
+      clearPendingFinish();
+      showToast('Nie udało się zabezpieczyć niedokończonej operacji. Spróbuj ponownie.', true);
+      return;
+    }
+  }
+
+  if (!navigator.onLine) {
+    hideSendingWindow();
+    renderQueueNotice();
+    return;
+  }
+
+  showSendingWindow();
+
+  if (queueForVisit(visitId).length) {
+    retryIndex = 0;
+    clearAutoSyncTimer();
+    await flushQueue(true);
+  } else {
+    await finishPendingVisit(true);
+  }
+}
+
+"""
+text = text.replace(marker, finish_functions + marker, 1)
+
+replace_once(
+    """  const queue = loadQueue();
+  if (!queue.length) {
+    hideSendingWindow();
+    retryIndex = 0;
+    clearAutoSyncTimer();
+    if (manual) showToast('Nie ma operacji oczekujących na wysłanie.');
+    renderQueueNotice();
+    return;
+  }
+""",
+    """  const queue = loadQueue();
+  if (!queue.length) {
+    hideSendingWindow();
+    retryIndex = 0;
+    clearAutoSyncTimer();
+    renderQueueNotice();
+
+    if (loadPendingFinish()) {
+      await finishPendingVisit(manual);
+    } else if (manual) {
+      showToast('Nie ma operacji oczekujących na wysłanie.');
+    }
+    return;
+  }
+""",
+    'empty queue finish'
+)
+
+replace_once(
+    """      if (left) {
+        hideSendingWindow();
+        showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
+      } else {
+        showSyncSuccessModal();
+      }
+""",
+    """      if (left) {
+        hideSendingWindow();
+        showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
+      } else if (!loadPendingFinish()) {
+        showSyncSuccessModal();
+      }
+""",
+    'sync success vs finish'
+)
+
+replace_once(
+    """    if (!loadQueue().length) {
+      retryIndex = 0;
+      clearAutoSyncTimer();
+      return;
+    }
+""",
+    """    if (!loadQueue().length) {
+      retryIndex = 0;
+      clearAutoSyncTimer();
+      if (loadPendingFinish()) {
+        await finishPendingVisit(manual);
+      }
+      return;
+    }
+""",
+    'finish after queue drain'
+)
+
+pattern = re.compile(r"function interceptCriticalClicks\(event\) \{.*?\n\}\n\nfunction requestAutomaticSync", re.S)
+match = pattern.search(text)
+if not match:
+    raise SystemExit('Missing block: interceptCriticalClicks')
+replacement = """function interceptCriticalClicks(event) {
+  const sendButton = event.target.closest?.('#reviewSendBtn');
+
+  if (sendButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    queueCurrentDraft();
+    return;
+  }
+
+  const finishConfirmButton = event.target.closest?.('#finishYesBtn');
+  if (finishConfirmButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    requestFinishVisit();
+    return;
+  }
+
+  const finishButton = event.target.closest?.('#finishVisitBtn');
+  if (!finishButton) return;
+
+  const state = loadState();
+  const hasLocalWork =
+    draftHasAnyData(state) ||
+    queueForCurrentVisit().length > 0 ||
+    Boolean(loadPendingFinish());
+
+  if (!hasLocalWork) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  openFinishModal();
+}
+
+function requestAutomaticSync"""
+text = text[:match.start()] + replacement + text[match.end():]
+
+replace_once(
+    """      navigator.onLine &&
+      loadQueue().length &&
+      !syncRunning &&
+      !connectionCheckRunning &&
+      !autoSyncTimer
+""",
+    """      navigator.onLine &&
+      hasPendingWork() &&
+      !syncRunning &&
+      !connectionCheckRunning &&
+      !finishRunning &&
+      !autoSyncTimer
+""",
+    'interval pending work'
+)
+
+offline_path.write_text(text)
+
+app_path = Path('js/app.js')
+app = app_path.read_text()
+
+bind_marker = "  document.addEventListener('selfstorage:draft-queued', handleDraftQueued);\n"
+if bind_marker not in app:
+    raise SystemExit('Missing app bind marker')
+
+finish_handler = """  document.addEventListener('selfstorage:visit-finished', () => {
+    resetState();
+    $('finishModal')?.classList.remove('show');
+    $('finishModal')?.setAttribute('aria-hidden', 'true');
+    showScreen('screenDone');
+
+    window.setTimeout(() => {
+      showScreen('screenLogin');
+    }, 2200);
+  });
+
+"""
+app = app.replace(bind_marker, finish_handler + bind_marker, 1)
+app_path.write_text(app)
+
+sw_path = Path('service-worker.js')
+sw = sw_path.read_text()
+if "const CACHE_NAME = 'selfstorage-shell-v62';" not in sw:
+    raise SystemExit('Missing service worker cache version')
+sw = sw.replace(
+    "const CACHE_NAME = 'selfstorage-shell-v62';",
+    "const CACHE_NAME = 'selfstorage-shell-v63';",
+    1
+)
+sw_path.write_text(sw)
