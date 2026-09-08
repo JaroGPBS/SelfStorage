@@ -613,6 +613,36 @@ function processPartInput(value) {
   return true;
 }
 
+function syncQuantityModalViewport() {
+  const modal = $('quantityModal');
+  if (!modal || !modal.classList.contains('show')) return;
+
+  const viewport = window.visualViewport;
+  const visibleHeight = Math.max(240, Math.round(viewport?.height || window.innerHeight));
+  const offsetTop = Math.max(0, Math.round(viewport?.offsetTop || 0));
+
+  modal.style.top = `${offsetTop}px`;
+  modal.style.bottom = 'auto';
+  modal.style.height = `${visibleHeight}px`;
+
+  const card = modal.querySelector('.modal-card');
+  if (card) {
+    card.style.maxHeight = `${Math.max(220, visibleHeight - 24)}px`;
+  }
+}
+
+function resetQuantityModalViewport() {
+  const modal = $('quantityModal');
+  if (!modal) return;
+
+  modal.style.removeProperty('top');
+  modal.style.removeProperty('bottom');
+  modal.style.removeProperty('height');
+
+  const card = modal.querySelector('.modal-card');
+  card?.style.removeProperty('max-height');
+}
+
 function openQuantityModal(part, type, mode) {
   if (!state.operationDraft || isDraftLocked()) return;
 
@@ -644,8 +674,14 @@ function openQuantityModal(part, type, mode) {
 
   $('quantityModal').classList.add('show');
   $('quantityModal').setAttribute('aria-hidden', 'false');
+  syncQuantityModalViewport();
 
-  setTimeout(() => $('quantityInput').focus(), 80);
+  setTimeout(() => {
+    const input = $('quantityInput');
+    input?.focus();
+    syncQuantityModalViewport();
+    input?.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }, 80);
 }
 
 function closeQuantityModal() {
@@ -653,6 +689,7 @@ function closeQuantityModal() {
   $('quantityInput').value = '';
   $('quantityModal').classList.remove('show');
   $('quantityModal').setAttribute('aria-hidden', 'true');
+  resetQuantityModalViewport();
 }
 
 function confirmQuantity() {
@@ -916,6 +953,10 @@ function bindEvents() {
   $('quantityInput').addEventListener('keydown', event => {
     if (event.key === 'Enter') confirmQuantity();
   });
+
+
+  window.visualViewport?.addEventListener('resize', syncQuantityModalViewport);
+  window.visualViewport?.addEventListener('scroll', syncQuantityModalViewport);
 
   $('operationComment').addEventListener('input', saveCommentFromUi);
   $('operationBackBtn').addEventListener('click', backToVisit);

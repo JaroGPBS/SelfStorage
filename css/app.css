@@ -201,3 +201,47 @@ p { color: var(--muted); line-height: 1.5; }
   .app-main { padding-top: 14px; }
   .hero-card { margin: 0; }
 }
+
+/* Ilość części: modal dopasowany do widocznego obszaru nad klawiaturą Androida. */
+#quantityModal {
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: max(10px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+}
+
+#quantityModal .modal-card.compact {
+  width: min(100%, 520px);
+  margin: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-height: 560px) {
+  #quantityModal {
+    align-items: flex-start;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  #quantityModal .modal-card.compact {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 16px;
+    padding-bottom: 12px;
+  }
+
+  #quantityModal .field-label {
+    margin-top: 12px;
+  }
+
+  #quantityModal .quantity-input {
+    min-height: 52px;
+  }
+
+  #quantityModal .modal-actions .btn {
+    min-height: 48px;
+  }
+}
+
