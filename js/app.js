@@ -351,7 +351,6 @@ async function startVisit(code) {
 
     $('warehouseCodeInput').value = '';
     renderVisit();
-    showToast(`Zalogowano: ${state.team.nazwa}, magazyn: ${state.visit.magazyn.nazwa}`);
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -683,7 +682,6 @@ function confirmQuantity() {
   persist();
   closeQuantityModal();
   renderOperation();
-  showToast(existing ? 'Ilość została dodana.' : 'Część dodana do listy.');
 }
 
 function deletePart(code, type) {
@@ -823,7 +821,6 @@ async function sendSession() {
     state.operationDraft = null;
     persist();
     renderVisit();
-    showToast('Operacja została zapisana.');
   } catch (error) {
     persist();
     renderOperation();

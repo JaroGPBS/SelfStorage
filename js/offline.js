@@ -719,7 +719,6 @@ async function flushQueue(manual = false) {
 
   if (!acquireSyncLock()) {
     hideSendingWindow();
-    if (manual) showToast('Synchronizacja już trwa.');
     renderQueueNotice();
     return;
   }
@@ -791,9 +790,8 @@ async function flushQueue(manual = false) {
       const left = loadQueue().length;
       if (left) {
         hideSendingWindow();
-        showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
       } else if (!loadPendingFinish()) {
-        showSyncSuccessModal();
+        hideSendingWindow();
       }
     } else if (manual) {
       hideSendingWindow();

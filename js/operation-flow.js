@@ -121,12 +121,6 @@ function saveCurrentOperation() {
       detail: { online: navigator.onLine }
     }));
 
-    showToast(
-      navigator.onLine
-        ? 'Operacja zapisana. Synchronizacja trwa w tle.'
-        : 'Operacja zapisana w telefonie. Wyślę ją automatycznie po odzyskaniu internetu.'
-    );
-
     window.dispatchEvent(new Event(navigator.onLine ? 'online' : 'offline'));
   } finally {
     saveBusy = false;
