@@ -562,7 +562,7 @@ function clearFinishRetryTimer() {
 }
 
 function scheduleFinishRetry(delay = FINISH_RETRY_AFTER_FAILURE_MS) {
-  if (!navigator.onLine || !loadPendingFinish() || finishRunning || finishRetryTimer) return;
+  if (!navigator.onLine || !loadPendingFinish() || finishRetryTimer) return;
 
   finishRetryTimer = window.setTimeout(() => {
     finishRetryTimer = null;
