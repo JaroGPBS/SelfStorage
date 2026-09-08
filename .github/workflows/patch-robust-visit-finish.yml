@@ -1,4 +1,4 @@
-name: Fix finish retry guard
+name: Remove success toasts
 
 on:
   push:
@@ -15,13 +15,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply retry fix
-        run: python3 .github/scripts/fix_finish_retry.py
+      - name: Remove success toasts
+        run: python3 .github/scripts/patch_remove_success_toasts.py
 
-      - name: Commit fix
+      - name: Commit cleanup
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js/offline.js service-worker.js
-          git commit -m "Keep retrying pending visit finish"
+          git add js/app.js js/operation-flow.js js/offline.js service-worker.js
+          git commit -m "Remove nonessential success toasts"
           git push
