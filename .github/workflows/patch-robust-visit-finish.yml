@@ -1,4 +1,4 @@
-name: Fix quantity modal keyboard
+name: Update operation button label
 
 on:
   push:
@@ -15,13 +15,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch quantity modal
-        run: python3 .github/scripts/patch_quantity_keyboard.py
+      - name: Update operation button
+        run: python3 .github/scripts/patch_operation_button_label.py
 
-      - name: Commit keyboard fix
+      - name: Commit label update
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js/app.js css/app.css service-worker.js
-          git commit -m "Keep quantity dialog above Android keyboard"
+          git add js/operation-flow.js index.html service-worker.js
+          git commit -m "Simplify operation action label"
           git push
