@@ -948,6 +948,17 @@ function bindEvents() {
     showToast('Inwentaryzację dołączymy po zakończeniu Pobranie / Zwrot.');
   });
 
+  document.addEventListener('selfstorage:visit-finished', () => {
+    resetState();
+    $('finishModal')?.classList.remove('show');
+    $('finishModal')?.setAttribute('aria-hidden', 'true');
+    showScreen('screenDone');
+
+    window.setTimeout(() => {
+      showScreen('screenLogin');
+    }, 2200);
+  });
+
   document.addEventListener('selfstorage:draft-queued', handleDraftQueued);
   window.addEventListener('online', updateNetworkUi);
   window.addEventListener('offline', updateNetworkUi);

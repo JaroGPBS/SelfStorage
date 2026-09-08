@@ -3,7 +3,10 @@ import { api } from './api.js';
 const STATE_KEY = 'selfstorage_state_v1';
 const QUEUE_KEY = 'selfstorage_offline_queue_v1';
 const SYNC_LOCK_KEY = 'selfstorage_sync_lock_v1';
+const FINISH_REQUEST_KEY = 'selfstorage_pending_finish_v1';
 const AUTO_SYNC_DELAY_MS = 5000;
+const FINISH_RETRY_DELAYS_MS = [0, 1500, 4000];
+const FINISH_RETRY_AFTER_FAILURE_MS = 10000;
 const RETRY_DELAYS_MS = [5000, 5000, 10000, 15000, 30000];
 const SYNC_LOCK_TTL_MS = 75000;
 const INSTANCE_ID = window.crypto?.randomUUID
@@ -15,6 +18,8 @@ let connectionCheckRunning = false;
 let offlineSendBusy = false;
 let autoSyncTimer = null;
 let retryIndex = 0;
+let finishRunning = false;
+let finishRetryTimer = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -55,6 +60,45 @@ function loadQueue() {
 
 function saveQueue(queue) {
   return writeJson(QUEUE_KEY, queue);
+}
+
+function loadPendingFinish() {
+  const value = readJson(FINISH_REQUEST_KEY, null);
+  return value && typeof value === 'object' ? value : null;
+}
+
+function savePendingFinish(value) {
+  return writeJson(FINISH_REQUEST_KEY, value);
+}
+
+function clearPendingFinish() {
+  try {
+    localStorage.removeItem(FINISH_REQUEST_KEY);
+  } catch (error) {
+    console.warn('Nie udało się usunąć oczekującego zakończenia wizyty.', error);
+  }
+}
+
+function closeFinishModal() {
+  const modal = $('finishModal');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden', 'true');
+}
+
+function openFinishModal() {
+  const modal = $('finishModal');
+  modal?.classList.add('show');
+  modal?.setAttribute('aria-hidden', 'false');
+}
+
+function draftHasAnyData(state) {
+  const draft = state?.operationDraft;
+  if (!draft) return false;
+
+  const pickup = Array.isArray(draft.pobranie) ? draft.pobranie.length : 0;
+  const returns = Array.isArray(draft.zwrot) ? draft.zwrot.length : 0;
+  const comment = String(draft.komentarz || '').trim();
+  return pickup + returns > 0 || Boolean(comment);
 }
 
 function acquireSyncLock() {
@@ -263,10 +307,14 @@ function currentVisitId() {
   return loadState()?.visit?.idWizyty || null;
 }
 
+function queueForVisit(visitId) {
+  const id = String(visitId || '').trim();
+  if (!id) return [];
+  return loadQueue().filter(item => String(item?.payload?.idWizyty || '').trim() === id);
+}
+
 function queueForCurrentVisit() {
-  const visitId = currentVisitId();
-  if (!visitId) return [];
-  return loadQueue().filter(item => item?.payload?.idWizyty === visitId);
+  return queueForVisit(currentVisitId());
 }
 
 function buildPayloadFromState(state) {
@@ -397,37 +445,46 @@ function clearAutoSyncTimer() {
   }
 }
 
+function hasPendingWork() {
+  return loadQueue().length > 0 || Boolean(loadPendingFinish());
+}
+
 function scheduleAutoSync(delay = AUTO_SYNC_DELAY_MS, force = false) {
-  if (!navigator.onLine || !loadQueue().length || syncRunning || connectionCheckRunning) return;
+  if (!navigator.onLine || !hasPendingWork() || syncRunning || connectionCheckRunning || finishRunning) return;
   if (autoSyncTimer && !force) return;
 
   if (force) clearAutoSyncTimer();
 
   autoSyncTimer = window.setTimeout(() => {
     autoSyncTimer = null;
-    flushQueue(false);
+    if (loadQueue().length) {
+      flushQueue(false);
+    } else {
+      finishPendingVisit(false);
+    }
   }, delay);
 }
 
 function scheduleRetry() {
-  if (!navigator.onLine || !loadQueue().length) return;
+  if (!navigator.onLine || !hasPendingWork()) return;
 
   const delay = RETRY_DELAYS_MS[Math.min(retryIndex, RETRY_DELAYS_MS.length - 1)];
   retryIndex = Math.min(retryIndex + 1, RETRY_DELAYS_MS.length - 1);
   scheduleAutoSync(delay, true);
 }
 
-function queueCurrentDraft() {
-  if (offlineSendBusy) return;
+function queueCurrentDraft(options = {}) {
+  if (offlineSendBusy) return false;
   offlineSendBusy = true;
 
+  const forFinish = Boolean(options.forFinish);
   const state = loadState();
   const payload = buildPayloadFromState(state);
 
   if (!payload) {
     offlineSendBusy = false;
-    showToast('Nie udało się przygotować operacji do zapisu.', true);
-    return;
+    if (!forFinish) showToast('Nie udało się przygotować operacji do zapisu.', true);
+    return false;
   }
 
   const queue = loadQueue();
@@ -448,8 +505,8 @@ function queueCurrentDraft() {
 
   if (!saveQueue(queue)) {
     offlineSendBusy = false;
-    showToast('Nie udało się zapisać operacji w pamięci telefonu.', true);
-    return;
+    if (!forFinish) showToast('Nie udało się zapisać operacji w pamięci telefonu.', true);
+    return false;
   }
 
   state.operationDraft = null;
@@ -468,13 +525,18 @@ function queueCurrentDraft() {
   renderQueueNotice();
   offlineSendBusy = false;
 
+  if (forFinish) {
+    return true;
+  }
+
   if (!navigator.onLine) {
     showOfflineSavedModal();
-    return;
+    return true;
   }
 
   showSendingWindow();
   window.setTimeout(() => flushQueue(true), 80);
+  return true;
 }
 
 async function verifyServerConnection() {
@@ -493,6 +555,143 @@ async function verifyServerConnection() {
   }
 }
 
+function clearFinishRetryTimer() {
+  if (!finishRetryTimer) return;
+  window.clearTimeout(finishRetryTimer);
+  finishRetryTimer = null;
+}
+
+function scheduleFinishRetry(delay = FINISH_RETRY_AFTER_FAILURE_MS) {
+  if (!navigator.onLine || !loadPendingFinish() || finishRunning || finishRetryTimer) return;
+
+  finishRetryTimer = window.setTimeout(() => {
+    finishRetryTimer = null;
+    finishPendingVisit(false);
+  }, delay);
+}
+
+async function finishPendingVisit(manual = false) {
+  if (finishRunning) return false;
+
+  const pending = loadPendingFinish();
+  if (!pending?.visitId || !pending?.teamId) return false;
+
+  if (queueForVisit(pending.visitId).length) {
+    scheduleAutoSync(0, true);
+    return false;
+  }
+
+  if (!navigator.onLine) {
+    hideSendingWindow();
+    return false;
+  }
+
+  finishRunning = true;
+  clearFinishRetryTimer();
+  if (manual) showSendingWindow();
+
+  let lastError = null;
+
+  try {
+    for (const delay of FINISH_RETRY_DELAYS_MS) {
+      if (delay > 0) {
+        await new Promise(resolve => window.setTimeout(resolve, delay));
+      }
+
+      try {
+        await api.endVisit({
+          idEkipy: pending.teamId,
+          idWizyty: pending.visitId
+        });
+
+        clearPendingFinish();
+        clearFinishRetryTimer();
+        hideSendingWindow();
+
+        document.dispatchEvent(new CustomEvent('selfstorage:visit-finished', {
+          detail: {
+            idWizyty: pending.visitId,
+            recovered: true
+          }
+        }));
+
+        return true;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (manual) {
+      hideSendingWindow();
+      showToast(`Nie udało się jeszcze zakończyć wizyty. ${messageFromError(lastError)} Aplikacja będzie próbować dalej.`, true);
+    }
+
+    scheduleFinishRetry();
+    return false;
+  } finally {
+    finishRunning = false;
+  }
+}
+
+async function requestFinishVisit() {
+  const state = loadState();
+  const visitId = String(state?.visit?.idWizyty || '').trim();
+  const teamId = String(state?.team?.id || '').trim();
+
+  if (!visitId || !teamId) {
+    closeFinishModal();
+    return;
+  }
+
+  const pending = {
+    visitId,
+    teamId,
+    requestedAt: new Date().toISOString()
+  };
+
+  if (!savePendingFinish(pending)) {
+    showToast('Nie udało się zapisać żądania zakończenia wizyty w pamięci telefonu.', true);
+    return;
+  }
+
+  closeFinishModal();
+
+  if (draftHasAnyData(state)) {
+    const draft = state.operationDraft;
+    const partCount =
+      (Array.isArray(draft?.pobranie) ? draft.pobranie.length : 0) +
+      (Array.isArray(draft?.zwrot) ? draft.zwrot.length : 0);
+
+    if (partCount === 0) {
+      clearPendingFinish();
+      showToast('Masz komentarz bez części. Usuń go albo dodaj część przed zakończeniem wizyty.', true);
+      return;
+    }
+
+    if (!queueCurrentDraft({ forFinish: true })) {
+      clearPendingFinish();
+      showToast('Nie udało się zabezpieczyć niedokończonej operacji. Spróbuj ponownie.', true);
+      return;
+    }
+  }
+
+  if (!navigator.onLine) {
+    hideSendingWindow();
+    renderQueueNotice();
+    return;
+  }
+
+  showSendingWindow();
+
+  if (queueForVisit(visitId).length) {
+    retryIndex = 0;
+    clearAutoSyncTimer();
+    await flushQueue(true);
+  } else {
+    await finishPendingVisit(true);
+  }
+}
+
 async function flushQueue(manual = false) {
   if (syncRunning || connectionCheckRunning) return;
 
@@ -508,8 +707,13 @@ async function flushQueue(manual = false) {
     hideSendingWindow();
     retryIndex = 0;
     clearAutoSyncTimer();
-    if (manual) showToast('Nie ma operacji oczekujących na wysłanie.');
     renderQueueNotice();
+
+    if (loadPendingFinish()) {
+      await finishPendingVisit(manual);
+    } else if (manual) {
+      showToast('Nie ma operacji oczekujących na wysłanie.');
+    }
     return;
   }
 
@@ -588,7 +792,7 @@ async function flushQueue(manual = false) {
       if (left) {
         hideSendingWindow();
         showToast(`Wysłano ${sent} oper. • ${left} nadal oczekuje.`);
-      } else {
+      } else if (!loadPendingFinish()) {
         showSyncSuccessModal();
       }
     } else if (manual) {
@@ -598,6 +802,9 @@ async function flushQueue(manual = false) {
     if (!loadQueue().length) {
       retryIndex = 0;
       clearAutoSyncTimer();
+      if (loadPendingFinish()) {
+        await finishPendingVisit(manual);
+      }
       return;
     }
 
@@ -624,24 +831,30 @@ function interceptCriticalClicks(event) {
     return;
   }
 
+  const finishConfirmButton = event.target.closest?.('#finishYesBtn');
+  if (finishConfirmButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    requestFinishVisit();
+    return;
+  }
+
   const finishButton = event.target.closest?.('#finishVisitBtn');
   if (!finishButton) return;
 
-  const pending = queueForCurrentVisit();
-  if (!pending.length) return;
+  const state = loadState();
+  const hasLocalWork =
+    draftHasAnyData(state) ||
+    queueForCurrentVisit().length > 0 ||
+    Boolean(loadPendingFinish());
+
+  if (!hasLocalWork) return;
 
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
-
-  if (navigator.onLine) {
-    showToast('Najpierw wysyłam operacje zapisane w telefonie.');
-    retryIndex = 0;
-    clearAutoSyncTimer();
-    flushQueue(true);
-  } else {
-    showToast('Masz niewysłane operacje. Zakończenie wizyty wymaga najpierw synchronizacji.', true);
-  }
+  openFinishModal();
 }
 
 function requestAutomaticSync(force = false) {
@@ -693,9 +906,10 @@ function initOfflineQueue() {
     if (
       document.visibilityState === 'visible' &&
       navigator.onLine &&
-      loadQueue().length &&
+      hasPendingWork() &&
       !syncRunning &&
       !connectionCheckRunning &&
+      !finishRunning &&
       !autoSyncTimer
     ) {
       scheduleAutoSync(AUTO_SYNC_DELAY_MS);
