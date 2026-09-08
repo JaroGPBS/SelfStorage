@@ -1,0 +1,42 @@
+name: Install PWA icons
+
+on:
+  push:
+    paths:
+      - '.tmp/icon192.b64'
+      - '.github/workflows/install-pwa-icons.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-icons:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Decode 192 icon
+        run: |
+          mkdir -p icons
+          base64 -d .tmp/icon192.b64 > icons/app-icon-192.png
+
+      - name: Build 512 icon
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          image = Image.open('icons/app-icon-192.png').convert('RGB')
+          image.resize((512, 512), Image.Resampling.LANCZOS).save('icons/app-icon-512.png', optimize=True)
+          PY
+
+      - name: Commit icons
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add icons/app-icon-192.png icons/app-icon-512.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Update installed PWA icons"
+            git push
+          fi
