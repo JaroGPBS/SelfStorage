@@ -1,4 +1,4 @@
-name: Patch robust visit finish
+name: Fix finish retry guard
 
 on:
   push:
@@ -15,13 +15,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch visit finish flow
-        run: python3 .github/scripts/patch_robust_visit_finish.py
+      - name: Apply retry fix
+        run: python3 .github/scripts/fix_finish_retry.py
 
-      - name: Commit patch
+      - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js/offline.js js/app.js service-worker.js
-          git commit -m "Make visit finishing resilient after sleep and offline"
+          git add js/offline.js service-worker.js
+          git commit -m "Keep retrying pending visit finish"
           git push
