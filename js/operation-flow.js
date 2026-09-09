@@ -147,7 +147,7 @@ function guardOperationChange(event) {
 
   const activeLabel = activeType === 'ZWROT' ? 'Zwrot' : 'Pobranie';
   const requestedLabel = requestedType === 'ZWROT' ? 'Zwrotu' : 'Pobrania';
-  showToast(`Masz niezapisaną operację ${activeLabel}. Zapisz ją przed rozpoczęciem ${requestedLabel}.`, true);
+  showToast(`Masz rozpoczętą operację ${activeLabel}. Kliknij „Wróć” — lista zapisze się automatycznie.`, true);
   return true;
 }
 

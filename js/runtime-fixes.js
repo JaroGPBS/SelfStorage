@@ -290,7 +290,7 @@ function requestFinish() {
   if (!state?.team || !state?.visit) return;
 
   if (draftHasData(state)) {
-    showCritical('Masz niedokończoną operację. Najpierw kliknij „Zakończ”, aby ją zapisać.');
+    showCritical('Masz niezapisaną listę części. Kliknij „Wznów”, a potem „Wróć” — lista zapisze się automatycznie.');
     return;
   }
 
@@ -315,7 +315,7 @@ function interceptFinishClicks(event) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      showCritical('Masz niedokończoną operację. Najpierw kliknij „Zakończ”, aby ją zapisać.');
+      showCritical('Masz niezapisaną listę części. Kliknij „Wznów”, a potem „Wróć” — lista zapisze się automatycznie.');
       return;
     }
 
