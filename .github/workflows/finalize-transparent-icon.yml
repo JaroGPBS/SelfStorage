@@ -18,7 +18,7 @@ jobs:
       - name: Build transparent icons and refresh references
         run: |
           set -e
-          cat .tmp/icon_exact_*.b64 | tr -d '\n\r ' > /tmp/icon.b64
+          tr -d '\n\r ' < .tmp/icon_exact_01.b64 > /tmp/icon.b64
           base64 -d /tmp/icon.b64 > /tmp/icon-source.png
 
           if command -v magick >/dev/null 2>&1; then
