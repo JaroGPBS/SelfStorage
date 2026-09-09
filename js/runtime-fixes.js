@@ -285,12 +285,68 @@ async function processPendingFinish(manual = false) {
   }
 }
 
+function queueDraftForFinish(state) {
+  const draft = state?.operationDraft;
+  const team = state?.team;
+  const visit = state?.visit;
+
+  if (!draftHasData(state)) return true;
+  if (!draft || !team?.id || !visit?.idWizyty) return false;
+
+  const pobranie = Array.isArray(draft.pobranie) ? draft.pobranie : [];
+  const zwrot = Array.isArray(draft.zwrot) ? draft.zwrot : [];
+
+  if (pobranie.length + zwrot.length === 0) {
+    showCritical('Masz komentarz bez części. Usuń komentarz albo dodaj część przed zakończeniem wizyty.');
+    return false;
+  }
+
+  const operationTime = draft.operationTime || new Date().toISOString();
+  const payload = {
+    idSesji: draft.idSesji,
+    idWizyty: visit.idWizyty,
+    dataCzasOperacji: operationTime,
+    idEkipy: team.id,
+    idMagazynu: visit.magazyn?.id,
+    komentarz: String(draft.komentarz || '').trim(),
+    pobranie: pobranie.map(item => ({ kod: item.kod, ilosc: item.ilosc })),
+    zwrot: zwrot.map(item => ({ kod: item.kod, ilosc: item.ilosc }))
+  };
+
+  const queue = currentQueue();
+  const existingIndex = queue.findIndex(item => String(item?.idSesji || '') === String(payload.idSesji || ''));
+  const queuedItem = {
+    idSesji: payload.idSesji,
+    payload,
+    status: 'OCZEKUJE_NA_WYSŁANIE',
+    createdAt: new Date().toISOString(),
+    lastError: null
+  };
+
+  if (existingIndex >= 0) {
+    queue[existingIndex] = queuedItem;
+  } else {
+    queue.push(queuedItem);
+  }
+
+  if (!writeJson(QUEUE_KEY, queue)) return false;
+
+  state.operationDraft = null;
+  if (!writeJson(STATE_KEY, state)) return false;
+
+  try {
+    window.dispatchEvent(new StorageEvent('storage', { key: QUEUE_KEY }));
+  } catch {}
+
+  return true;
+}
+
 function requestFinish() {
   const state = currentState();
   if (!state?.team || !state?.visit) return;
 
-  if (draftHasData(state)) {
-    showCritical('Masz niezapisaną listę części. Kliknij „Wznów”, a potem „Wróć” — lista zapisze się automatycznie.');
+  if (draftHasData(state) && !queueDraftForFinish(state)) {
+    showCritical('Nie udało się zabezpieczyć listy części w telefonie. Spróbuj ponownie.');
     return;
   }
 
@@ -310,14 +366,6 @@ function interceptFinishClicks(event) {
   if (target.id === 'finishVisitBtn') {
     const state = currentState();
     if (!state?.visit) return;
-
-    if (draftHasData(state)) {
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      showCritical('Masz niezapisaną listę części. Kliknij „Wznów”, a potem „Wróć” — lista zapisze się automatycznie.');
-      return;
-    }
 
     event.preventDefault();
     event.stopPropagation();

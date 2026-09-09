@@ -1,4 +1,4 @@
-import './runtime-fixes.js?v=8';
+import './runtime-fixes.js?v=9';
 
 const STATE_KEY = 'selfstorage_state_v1';
 const QUEUE_KEY = 'selfstorage_offline_queue_v1';
@@ -8,7 +8,7 @@ const INVALID_AUTH_MESSAGE = 'Konto nie aktywne\nSkontaktuj się z adminem.';
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
     if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.27';
+      element.textContent = 'v0.28';
       element.style.fontSize = '13px';
       element.style.fontWeight = '600';
       element.style.opacity = '.85';

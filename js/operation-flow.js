@@ -127,28 +127,8 @@ function saveCurrentOperation() {
   }
 }
 
-function guardOperationChange(event) {
-  const button = event.target.closest?.('#pobranieBtn, #zwrotBtn');
-  if (!button) return false;
-
-  const state = readJson(STATE_KEY, null);
-  const draft = state?.operationDraft;
-  const visitId = state?.visit?.idWizyty;
-
-  if (!draft || draft.idWizyty !== visitId || !draftHasData(draft)) return false;
-
-  const requestedType = button.id === 'zwrotBtn' ? 'ZWROT' : 'POBRANIE';
-  const activeType = draft.activeType === 'ZWROT' ? 'ZWROT' : 'POBRANIE';
-  if (requestedType === activeType) return false;
-
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-
-  const activeLabel = activeType === 'ZWROT' ? 'Zwrot' : 'Pobranie';
-  const requestedLabel = requestedType === 'ZWROT' ? 'Zwrotu' : 'Pobrania';
-  showToast(`Masz rozpoczętą operację ${activeLabel}. Kliknij „Wróć” — lista zapisze się automatycznie.`, true);
-  return true;
+function guardOperationChange() {
+  return false;
 }
 
 function confirmPartDelete(event) {
@@ -216,8 +196,8 @@ function interceptOperationClicks(event) {
   event.stopPropagation();
   event.stopImmediatePropagation();
 
-  if (returnFromEmptyOperation()) return;
-  saveCurrentOperation();
+  const backButton = $('operationBackBottomBtn');
+  if (backButton) backButton.click();
 }
 
 function syncPrimaryAction() {
