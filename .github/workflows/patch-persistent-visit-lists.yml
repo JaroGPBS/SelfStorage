@@ -1,0 +1,27 @@
+name: Patch persistent visit lists
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-persistent-visit-lists.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply persistent visit lists patch
+        run: python3 tools/patch_persistent_visit_lists.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/operation-flow.js js/runtime-fixes.js js/auth.js service-worker.js
+          git commit -m "Keep operation lists for the whole visit"
+          git push
