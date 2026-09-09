@@ -1,0 +1,112 @@
+name: Recover missing visit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/recover-missing-visit.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch orphaned visit recovery
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('js/runtime-fixes.js')
+          s = p.read_text()
+
+          marker = """function isPermanentVisitError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code === 'VISIT_START_REJECTED' ||
+    message.includes('należy do innej ekipy') ||
+    message.includes('nie znaleziono wizyty') ||
+    message.includes('inna ekipa') ||
+    message.includes('inna zawartość');
+}
+"""
+
+          addition = marker + """
+function isVisitNotFoundError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code === 'VISIT_NOT_FOUND' || message.includes('nie znaleziono wizyty');
+}
+
+function clearPendingVisitInServiceWorker(visitId) {
+  if (!visitId || !navigator.serviceWorker?.controller) return;
+  navigator.serviceWorker.controller.postMessage({
+    type: 'CLEAR_PENDING_VISIT',
+    visitId
+  });
+}
+
+function recoverMissingVisit(state, visitId) {
+  const queued = queueForVisit(visitId);
+
+  if (draftHasData(state) || queued.length > 0) {
+    localStorage.removeItem(PENDING_FINISH_KEY);
+    showCritical(
+      'Ta wizyta nie istnieje już na serwerze. Niewysłane dane zostały zachowane w telefonie i nie zostaną automatycznie usunięte.'
+    );
+    return false;
+  }
+
+  localStorage.removeItem(PENDING_FINISH_KEY);
+  localStorage.removeItem(STATE_KEY);
+  clearPendingVisitInServiceWorker(visitId);
+
+  try {
+    sessionStorage.setItem(
+      'selfstorage_auth_message_v1',
+      'Stara wizyta nie istnieje już na serwerze. Stan telefonu został odblokowany. Zaloguj się ponownie.'
+    );
+  } catch {}
+
+  window.setTimeout(() => window.location.reload(), 120);
+  return true;
+}
+"""
+
+          if 'function isVisitNotFoundError(error)' not in s:
+              if marker not in s:
+                  raise SystemExit('Nie znaleziono bloku isPermanentVisitError')
+              s = s.replace(marker, addition, 1)
+
+          old = """    if (isPermanentVisitError(error)) {
+      showCritical(message);
+    } else {
+"""
+          new = """    if (isVisitNotFoundError(error)) {
+      recoverMissingVisit(state, visitId);
+    } else if (isPermanentVisitError(error)) {
+      showCritical(message);
+    } else {
+"""
+
+          if old not in s:
+              raise SystemExit('Nie znaleziono bloku obsługi błędu zakończenia wizyty')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          sw = Path('service-worker.js')
+          w = sw.read_text()
+          w = w.replace("selfstorage-shell-v69", "selfstorage-shell-v70")
+          sw.write_text(w)
+          PY
+
+      - name: Commit recovery fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/runtime-fixes.js service-worker.js
+          git commit -m "Recover orphaned local visits automatically"
+          git push
