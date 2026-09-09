@@ -472,7 +472,7 @@ function renderOperation() {
   $('openPartScannerBtn').disabled = locked;
   $('manualPartBtn').disabled = locked;
   $('partSearchInput').disabled = locked;
-  $('reviewSessionBtn').textContent = locked ? 'Wyślij ponownie' : 'Podsumowanie i wyślij';
+  $('reviewSessionBtn').textContent = locked ? 'Wyślij ponownie' : 'Wróć';
 
   renderPartList(list, type, locked);
   showScreen('screenOperation');

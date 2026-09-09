@@ -352,7 +352,7 @@ function operationHasParts() {
 function syncOperationButtonLabel() {
   const button = document.getElementById('reviewSessionBtn');
   if (!button) return;
-  const expected = operationHasParts() ? 'Zakończ' : 'Cofnij';
+  const expected = operationHasParts() ? 'Wróć' : 'Cofnij';
   if (button.textContent !== expected) button.textContent = expected;
 }
 
