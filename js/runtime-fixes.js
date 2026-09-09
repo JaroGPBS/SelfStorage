@@ -80,6 +80,14 @@ function openFinishModal() {
   modal?.setAttribute('aria-hidden', 'false');
 }
 
+function clearPendingVisitInServiceWorker(visitId) {
+  if (!visitId || !navigator.serviceWorker?.controller) return;
+  navigator.serviceWorker.controller.postMessage({
+    type: 'CLEAR_PENDING_VISIT',
+    visitId
+  });
+}
+
 function showDoneAndReset() {
   localStorage.removeItem(STATE_KEY);
   localStorage.removeItem(PENDING_FINISH_KEY);
@@ -139,6 +147,12 @@ async function apiRequest(action, payload, timeoutMs = 45000) {
   }
 }
 
+function isVisitNotFoundError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code === 'VISIT_NOT_FOUND' || message.includes('nie znaleziono wizyty');
+}
+
 function isPermanentVisitError(error) {
   const code = String(error?.code || '').toUpperCase();
   const message = String(error?.message || '').toLowerCase();
@@ -147,6 +161,32 @@ function isPermanentVisitError(error) {
     message.includes('nie znaleziono wizyty') ||
     message.includes('inna ekipa') ||
     message.includes('inna zawartość');
+}
+
+function recoverMissingVisit(state, visitId) {
+  const queued = queueForVisit(visitId);
+
+  if (draftHasData(state) || queued.length > 0) {
+    localStorage.removeItem(PENDING_FINISH_KEY);
+    showCritical(
+      'Ta wizyta nie istnieje już na serwerze. Niewysłane dane zostały zachowane w telefonie i nie zostaną automatycznie usunięte.'
+    );
+    return false;
+  }
+
+  localStorage.removeItem(PENDING_FINISH_KEY);
+  localStorage.removeItem(STATE_KEY);
+  clearPendingVisitInServiceWorker(visitId);
+
+  try {
+    sessionStorage.setItem(
+      'selfstorage_auth_message_v1',
+      'Stara wizyta nie istnieje już na serwerze. Stan telefonu został odblokowany. Zaloguj się ponownie.'
+    );
+  } catch {}
+
+  window.setTimeout(() => window.location.reload(), 120);
+  return true;
 }
 
 async function withRetries(action, payload, timeoutMs) {
@@ -231,7 +271,9 @@ async function processPendingFinish(manual = false) {
   } catch (error) {
     const message = String(error?.message || error || 'Nie udało się zakończyć wizyty.');
 
-    if (isPermanentVisitError(error)) {
+    if (isVisitNotFoundError(error)) {
+      recoverMissingVisit(state, visitId);
+    } else if (isPermanentVisitError(error)) {
       showCritical(message);
     } else {
       showCritical(`Nie udało się teraz zakończyć wizyty. Dane pozostają zapisane w telefonie i aplikacja spróbuje ponownie. ${message}`);
@@ -277,8 +319,6 @@ function interceptFinishClicks(event) {
       return;
     }
 
-    // Otwieramy potwierdzenie sami, także gdy w kolejce są operacje.
-    // Dzięki temu stara logika nie wymusza drugiego kliknięcia po synchronizacji.
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
