@@ -8,7 +8,7 @@ const INVALID_AUTH_MESSAGE = 'Konto nie aktywne\nSkontaktuj się z adminem.';
 function setDisplayedVersion() {
   for (const element of document.querySelectorAll('body > div')) {
     if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.24';
+      element.textContent = 'v0.25';
       element.style.fontSize = '13px';
       element.style.fontWeight = '600';
       element.style.opacity = '.85';
