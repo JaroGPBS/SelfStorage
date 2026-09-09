@@ -32,7 +32,7 @@ function ensureVehiclePartsButton() {
   title.textContent = 'Części na aucie';
 
   const description = document.createElement('small');
-  description.textContent = 'Funkcja zostanie dodana później';
+  description.textContent = 'Funkcja może zostać dodana później';
 
   button.append(kicker, title, description);
 
