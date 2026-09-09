@@ -25,3 +25,5 @@ jobs:
           git add index.html css/warehouse.css js/operation-flow.js js/runtime-fixes.js js/app.js js/auth.js service-worker.js
           git commit -m "Restore quick startup and simplify operation action"
           git push
+
+# rerun: refined user-facing wording
