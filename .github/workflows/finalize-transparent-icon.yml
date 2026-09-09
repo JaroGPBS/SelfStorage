@@ -18,8 +18,10 @@ jobs:
       - name: Build transparent icons and refresh references
         run: |
           set -e
-          tr -d '\n\r ' < .tmp/icon_exact_01.b64 > /tmp/icon.b64
-          base64 -d /tmp/icon.b64 > /tmp/icon-source.png
+          : > /tmp/icon-source.png
+          for f in .tmp/icon_exact_*.b64; do
+            tr -d '\n\r ' < "$f" | base64 -d >> /tmp/icon-source.png
+          done
 
           if command -v magick >/dev/null 2>&1; then
             IMG='magick'
