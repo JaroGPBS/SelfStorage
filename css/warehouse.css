@@ -498,7 +498,6 @@ body:has(#screenOperation.active) .app-signature {
   }
 }
 
-
 /* Startup splash v2 — stabilny viewport i spokojne tło. */
 #startupSplash {
   display: block !important;
@@ -532,8 +531,19 @@ body:has(#screenOperation.active) .app-signature {
   pointer-events: none;
 }
 
+/* Logo pozostaje widoczne przez cały splash. Rozmiar nie zależy od wysokości viewportu. */
 #startupSplash img {
-  display: none !important;
+  display: block !important;
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50svh;
+  width: 220px !important;
+  height: 220px !important;
+  max-width: calc(100vw - 72px) !important;
+  max-height: none !important;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
 }
 
 /* Podpis Jaro mniejszy o 20%. */
