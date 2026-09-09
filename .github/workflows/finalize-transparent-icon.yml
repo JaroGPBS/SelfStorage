@@ -15,13 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build transparent icons and refresh references
+      - name: Make existing icon transparent outside tile
         run: |
           set -e
-          : > /tmp/icon-source.png
-          for f in .tmp/icon_exact_*.b64; do
-            tr -d '\n\r ' < "$f" | base64 -d >> /tmp/icon-source.png
-          done
 
           if command -v magick >/dev/null 2>&1; then
             IMG='magick'
@@ -33,8 +29,17 @@ jobs:
             IMG='convert'
           fi
 
-          $IMG /tmp/icon-source.png -background none -resize 192x192 icons/app-icon-192.png
-          $IMG /tmp/icon-source.png -background none -resize 512x512 icons/app-icon-512.png
+          cp icons/app-icon-512.png /tmp/icon-source.png
+
+          $IMG /tmp/icon-source.png \
+            -alpha on \
+            -fuzz 12% \
+            -fill none \
+            -draw 'matte 0,0 floodfill' \
+            /tmp/icon-transparent.png
+
+          $IMG /tmp/icon-transparent.png -background none -resize 512x512 icons/app-icon-512.png
+          $IMG /tmp/icon-transparent.png -background none -resize 192x192 icons/app-icon-192.png
 
           python3 - <<'PY'
           from pathlib import Path
