@@ -14,6 +14,36 @@
   <link rel="stylesheet" href="./css/app.css">
   <link rel="stylesheet" href="./css/warehouse.css">
   <style>
+    #startupSplash {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+      background: #20242a;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity .3s ease, visibility 0s linear .3s;
+      pointer-events: all;
+    }
+
+    #startupSplash.startup-splash-hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #startupSplash img {
+      display: block;
+      width: min(58vw, 240px);
+      height: auto;
+      max-width: 240px;
+      max-height: 58vh;
+      object-fit: contain;
+    }
+
     .toast {
       top: 40%;
       bottom: auto;
@@ -120,6 +150,9 @@
   <script type="module" src="./js/admin-ui.js"></script>
 </head>
 <body>
+  <div id="startupSplash" aria-hidden="true">
+    <img src="./icons/app-icon-512.png?v=6" alt="">
+  </div>
   <div class="app-shell">
     <header class="app-header">
       <div class="brand-mark" aria-hidden="true" style="width:110px;height:64px;border:0;border-radius:0;background:none;box-shadow:none;display:flex;align-items:center;justify-content:center;flex:0 0 110px;">
@@ -423,6 +456,29 @@
           closeInstruction();
         }
       });
+    })();
+  </script>
+  <script>
+    (() => {
+      const startedAt = performance.now();
+      const MIN_SPLASH_MS = 2000;
+      const splash = document.getElementById('startupSplash');
+      if (!splash) return;
+
+      const hideSplash = () => {
+        const elapsed = performance.now() - startedAt;
+        const wait = Math.max(0, MIN_SPLASH_MS - elapsed);
+        window.setTimeout(() => {
+          splash.classList.add('startup-splash-hide');
+          window.setTimeout(() => splash.remove(), 350);
+        }, wait);
+      };
+
+      if (document.readyState === 'complete') {
+        hideSplash();
+      } else {
+        window.addEventListener('load', hideSplash, { once: true });
+      }
     })();
   </script>
 </body>
