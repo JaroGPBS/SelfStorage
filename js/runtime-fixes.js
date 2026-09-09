@@ -430,7 +430,22 @@ function triggerPendingFinishCheck() {
   if (readJson(PENDING_FINISH_KEY, null)) processPendingFinish(false);
 }
 
+
+
+async function lockPortraitOrientation() {
+  const orientation = screen.orientation;
+  if (!orientation?.lock) return;
+
+  try {
+    await orientation.lock('portrait-primary');
+  } catch {
+    // Chrome w zwykłej karcie może odmówić; zainstalowana PWA
+    // dodatkowo korzysta z orientation: portrait-primary w manifeście.
+  }
+}
+
 function initRuntimeFixes() {
+  lockPortraitOrientation();
   installQuietToasts();
   installOperationButtonLabel();
   installQuantityKeyboardFix();
@@ -440,7 +455,10 @@ function initRuntimeFixes() {
   window.addEventListener('focus', triggerPendingFinishCheck);
   window.addEventListener('pageshow', triggerPendingFinishCheck);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') triggerPendingFinishCheck();
+    if (document.visibilityState === 'visible') {
+      lockPortraitOrientation();
+      triggerPendingFinishCheck();
+    }
   });
 
   window.setInterval(triggerPendingFinishCheck, 15000);

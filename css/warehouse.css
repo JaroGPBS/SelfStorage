@@ -497,3 +497,46 @@ body:has(#screenOperation.active) .app-signature {
     font-size: 24px;
   }
 }
+
+
+/* Startup splash v2 — stabilny viewport i spokojne tło. */
+#startupSplash {
+  display: block !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(214,83,83,.16) 0, rgba(214,83,83,.07) 22%, transparent 48%),
+    radial-gradient(circle at 18% 12%, rgba(255,255,255,.055) 0, transparent 30%),
+    linear-gradient(180deg, #262a30 0%, #20242a 46%, #181b20 100%) !important;
+}
+
+#startupSplash::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50svh;
+  width: 320px;
+  height: 320px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(214,83,83,.18) 0%, rgba(214,83,83,.07) 38%, transparent 70%);
+  filter: blur(22px);
+  pointer-events: none;
+}
+
+#startupSplash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.025), transparent 32%, transparent 68%, rgba(214,83,83,.035));
+  pointer-events: none;
+}
+
+#startupSplash img {
+  display: none !important;
+}
+
+/* Podpis Jaro mniejszy o 20%. */
+.app-signature img {
+  width: 80px !important;
+}
