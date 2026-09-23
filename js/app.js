@@ -31,6 +31,130 @@ function persist() {
   saveState(state);
 }
 
+const ANDROID_BACK_ROOT = 'selfstorage-back-root';
+const ANDROID_BACK_GUARD = 'selfstorage-back-guard';
+let allowBrowserExit = false;
+let handlingSystemBack = false;
+
+function getActiveScreenId() {
+  return document.querySelector('.screen.active')?.id || 'screenLogin';
+}
+
+async function closeTopOverlayForSystemBack() {
+  if ($('loading')?.classList.contains('show')) {
+    return true;
+  }
+
+  if ($('scannerModal')?.classList.contains('show')) {
+    await closeScanner();
+    return true;
+  }
+
+  if ($('quantityModal')?.classList.contains('show')) {
+    closeQuantityModal();
+    return true;
+  }
+
+  if ($('reviewModal')?.classList.contains('show')) {
+    closeReview();
+    return true;
+  }
+
+  if ($('finishModal')?.classList.contains('show')) {
+    $('finishNoBtn')?.click();
+    return true;
+  }
+
+  if ($('instructionModal')?.classList.contains('show')) {
+    $('instructionCloseBtn')?.click();
+    return true;
+  }
+
+  const authModal = $('authMessageModal');
+  if (authModal?.classList.contains('show')) {
+    authModal.classList.remove('show');
+    authModal.setAttribute('aria-hidden', 'true');
+    window.setTimeout(() => authModal.remove(), 250);
+    return true;
+  }
+
+  return false;
+}
+
+async function handleSystemBack() {
+  if (await closeTopOverlayForSystemBack()) {
+    return false;
+  }
+
+  const activeScreen = getActiveScreenId();
+
+  if (activeScreen === 'screenOperation') {
+    backToVisit();
+    return false;
+  }
+
+  if (activeScreen === 'screenVisit') {
+    showToast('Wizyta jest nadal aktywna. Zakończ wizytę, aby wyjść z aplikacji.');
+    return false;
+  }
+
+  if (activeScreen === 'screenWarehouse') {
+    logout();
+    return false;
+  }
+
+  if (activeScreen === 'screenDone') {
+    showScreen('screenLogin');
+    return false;
+  }
+
+  return activeScreen === 'screenLogin';
+}
+
+function armSystemBackGuard() {
+  if (!window.history?.pushState) return;
+
+  const currentState = history.state && typeof history.state === 'object'
+    ? history.state
+    : {};
+
+  history.replaceState(
+    { ...currentState, selfStorageBack: ANDROID_BACK_ROOT },
+    document.title,
+    location.href
+  );
+
+  history.pushState(
+    { selfStorageBack: ANDROID_BACK_GUARD },
+    document.title,
+    location.href
+  );
+
+  window.addEventListener('popstate', async () => {
+    if (allowBrowserExit || handlingSystemBack) return;
+
+    handlingSystemBack = true;
+
+    try {
+      const shouldExit = await handleSystemBack();
+
+      if (shouldExit) {
+        allowBrowserExit = true;
+        history.back();
+        return;
+      }
+
+      history.pushState(
+        { selfStorageBack: ANDROID_BACK_GUARD },
+        document.title,
+        location.href
+      );
+    } finally {
+      handlingSystemBack = false;
+    }
+  });
+}
+
 function readStartDataCache() {
   try {
     const raw = localStorage.getItem(START_DATA_CACHE_KEY);
@@ -1025,6 +1149,8 @@ function init() {
   } else {
     showScreen('screenLogin');
   }
+
+  armSystemBackGuard();
 }
 
 document.addEventListener('DOMContentLoaded', init);
