@@ -1,0 +1,365 @@
+/* GPBS Storage — motyw magazynowy.
+   Warstwa wizualna: nie zmienia logiki aplikacji. */
+
+:root {
+  --brand-red: #ff2929;
+  --brand-red-deep: #be1717;
+  --brand-glow: rgba(255, 34, 34, .30);
+}
+
+html,
+body {
+  background: #0b0e11;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(7, 9, 11, .22), rgba(7, 9, 11, .40)),
+    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+}
+
+/* Ekrany robocze są celowo mocniej przyciemnione — najważniejsza jest czytelność. */
+body:has(#screenOperation.active)::before {
+  background:
+    linear-gradient(180deg, rgba(7, 9, 11, .76), rgba(7, 9, 11, .86)),
+    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+}
+
+body:has(#screenWarehouse.active)::before {
+  background:
+    linear-gradient(180deg, rgba(7, 9, 11, .35), rgba(7, 9, 11, .55)),
+    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+}
+
+body:has(#screenVisit.active)::before {
+  background:
+    linear-gradient(180deg, rgba(7, 9, 11, .34), rgba(7, 9, 11, .58)),
+    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+}
+
+body:has(#screenLogin.active)::before {
+  background:
+    linear-gradient(180deg, rgba(7, 9, 11, .20), rgba(7, 9, 11, .40)),
+    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+}
+
+.app-shell {
+  max-width: 560px;
+  padding-left: clamp(16px, 4vw, 22px);
+  padding-right: clamp(16px, 4vw, 22px);
+}
+
+.app-header {
+  height: clamp(82px, 10dvh, 98px);
+  gap: clamp(8px, 2vw, 14px);
+  border-bottom-color: rgba(255, 255, 255, .15);
+  background: linear-gradient(180deg, rgba(8, 10, 12, .18), rgba(8, 10, 12, 0));
+}
+
+.app-header .brand-mark {
+  width: clamp(96px, 27vw, 122px) !important;
+  flex: 0 0 clamp(96px, 27vw, 122px) !important;
+  height: 72px !important;
+}
+
+.app-header .brand-mark img {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 68px !important;
+  object-fit: contain !important;
+}
+
+.app-header .brand-copy {
+  min-width: 0;
+}
+
+.app-header .brand-copy strong {
+  font-size: clamp(20px, 5.5vw, 27px) !important;
+  letter-spacing: -.45px;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, .55);
+}
+
+.network-badge {
+  padding: 9px 12px;
+  font-size: clamp(11px, 3vw, 13px);
+  color: #cbd2db;
+  background: rgba(16, 20, 24, .72);
+  border-color: rgba(255, 255, 255, .18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .035),
+    0 8px 24px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(9px);
+}
+
+.network-dot {
+  box-shadow: 0 0 12px rgba(54, 166, 101, .68);
+}
+
+/* LOGOWANIE */
+#screenLogin > div {
+  margin: clamp(48px, 10dvh, 108px) 0 0 !important;
+}
+
+#screenLogin .eyebrow {
+  margin-bottom: 14px !important;
+  color: #91bff8;
+  font-size: clamp(15px, 4vw, 18px) !important;
+  letter-spacing: 2px !important;
+  text-shadow: 0 0 16px rgba(79, 142, 232, .22);
+}
+
+#screenLogin h1 {
+  max-width: 520px;
+  margin-bottom: 14px;
+  font-size: clamp(34px, 8.2vw, 46px);
+  line-height: 1.03;
+  letter-spacing: -1.15px;
+  text-shadow: 0 4px 22px rgba(0, 0, 0, .58);
+}
+
+#screenLogin p {
+  margin-bottom: 24px;
+  color: #b9c1cb;
+  font-size: clamp(18px, 4.8vw, 24px);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .55);
+}
+
+#screenLogin .pin-input {
+  height: clamp(74px, 10dvh, 92px);
+  border-radius: 18px;
+  color: #f5f7f9;
+  background: linear-gradient(180deg, rgba(26, 30, 35, .88), rgba(16, 19, 23, .92));
+  border: 1px solid rgba(199, 208, 218, .36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .04),
+    0 14px 34px rgba(0, 0, 0, .27);
+  backdrop-filter: blur(10px);
+}
+
+#screenLogin .pin-input:focus {
+  border-color: rgba(255, 53, 53, .92);
+  box-shadow:
+    0 0 0 3px rgba(255, 39, 39, .10),
+    0 0 24px rgba(255, 30, 30, .15),
+    inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+#screenLogin #loginBtn {
+  min-height: clamp(62px, 8dvh, 72px);
+  margin-top: 18px;
+  border: 1px solid rgba(255, 45, 45, .96);
+  border-radius: 18px;
+  color: #f7f7f7;
+  background:
+    linear-gradient(180deg, rgba(39, 43, 48, .97), rgba(18, 21, 25, .99));
+  box-shadow:
+    0 0 0 1px rgba(255, 0, 0, .13),
+    0 0 19px rgba(255, 28, 28, .20),
+    inset 0 1px 0 rgba(255, 255, 255, .045);
+  font-size: clamp(18px, 4.5vw, 22px);
+}
+
+#screenLogin #loginBtn:not(:disabled) {
+  border-color: #ff3131;
+  box-shadow:
+    0 0 0 1px rgba(255, 0, 0, .23),
+    0 0 28px rgba(255, 32, 32, .32),
+    inset 0 0 20px rgba(255, 24, 24, .05);
+}
+
+#screenLogin #loginBtn:active:not(:disabled) {
+  transform: scale(.995);
+  background: linear-gradient(180deg, #2b292c, #1b1719);
+}
+
+#screenLogin #loginBtn:disabled {
+  opacity: .62;
+  color: #d5d8dc;
+}
+
+#screenLogin .login-instruction-wrap {
+  margin-top: 16px;
+}
+
+#screenLogin .instruction-link-btn {
+  min-height: 42px;
+  padding: 9px 16px;
+  color: #e5e9ed;
+  background: rgba(27, 32, 38, .74);
+  border-color: rgba(255, 255, 255, .16);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .20);
+  backdrop-filter: blur(8px);
+}
+
+/* WYBÓR MAGAZYNU */
+#screenWarehouse .warehouse-login-copy,
+#screenWarehouse .warehouse-scan-title {
+  text-shadow: 0 3px 18px rgba(0, 0, 0, .55);
+}
+
+#screenWarehouse .warehouse-scan-btn {
+  background: linear-gradient(180deg, rgba(39, 43, 48, .97), rgba(18, 21, 25, .99));
+  border: 1px solid rgba(255, 45, 45, .82);
+  box-shadow:
+    0 0 18px rgba(255, 28, 28, .16),
+    inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+#screenWarehouse .warehouse-manual-toggle,
+#screenWarehouse #logoutBtn {
+  background: rgba(27, 32, 38, .72);
+  backdrop-filter: blur(8px);
+}
+
+/* AKTYWNA WIZYTA */
+#screenVisit .visit-head {
+  text-shadow: 0 3px 18px rgba(0, 0, 0, .52);
+}
+
+#screenVisit .visit-status-label {
+  color: #91bff8;
+  text-shadow: 0 0 15px rgba(79, 142, 232, .19);
+}
+
+#screenVisit .instruction-link-btn {
+  background: rgba(27, 32, 38, .74);
+  border-color: rgba(255, 255, 255, .16);
+  backdrop-filter: blur(8px);
+}
+
+#screenVisit .action-grid {
+  gap: 12px;
+}
+
+#screenVisit .action-card {
+  height: 94px;
+  min-height: 94px;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 255, 255, .13);
+  box-shadow:
+    0 15px 34px rgba(0, 0, 0, .29),
+    inset 0 1px 0 rgba(255, 255, 255, .055);
+  backdrop-filter: blur(5px);
+}
+
+#screenVisit .action-card strong {
+  font-size: 25px;
+  line-height: 1.04;
+}
+
+#screenVisit .action-card small {
+  margin-top: 4px;
+  line-height: 1.12;
+}
+
+#screenVisit .action-return {
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 255, 255, .075) 0 22%, transparent 23%),
+    linear-gradient(145deg, rgba(39, 143, 84, .96), rgba(18, 91, 53, .97));
+}
+
+#screenVisit .action-pick {
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 255, 255, .07) 0 22%, transparent 23%),
+    linear-gradient(145deg, rgba(168, 99, 27, .97), rgba(106, 58, 14, .98));
+}
+
+#screenVisit .action-settings {
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 255, 255, .045) 0 22%, transparent 23%),
+    linear-gradient(145deg, rgba(57, 64, 74, .94), rgba(36, 42, 50, .97));
+}
+
+#screenVisit #finishVisitBtn {
+  min-height: 62px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #e45b5b, #c83e3e);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, .25),
+    0 0 23px rgba(221, 75, 75, .15);
+}
+
+#screenVisit .draft-notice {
+  background: rgba(34, 40, 47, .90);
+  backdrop-filter: blur(10px);
+}
+
+/* Okna i komunikaty — jeden spójny grafitowy styl. */
+.modal-card,
+.loading-card {
+  background: linear-gradient(180deg, rgba(49, 56, 66, .97), rgba(34, 40, 48, .99));
+  border: 1px solid rgba(255, 255, 255, .11);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .42);
+  backdrop-filter: blur(12px);
+}
+
+.app-signature {
+  opacity: .60;
+}
+
+@media (max-width: 380px) {
+  .app-header .brand-mark {
+    width: 92px !important;
+    flex-basis: 92px !important;
+  }
+
+  .app-header .brand-copy strong {
+    font-size: 19px !important;
+  }
+
+  .network-badge {
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+}
+
+@media (max-height: 700px) {
+  #screenLogin > div {
+    margin-top: 30px !important;
+  }
+
+  #screenLogin h1 {
+    font-size: 31px;
+  }
+
+  #screenLogin p {
+    margin-bottom: 14px;
+  }
+
+  #screenLogin .pin-input {
+    height: 66px;
+  }
+
+  #screenLogin #loginBtn {
+    min-height: 56px;
+  }
+
+  #screenLogin .login-instruction-wrap {
+    margin-top: 9px;
+  }
+
+  #screenVisit .action-card {
+    height: 78px;
+    min-height: 78px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  #screenVisit .action-card strong {
+    font-size: 22px;
+  }
+
+  #screenVisit .action-card small {
+    font-size: 11px;
+  }
+
+  #screenVisit #finishVisitBtn {
+    min-height: 54px;
+  }
+}
