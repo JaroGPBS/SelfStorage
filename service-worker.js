@@ -14,7 +14,8 @@ const APP_SHELL = [
   './',
   './index.html',
   './css/app.css',
-  './css/warehouse.css',\n  './css/theme-gpbs.css?v=1',
+  './css/warehouse.css',
+  './css/theme-gpbs.css?v=1',
   './js/app.js',
   './js/api.js',
   './js/storage.js',
@@ -29,7 +30,8 @@ const APP_SHELL = [
   './icons/app-icon-192.png?v=7',
   './icons/app-icon-512.png?v=7',
   './icons/gpbs-logo.svg',
-  './icons/jaro-signature.svg',\n  './images/warehouse-background.jpg?v=1'
+  './icons/jaro-signature.svg',
+  './images/warehouse-background.jpg?v=1'
 ];
 
 function openApiCacheDb() {
