@@ -12,43 +12,51 @@ body {
   background: #0b0e11;
 }
 
+body {
+  position: relative;
+  isolation: isolate;
+}
+
+
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   background:
     linear-gradient(180deg, rgba(7, 9, 11, .22), rgba(7, 9, 11, .40)),
-    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+    url("../images/warehouse-background.jpg?v=2") center center / cover no-repeat;
 }
 
 /* Ekrany robocze są celowo mocniej przyciemnione — najważniejsza jest czytelność. */
 body:has(#screenOperation.active)::before {
   background:
     linear-gradient(180deg, rgba(7, 9, 11, .76), rgba(7, 9, 11, .86)),
-    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+    url("../images/warehouse-background.jpg?v=2") center center / cover no-repeat;
 }
 
 body:has(#screenWarehouse.active)::before {
   background:
     linear-gradient(180deg, rgba(7, 9, 11, .35), rgba(7, 9, 11, .55)),
-    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+    url("../images/warehouse-background.jpg?v=2") center center / cover no-repeat;
 }
 
 body:has(#screenVisit.active)::before {
   background:
     linear-gradient(180deg, rgba(7, 9, 11, .34), rgba(7, 9, 11, .58)),
-    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+    url("../images/warehouse-background.jpg?v=2") center center / cover no-repeat;
 }
 
 body:has(#screenLogin.active)::before {
   background:
     linear-gradient(180deg, rgba(7, 9, 11, .20), rgba(7, 9, 11, .40)),
-    url("../images/warehouse-background.jpg?v=1") center center / cover no-repeat;
+    url("../images/warehouse-background.jpg?v=2") center center / cover no-repeat;
 }
 
 .app-shell {
+  position: relative;
+  z-index: 1;
   max-width: 560px;
   padding-left: clamp(16px, 4vw, 22px);
   padding-right: clamp(16px, 4vw, 22px);
