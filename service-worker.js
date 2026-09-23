@@ -13,8 +13,8 @@ const authChecks = new Map();
 const APP_SHELL = [
   './',
   './index.html',
-  './css/app.css',
-  './css/warehouse.css',
+  './css/app.css?v=2',
+  './css/warehouse.css?v=2',
   './css/theme-gpbs.css?v=1',
   './js/app.js',
   './js/api.js',
