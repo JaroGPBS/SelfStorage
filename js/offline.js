@@ -49,6 +49,10 @@ function loadState() {
   return readJson(STATE_KEY, null);
 }
 
+function isDemoState(state = loadState()) {
+  return Boolean(state?.demo || state?.team?.id === 'DEMO');
+}
+
 function saveState(state) {
   return writeJson(STATE_KEY, state);
 }
@@ -318,6 +322,8 @@ function queueForCurrentVisit() {
 }
 
 function buildPayloadFromState(state) {
+  if (isDemoState(state)) return null;
+
   const draft = state?.operationDraft;
   const team = state?.team;
   const visit = state?.visit;
@@ -352,6 +358,12 @@ function updateNetworkText() {
   const text = $('networkText');
   const badge = $('networkBadge');
   if (!text || !badge) return;
+
+  if (isDemoState()) {
+    badge.classList.remove('offline');
+    text.textContent = 'DEMO';
+    return;
+  }
 
   const count = loadQueue().length;
   badge.classList.toggle('offline', !navigator.onLine);
@@ -474,6 +486,7 @@ function scheduleRetry() {
 }
 
 function queueCurrentDraft(options = {}) {
+  if (isDemoState()) return false;
   if (offlineSendBusy) return false;
   offlineSendBusy = true;
 
@@ -635,6 +648,8 @@ async function finishPendingVisit(manual = false) {
 
 async function requestFinishVisit() {
   const state = loadState();
+  if (isDemoState(state)) return;
+
   const visitId = String(state?.visit?.idWizyty || '').trim();
   const teamId = String(state?.team?.id || '').trim();
 
@@ -820,6 +835,12 @@ async function flushQueue(manual = false) {
 
 function interceptCriticalClicks(event) {
   const sendButton = event.target.closest?.('#reviewSendBtn');
+  const finishConfirmButton = event.target.closest?.('#finishYesBtn');
+  const finishButton = event.target.closest?.('#finishVisitBtn');
+
+  if (isDemoState() && (sendButton || finishConfirmButton || finishButton)) {
+    return;
+  }
 
   if (sendButton) {
     event.preventDefault();
@@ -829,7 +850,6 @@ function interceptCriticalClicks(event) {
     return;
   }
 
-  const finishConfirmButton = event.target.closest?.('#finishYesBtn');
   if (finishConfirmButton) {
     event.preventDefault();
     event.stopPropagation();
@@ -838,7 +858,6 @@ function interceptCriticalClicks(event) {
     return;
   }
 
-  const finishButton = event.target.closest?.('#finishVisitBtn');
   if (!finishButton) return;
 
   const state = loadState();
