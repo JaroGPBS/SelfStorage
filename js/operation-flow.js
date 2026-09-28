@@ -412,6 +412,12 @@ function installOperationStyles() {
       overflow: hidden;
     }
 
+    /* W trybie DEMO górny baner zabierał wysokość ekranu operacji
+       i spychał dolne przyciski poza widok. W nagłówku nadal widać "DEMO". */
+    body:has(#screenOperation.active) #demoBanner {
+      display: none !important;
+    }
+
     #screenOperation.active {
       height: 100%;
       min-height: 0;
