@@ -3,8 +3,20 @@ import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
+const DEMO_PIN = '0000';
+const DEMO_PARTS = Object.freeze([
+  { kod: 'DEMO-001', nazwa: 'CEOWNIK DACHU DŁUGI (HOKEJKA DŁUGA)' },
+  { kod: 'DEMO-002', nazwa: 'DASZEK LED' },
+  { kod: 'DEMO-003', nazwa: 'KOTWA BETON' },
+  { kod: 'DEMO-004', nazwa: 'KOTWA BRUK' },
+  { kod: 'DEMO-005', nazwa: 'PESZEL' },
+  { kod: 'DEMO-006', nazwa: 'DZIELENIE OUTDOOR ODWRÓCONY L SHAPE' },
+  { kod: 'DEMO-007', nazwa: 'PUSZKA HARTING FM' },
+  { kod: 'DEMO-008', nazwa: 'SŁUPEK' }
+]);
 
 const state = {
+  demo: false,
   team: null,
   startData: null,
   visit: null,
@@ -42,6 +54,11 @@ function getActiveScreenId() {
 
 async function closeTopOverlayForSystemBack() {
   if ($('loading')?.classList.contains('show')) {
+    return true;
+  }
+
+  if ($('demoPartModal')?.classList.contains('show')) {
+    closeDemoPartPicker();
     return true;
   }
 
@@ -208,6 +225,7 @@ function restore() {
   const saved = loadState();
   if (!saved) return;
 
+  state.demo = Boolean(saved.demo);
   state.team = saved.team || null;
   state.startData = saved.startData || null;
   state.visit = saved.visit || null;
@@ -216,12 +234,34 @@ function restore() {
 }
 
 function resetState() {
+  state.demo = false;
   state.team = null;
   state.startData = null;
   state.visit = null;
   state.pendingStart = null;
   state.operationDraft = null;
   clearState();
+  updateDemoUi();
+}
+
+function isDemoMode() {
+  return Boolean(state.demo || state.team?.id === 'DEMO');
+}
+
+function updateDemoUi() {
+  const active = isDemoMode();
+  $('demoBanner')?.classList.toggle('hidden', !active);
+  document.body.classList.toggle('demo-mode', active);
+
+  const partButton = $('openPartScannerBtn');
+  if (partButton) {
+    partButton.textContent = active ? 'Wybierz część demo' : 'Skanuj kod części';
+  }
+
+  if (active) {
+    $('networkBadge')?.classList.remove('offline');
+    if ($('networkText')) $('networkText').textContent = 'DEMO';
+  }
 }
 
 function setLoading(show, text = 'Proszę czekać…') {
@@ -250,6 +290,12 @@ function messageFromError(error) {
 }
 
 function updateNetworkUi() {
+  if (isDemoMode()) {
+    $('networkBadge').classList.remove('offline');
+    $('networkText').textContent = 'DEMO';
+    return;
+  }
+
   const online = navigator.onLine;
   $('networkBadge').classList.toggle('offline', !online);
   $('networkText').textContent = online ? 'Online' : 'Offline';
@@ -322,12 +368,14 @@ function cleanEmptyDraft() {
 }
 
 function renderWarehouse() {
+  updateDemoUi();
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
   showScreen('screenWarehouse');
 }
 
 function renderVisit() {
+  updateDemoUi();
   const warehouseName = state.visit?.magazyn?.nazwa || 'Magazyn';
 
   $('visitWarehouse').textContent = warehouseName;
@@ -389,11 +437,84 @@ async function ensurePartData() {
   }
 }
 
+function startDemoSession() {
+  state.demo = true;
+  state.team = {
+    id: 'DEMO',
+    nazwa: 'DEMO',
+    rola: 'EKIPA'
+  };
+  state.startData = {
+    czesci: DEMO_PARTS.map(part => ({ ...part }))
+  };
+  state.visit = {
+    idWizyty: `DEMO-${Date.now()}`,
+    start: new Date().toISOString(),
+    status: 'AKTYWNA',
+    magazyn: {
+      id: 'DEMO',
+      nazwa: 'MAGAZYN DEMO'
+    }
+  };
+  state.pendingStart = null;
+  state.operationDraft = null;
+  persist();
+
+  $('pinInput').value = '';
+  $('loginBtn').disabled = true;
+  updateDemoUi();
+  renderVisit();
+}
+
+function openDemoPartPicker() {
+  if (!isDemoMode()) return;
+
+  const modal = $('demoPartModal');
+  const list = $('demoPartList');
+  if (!modal || !list) return;
+
+  list.replaceChildren();
+
+  for (const part of getParts()) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'demo-part-option';
+
+    const name = document.createElement('strong');
+    name.textContent = part.nazwa;
+
+    const code = document.createElement('span');
+    code.textContent = part.kod;
+
+    button.append(name, code);
+    button.addEventListener('click', () => {
+      closeDemoPartPicker();
+      openQuantityModal(part, currentOperationType(), 'add');
+    });
+
+    list.appendChild(button);
+  }
+
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDemoPartPicker() {
+  const modal = $('demoPartModal');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden', 'true');
+}
+
 async function login() {
   const pin = $('pinInput').value.replace(/\D/g, '').slice(0, 4);
 
   if (!/^\d{4}$/.test(pin)) {
     showToast('PIN musi mieć 4 cyfry.', true);
+    return;
+  }
+
+  if (pin === DEMO_PIN) {
+    startDemoSession();
     return;
   }
 
@@ -441,6 +562,23 @@ async function startVisit(code) {
     return;
   }
 
+  if (isDemoMode()) {
+    state.visit = {
+      idWizyty: `DEMO-${Date.now()}`,
+      start: new Date().toISOString(),
+      status: 'AKTYWNA',
+      magazyn: {
+        id: 'DEMO',
+        nazwa: 'MAGAZYN DEMO'
+      }
+    };
+    state.pendingStart = null;
+    state.operationDraft = null;
+    persist();
+    renderVisit();
+    return;
+  }
+
   if (!navigator.onLine) {
     showToast('Rozpoczęcie nowej wizyty wymaga teraz internetu.', true);
     return;
@@ -483,6 +621,15 @@ async function startVisit(code) {
 }
 
 async function openCodeScanner(mode) {
+  if (isDemoMode()) {
+    if (mode === 'part') {
+      openDemoPartPicker();
+    } else {
+      await startVisit('DEMO');
+    }
+    return;
+  }
+
   scannerMode = mode;
 
   const isPart = mode === 'part';
@@ -561,6 +708,7 @@ async function beginOperation(type) {
 }
 
 function renderOperation() {
+  updateDemoUi();
   if (!state.operationDraft || !state.visit) {
     renderVisit();
     return;
@@ -948,6 +1096,14 @@ function handleDraftQueued() {
 async function sendSession() {
   if (!state.operationDraft || !state.team || !state.visit) return;
 
+  if (isDemoMode()) {
+    state.operationDraft = null;
+    persist();
+    closeReview();
+    renderVisit();
+    return;
+  }
+
   if (!navigator.onLine) {
     showToast('Wysyłanie offline dodamy w kolejnym etapie. Teraz potrzebny jest internet.', true);
     return;
@@ -993,6 +1149,23 @@ async function sendSession() {
 
 async function finishVisit() {
   if (!state.team || !state.visit) return;
+
+  if (isDemoMode()) {
+    $('finishModal').classList.remove('show');
+    $('finishModal').setAttribute('aria-hidden', 'true');
+    setLoading(true, 'Kończenie wizyty demo…');
+
+    window.setTimeout(() => {
+      resetState();
+      setLoading(false);
+      showScreen('screenDone');
+
+      window.setTimeout(() => {
+        showScreen('screenLogin');
+      }, 1800);
+    }, 450);
+    return;
+  }
 
   cleanEmptyDraft();
 
@@ -1054,6 +1227,10 @@ function bindEvents() {
   $('logoutBtn').addEventListener('click', logout);
   $('openWarehouseScannerBtn').addEventListener('click', () => openCodeScanner('warehouse'));
   $('closeScannerBtn').addEventListener('click', closeScanner);
+  $('demoPartCloseBtn')?.addEventListener('click', closeDemoPartPicker);
+  $('demoPartModal')?.addEventListener('click', event => {
+    if (event.target === $('demoPartModal')) closeDemoPartPicker();
+  });
 
   $('manualWarehouseBtn').addEventListener('click', () => startVisit($('warehouseCodeInput').value));
   $('warehouseCodeInput').addEventListener('keydown', event => {
@@ -1090,6 +1267,12 @@ function bindEvents() {
   $('reviewSendBtn').addEventListener('click', sendSession);
 
   $('finishVisitBtn').addEventListener('click', () => {
+    if (isDemoMode()) {
+      $('finishModal').classList.add('show');
+      $('finishModal').setAttribute('aria-hidden', 'false');
+      return;
+    }
+
     cleanEmptyDraft();
     if (hasDraftData()) {
       showToast('Masz niedokończoną operację. Najpierw ją wyślij.', true);
@@ -1139,6 +1322,7 @@ async function registerServiceWorker() {
 function init() {
   restore();
   bindEvents();
+  updateDemoUi();
   updateNetworkUi();
   registerServiceWorker();
 
