@@ -32,6 +32,10 @@ function currentState() {
   return readJson(STATE_KEY, null);
 }
 
+function isDemoState(state = currentState()) {
+  return Boolean(state?.demo || state?.team?.id === 'DEMO');
+}
+
 function currentQueue() {
   const queue = readJson(QUEUE_KEY, []);
   return Array.isArray(queue) ? queue : [];
@@ -343,6 +347,7 @@ function queueDraftForFinish(state) {
 
 function requestFinish() {
   const state = currentState();
+  if (isDemoState(state)) return;
   if (!state?.team || !state?.visit) return;
 
   if (draftHasData(state) && !queueDraftForFinish(state)) {
@@ -362,6 +367,7 @@ function requestFinish() {
 function interceptFinishClicks(event) {
   const target = event.target?.closest?.('#finishVisitBtn, #finishYesBtn');
   if (!target) return;
+  if (isDemoState()) return;
 
   if (target.id === 'finishVisitBtn') {
     const state = currentState();
