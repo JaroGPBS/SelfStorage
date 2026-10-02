@@ -450,10 +450,14 @@ function renderVehicleStock(data) {
     qty.className = 'vehicle-part-qty';
 
     const current = document.createElement('strong');
-    current.textContent = formatVehicleQty(part.stanAktualny);
+    current.textContent = part.stanAktualny === null || part.stanAktualny === undefined
+      ? 'Stan: —'
+      : `Stan: ${formatVehicleQty(part.stanAktualny)} szt.`;
 
     const target = document.createElement('span');
-    target.textContent = `/ ${formatVehicleQty(part.stanDocelowy)}`;
+    target.textContent = part.stanDocelowy === null || part.stanDocelowy === undefined
+      ? 'Wymagane: —'
+      : `Wymagane: ${formatVehicleQty(part.stanDocelowy)} szt.`;
 
     qty.append(current, target);
     row.append(main, qty);
