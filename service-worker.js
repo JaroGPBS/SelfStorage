@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v84';
+const CACHE_NAME = 'selfstorage-shell-v85';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LOCAL_DATA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const API_CACHE_DB = 'selfstorage-api-cache-v1';
@@ -14,9 +14,9 @@ const APP_SHELL = [
   './',
   './index.html',
   './css/app.css?v=2',
-  './css/warehouse.css?v=5',
+  './css/warehouse.css?v=6',
   './css/theme-gpbs.css?v=2',
-  './js/app.js?v=4',
+  './js/app.js?v=5',
   './js/api.js',
   './js/storage.js',
   './js/scanner.js',
