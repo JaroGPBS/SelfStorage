@@ -524,12 +524,30 @@ body:has(#screenOperation.active) .app-signature {
 }
 
 #screenVisit .vehicle-visit-btn {
-  min-height: 44px;
+  width: 100%;
+  height: 80px;
+  min-height: 80px;
   margin: 0 0 10px;
-  background: rgba(48, 56, 66, .88);
-  border: 1px solid rgba(143, 185, 242, .42);
-  color: #eef5ff;
-  font-size: 14px;
+  padding: 8px 18px;
+}
+
+#screenVisit .action-vehicle {
+  background: linear-gradient(145deg, #315f8f, #234461);
+  border-color: rgba(143,185,242,.42);
+}
+
+#screenVisit .action-vehicle .action-kicker {
+  margin-bottom: 4px;
+}
+
+#screenVisit .action-vehicle strong {
+  margin-bottom: 0;
+}
+
+#screenVisit .action-vehicle small {
+  display: block;
+  margin-top: 0;
+  line-height: 1.05;
 }
 
 body:has(#screenVehicle.active) {
@@ -657,7 +675,8 @@ body:has(#screenVehicle.active) .app-signature {
 
 @media (max-height: 700px) {
   #screenVisit .vehicle-visit-btn {
-    min-height: 40px;
+    height: 72px;
+    min-height: 72px;
     margin-bottom: 8px;
   }
 }
