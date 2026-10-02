@@ -512,3 +512,150 @@ body:has(#screenOperation.active) .app-signature {
 .app-signature img {
   width: 80px !important;
 }
+
+
+/* Stan auta — szybki podgląd listy części przypisanych do ekipy. */
+.vehicle-entry-btn {
+  min-height: 56px;
+  margin-top: 12px;
+  background: rgba(48, 56, 66, .88);
+  border: 1px solid rgba(143, 185, 242, .48);
+  color: #eef5ff;
+}
+
+#screenVisit .vehicle-visit-btn {
+  min-height: 44px;
+  margin: 0 0 10px;
+  background: rgba(48, 56, 66, .88);
+  border: 1px solid rgba(143, 185, 242, .42);
+  color: #eef5ff;
+  font-size: 14px;
+}
+
+body:has(#screenVehicle.active) {
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body:has(#screenVehicle.active) .app-main {
+  padding-top: 10px;
+  padding-bottom: 24px;
+}
+
+body:has(#screenVehicle.active) .app-signature {
+  display: none !important;
+}
+
+#screenVehicle {
+  min-height: 0;
+}
+
+#screenVehicle .vehicle-head {
+  align-items: center;
+  margin: 4px 2px 12px;
+}
+
+#screenVehicle .vehicle-head h2 {
+  margin-bottom: 4px;
+  font-size: 28px;
+}
+
+#screenVehicle .vehicle-head p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.vehicle-mode-note {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(143, 185, 242, .20);
+  border-radius: 12px;
+  background: rgba(31, 37, 44, .78);
+  color: #b9c5d3;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.vehicle-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 2px 9px;
+  color: #e9edf2;
+}
+
+.vehicle-list-head span {
+  min-width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.vehicle-parts-list {
+  display: grid;
+  gap: 8px;
+}
+
+.vehicle-part-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 13px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 13px;
+  background: rgba(35, 41, 49, .90);
+  box-shadow: 0 8px 22px rgba(0,0,0,.16);
+}
+
+.vehicle-part-main {
+  min-width: 0;
+}
+
+.vehicle-part-main strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.vehicle-part-main span {
+  display: block;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.vehicle-part-qty {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 68px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.vehicle-part-qty strong {
+  font-size: 19px;
+}
+
+.vehicle-part-qty span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-height: 700px) {
+  #screenVisit .vehicle-visit-btn {
+    min-height: 40px;
+    margin-bottom: 8px;
+  }
+}
