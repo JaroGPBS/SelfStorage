@@ -419,7 +419,16 @@ function formatVehicleQty(value) {
 }
 
 function renderVehicleStock(data) {
-  const parts = Array.isArray(data?.czesci) ? data.czesci : [];
+  const parts = (Array.isArray(data?.czesci) ? data.czesci : [])
+    .slice()
+    .sort((a, b) =>
+      String(a?.nazwa || a?.kod || '')
+        .localeCompare(
+          String(b?.nazwa || b?.kod || ''),
+          'pl',
+          { sensitivity: 'base' }
+        )
+    );
   const list = $('vehiclePartsList');
   const empty = $('vehiclePartsEmpty');
 
