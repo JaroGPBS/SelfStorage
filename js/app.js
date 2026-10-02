@@ -110,6 +110,15 @@ async function handleSystemBack() {
     return false;
   }
 
+  if (activeScreen === 'screenVehicle') {
+    if (state.visit?.idWizyty) {
+      renderVisit();
+    } else {
+      renderWarehouse();
+    }
+    return false;
+  }
+
   if (activeScreen === 'screenVisit') {
     showToast('Wizyta jest nadal aktywna. Zakończ wizytę, aby wyjść z aplikacji.');
     return false;
@@ -402,6 +411,96 @@ function renderVisit() {
   }
 
   showScreen('screenVisit');
+}
+
+function formatVehicleQty(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? String(n) : '—';
+}
+
+function renderVehicleStock(data) {
+  const parts = Array.isArray(data?.czesci) ? data.czesci : [];
+  const list = $('vehiclePartsList');
+  const empty = $('vehiclePartsEmpty');
+
+  $('vehicleTeamName').textContent = data?.ekipa?.nazwa || state.team?.nazwa || '—';
+  $('vehiclePartCount').textContent = String(parts.length);
+  $('vehicleModeNote').textContent = state.visit?.idWizyty
+    ? 'Podgląd stanu auta podczas aktywnej wizyty.'
+    : 'Podgląd części przypisanych do auta.';
+
+  list.replaceChildren();
+
+  for (const part of parts) {
+    const row = document.createElement('div');
+    row.className = 'vehicle-part-row';
+
+    const main = document.createElement('div');
+    main.className = 'vehicle-part-main';
+
+    const name = document.createElement('strong');
+    name.textContent = part.nazwa || part.kod || 'Część';
+
+    const code = document.createElement('span');
+    code.textContent = part.kod || '—';
+
+    main.append(name, code);
+
+    const qty = document.createElement('div');
+    qty.className = 'vehicle-part-qty';
+
+    const current = document.createElement('strong');
+    current.textContent = formatVehicleQty(part.stanAktualny);
+
+    const target = document.createElement('span');
+    target.textContent = `/ ${formatVehicleQty(part.stanDocelowy)}`;
+
+    qty.append(current, target);
+    row.append(main, qty);
+    list.appendChild(row);
+  }
+
+  empty.classList.toggle('hidden', parts.length > 0);
+  showScreen('screenVehicle');
+}
+
+async function openVehicleStock() {
+  if (!state.team?.id) return;
+
+  if (isDemoMode()) {
+    showToast('Stan auta nie jest dostępny w trybie DEMO.');
+    return;
+  }
+
+  if (!navigator.onLine) {
+    showToast('Podgląd stanu auta wymaga połączenia z internetem.', true);
+    return;
+  }
+
+  setLoading(true, 'Pobieranie stanu auta…');
+
+  try {
+    const data = await api.getVehicleStock(state.team.id);
+    renderVehicleStock(data);
+  } catch (error) {
+    const message = messageFromError(error);
+    showToast(
+      message.includes('Nieznana akcja')
+        ? 'Stan auta wymaga aktualizacji serwera aplikacji.'
+        : message,
+      true
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+function closeVehicleStock() {
+  if (state.visit?.idWizyty) {
+    renderVisit();
+  } else {
+    renderWarehouse();
+  }
 }
 
 function buildPartSuggestions() {
@@ -1236,6 +1335,10 @@ function bindEvents() {
   $('warehouseCodeInput').addEventListener('keydown', event => {
     if (event.key === 'Enter') startVisit(event.target.value);
   });
+
+  $('vehicleStatePreBtn')?.addEventListener('click', openVehicleStock);
+  $('vehiclePartsBtn')?.addEventListener('click', openVehicleStock);
+  $('vehicleBackBtn')?.addEventListener('click', closeVehicleStock);
 
   $('pobranieBtn').addEventListener('click', () => beginOperation('POBRANIE'));
   $('zwrotBtn').addEventListener('click', () => beginOperation('ZWROT'));
