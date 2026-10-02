@@ -155,28 +155,22 @@ body:has(#screenWarehouse.active) .app-main {
 
 /* Aktywna wizyta — zwarty nagłówek bez powielonych kafelków ekipy i magazynu. */
 body:has(#screenVisit.active) {
-  min-height: 100dvh;
-  height: auto;
-  max-height: none;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body:has(#screenVisit.active) .app-shell {
-  height: auto;
+  height: 100dvh;
   min-height: 100dvh;
-  overflow: visible;
+  overflow: hidden;
 }
 
 body:has(#screenVisit.active) .app-main {
-  min-height: 0;
   padding-top: 6px;
-  padding-bottom: 8px;
-}
-
-#screenVisit {
-  min-height: calc(100dvh - 158px);
+  position: relative;
+  z-index: 2;
 }
 
 #screenVisit .visit-head {
@@ -479,17 +473,23 @@ body:has(#screenWarehouse.active) .app-signature {
   transform: translateX(-50%);
 }
 
-/* Na aktywnej wizycie podpis jest elementem układu pod przyciskami.
-   Dzięki temu przy komunikacie o niedokończonej operacji nigdy nie nachodzi
-   na "Zakończ wizytę" ani inne przyciski. */
+/* Na aktywnej wizycie podpis działa jak element tła:
+   jest stale przy dole ekranu, nie przewija strony i leży pod przyciskami. */
 body:has(#screenVisit.active) .app-signature {
-  position: static;
-  left: auto;
-  bottom: auto;
-  z-index: auto;
-  min-height: 42px;
-  padding: 4px 0 max(6px, env(safe-area-inset-bottom));
-  transform: none;
+  position: fixed;
+  left: 50%;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 0;
+  min-height: 0;
+  padding: 0;
+  transform: translateX(-50%);
+  opacity: .42;
+}
+
+body:has(#screenVisit.active) .app-header,
+body:has(#screenVisit.active) #screenVisit {
+  position: relative;
+  z-index: 2;
 }
 
 /* Na ekranie operacji podpis nie zajmuje miejsca w strefie sterowania. */
