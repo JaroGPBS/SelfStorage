@@ -13,7 +13,7 @@
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=2">
-  <link rel="stylesheet" href="./css/warehouse.css?v=4">
+  <link rel="stylesheet" href="./css/warehouse.css?v=5">
   <link rel="stylesheet" href="./css/theme-gpbs.css?v=2">
   <style>
     .toast {
@@ -162,12 +162,12 @@
       font-size: 11px;
     }
   </style>
-  <script type="module" src="./js/app.js?v=3"></script>
+  <script type="module" src="./js/app.js?v=4"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js"></script>
-  <script type="module" src="./js/admin-ui.js"></script>
+  <script type="module" src="./js/admin-ui.js?v=2"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -212,6 +212,7 @@
         <div class="warehouse-scan-area">
           <h2 class="warehouse-scan-title">Zeskanuj kod magazynu aby rozpocząć wizytę</h2>
           <button id="openWarehouseScannerBtn" class="btn btn-primary warehouse-scan-btn">Otwórz skaner</button>
+          <button id="vehicleStatePreBtn" class="btn btn-secondary vehicle-entry-btn hidden" type="button">Stan auta</button>
 
           <details class="warehouse-manual-details">
             <summary class="warehouse-manual-toggle">Wpisz kod magazynu</summary>
@@ -223,6 +224,30 @@
         </div>
 
         <button id="logoutBtn" class="btn btn-ghost danger-text">Wyloguj</button>
+      </section>
+
+      <section id="screenVehicle" class="screen vehicle-screen">
+        <div class="section-head vehicle-head">
+          <div>
+            <div class="eyebrow">AUTO</div>
+            <h2>Stan auta</h2>
+            <p id="vehicleTeamName">—</p>
+          </div>
+          <button id="vehicleBackBtn" class="instruction-link-btn" type="button">← Wróć</button>
+        </div>
+
+        <div id="vehicleModeNote" class="vehicle-mode-note">Podgląd części przypisanych do auta.</div>
+
+        <div class="vehicle-list-head">
+          <strong>Części</strong>
+          <span id="vehiclePartCount">0</span>
+        </div>
+
+        <div id="vehiclePartsList" class="vehicle-parts-list"></div>
+        <div id="vehiclePartsEmpty" class="empty-state hidden">
+          <strong>Brak części do wyświetlenia</strong>
+          <span>Sprawdź konfigurację zakładki Samochody.</span>
+        </div>
       </section>
 
       <section id="screenVisit" class="screen">
@@ -274,6 +299,7 @@
           </button>
         </div>
 
+        <button id="vehiclePartsBtn" class="btn btn-secondary vehicle-visit-btn hidden" type="button">Stan auta</button>
         <button id="finishVisitBtn" class="btn btn-danger">Zakończ wizytę</button>
       </section>
 
@@ -418,7 +444,7 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <div style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.34</div>
+  <div style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.35</div>
 
   <script>
     (() => {
