@@ -20,28 +20,19 @@ function ensureVehiclePartsButton() {
 
   button = document.createElement('button');
   button.id = 'vehiclePartsBtn';
-  button.className = 'action-card action-settings hidden';
+  button.className = 'btn btn-secondary vehicle-visit-btn hidden';
   button.type = 'button';
-  button.disabled = true;
 
   const kicker = document.createElement('span');
-  kicker.className = 'action-kicker';
+  kicker.className = 'hidden';
   kicker.textContent = 'AUTO';
 
-  const title = document.createElement('strong');
-  title.textContent = 'Części na aucie';
+  const title = document.createElement('span');
+  title.textContent = 'Stan auta';
 
-  const description = document.createElement('small');
-  description.textContent = 'Funkcja może zostać dodana później';
+  button.append(kicker, title);
 
-  button.append(kicker, title, description);
-
-  const inventoryBtn = document.getElementById('inventoryBtn');
-  if (inventoryBtn?.parentElement === grid) {
-    grid.insertBefore(button, inventoryBtn);
-  } else {
-    grid.appendChild(button);
-  }
+  grid.insertAdjacentElement('afterend', button);
 
   return button;
 }
@@ -188,6 +179,7 @@ function updateWarehouseControls(saved, role) {
 function updateRoleControls() {
   const settingsBtn = document.getElementById('settingsBtn');
   const vehiclePartsBtn = ensureVehiclePartsButton();
+  const vehicleStatePreBtn = document.getElementById('vehicleStatePreBtn');
   const inventoryBtn = document.getElementById('inventoryBtn');
   const roleLabel = document.getElementById('teamRole');
 
@@ -214,6 +206,10 @@ function updateRoleControls() {
 
   if (vehiclePartsBtn) {
     vehiclePartsBtn.classList.toggle('hidden', role !== 'EKIPA');
+  }
+
+  if (vehicleStatePreBtn) {
+    vehicleStatePreBtn.classList.toggle('hidden', role !== 'EKIPA');
   }
 
   updateWarehouseControls(saved, role);
