@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { getDeviceId } from './device.js';
 
 const STATE_KEY = 'selfstorage_state_v1';
 const QUEUE_KEY = 'selfstorage_offline_queue_v1';
@@ -341,6 +342,7 @@ function buildPayloadFromState(state) {
     idWizyty: visit.idWizyty,
     dataCzasOperacji: draft.operationTime,
     idEkipy: team.id,
+    idUrzadzenia: getDeviceId(),
     idMagazynu: visit.magazyn?.id,
     komentarz: String(draft.komentarz || '').trim(),
     pobranie: draft.pobranie.map(item => ({
@@ -530,7 +532,10 @@ function queueCurrentDraft(options = {}) {
   reviewModal?.setAttribute('aria-hidden', 'true');
 
   document.dispatchEvent(new CustomEvent('selfstorage:draft-queued', {
-    detail: { online: navigator.onLine }
+    detail: {
+      online: navigator.onLine,
+      idSesji: payload.idSesji
+    }
   }));
 
   retryIndex = 0;
@@ -768,7 +773,14 @@ async function flushQueue(manual = false) {
       renderQueueNotice();
 
       try {
-        await api.saveSession(item.payload);
+        const saveResult = await api.saveSession(item.payload);
+
+        document.dispatchEvent(new CustomEvent('selfstorage:vehicle-session-synced', {
+          detail: {
+            idSesji: item.idSesji,
+            result: saveResult
+          }
+        }));
 
         const afterSuccess = loadQueue().filter(entry => entry.idSesji !== item.idSesji);
         saveQueue(afterSuccess);
