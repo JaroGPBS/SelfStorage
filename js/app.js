@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 
-const APP_VERSION = '0.42';
+const APP_VERSION = '0.43';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const DEMO_PIN = '0000';
 const DEMO_PARTS = Object.freeze([
@@ -467,10 +467,9 @@ function renderVehicleStock(data) {
   const list = $('vehiclePartsList');
   const empty = $('vehiclePartsEmpty');
 
-  $('vehicleTeamName').textContent = data?.ekipa?.nazwa || state.team?.nazwa || '—';
   $('vehiclePartCount').textContent = String(parts.length);
   $('vehicleModeNote').textContent = inWarehouseVisit
-    ? 'Tylko braki i nadstany'
+    ? 'Pokazane braki i nadstany'
     : 'Pełny stan auta';
 
   list.replaceChildren();
