@@ -37,7 +37,14 @@ function normalizeWarehouse(item) {
   if (!item || typeof item !== 'object') return null;
 
   const nazwa = String(item.nazwa ?? item.Nazwa ?? item.name ?? '').trim();
-  const kod = String(item.kod ?? item.KOD ?? item.kodMagazynu ?? item.code ?? '').trim().toUpperCase();
+  const kod = String(
+    item.kod ??
+    item.kodQr ??
+    item.KOD ??
+    item.kodMagazynu ??
+    item.code ??
+    ''
+  ).trim().toUpperCase();
   const id = String(item.id ?? item.ID ?? item.idMagazynu ?? '').trim();
   const rawActive = item.aktywny ?? item.Aktywny ?? item.active ?? true;
   const activeText = String(rawActive).trim().toUpperCase();
