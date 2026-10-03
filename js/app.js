@@ -687,6 +687,38 @@ function getVehicleCacheEntry() {
   return readStoredVehicleStock(state.team?.id);
 }
 
+function fnv1a32(value) {
+  const text = String(value || '');
+  let hash = 0x811c9dc5;
+
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+
+  return hash.toString(16).toUpperCase().padStart(8, '0');
+}
+
+function vehicleDataHash(data) {
+  const stateMap = {};
+
+  for (const part of Array.isArray(data?.czesci) ? data.czesci : []) {
+    const code = String(part?.kod || '').trim();
+    const qty = Number(part?.stanAktualny);
+    if (!code || !Number.isFinite(qty)) continue;
+    stateMap[code] = Math.max(0, Math.floor(qty));
+  }
+
+  const ordered = {};
+  Object.keys(stateMap)
+    .sort()
+    .forEach(code => {
+      ordered[code] = stateMap[code];
+    });
+
+  return fnv1a32(JSON.stringify(ordered));
+}
+
 function vehicleVersionsMatch(localData, meta) {
   if (!localData || !meta) return false;
 
@@ -739,6 +771,19 @@ function refreshVehicleSyncInBackground(entry) {
     return;
   }
 
+  if (entry.needsRefresh) {
+    fetchVehicleStockOnce()
+      .then(data => {
+        if (getActiveScreenId() === 'screenVehicle') {
+          renderVehicleStock(data);
+        }
+      })
+      .catch(error => {
+        console.warn('Pełne odświeżenie stanu auta nie powiodło się.', error);
+      });
+    return;
+  }
+
   api
     .getVehicleSyncMeta(
       state.team.id,
@@ -785,6 +830,11 @@ function markVehicleSessionSynced(event) {
       : []
   ).filter(id => String(id) !== idSesji);
 
+  const localHash = vehicleDataHash(entry.data);
+  const serverHash = String(result.hashStanuAuta || '').trim().toUpperCase();
+  const hashesMatch = !serverHash || localHash === serverHash;
+  const needsRefresh = pending.length === 0 && !hashesMatch;
+
   const data = {
     ...entry.data,
     wersjaStanu: version,
@@ -793,15 +843,16 @@ function markVehicleSessionSynced(event) {
       entry.data.wersjaListy ||
       '',
     hashStanu:
-      result.hashStanuAuta ||
-      entry.data.hashStanu ||
-      ''
+      hashesMatch
+        ? (serverHash || localHash)
+        : (entry.data.hashStanu || '')
   };
 
   const nextEntry = {
     ...entry,
     fetchedAt: new Date().toISOString(),
     dirty: pending.length > 0,
+    needsRefresh,
     pendingSessionIds: pending,
     data
   };
@@ -809,6 +860,10 @@ function markVehicleSessionSynced(event) {
   state.vehicleStockCache = nextEntry;
   writeStoredVehicleStock(state.team.id, nextEntry);
   persist();
+
+  if (needsRefresh && navigator.onLine) {
+    refreshVehicleSyncInBackground(nextEntry);
+  }
 }
 
 function renderVehicleStock(data) {
