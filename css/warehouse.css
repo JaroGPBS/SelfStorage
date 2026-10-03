@@ -577,7 +577,15 @@ body:has(#screenVehicle.active) .app-signature {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+}
+
+.vehicle-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex: 0 0 auto;
 }
 
 .vehicle-title-line {
@@ -639,15 +647,15 @@ body:has(#screenVehicle.active) .app-signature {
 
 .vehicle-parts-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .vehicle-part-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  padding: 12px 13px;
+  padding: 7px 11px;
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 13px;
   background: rgba(35, 41, 49, .90);
@@ -660,9 +668,9 @@ body:has(#screenVehicle.active) .app-signature {
 
 .vehicle-part-main strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 1px;
   font-size: 15px;
-  line-height: 1.25;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
@@ -671,6 +679,7 @@ body:has(#screenVehicle.active) .app-signature {
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
@@ -678,7 +687,7 @@ body:has(#screenVehicle.active) .app-signature {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 3px;
+  gap: 1px;
   min-width: 118px;
   justify-content: center;
   white-space: nowrap;
@@ -821,7 +830,7 @@ body:has(#screenVehicle.active) .app-signature {
 }
 
 .vehicle-edit-hint {
-  margin-top: 7px !important;
+  margin-top: 1px !important;
   color: #8fb9f2 !important;
   font-family: inherit !important;
   font-size: 11px !important;
@@ -936,8 +945,15 @@ body:has(#screenVehicleInventory.active) .app-signature {
 }
 
 .vehicle-report-save-btn {
+  width: auto;
   min-width: 104px;
   min-height: 44px;
+  flex: 1 1 auto;
+}
+
+.vehicle-report-instruction-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .vehicle-report-title {
@@ -957,15 +973,15 @@ body:has(#screenVehicleInventory.active) .app-signature {
 
 .vehicle-report-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .vehicle-report-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 88px;
   align-items: center;
-  gap: 12px;
-  padding: 11px 12px;
+  gap: 10px;
+  padding: 6px 10px;
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 12px;
   background: rgba(35, 41, 49, .91);
