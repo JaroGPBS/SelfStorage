@@ -2,6 +2,7 @@ const API_URL = '/api';
 const REQUEST_TIMEOUT_MS = 25000;
 const SAVE_SESSION_TIMEOUT_MS = 60000;
 const VEHICLE_META_TIMEOUT_MS = 8000;
+const ADMIN_DATA_TIMEOUT_MS = 60000;
 
 function isSafeDuplicateSessionResponse(action, data) {
   if (action !== 'ZAPISZ_SESJE') return false;
@@ -72,8 +73,12 @@ export const api = {
     return request('LOGIN', { pin });
   },
 
-  getStartData(idEkipy) {
-    return request('POBIERZ_DANE_STARTOWE', { idEkipy });
+  getStartData(idEkipy, fresh = false) {
+    return request(
+      'POBIERZ_DANE_STARTOWE',
+      { idEkipy, fresh: Boolean(fresh) },
+      fresh ? ADMIN_DATA_TIMEOUT_MS : REQUEST_TIMEOUT_MS
+    );
   },
 
   getVehicleSyncMeta(idEkipy, nazwaEkipy = '', idUrzadzenia = '') {
