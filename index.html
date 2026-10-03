@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./css/app.css?v=3">
+  <link rel="stylesheet" href="./css/app.css?v=4">
   <link rel="stylesheet" href="./css/warehouse.css?v=15">
   <link rel="stylesheet" href="./css/theme-gpbs.css?v=2">
   <style>
@@ -510,6 +510,7 @@
       const closeBtn = document.getElementById('instructionCloseBtn');
 
       const loginInstruction = `
+        <div class="login-pin-warning">Nie udostępniaj swojego kodu PIN innym osobom.</div>
         <ol class="instruction-list login-process-list">
           <li>Wpisz swój <strong>indywidualny kod PIN</strong>.</li>
           <li>Kliknij <strong>„Zaloguj”</strong>.</li>
@@ -539,8 +540,8 @@
           title.textContent = 'Instrukcja wizyty';
           content.innerHTML = visitInstruction;
         } else {
-          if (eyebrow) eyebrow.textContent = 'PROCES LOGOWANIA';
-          title.textContent = 'Nie udostępniaj swojego kodu PIN innym osobom.';
+          if (eyebrow) eyebrow.textContent = 'INSTRUKCJA';
+          title.textContent = 'Proces logowania';
           content.innerHTML = loginInstruction;
         }
 
