@@ -13,7 +13,7 @@
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=4">
-  <link rel="stylesheet" href="./css/warehouse.css?v=15">
+  <link rel="stylesheet" href="./css/warehouse.css?v=16">
   <link rel="stylesheet" href="./css/theme-gpbs.css?v=2">
   <style>
     .toast {
@@ -162,7 +162,7 @@
       font-size: 11px;
     }
   </style>
-  <script type="module" src="./js/app.js?v=29"></script>
+  <script type="module" src="./js/app.js?v=30"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -234,7 +234,10 @@
               <span class="vehicle-title-separator">—</span>
               <span id="vehicleTitleText" class="vehicle-title-text">STAN NA SAMOCHODZIE</span>
             </div>
-            <button id="vehicleBackBtn" class="instruction-link-btn" type="button">← Wróć</button>
+            <div class="vehicle-head-actions">
+              <button id="vehicleInstructionBtn" class="instruction-link-btn" type="button">ⓘ Instrukcja</button>
+              <button id="vehicleBackBtn" class="instruction-link-btn" type="button">← Wróć</button>
+            </div>
           </div>
 
           <div id="vehicleControlCard" class="vehicle-control-card">
@@ -258,6 +261,7 @@
       <section id="screenVehicleInventory" class="screen vehicle-inventory-screen">
         <div class="vehicle-report-head">
           <button id="vehicleReportBackBtn" class="instruction-link-btn vehicle-report-back-btn" type="button">← Wróć</button>
+          <button id="vehicleReportInstructionBtn" class="instruction-link-btn vehicle-report-instruction-btn" type="button">ⓘ Instrukcja</button>
           <button id="vehicleReportSaveBtn" class="btn btn-success vehicle-report-save-btn" type="button">Zapisz</button>
         </div>
 
@@ -506,6 +510,8 @@
       const content = document.getElementById('instructionContent');
       const loginBtn = document.getElementById('loginInstructionBtn');
       const visitBtn = document.getElementById('visitInstructionBtn');
+      const vehicleBtn = document.getElementById('vehicleInstructionBtn');
+      const vehicleReportBtn = document.getElementById('vehicleReportInstructionBtn');
       const closeIcon = document.getElementById('instructionCloseIcon');
       const closeBtn = document.getElementById('instructionCloseBtn');
 
@@ -532,15 +538,39 @@
         <div class="instruction-note">Dodawaj tylko części, które fizycznie masz przed sobą.</div>
         <div class="instruction-rule" style="margin-top:16px;margin-bottom:0;">DBAJ O PORZĄDEK — ODKŁADAJ CZĘŚCI NA SWOJE MIEJSCE</div>`;
 
+      const vehicleInstruction = `
+        <ol class="instruction-list">
+          <li>To okno pokazuje <strong>aktualny stan części znajdujących się na samochodzie</strong>.</li>
+          <li><strong>Cotygodniowy raport</strong> służy do wykonania inwentaryzacji auta.</li>
+          <li>Lista zawiera wszystkie części wymagane na samochodzie.</li>
+          <li>Każdy kafelek pokazuje <strong>nazwę części</strong>, <strong>wymaganą minimalną ilość</strong> oraz <strong>aktualny stan na samochodzie</strong>.</li>
+          <li>Kliknięcie kafelka pozwala wpisać, ile sztuk <strong>przyjęto</strong> albo <strong>zużyto</strong>.</li>
+        </ol>`;
+
+      const vehicleReportInstruction = `
+        <ol class="instruction-list">
+          <li>Przy każdej pozycji wpisz <strong>rzeczywistą liczbę sztuk</strong>, które aktualnie znajdują się na samochodzie.</li>
+          <li>Jeżeli nie posiadasz danej części, wpisz <strong>0</strong>.</li>
+          <li>Uzupełnij wszystkie pozycje na liście.</li>
+          <li>Po zakończeniu kliknij <strong>„Zapisz”</strong>. Stan części na samochodzie zostanie zaktualizowany.</li>
+        </ol>
+        <div class="instruction-note">Przycisk „Wróć” opuszcza raport bez zapisywania zmian.</div>`;
+
       function openInstruction(kind) {
         if (!modal || !title || !content) return;
 
+        if (eyebrow) eyebrow.textContent = 'INSTRUKCJA';
+
         if (kind === 'visit') {
-          if (eyebrow) eyebrow.textContent = 'INSTRUKCJA';
           title.textContent = 'Instrukcja wizyty';
           content.innerHTML = visitInstruction;
+        } else if (kind === 'vehicle') {
+          title.textContent = 'Aktualny stan części';
+          content.innerHTML = vehicleInstruction;
+        } else if (kind === 'vehicleReport') {
+          title.textContent = 'Cotygodniowy raport';
+          content.innerHTML = vehicleReportInstruction;
         } else {
-          if (eyebrow) eyebrow.textContent = 'INSTRUKCJA';
           title.textContent = 'Proces logowania';
           content.innerHTML = loginInstruction;
         }
@@ -558,6 +588,8 @@
 
       loginBtn?.addEventListener('click', () => openInstruction('login'));
       visitBtn?.addEventListener('click', () => openInstruction('visit'));
+      vehicleBtn?.addEventListener('click', () => openInstruction('vehicle'));
+      vehicleReportBtn?.addEventListener('click', () => openInstruction('vehicleReport'));
       closeIcon?.addEventListener('click', closeInstruction);
       closeBtn?.addEventListener('click', closeInstruction);
 
