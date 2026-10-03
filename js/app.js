@@ -2,6 +2,7 @@ import { api } from './api.js';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 
+const APP_VERSION = '0.41';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const DEMO_PIN = '0000';
 const DEMO_PARTS = Object.freeze([
@@ -1493,13 +1494,38 @@ async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
   try {
-    await navigator.serviceWorker.register('./service-worker.js');
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    const registration = await navigator.serviceWorker.register('./service-worker.js');
+
+    registration.update().catch(() => {});
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) return;
+      if (sessionStorage.getItem('selfstorage_reload_for_update') === '1') return;
+
+      const activeScreen = getActiveScreenId();
+      const unsafeToReload =
+        Boolean(state.visit?.idWizyty) ||
+        activeScreen === 'screenOperation';
+
+      if (unsafeToReload) {
+        showToast('Nowa wersja aplikacji jest gotowa. Zostanie użyta przy następnym uruchomieniu.');
+        return;
+      }
+
+      sessionStorage.setItem('selfstorage_reload_for_update', '1');
+      window.location.reload();
+    });
   } catch (error) {
     console.warn('Nie udało się zarejestrować Service Workera.', error);
   }
 }
 
 function init() {
+  const versionEl = $('appVersion');
+  if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
+
+  sessionStorage.removeItem('selfstorage_reload_for_update');
   restore();
   bindEvents();
   updateDemoUi();
