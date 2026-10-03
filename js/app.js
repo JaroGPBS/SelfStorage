@@ -1535,6 +1535,7 @@ function renderVehicleStock(data) {
   const list = $('vehiclePartsList');
   const empty = $('vehiclePartsEmpty');
   const weeklyButton = $('vehicleWeeklyReportBtn');
+  const vehicleInstructionButton = $('vehicleInstructionBtn');
   const controlCard = $('vehicleControlCard');
   const titleText = $('vehicleTitleText');
 
@@ -1548,6 +1549,10 @@ function renderVehicleStock(data) {
 
   if (weeklyButton) {
     weeklyButton.classList.toggle('hidden', inWarehouseVisit);
+  }
+
+  if (vehicleInstructionButton) {
+    vehicleInstructionButton.classList.toggle('hidden', inWarehouseVisit);
   }
 
   if (controlCard) {
