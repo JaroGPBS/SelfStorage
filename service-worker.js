@@ -438,8 +438,9 @@ async function handleLoginRequest(request, incoming, event) {
 
 async function handleStartDataRequest(request, incoming) {
   const teamId = String(incoming?.payload?.idEkipy || '').trim();
+  const forceFresh = incoming?.payload?.fresh === true;
 
-  if (teamId) {
+  if (teamId && !forceFresh) {
     try {
       const cached = await readApiCache(START_DATA_CACHE_KEY);
       if (cached?.teamId === teamId && cached?.data && isFresh(cached)) {
