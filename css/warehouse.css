@@ -590,11 +590,11 @@ body:has(#screenVehicle.active) .app-signature {
 
 .vehicle-title-line {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   min-width: 0;
-  white-space: nowrap;
-  line-height: 1;
+  line-height: 1.05;
 }
 
 .vehicle-title-auto {
@@ -647,15 +647,15 @@ body:has(#screenVehicle.active) .app-signature {
 
 .vehicle-parts-list {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .vehicle-part-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 7px 11px;
+  padding: 12px 13px;
   border: 1px solid rgba(255,255,255,.10);
   border-radius: 13px;
   background: rgba(35, 41, 49, .90);
@@ -668,9 +668,9 @@ body:has(#screenVehicle.active) .app-signature {
 
 .vehicle-part-main strong {
   display: block;
-  margin-bottom: 1px;
+  margin-bottom: 4px;
   font-size: 15px;
-  line-height: 1.15;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
@@ -679,7 +679,6 @@ body:has(#screenVehicle.active) .app-signature {
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
-  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
@@ -687,7 +686,7 @@ body:has(#screenVehicle.active) .app-signature {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
+  gap: 3px;
   min-width: 118px;
   justify-content: center;
   white-space: nowrap;
@@ -830,7 +829,7 @@ body:has(#screenVehicle.active) .app-signature {
 }
 
 .vehicle-edit-hint {
-  margin-top: 1px !important;
+  margin-top: 7px !important;
   color: #8fb9f2 !important;
   font-family: inherit !important;
   font-size: 11px !important;
