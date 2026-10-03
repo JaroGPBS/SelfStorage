@@ -738,3 +738,273 @@ body:has(#screenVehicle.active) .app-signature {
     padding-right: 10px;
   }
 }
+
+
+/* Stan auta poza wizytą — ręczne zmiany + cotygodniowy raport. */
+.vehicle-control-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0 14px;
+  padding: 10px;
+  border: 1px solid rgba(143, 185, 242, .24);
+  border-radius: 14px;
+  background: rgba(31, 37, 44, .86);
+}
+
+.vehicle-control-card .vehicle-mode-note {
+  margin: 0;
+  border: 0;
+  padding: 4px 6px;
+  background: transparent;
+}
+
+.vehicle-weekly-report-btn {
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid rgba(143, 185, 242, .46);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(49,95,143,.96), rgba(35,68,97,.96));
+  color: #f3f7fc;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.vehicle-weekly-report-btn:active {
+  transform: translateY(1px);
+}
+
+#vehicleBackBtn.vehicle-save-mode {
+  min-width: 92px;
+  padding: 10px 16px;
+  border-color: rgba(115, 210, 145, .42);
+  background: rgba(47, 116, 70, .26);
+  color: #bdf1cc;
+  font-weight: 900;
+}
+
+.vehicle-part-row.is-editable {
+  cursor: pointer;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.vehicle-part-row.is-editable:active {
+  border-color: rgba(143, 185, 242, .42);
+  background: rgba(39, 47, 58, .96);
+}
+
+.vehicle-edit-hint {
+  margin-top: 7px !important;
+  color: #8fb9f2 !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 800;
+  letter-spacing: .1px;
+}
+
+.vehicle-pending-change {
+  margin-top: 4px;
+  color: #ffd98f !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+.vehicle-change-card h3 {
+  margin-bottom: 4px;
+}
+
+.vehicle-change-current {
+  margin: 0 0 14px;
+  color: #f1f4f7;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.vehicle-change-help {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 11px 12px;
+  border: 1px solid rgba(143, 185, 242, .24);
+  border-radius: 10px;
+  background: rgba(31, 37, 44, .72);
+}
+
+.vehicle-change-help strong {
+  color: #f3f6fa;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.vehicle-change-help span {
+  color: #ffb8b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.vehicle-change-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.vehicle-change-action {
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 9px 7px;
+}
+
+.vehicle-change-action strong {
+  font-size: 14px;
+}
+
+.vehicle-change-action span {
+  font-size: 11px;
+  line-height: 1.2;
+  opacity: .92;
+}
+
+.vehicle-change-action:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+}
+
+.vehicle-change-cancel {
+  margin-top: 10px;
+}
+
+body:has(#screenVehicleInventory.active) {
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body:has(#screenVehicleInventory.active) .app-main {
+  padding-top: 8px;
+  padding-bottom: 26px;
+}
+
+body:has(#screenVehicleInventory.active) .app-signature {
+  display: none !important;
+}
+
+.vehicle-report-head {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0 -2px 10px;
+  padding: 7px 2px 9px;
+  background: linear-gradient(to bottom, rgba(10,13,16,.98) 68%, rgba(10,13,16,0));
+  backdrop-filter: blur(5px);
+}
+
+.vehicle-report-save-btn {
+  min-width: 104px;
+  min-height: 44px;
+}
+
+.vehicle-report-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 4px 2px 10px;
+}
+
+.vehicle-report-title strong {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.vehicle-report-title span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.vehicle-report-list {
+  display: grid;
+  gap: 8px;
+}
+
+.vehicle-report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 88px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  background: rgba(35, 41, 49, .91);
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+.vehicle-report-row strong {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.vehicle-report-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 9px;
+  outline: none;
+  background: rgba(13, 17, 22, .92);
+  color: #fff;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.vehicle-report-input:focus {
+  border-color: rgba(143, 185, 242, .72);
+  box-shadow: 0 0 0 3px rgba(78, 132, 196, .16);
+}
+
+.vehicle-report-row.is-missing {
+  border-color: rgba(255, 92, 92, .95);
+  background: rgba(103, 26, 31, .58);
+  box-shadow: 0 0 0 1px rgba(255, 92, 92, .28), 0 0 22px rgba(180, 32, 40, .18);
+}
+
+.vehicle-report-row.is-missing .vehicle-report-input {
+  border-color: rgba(255, 125, 125, .95);
+  background: rgba(45, 12, 15, .95);
+}
+
+@media (max-width: 430px) {
+  .vehicle-control-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vehicle-weekly-report-btn {
+    width: 100%;
+  }
+
+  .vehicle-change-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicle-report-row {
+    grid-template-columns: minmax(0, 1fr) 76px;
+  }
+}
