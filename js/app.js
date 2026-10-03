@@ -23,12 +23,14 @@ const state = {
   visit: null,
   pendingStart: null,
   operationDraft: null,
-  vehicleVisitDelta: {}
+  vehicleVisitDelta: {},
+  vehicleStockCache: null
 };
 
 let toastTimer = null;
 let scannerMode = null;
 let quantityTarget = null;
+let vehicleStockRequest = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -259,6 +261,10 @@ function restore() {
     saved.vehicleVisitDelta && typeof saved.vehicleVisitDelta === 'object'
       ? saved.vehicleVisitDelta
       : {};
+  state.vehicleStockCache =
+    saved.vehicleStockCache && typeof saved.vehicleStockCache === 'object'
+      ? saved.vehicleStockCache
+      : null;
 }
 
 function resetState() {
@@ -269,6 +275,8 @@ function resetState() {
   state.pendingStart = null;
   state.operationDraft = null;
   state.vehicleVisitDelta = {};
+  state.vehicleStockCache = null;
+  vehicleStockRequest = null;
   clearState();
   updateDemoUi();
 }
@@ -491,6 +499,57 @@ function commitDraftToVehicleDelta(draft) {
   state.vehicleVisitDelta = next;
 }
 
+function getCachedVehicleStock() {
+  const cache = state.vehicleStockCache;
+  if (!cache || !cache.data || !state.team?.id) return null;
+  if (String(cache.teamId || '') !== String(state.team.id)) return null;
+  return cache.data;
+}
+
+function storeVehicleStockCache(data) {
+  if (!state.team?.id || !data) return;
+
+  state.vehicleStockCache = {
+    teamId: state.team.id,
+    visitId: state.visit?.idWizyty || null,
+    fetchedAt: new Date().toISOString(),
+    data
+  };
+  persist();
+}
+
+async function fetchVehicleStockOnce() {
+  if (!state.team?.id) return null;
+
+  if (vehicleStockRequest) {
+    return vehicleStockRequest;
+  }
+
+  vehicleStockRequest = api
+    .getVehicleStock(state.team.id)
+    .then(data => {
+      storeVehicleStockCache(data);
+      return data;
+    })
+    .finally(() => {
+      vehicleStockRequest = null;
+    });
+
+  return vehicleStockRequest;
+}
+
+function prefetchVehicleStock() {
+  if (!state.team?.id || isDemoMode() || !navigator.onLine) return;
+  if (getCachedVehicleStock() || vehicleStockRequest) return;
+
+  window.setTimeout(() => {
+    if (!state.team?.id || !navigator.onLine || getCachedVehicleStock()) return;
+    fetchVehicleStockOnce().catch(error => {
+      console.warn('Wstępne pobieranie stanu auta nie powiodło się.', error);
+    });
+  }, 500);
+}
+
 function renderVehicleStock(data) {
   const inWarehouseVisit = Boolean(state.visit?.idWizyty);
 
@@ -641,17 +700,31 @@ async function openVehicleStock() {
     return;
   }
 
+  const cached = getCachedVehicleStock();
+  if (cached) {
+    renderVehicleStock(cached);
+    return;
+  }
+
   if (!navigator.onLine) {
-    showToast('Podgląd stanu auta wymaga połączenia z internetem.', true);
+    showToast('Brak zapisanego stanu auta. Połącz się z internetem.', true);
     return;
   }
 
   setLoading(true, 'Pobieranie stanu auta…');
 
   try {
-    const data = await api.getVehicleStock(state.team.id);
+    const data = await fetchVehicleStockOnce();
     renderVehicleStock(data);
   } catch (error) {
+    const fallback = getCachedVehicleStock();
+
+    if (fallback) {
+      renderVehicleStock(fallback);
+      showToast('Pokazuję ostatnio pobrany stan auta.');
+      return;
+    }
+
     const message = messageFromError(error);
     showToast(
       message.includes('Nieznana akcja')
@@ -804,6 +877,8 @@ async function login() {
     state.pendingStart = null;
     state.operationDraft = null;
     state.vehicleVisitDelta = {};
+    state.vehicleStockCache = null;
+    vehicleStockRequest = null;
     persist();
 
     $('pinInput').value = '';
@@ -811,6 +886,7 @@ async function login() {
     renderWarehouse();
 
     refreshStartDataInBackground(team.id);
+    prefetchVehicleStock();
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -885,6 +961,7 @@ async function startVisit(code) {
 
     $('warehouseCodeInput').value = '';
     renderVisit();
+    prefetchVehicleStock();
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
