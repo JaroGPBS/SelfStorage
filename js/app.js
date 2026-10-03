@@ -122,7 +122,7 @@ async function handleSystemBack() {
   }
 
   if (activeScreen === 'screenVisit') {
-    showToast('Wizyta jest nadal aktywna. Zakończ wizytę, aby wyjść z aplikacji.');
+    $('finishVisitBtn')?.click();
     return false;
   }
 
