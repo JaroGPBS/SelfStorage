@@ -34,6 +34,9 @@ let toastTimer = null;
 let scannerMode = null;
 let quantityTarget = null;
 let vehicleStockRequest = null;
+let vehicleManualDraft = {};
+let vehicleManualPart = null;
+let vehicleInventoryParts = [];
 
 function $(id) {
   return document.getElementById(id);
