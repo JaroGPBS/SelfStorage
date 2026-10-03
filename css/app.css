@@ -263,27 +263,29 @@ p { color: var(--muted); line-height: 1.5; }
 }
 
 #instructionModal .instruction-card h3 {
-  font-size: 23px;
+  font-size: 24px;
   line-height: 1.15;
-}
-
-#instructionModal .login-first-note {
-  margin: 16px 0 0;
-  padding: 14px 15px;
-  font-size: 16px;
-  line-height: 1.45;
-}
-
-#instructionModal .login-process-title {
-  margin: 2px 0 7px;
-  color: var(--text);
-  font-size: 20px;
   font-weight: 900;
 }
 
+#instructionModal .login-first-note {
+  margin: 0;
+  padding: 0 14px;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+#instructionModal .login-process-title {
+  display: none;
+}
+
 #instructionModal .login-process-list {
-  margin: 0 0 14px;
-  padding-left: 24px;
+  margin: 0 0 18px;
+  padding: 16px 0 18px 28px;
+  border-bottom: 1px solid var(--line);
 }
 
 #instructionModal .login-process-list li {
@@ -293,13 +295,13 @@ p { color: var(--muted); line-height: 1.5; }
 }
 
 #instructionModal .login-pin-warning {
-  margin: 0 0 14px;
-  padding: 0;
-  border: 0;
-  color: #f0c5c5;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1.4;
+  margin: 18px 0 0;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--line);
+  color: #f0b7b7;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.35;
 }
 
 #instructionModal .instruction-close-btn {
@@ -318,5 +320,9 @@ p { color: var(--muted); line-height: 1.5; }
   #instructionModal .login-first-note,
   #instructionModal .login-process-list li {
     font-size: 15px;
+  }
+
+  #instructionModal .login-pin-warning {
+    font-size: 17px;
   }
 }
