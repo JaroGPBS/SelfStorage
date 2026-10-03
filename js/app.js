@@ -740,10 +740,17 @@ function vehicleVersionsMatch(localData, meta) {
   const remoteStateVersion = Number(meta.wersjaStanu || 0);
   const localListVersion = String(localData.wersjaListy || '');
   const remoteListVersion = String(meta.wersjaListy || '');
+  const localInventoryDone = localData.inwentaryzacjaWykonana;
+  const remoteInventoryDone = meta.inwentaryzacjaWykonana;
+
+  if (typeof localInventoryDone !== 'boolean') {
+    return false;
+  }
 
   return (
     localStateVersion === remoteStateVersion &&
-    localListVersion === remoteListVersion
+    localListVersion === remoteListVersion &&
+    localInventoryDone === Boolean(remoteInventoryDone)
   );
 }
 
@@ -882,11 +889,12 @@ function markVehicleSessionSynced(event) {
 
 function renderVehicleStock(data) {
   const inWarehouseVisit = Boolean(state.visit?.idWizyty);
+  const inventoryDone = data?.inwentaryzacjaWykonana !== false;
 
   let parts = (Array.isArray(data?.czesci) ? data.czesci : [])
     .slice();
 
-  if (inWarehouseVisit) {
+  if (inWarehouseVisit && inventoryDone) {
     const localDelta = getEffectiveVehicleDelta();
 
     parts = parts.map(part => {
@@ -949,9 +957,14 @@ function renderVehicleStock(data) {
   const empty = $('vehiclePartsEmpty');
 
   $('vehiclePartCount').textContent = String(parts.length);
-  $('vehicleModeNote').textContent = inWarehouseVisit
-    ? 'Pokazane braki i nadstany'
-    : 'Pełny stan auta';
+
+  if (!inventoryDone) {
+    $('vehicleModeNote').textContent = 'Inwentaryzacja niewykonana';
+  } else {
+    $('vehicleModeNote').textContent = inWarehouseVisit
+      ? 'Pokazane braki i nadstany'
+      : 'Pełny stan auta';
+  }
 
   list.replaceChildren();
 
@@ -966,9 +979,12 @@ function renderVehicleStock(data) {
     name.textContent = part.nazwa || part.kod || 'Część';
 
     const required = document.createElement('span');
-    required.textContent = part.stanDocelowy === null || part.stanDocelowy === undefined || Number(part.stanDocelowy) <= 0
-      ? 'Wymagane: —'
-      : `Wymagane: ${formatVehicleQty(part.stanDocelowy)} szt.`;
+    required.textContent =
+      part.stanDocelowy === null ||
+      part.stanDocelowy === undefined ||
+      Number(part.stanDocelowy) <= 0
+        ? 'Wymagane: —'
+        : `Wymagane: ${formatVehicleQty(part.stanDocelowy)} szt.`;
 
     main.append(name, required);
 
@@ -976,29 +992,38 @@ function renderVehicleStock(data) {
     qty.className = 'vehicle-part-qty';
 
     const current = document.createElement('strong');
-    current.textContent = part.stanAktualny === null || part.stanAktualny === undefined
-      ? 'Stan: —'
-      : `Stan: ${formatVehicleQty(part.stanAktualny)} szt.`;
+    current.textContent =
+      !inventoryDone ||
+      part.stanAktualny === null ||
+      part.stanAktualny === undefined
+        ? 'Stan: —'
+        : `Stan: ${formatVehicleQty(part.stanAktualny)} szt.`;
 
     qty.append(current);
 
-    if (inWarehouseVisit) {
+    if (inWarehouseVisit && inventoryDone) {
       const target = Number(part.stanDocelowy);
       const actual = Number(part.stanAktualny);
-      const difference = actual - target;
 
-      const balance = document.createElement('span');
-      balance.className = 'vehicle-balance';
+      if (
+        Number.isFinite(target) &&
+        target > 0 &&
+        Number.isFinite(actual)
+      ) {
+        const difference = actual - target;
+        const balance = document.createElement('span');
+        balance.className = 'vehicle-balance';
 
-      if (difference < 0) {
-        balance.classList.add('shortage');
-        balance.textContent = `Brakuje: ${Math.abs(difference)} szt.`;
-      } else {
-        balance.classList.add('surplus');
-        balance.textContent = `Nadstan: ${difference} szt.`;
+        if (difference < 0) {
+          balance.classList.add('shortage');
+          balance.textContent = `Brakuje: ${Math.abs(difference)} szt.`;
+        } else {
+          balance.classList.add('surplus');
+          balance.textContent = `Nadstan: ${difference} szt.`;
+        }
+
+        qty.append(balance);
       }
-
-      qty.append(balance);
     }
 
     row.append(main, qty);
@@ -1007,7 +1032,12 @@ function renderVehicleStock(data) {
 
   empty.classList.toggle('hidden', parts.length > 0);
 
-  if (!parts.length && inWarehouseVisit) {
+  if (!parts.length && !inventoryDone) {
+    const strong = empty.querySelector('strong');
+    const span = empty.querySelector('span');
+    if (strong) strong.textContent = 'Inwentaryzacja niewykonana';
+    if (span) span.textContent = 'Stan auta zostanie ustalony po pierwszej inwentaryzacji.';
+  } else if (!parts.length && inWarehouseVisit) {
     const strong = empty.querySelector('strong');
     const span = empty.querySelector('span');
     if (strong) strong.textContent = 'Brak różnic';
