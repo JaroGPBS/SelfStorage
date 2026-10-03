@@ -450,10 +450,12 @@ function renderVehicleStock(data) {
     const name = document.createElement('strong');
     name.textContent = part.nazwa || part.kod || 'Część';
 
-    const code = document.createElement('span');
-    code.textContent = part.kod || '—';
+    const required = document.createElement('span');
+    required.textContent = part.stanDocelowy === null || part.stanDocelowy === undefined
+      ? 'Wymagane: —'
+      : `Wymagane: ${formatVehicleQty(part.stanDocelowy)} szt.`;
 
-    main.append(name, code);
+    main.append(name, required);
 
     const qty = document.createElement('div');
     qty.className = 'vehicle-part-qty';
@@ -463,12 +465,7 @@ function renderVehicleStock(data) {
       ? 'Stan: —'
       : `Stan: ${formatVehicleQty(part.stanAktualny)} szt.`;
 
-    const target = document.createElement('span');
-    target.textContent = part.stanDocelowy === null || part.stanDocelowy === undefined
-      ? 'Wymagane: —'
-      : `Wymagane: ${formatVehicleQty(part.stanDocelowy)} szt.`;
-
-    qty.append(current, target);
+    qty.append(current);
     row.append(main, qty);
     list.appendChild(row);
   }
