@@ -570,29 +570,30 @@ body:has(#screenVehicle.active) .app-signature {
 }
 
 #screenVehicle .vehicle-head {
-  align-items: flex-start;
-  gap: 12px;
-  margin: 4px 2px 14px;
+  margin: 4px 2px 12px;
 }
 
-.vehicle-title-block {
-  min-width: 0;
-  flex: 1;
+.vehicle-head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .vehicle-title-line {
   display: flex;
   align-items: baseline;
-  gap: 7px;
-  flex-wrap: wrap;
-  line-height: 1.1;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .vehicle-title-auto {
   color: #8fb9f2;
   font-size: 12px;
   font-weight: 900;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.3px;
 }
 
 .vehicle-title-separator {
@@ -603,34 +604,22 @@ body:has(#screenVehicle.active) .app-signature {
 
 .vehicle-title-text {
   color: #f1f4f7;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 900;
-  letter-spacing: .35px;
-}
-
-#screenVehicle .vehicle-head p {
-  margin: 8px 0 0;
-  font-size: 13px;
-}
-
-.vehicle-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  letter-spacing: .2px;
 }
 
 .vehicle-mode-note {
-  margin: 0;
-  padding: 7px 9px;
-  border: 1px solid rgba(143, 185, 242, .20);
+  width: fit-content;
+  margin: 8px 0 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(143, 185, 242, .22);
   border-radius: 10px;
-  background: rgba(31, 37, 44, .78);
+  background: rgba(31, 37, 44, .82);
   color: #b9c5d3;
   font-size: 10px;
   font-weight: 800;
-  line-height: 1.15;
-  text-align: center;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
@@ -643,14 +632,8 @@ body:has(#screenVehicle.active) .app-signature {
 }
 
 .vehicle-list-head span {
-  min-width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid var(--line);
-  font-size: 11px;
+  color: #f1f4f7;
+  font-size: 15px;
   font-weight: 900;
 }
 
@@ -736,17 +719,16 @@ body:has(#screenVehicle.active) .app-signature {
 
 
 @media (max-width: 430px) {
-  #screenVehicle .vehicle-head {
-    gap: 8px;
+  .vehicle-title-text {
+    font-size: 12px;
   }
 
-  .vehicle-head-actions {
-    gap: 6px;
+  .vehicle-title-auto,
+  .vehicle-title-separator {
+    font-size: 11px;
   }
 
   .vehicle-mode-note {
-    max-width: 110px;
-    white-space: normal;
     padding: 6px 8px;
     font-size: 9px;
   }
