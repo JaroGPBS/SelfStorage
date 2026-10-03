@@ -775,6 +775,9 @@ async function flushQueue(manual = false) {
       try {
         const saveResult = await api.saveSession(item.payload);
 
+        const afterSuccess = loadQueue().filter(entry => entry.idSesji !== item.idSesji);
+        saveQueue(afterSuccess);
+
         document.dispatchEvent(new CustomEvent('selfstorage:vehicle-session-synced', {
           detail: {
             idSesji: item.idSesji,
@@ -782,8 +785,6 @@ async function flushQueue(manual = false) {
           }
         }));
 
-        const afterSuccess = loadQueue().filter(entry => entry.idSesji !== item.idSesji);
-        saveQueue(afterSuccess);
         sent += 1;
         retryIndex = 0;
         refreshSyncLock();
