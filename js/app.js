@@ -1556,11 +1556,10 @@ function renderVehicleStock(data) {
 
   const modeNote = $('vehicleModeNote');
 
-  if (!inventoryDone) {
-    modeNote.textContent = 'Inwentaryzacja niewykonana';
-    modeNote.classList.remove('hidden');
-  } else if (inWarehouseVisit) {
-    modeNote.textContent = 'Pokazane braki i nadstany';
+  if (inWarehouseVisit) {
+    modeNote.textContent = inventoryDone
+      ? 'Pokazane braki i nadstany'
+      : 'Inwentaryzacja niewykonana';
     modeNote.classList.remove('hidden');
   } else {
     modeNote.textContent = '';
