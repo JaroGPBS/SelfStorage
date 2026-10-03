@@ -501,6 +501,7 @@
   <script>
     (() => {
       const modal = document.getElementById('instructionModal');
+      const eyebrow = document.getElementById('instructionEyebrow');
       const title = document.getElementById('instructionTitle');
       const content = document.getElementById('instructionContent');
       const loginBtn = document.getElementById('loginInstructionBtn');
@@ -509,8 +510,6 @@
       const closeBtn = document.getElementById('instructionCloseBtn');
 
       const loginInstruction = `
-        <div class="login-process-title">Proces logowania</div>
-        <div class="login-pin-warning">Nie udostępniaj swojego kodu PIN innym osobom.</div>
         <ol class="instruction-list login-process-list">
           <li>Wpisz swój <strong>indywidualny kod PIN</strong>.</li>
           <li>Kliknij <strong>„Zaloguj”</strong>.</li>
@@ -536,10 +535,12 @@
         if (!modal || !title || !content) return;
 
         if (kind === 'visit') {
+          if (eyebrow) eyebrow.textContent = 'INSTRUKCJA';
           title.textContent = 'Instrukcja wizyty';
           content.innerHTML = visitInstruction;
         } else {
-          title.textContent = 'Proces logowania';
+          if (eyebrow) eyebrow.textContent = 'PROCES LOGOWANIA';
+          title.textContent = 'Nie udostępniaj swojego kodu PIN innym osobom.';
           content.innerHTML = loginInstruction;
         }
 
