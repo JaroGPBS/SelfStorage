@@ -509,11 +509,11 @@
       const closeBtn = document.getElementById('instructionCloseBtn');
 
       const loginInstruction = `
+        <div class="instruction-note">
+          <strong>Pierwsze uruchomienie:</strong> pierwsze logowanie może potrwać dłużej. Jeżeli pojawi się błąd lub logowanie trwa zbyt długo, ponów logowanie za pomocą kodu PIN. Kolejne uruchomienia powinny działać szybciej.
+        </div>
         <ol class="instruction-list">
-          <li>Wpisz swój <strong>4-cyfrowy PIN</strong> i kliknij „Zaloguj”.</li>
-          <li>Zeskanuj <strong>kod QR magazynu</strong>, w którym rozpoczynasz pracę.</li>
-          <li>Jeżeli kodu nie można zeskanować, możesz wpisać kod magazynu ręcznie.</li>
-          <li>Po poprawnym rozpoznaniu magazynu rozpocznie się <strong>aktywna wizyta</strong>.</li>
+          <li>Wpisz swój <strong>indywidualny kod PIN</strong> i kliknij „Zaloguj”. <strong>Nie udostępniaj kodu PIN innym osobom.</strong></li>
         </ol>`;
 
       const visitInstruction = `
