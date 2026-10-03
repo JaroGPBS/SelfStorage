@@ -760,6 +760,21 @@ body:has(#screenVehicle.active) .app-signature {
   background: transparent;
 }
 
+.vehicle-control-card.visit-mode {
+  display: block;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.vehicle-control-card.visit-mode .vehicle-mode-note {
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(143, 185, 242, .22);
+  background: rgba(31, 37, 44, .82);
+}
+
 .vehicle-weekly-report-btn {
   min-height: 42px;
   padding: 9px 14px;
