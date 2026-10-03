@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api } from './api.js?v=2';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
