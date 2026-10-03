@@ -673,6 +673,20 @@ body:has(#screenVehicle.active) .app-signature {
   font-weight: 700;
 }
 
+.vehicle-part-qty .vehicle-balance {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.vehicle-part-qty .vehicle-balance.shortage {
+  color: #ff8d8d;
+}
+
+.vehicle-part-qty .vehicle-balance.surplus {
+  color: #8fc3ff;
+}
+
 @media (max-height: 700px) {
   #screenVisit .vehicle-visit-btn {
     height: 72px;
