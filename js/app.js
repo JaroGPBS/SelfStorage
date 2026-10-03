@@ -4,6 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 
 const APP_VERSION = '0.46';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
+const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEMO_PIN = '0000';
 const DEMO_PARTS = Object.freeze([
   { kod: 'DEMO-001', nazwa: 'CEOWNIK DACHU DŁUGI (HOKEJKA DŁUGA)' },
@@ -506,15 +507,52 @@ function getCachedVehicleStock() {
   return cache.data;
 }
 
+function readStoredVehicleStock(teamId) {
+  if (!teamId) return null;
+
+  try {
+    const raw = localStorage.getItem(VEHICLE_STOCK_CACHE_KEY);
+    if (!raw) return null;
+
+    const all = JSON.parse(raw);
+    const entry = all && typeof all === 'object'
+      ? all[String(teamId)]
+      : null;
+
+    return entry?.data ? entry : null;
+  } catch (error) {
+    console.warn('Nie udało się odczytać zapisanego stanu auta.', error);
+    return null;
+  }
+}
+
+function writeStoredVehicleStock(teamId, entry) {
+  if (!teamId || !entry?.data) return;
+
+  try {
+    const raw = localStorage.getItem(VEHICLE_STOCK_CACHE_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    const safe = all && typeof all === 'object' ? all : {};
+
+    safe[String(teamId)] = entry;
+    localStorage.setItem(VEHICLE_STOCK_CACHE_KEY, JSON.stringify(safe));
+  } catch (error) {
+    console.warn('Nie udało się zapisać stanu auta w pamięci.', error);
+  }
+}
+
 function storeVehicleStockCache(data) {
   if (!state.team?.id || !data) return;
 
-  state.vehicleStockCache = {
+  const entry = {
     teamId: state.team.id,
     visitId: state.visit?.idWizyty || null,
     fetchedAt: new Date().toISOString(),
     data
   };
+
+  state.vehicleStockCache = entry;
+  writeStoredVehicleStock(state.team.id, entry);
   persist();
 }
 
@@ -526,7 +564,7 @@ async function fetchVehicleStockOnce() {
   }
 
   vehicleStockRequest = api
-    .getVehicleStock(state.team.id)
+    .getVehicleStock(state.team.id, state.team?.nazwa || '')
     .then(data => {
       storeVehicleStockCache(data);
       return data;
@@ -536,18 +574,6 @@ async function fetchVehicleStockOnce() {
     });
 
   return vehicleStockRequest;
-}
-
-function prefetchVehicleStock() {
-  if (!state.team?.id || isDemoMode() || !navigator.onLine) return;
-  if (getCachedVehicleStock() || vehicleStockRequest) return;
-
-  window.setTimeout(() => {
-    if (!state.team?.id || !navigator.onLine || getCachedVehicleStock()) return;
-    fetchVehicleStockOnce().catch(error => {
-      console.warn('Wstępne pobieranie stanu auta nie powiodło się.', error);
-    });
-  }, 500);
 }
 
 function renderVehicleStock(data) {
@@ -706,6 +732,35 @@ async function openVehicleStock() {
     return;
   }
 
+  const stored = readStoredVehicleStock(state.team.id);
+
+  if (stored?.data) {
+    state.vehicleStockCache = {
+      ...stored,
+      teamId: state.team.id,
+      visitId: state.visit?.idWizyty || null
+    };
+    persist();
+    renderVehicleStock(stored.data);
+
+    if (navigator.onLine) {
+      fetchVehicleStockOnce()
+        .then(data => {
+          if (getActiveScreenId() === 'screenVehicle') {
+            renderVehicleStock(data);
+          }
+        })
+        .catch(error => {
+          console.warn('Odświeżenie stanu auta w tle nie powiodło się.', error);
+          if (getActiveScreenId() === 'screenVehicle') {
+            showToast('Nie udało się odświeżyć. Pokazuję ostatni zapisany stan.');
+          }
+        });
+    }
+
+    return;
+  }
+
   if (!navigator.onLine) {
     showToast('Brak zapisanego stanu auta. Połącz się z internetem.', true);
     return;
@@ -717,14 +772,6 @@ async function openVehicleStock() {
     const data = await fetchVehicleStockOnce();
     renderVehicleStock(data);
   } catch (error) {
-    const fallback = getCachedVehicleStock();
-
-    if (fallback) {
-      renderVehicleStock(fallback);
-      showToast('Pokazuję ostatnio pobrany stan auta.');
-      return;
-    }
-
     const message = messageFromError(error);
     showToast(
       message.includes('Nieznana akcja')
@@ -886,7 +933,6 @@ async function login() {
     renderWarehouse();
 
     refreshStartDataInBackground(team.id);
-    prefetchVehicleStock();
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -961,7 +1007,6 @@ async function startVisit(code) {
 
     $('warehouseCodeInput').value = '';
     renderVisit();
-    prefetchVehicleStock();
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -1735,10 +1780,8 @@ function init() {
 
   if (state.team && state.visit?.idWizyty) {
     renderVisit();
-    prefetchVehicleStock();
   } else if (state.team) {
     renderWarehouse();
-    prefetchVehicleStock();
   } else {
     showScreen('screenLogin');
   }
