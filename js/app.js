@@ -1554,12 +1554,17 @@ function renderVehicleStock(data) {
     controlCard.classList.toggle('visit-mode', inWarehouseVisit);
   }
 
+  const modeNote = $('vehicleModeNote');
+
   if (!inventoryDone) {
-    $('vehicleModeNote').textContent = 'Inwentaryzacja niewykonana';
+    modeNote.textContent = 'Inwentaryzacja niewykonana';
+    modeNote.classList.remove('hidden');
+  } else if (inWarehouseVisit) {
+    modeNote.textContent = 'Pokazane braki i nadstany';
+    modeNote.classList.remove('hidden');
   } else {
-    $('vehicleModeNote').textContent = inWarehouseVisit
-      ? 'Pokazane braki i nadstany'
-      : 'Pełny stan auta';
+    modeNote.textContent = '';
+    modeNote.classList.add('hidden');
   }
 
   updateVehicleBackButton();
@@ -1609,7 +1614,7 @@ function renderVehicleStock(data) {
       const hint = document.createElement('span');
       hint.className = 'vehicle-edit-hint';
       hint.textContent = 'Kliknij, aby zmienić stan';
-      main.appendChild(hint);
+      qty.appendChild(hint);
 
       const pendingDelta = getVehicleManualDelta(part.kod);
       if (pendingDelta) {
