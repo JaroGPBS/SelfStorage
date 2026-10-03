@@ -1,6 +1,7 @@
 const API_URL = '/api';
 const REQUEST_TIMEOUT_MS = 25000;
 const SAVE_SESSION_TIMEOUT_MS = 60000;
+const VEHICLE_META_TIMEOUT_MS = 8000;
 
 function isSafeDuplicateSessionResponse(action, data) {
   if (action !== 'ZAPISZ_SESJE') return false;
@@ -75,8 +76,30 @@ export const api = {
     return request('POBIERZ_DANE_STARTOWE', { idEkipy });
   },
 
-  getVehicleStock(idEkipy, nazwaEkipy = '') {
-    return request('POBIERZ_STAN_AUTA', { idEkipy, nazwaEkipy });
+  getVehicleSyncMeta(idEkipy, nazwaEkipy = '', idUrzadzenia = '') {
+    return request(
+      'SPRAWDZ_SYNC_AUTA',
+      { idEkipy, nazwaEkipy, idUrzadzenia },
+      VEHICLE_META_TIMEOUT_MS
+    );
+  },
+
+  getVehicleStock(idEkipy, nazwaEkipy = '', idUrzadzenia = '') {
+    return request('POBIERZ_STAN_AUTA', {
+      idEkipy,
+      nazwaEkipy,
+      idUrzadzenia
+    });
+  },
+
+  updateVehicleStock({ idEkipy, nazwaEkipy = '', idUrzadzenia = '', idZmiany, zmiany = [] }) {
+    return request('AKTUALIZUJ_STAN_AUTA', {
+      idEkipy,
+      nazwaEkipy,
+      idUrzadzenia,
+      idZmiany,
+      zmiany
+    });
   },
 
   startVisit({ idEkipy, kodMagazynu, idWizyty }) {
