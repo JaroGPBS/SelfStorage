@@ -2722,7 +2722,9 @@ async function registerServiceWorker() {
       const activeScreen = getActiveScreenId();
       const unsafeToReload =
         Boolean(state.visit?.idWizyty) ||
-        activeScreen === 'screenOperation';
+        activeScreen === 'screenOperation' ||
+        activeScreen === 'screenVehicleInventory' ||
+        (activeScreen === 'screenVehicle' && hasVehicleManualChanges());
 
       if (unsafeToReload) {
         showToast('Nowa wersja aplikacji jest gotowa. Zostanie użyta przy następnym uruchomieniu.');
