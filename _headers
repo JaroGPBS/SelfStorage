@@ -15,3 +15,12 @@
 
 /css/warehouse.css
   Cache-Control: no-cache
+
+/js/api.js
+  Cache-Control: no-cache
+
+/js/offline.js
+  Cache-Control: no-cache
+
+/js/device.js
+  Cache-Control: no-cache
