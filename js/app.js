@@ -718,8 +718,19 @@ function vehicleDataHash(data) {
 
   for (const part of Array.isArray(data?.czesci) ? data.czesci : []) {
     const code = String(part?.kod || '').trim();
-    const qty = Number(part?.stanAktualny);
-    if (!code || !Number.isFinite(qty)) continue;
+    const rawQty = part?.stanAktualny;
+
+    if (
+      !code ||
+      rawQty === null ||
+      rawQty === undefined ||
+      rawQty === ''
+    ) {
+      continue;
+    }
+
+    const qty = Number(rawQty);
+    if (!Number.isFinite(qty)) continue;
     stateMap[code] = Math.max(0, Math.floor(qty));
   }
 
