@@ -22,7 +22,8 @@ const state = {
   startData: null,
   visit: null,
   pendingStart: null,
-  operationDraft: null
+  operationDraft: null,
+  vehicleVisitDelta: {}
 };
 
 let toastTimer = null;
@@ -241,6 +242,10 @@ function restore() {
   state.visit = saved.visit || null;
   state.pendingStart = saved.pendingStart || null;
   state.operationDraft = saved.operationDraft || null;
+  state.vehicleVisitDelta =
+    saved.vehicleVisitDelta && typeof saved.vehicleVisitDelta === 'object'
+      ? saved.vehicleVisitDelta
+      : {};
 }
 
 function resetState() {
@@ -250,6 +255,7 @@ function resetState() {
   state.visit = null;
   state.pendingStart = null;
   state.operationDraft = null;
+  state.vehicleVisitDelta = {};
   clearState();
   updateDemoUi();
 }
@@ -419,6 +425,59 @@ function formatVehicleQty(value) {
   return Number.isFinite(n) ? String(n) : '—';
 }
 
+function addDraftToVehicleDelta(delta, draft) {
+  if (!draft) return delta;
+
+  const addList = (list, sign) => {
+    if (!Array.isArray(list)) return;
+
+    for (const item of list) {
+      const code = String(item?.kod || '').trim();
+      const qty = Number(item?.ilosc);
+
+      if (!code || !Number.isFinite(qty)) continue;
+      delta[code] = Number(delta[code] || 0) + (sign * qty);
+    }
+  };
+
+  addList(draft.pobranie, 1);
+  addList(draft.zwrot, -1);
+  return delta;
+}
+
+function getEffectiveVehicleDelta() {
+  const delta = {};
+
+  for (const [code, value] of Object.entries(state.vehicleVisitDelta || {})) {
+    const qty = Number(value);
+    if (code && Number.isFinite(qty) && qty !== 0) {
+      delta[code] = qty;
+    }
+  }
+
+  if (
+    state.operationDraft &&
+    state.operationDraft.idWizyty === state.visit?.idWizyty
+  ) {
+    addDraftToVehicleDelta(delta, state.operationDraft);
+  }
+
+  return delta;
+}
+
+function commitDraftToVehicleDelta(draft) {
+  if (!draft || draft.idWizyty !== state.visit?.idWizyty) return;
+
+  const next = { ...(state.vehicleVisitDelta || {}) };
+  addDraftToVehicleDelta(next, draft);
+
+  for (const code of Object.keys(next)) {
+    if (Number(next[code]) === 0) delete next[code];
+  }
+
+  state.vehicleVisitDelta = next;
+}
+
 function renderVehicleStock(data) {
   const inWarehouseVisit = Boolean(state.visit?.idWizyty);
 
@@ -426,6 +485,26 @@ function renderVehicleStock(data) {
     .slice();
 
   if (inWarehouseVisit) {
+    const localDelta = getEffectiveVehicleDelta();
+
+    parts = parts.map(part => {
+      const base = Number(part.stanAktualny);
+      const code = String(part?.kod || '').trim();
+
+      if (
+        part.stanAktualny === null ||
+        part.stanAktualny === undefined ||
+        !Number.isFinite(base)
+      ) {
+        return part;
+      }
+
+      return {
+        ...part,
+        stanAktualny: base + Number(localDelta[code] || 0)
+      };
+    });
+
     parts = parts.filter(part => {
       const target = Number(part.stanDocelowy);
       const actual = Number(part.stanAktualny);
@@ -710,6 +789,7 @@ async function login() {
     state.visit = null;
     state.pendingStart = null;
     state.operationDraft = null;
+    state.vehicleVisitDelta = {};
     persist();
 
     $('pinInput').value = '';
@@ -750,6 +830,7 @@ async function startVisit(code) {
     };
     state.pendingStart = null;
     state.operationDraft = null;
+    state.vehicleVisitDelta = {};
     persist();
     renderVisit();
     return;
@@ -785,6 +866,7 @@ async function startVisit(code) {
     };
     state.pendingStart = null;
     state.operationDraft = null;
+    state.vehicleVisitDelta = {};
     persist();
 
     $('warehouseCodeInput').value = '';
@@ -1263,6 +1345,7 @@ function closeReview() {
 function handleDraftQueued() {
   if (!state.operationDraft) return;
 
+  commitDraftToVehicleDelta(state.operationDraft);
   state.operationDraft = null;
   persist();
   closeReview();
@@ -1311,6 +1394,7 @@ async function sendSession() {
       zwrot: draft.zwrot.map(item => ({ kod: item.kod, ilosc: item.ilosc }))
     });
 
+    commitDraftToVehicleDelta(draft);
     state.operationDraft = null;
     persist();
     renderVisit();
