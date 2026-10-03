@@ -139,6 +139,19 @@ async function handleSystemBack() {
   return activeScreen === 'screenLogin';
 }
 
+function ensureSystemBackGuard() {
+  if (!window.history?.pushState) return;
+
+  const marker = history.state?.selfStorageBack;
+  if (marker === ANDROID_BACK_GUARD) return;
+
+  history.pushState(
+    { selfStorageBack: ANDROID_BACK_GUARD },
+    document.title,
+    location.href
+  );
+}
+
 function armSystemBackGuard() {
   if (!window.history?.pushState) return;
 
@@ -654,6 +667,7 @@ async function openVehicleStock() {
 function closeVehicleStock() {
   if (state.visit?.idWizyty) {
     renderVisit();
+    ensureSystemBackGuard();
   } else {
     renderWarehouse();
   }
