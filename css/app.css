@@ -245,3 +245,78 @@ p { color: var(--muted); line-height: 1.5; }
   }
 }
 
+
+
+/* Instrukcja logowania — centralny, czytelny dialog. */
+#instructionModal {
+  align-items: center;
+  justify-content: center;
+  padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+#instructionModal .instruction-card {
+  width: min(100%, 580px);
+  max-width: 580px;
+  margin: auto;
+  padding: 24px;
+}
+
+#instructionModal .instruction-card h3 {
+  font-size: 23px;
+  line-height: 1.15;
+}
+
+#instructionModal .login-first-note {
+  margin: 14px 0 18px;
+  padding: 14px 15px;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+#instructionModal .login-process-title {
+  margin: 2px 0 8px;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+#instructionModal .login-process-list {
+  margin: 0 0 14px;
+  padding-left: 24px;
+}
+
+#instructionModal .login-process-list li {
+  margin: 8px 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+#instructionModal .login-pin-warning {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  color: #f0c5c5;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+#instructionModal .instruction-close-btn {
+  margin-top: 18px;
+}
+
+@media (max-width: 430px) {
+  #instructionModal .instruction-card {
+    padding: 21px 18px;
+  }
+
+  #instructionModal .instruction-card h3 {
+    font-size: 21px;
+  }
+
+  #instructionModal .login-first-note,
+  #instructionModal .login-process-list li {
+    font-size: 15px;
+  }
+}
