@@ -5,18 +5,6 @@ const QUEUE_KEY = 'selfstorage_offline_queue_v1';
 const AUTH_MESSAGE_KEY = 'selfstorage_auth_message_v1';
 const INVALID_AUTH_MESSAGE = 'Konto nie aktywne\nSkontaktuj się z adminem.';
 
-function setDisplayedVersion() {
-  for (const element of document.querySelectorAll('body > div')) {
-    if (/^v0\.\d+$/.test(element.textContent?.trim() || '')) {
-      element.textContent = 'v0.32';
-      element.style.fontSize = '13px';
-      element.style.fontWeight = '600';
-      element.style.opacity = '.85';
-      break;
-    }
-  }
-}
-
 function showCenteredAuthMessage(message) {
   const existing = document.getElementById('authMessageModal');
   existing?.remove();
@@ -178,6 +166,5 @@ if ('serviceWorker' in navigator) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  setDisplayedVersion();
   window.setTimeout(showStoredAuthMessage, 120);
 });
