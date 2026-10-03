@@ -24,6 +24,7 @@ const APP_SHELL = [
   './js/scanner.js',
   './js/offline.js',
   './js/operation-flow.js?v=2',
+  './js/manual-part.js?v=2',
   './js/install.js',
   './js/auth.js?v=3',
   './js/runtime-fixes.js?v=10',
