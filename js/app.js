@@ -1054,9 +1054,13 @@ function openVehicleChangeModal(part) {
   const modal = $('vehicleChangeModal');
   modal.classList.add('show');
   modal.setAttribute('aria-hidden', 'false');
+  syncQuantityModalViewport();
 
   window.setTimeout(() => {
-    $('vehicleChangeQtyInput')?.focus();
+    const input = $('vehicleChangeQtyInput');
+    input?.focus();
+    syncQuantityModalViewport();
+    input?.scrollIntoView({ block: 'center', behavior: 'instant' });
   }, 80);
 }
 
@@ -1067,6 +1071,7 @@ function closeVehicleChangeModal() {
   const modal = $('vehicleChangeModal');
   modal?.classList.remove('show');
   modal?.setAttribute('aria-hidden', 'true');
+  resetQuantityModalViewport('vehicleChangeModal');
 }
 
 function updateVehicleChangeActions() {
@@ -2241,7 +2246,11 @@ function processPartInput(value) {
 }
 
 function syncQuantityModalViewport() {
-  const modal = $('quantityModal');
+  const modal =
+    $('vehicleChangeModal')?.classList.contains('show')
+      ? $('vehicleChangeModal')
+      : $('quantityModal');
+
   if (!modal || !modal.classList.contains('show')) return;
 
   const viewport = window.visualViewport;
@@ -2255,19 +2264,27 @@ function syncQuantityModalViewport() {
   const card = modal.querySelector('.modal-card');
   if (card) {
     card.style.maxHeight = `${Math.max(220, visibleHeight - 24)}px`;
+    card.style.overflowY = 'auto';
   }
 }
 
-function resetQuantityModalViewport() {
-  const modal = $('quantityModal');
-  if (!modal) return;
+function resetQuantityModalViewport(targetId = null) {
+  const ids = targetId
+    ? [targetId]
+    : ['quantityModal', 'vehicleChangeModal'];
 
-  modal.style.removeProperty('top');
-  modal.style.removeProperty('bottom');
-  modal.style.removeProperty('height');
+  ids.forEach(id => {
+    const modal = $(id);
+    if (!modal) return;
 
-  const card = modal.querySelector('.modal-card');
-  card?.style.removeProperty('max-height');
+    modal.style.removeProperty('top');
+    modal.style.removeProperty('bottom');
+    modal.style.removeProperty('height');
+
+    const card = modal.querySelector('.modal-card');
+    card?.style.removeProperty('max-height');
+    card?.style.removeProperty('overflow-y');
+  });
 }
 
 function openQuantityModal(part, type, mode) {
@@ -2316,7 +2333,7 @@ function closeQuantityModal() {
   $('quantityInput').value = '';
   $('quantityModal').classList.remove('show');
   $('quantityModal').setAttribute('aria-hidden', 'true');
-  resetQuantityModalViewport();
+  resetQuantityModalViewport('quantityModal');
 }
 
 function confirmQuantity() {
