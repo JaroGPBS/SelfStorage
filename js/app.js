@@ -1216,9 +1216,9 @@ async function saveVehicleManualChanges() {
 
     if (localData) {
       storeVehicleStockCache(localData);
-      renderVehicleStock(localData);
     }
 
+    closeVehicleStock();
     showToast('Stan auta zapisany.');
 
     fetchVehicleStockOnce()
