@@ -570,29 +570,68 @@ body:has(#screenVehicle.active) .app-signature {
 }
 
 #screenVehicle .vehicle-head {
-  align-items: center;
-  margin: 4px 2px 12px;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 4px 2px 14px;
 }
 
-#screenVehicle .vehicle-head h2 {
-  margin-bottom: 4px;
-  font-size: 28px;
+.vehicle-title-block {
+  min-width: 0;
+  flex: 1;
+}
+
+.vehicle-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  line-height: 1.1;
+}
+
+.vehicle-title-auto {
+  color: #8fb9f2;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+
+.vehicle-title-separator {
+  color: #728092;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.vehicle-title-text {
+  color: #f1f4f7;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .35px;
 }
 
 #screenVehicle .vehicle-head p {
-  margin: 0;
+  margin: 8px 0 0;
   font-size: 13px;
 }
 
+.vehicle-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .vehicle-mode-note {
-  margin-bottom: 14px;
-  padding: 10px 12px;
+  margin: 0;
+  padding: 7px 9px;
   border: 1px solid rgba(143, 185, 242, .20);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(31, 37, 44, .78);
   color: #b9c5d3;
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .vehicle-list-head {
@@ -692,5 +731,28 @@ body:has(#screenVehicle.active) .app-signature {
     height: 72px;
     min-height: 72px;
     margin-bottom: 8px;
+  }
+}
+
+
+@media (max-width: 430px) {
+  #screenVehicle .vehicle-head {
+    gap: 8px;
+  }
+
+  .vehicle-head-actions {
+    gap: 6px;
+  }
+
+  .vehicle-mode-note {
+    max-width: 110px;
+    white-space: normal;
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+
+  #screenVehicle .instruction-link-btn {
+    padding-left: 10px;
+    padding-right: 10px;
   }
 }
