@@ -1735,8 +1735,10 @@ function init() {
 
   if (state.team && state.visit?.idWizyty) {
     renderVisit();
+    prefetchVehicleStock();
   } else if (state.team) {
     renderWarehouse();
+    prefetchVehicleStock();
   } else {
     showScreen('screenLogin');
   }
