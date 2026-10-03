@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 
-const APP_VERSION = '0.43';
+const APP_VERSION = '0.44';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const DEMO_PIN = '0000';
 const DEMO_PARTS = Object.freeze([
@@ -1494,7 +1494,7 @@ async function registerServiceWorker() {
 
   try {
     const hadController = Boolean(navigator.serviceWorker.controller);
-    const registration = await navigator.serviceWorker.register('./service-worker.js');
+    const registration = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' });
 
     registration.update().catch(() => {});
 
@@ -1520,9 +1520,36 @@ async function registerServiceWorker() {
   }
 }
 
+function updateAppVersionBadge() {
+  let versionEl = $('appVersion');
+
+  if (!versionEl) {
+    versionEl = Array
+      .from(document.querySelectorAll('body div'))
+      .find(el => /^v\d+\.\d+$/i.test(String(el.textContent || '').trim()));
+  }
+
+  if (!versionEl) {
+    versionEl = document.createElement('div');
+    versionEl.style.position = 'fixed';
+    versionEl.style.right = '10px';
+    versionEl.style.bottom = 'max(6px, env(safe-area-inset-bottom))';
+    versionEl.style.zIndex = '20';
+    versionEl.style.fontSize = '10px';
+    versionEl.style.lineHeight = '1';
+    versionEl.style.color = '#78818c';
+    versionEl.style.opacity = '.65';
+    versionEl.style.pointerEvents = 'none';
+    versionEl.style.userSelect = 'none';
+    document.body.appendChild(versionEl);
+  }
+
+  versionEl.id = 'appVersion';
+  versionEl.textContent = `v${APP_VERSION}`;
+}
+
 function init() {
-  const versionEl = $('appVersion');
-  if (versionEl) versionEl.textContent = `v${APP_VERSION}`;
+  updateAppVersionBadge();
 
   sessionStorage.removeItem('selfstorage_reload_for_update');
   restore();
