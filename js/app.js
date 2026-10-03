@@ -300,6 +300,9 @@ function resetState() {
   state.vehicleVisitDelta = {};
   state.vehicleStockCache = null;
   vehicleStockRequest = null;
+  vehicleManualDraft = {};
+  vehicleManualPart = null;
+  vehicleInventoryParts = [];
   clearState();
   updateDemoUi();
 }
@@ -1526,8 +1529,20 @@ function renderVehicleStock(data) {
 
   const list = $('vehiclePartsList');
   const empty = $('vehiclePartsEmpty');
+  const weeklyButton = $('vehicleWeeklyReportBtn');
+  const titleText = $('vehicleTitleText');
 
   $('vehiclePartCount').textContent = String(parts.length);
+
+  if (titleText) {
+    titleText.textContent = inWarehouseVisit
+      ? 'STAN NA SAMOCHODZIE'
+      : 'AKTUALNY STAN CZĘŚCI';
+  }
+
+  if (weeklyButton) {
+    weeklyButton.classList.toggle('hidden', inWarehouseVisit);
+  }
 
   if (!inventoryDone) {
     $('vehicleModeNote').textContent = 'Inwentaryzacja niewykonana';
@@ -1537,6 +1552,7 @@ function renderVehicleStock(data) {
       : 'Pełny stan auta';
   }
 
+  updateVehicleBackButton();
   list.replaceChildren();
 
   for (const part of parts) {
@@ -1563,14 +1579,39 @@ function renderVehicleStock(data) {
     qty.className = 'vehicle-part-qty';
 
     const current = document.createElement('strong');
+    const displayQty =
+      !inWarehouseVisit && inventoryDone
+        ? getVehicleDisplayedQty(part)
+        : part.stanAktualny;
+
     current.textContent =
       !inventoryDone ||
-      part.stanAktualny === null ||
-      part.stanAktualny === undefined
+      displayQty === null ||
+      displayQty === undefined
         ? 'Stan: —'
-        : `Stan: ${formatVehicleQty(part.stanAktualny)} szt.`;
+        : `Stan: ${formatVehicleQty(displayQty)} szt.`;
 
     qty.append(current);
+
+    if (!inWarehouseVisit && inventoryDone && displayQty !== null) {
+      row.classList.add('is-editable');
+
+      const hint = document.createElement('span');
+      hint.className = 'vehicle-edit-hint';
+      hint.textContent = 'Kliknij, aby zmienić stan';
+      main.appendChild(hint);
+
+      const pendingDelta = getVehicleManualDelta(part.kod);
+      if (pendingDelta) {
+        const pending = document.createElement('span');
+        pending.className = 'vehicle-pending-change';
+        pending.textContent =
+          `Zmiana: ${pendingDelta > 0 ? '+' : ''}${pendingDelta} → ${displayQty} szt.`;
+        qty.appendChild(pending);
+      }
+
+      bindVehiclePartTap(row, part);
+    }
 
     if (inWarehouseVisit && inventoryDone) {
       const target = Number(part.stanDocelowy);
@@ -1626,6 +1667,10 @@ function renderVehicleStock(data) {
 async function openVehicleStock() {
   if (!state.team?.id) return;
 
+  vehicleManualDraft = {};
+  vehicleManualPart = null;
+  vehicleInventoryParts = [];
+
   if (isDemoMode()) {
     showToast('Stan auta nie jest dostępny w trybie DEMO.');
     return;
@@ -1670,6 +1715,15 @@ async function openVehicleStock() {
 }
 
 function closeVehicleStock() {
+  if (!state.visit?.idWizyty && hasVehicleManualChanges()) {
+    showToast('Masz niezapisane zmiany. Kliknij „Zapisz”.', true);
+    return;
+  }
+
+  vehicleManualDraft = {};
+  vehicleManualPart = null;
+  vehicleInventoryParts = [];
+
   if (state.visit?.idWizyty) {
     renderVisit();
     ensureSystemBackGuard();
