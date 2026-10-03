@@ -1,10 +1,12 @@
 import { api } from './api.js';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
+import { getDeviceId } from './device.js';
 
 const APP_VERSION = '0.46';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
+const DEVICE_ID = getDeviceId();
 const DEMO_PIN = '0000';
 const DEMO_PARTS = Object.freeze([
   { kod: 'DEMO-001', nazwa: 'CEOWNIK DACHU DŁUGI (HOKEJKA DŁUGA)' },
@@ -490,14 +492,96 @@ function getEffectiveVehicleDelta() {
 function commitDraftToVehicleDelta(draft) {
   if (!draft || draft.idWizyty !== state.visit?.idWizyty) return;
 
-  const next = { ...(state.vehicleVisitDelta || {}) };
-  addDraftToVehicleDelta(next, draft);
+  const entry =
+    state.vehicleStockCache ||
+    readStoredVehicleStock(state.team?.id);
 
-  for (const code of Object.keys(next)) {
-    if (Number(next[code]) === 0) delete next[code];
+  if (!entry?.data || !Array.isArray(entry.data.czesci)) {
+    const next = { ...(state.vehicleVisitDelta || {}) };
+    addDraftToVehicleDelta(next, draft);
+    state.vehicleVisitDelta = next;
+    persist();
+    return;
   }
 
-  state.vehicleVisitDelta = next;
+  const parts = entry.data.czesci.map(part => ({ ...part }));
+  const byCode = new Map(
+    parts.map((part, index) => [String(part?.kod || '').trim(), { part, index }])
+  );
+
+  const applyList = (list, sign) => {
+    if (!Array.isArray(list)) return;
+
+    for (const item of list) {
+      const code = String(item?.kod || '').trim();
+      const qty = Number(item?.ilosc);
+      if (!code || !Number.isFinite(qty) || qty <= 0) continue;
+
+      const found = byCode.get(code);
+      const current = Number(found?.part?.stanAktualny || 0);
+      const nextQty = Math.max(0, current + (sign * qty));
+
+      if (found) {
+        found.part.stanAktualny = nextQty;
+
+        const target = Number(found.part.stanDocelowy);
+        const required = Number.isFinite(target) && target > 0;
+
+        if (!required && nextQty === 0) {
+          parts.splice(found.index, 1);
+          byCode.clear();
+          parts.forEach((part, index) => {
+            byCode.set(String(part?.kod || '').trim(), { part, index });
+          });
+        }
+        continue;
+      }
+
+      if (nextQty <= 0) continue;
+
+      const master = getParts().find(part => String(part?.kod || '').trim() === code);
+      const added = {
+        kod: code,
+        numerIndeksu: '',
+        nazwa: master?.nazwa || code,
+        stanDocelowy: null,
+        stanAktualny: nextQty,
+        wymagany: false
+      };
+
+      parts.push(added);
+      byCode.set(code, { part: added, index: parts.length - 1 });
+    }
+  };
+
+  applyList(draft.pobranie, 1);
+  applyList(draft.zwrot, -1);
+
+  const pending = new Set(
+    Array.isArray(entry.pendingSessionIds)
+      ? entry.pendingSessionIds.map(String)
+      : []
+  );
+  pending.add(String(draft.idSesji || ''));
+
+  const nextEntry = {
+    ...entry,
+    teamId: state.team?.id || entry.teamId,
+    visitId: state.visit?.idWizyty || entry.visitId || null,
+    fetchedAt: entry.fetchedAt || new Date().toISOString(),
+    updatedLocallyAt: new Date().toISOString(),
+    dirty: true,
+    pendingSessionIds: [...pending].filter(Boolean),
+    data: {
+      ...entry.data,
+      czesci: parts
+    }
+  };
+
+  state.vehicleVisitDelta = {};
+  state.vehicleStockCache = nextEntry;
+  writeStoredVehicleStock(state.team?.id, nextEntry);
+  persist();
 }
 
 function getCachedVehicleStock() {
@@ -544,10 +628,22 @@ function writeStoredVehicleStock(teamId, entry) {
 function storeVehicleStockCache(data) {
   if (!state.team?.id || !data) return;
 
+  const previous =
+    state.vehicleStockCache ||
+    readStoredVehicleStock(state.team.id);
+
+  const pendingSessionIds =
+    Array.isArray(previous?.pendingSessionIds)
+      ? previous.pendingSessionIds
+      : [];
+
   const entry = {
     teamId: state.team.id,
     visitId: state.visit?.idWizyty || null,
     fetchedAt: new Date().toISOString(),
+    updatedLocallyAt: previous?.updatedLocallyAt || null,
+    dirty: pendingSessionIds.length > 0,
+    pendingSessionIds,
     data
   };
 
@@ -564,7 +660,11 @@ async function fetchVehicleStockOnce() {
   }
 
   vehicleStockRequest = api
-    .getVehicleStock(state.team.id, state.team?.nazwa || '')
+    .getVehicleStock(
+      state.team.id,
+      state.team?.nazwa || '',
+      DEVICE_ID
+    )
     .then(data => {
       storeVehicleStockCache(data);
       return data;
@@ -574,6 +674,113 @@ async function fetchVehicleStockOnce() {
     });
 
   return vehicleStockRequest;
+}
+
+function getVehicleCacheEntry() {
+  if (
+    state.vehicleStockCache?.data &&
+    String(state.vehicleStockCache.teamId || '') === String(state.team?.id || '')
+  ) {
+    return state.vehicleStockCache;
+  }
+
+  return readStoredVehicleStock(state.team?.id);
+}
+
+function vehicleVersionsMatch(localData, meta) {
+  if (!localData || !meta) return false;
+
+  const localStateVersion = Number(localData.wersjaStanu || 0);
+  const remoteStateVersion = Number(meta.wersjaStanu || 0);
+  const localListVersion = String(localData.wersjaListy || '');
+  const remoteListVersion = String(meta.wersjaListy || '');
+
+  return (
+    localStateVersion === remoteStateVersion &&
+    localListVersion === remoteListVersion
+  );
+}
+
+function refreshVehicleSyncInBackground(entry) {
+  if (!navigator.onLine || !state.team?.id || !entry?.data) return;
+
+  if (
+    Array.isArray(entry.pendingSessionIds) &&
+    entry.pendingSessionIds.length > 0
+  ) {
+    return;
+  }
+
+  api
+    .getVehicleSyncMeta(
+      state.team.id,
+      state.team?.nazwa || '',
+      DEVICE_ID
+    )
+    .then(meta => {
+      const latest = getVehicleCacheEntry();
+      if (!latest?.data) return;
+
+      if (vehicleVersionsMatch(latest.data, meta)) {
+        return;
+      }
+
+      return fetchVehicleStockOnce()
+        .then(data => {
+          if (getActiveScreenId() === 'screenVehicle') {
+            renderVehicleStock(data);
+          }
+        });
+    })
+    .catch(error => {
+      console.warn('Sprawdzenie wersji stanu auta nie powiodło się.', error);
+    });
+}
+
+function markVehicleSessionSynced(event) {
+  const idSesji = String(event?.detail?.idSesji || '').trim();
+  const result = event?.detail?.result || {};
+
+  if (!idSesji || !state.team?.id) return;
+
+  const version = Number(result.wersjaStanuAuta);
+  if (!Number.isFinite(version) || version < 1) {
+    return;
+  }
+
+  const entry = getVehicleCacheEntry();
+  if (!entry?.data) return;
+
+  const pending = (
+    Array.isArray(entry.pendingSessionIds)
+      ? entry.pendingSessionIds
+      : []
+  ).filter(id => String(id) !== idSesji);
+
+  const data = {
+    ...entry.data,
+    wersjaStanu: version,
+    wersjaListy:
+      result.wersjaListyAuta ||
+      entry.data.wersjaListy ||
+      '',
+    hashStanu:
+      result.hashStanuAuta ||
+      entry.data.hashStanu ||
+      ''
+  };
+
+  const nextEntry = {
+    ...entry,
+    fetchedAt: new Date().toISOString(),
+    dirty: pending.length > 0,
+    pendingSessionIds: pending,
+    data
+  };
+
+  state.vehicleStockCache = nextEntry;
+  writeStoredVehicleStock(state.team.id, nextEntry);
+  persist();
 }
 
 function renderVehicleStock(data) {
@@ -726,38 +933,18 @@ async function openVehicleStock() {
     return;
   }
 
-  const cached = getCachedVehicleStock();
-  if (cached) {
-    renderVehicleStock(cached);
-    return;
-  }
+  const entry = getVehicleCacheEntry();
 
-  const stored = readStoredVehicleStock(state.team.id);
-
-  if (stored?.data) {
+  if (entry?.data) {
     state.vehicleStockCache = {
-      ...stored,
+      ...entry,
       teamId: state.team.id,
       visitId: state.visit?.idWizyty || null
     };
     persist();
-    renderVehicleStock(stored.data);
 
-    if (navigator.onLine) {
-      fetchVehicleStockOnce()
-        .then(data => {
-          if (getActiveScreenId() === 'screenVehicle') {
-            renderVehicleStock(data);
-          }
-        })
-        .catch(error => {
-          console.warn('Odświeżenie stanu auta w tle nie powiodło się.', error);
-          if (getActiveScreenId() === 'screenVehicle') {
-            showToast('Nie udało się odświeżyć. Pokazuję ostatni zapisany stan.');
-          }
-        });
-    }
-
+    renderVehicleStock(entry.data);
+    refreshVehicleSyncInBackground(state.vehicleStockCache);
     return;
   }
 
@@ -766,7 +953,7 @@ async function openVehicleStock() {
     return;
   }
 
-  setLoading(true, 'Pobieranie stanu auta…');
+  setLoading(true, 'Pierwsze pobieranie stanu auta…');
 
   try {
     const data = await fetchVehicleStockOnce();
@@ -1519,11 +1706,12 @@ async function sendSession() {
   setLoading(true, 'Zapisywanie operacji…');
 
   try {
-    await api.saveSession({
+    const saveResult = await api.saveSession({
       idSesji: draft.idSesji,
       idWizyty: state.visit.idWizyty,
       dataCzasOperacji: draft.operationTime,
       idEkipy: state.team.id,
+      idUrzadzenia: DEVICE_ID,
       idMagazynu: state.visit.magazyn.id,
       komentarz: String(draft.komentarz || '').trim(),
       pobranie: draft.pobranie.map(item => ({ kod: item.kod, ilosc: item.ilosc })),
@@ -1531,6 +1719,12 @@ async function sendSession() {
     });
 
     commitDraftToVehicleDelta(draft);
+    markVehicleSessionSynced({
+      detail: {
+        idSesji: draft.idSesji,
+        result: saveResult
+      }
+    });
     state.operationDraft = null;
     persist();
     renderVisit();
@@ -1705,6 +1899,7 @@ function bindEvents() {
   });
 
   document.addEventListener('selfstorage:draft-queued', handleDraftQueued);
+  document.addEventListener('selfstorage:vehicle-session-synced', markVehicleSessionSynced);
   window.addEventListener('online', updateNetworkUi);
   window.addEventListener('offline', updateNetworkUi);
 }
