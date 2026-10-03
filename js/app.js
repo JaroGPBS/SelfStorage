@@ -431,11 +431,12 @@ function renderVehicleStock(data) {
     );
   const list = $('vehiclePartsList');
   const empty = $('vehiclePartsEmpty');
+  const inWarehouseVisit = Boolean(state.visit?.idWizyty);
 
   $('vehicleTeamName').textContent = data?.ekipa?.nazwa || state.team?.nazwa || '—';
   $('vehiclePartCount').textContent = String(parts.length);
-  $('vehicleModeNote').textContent = state.visit?.idWizyty
-    ? 'Podgląd stanu auta podczas aktywnej wizyty.'
+  $('vehicleModeNote').textContent = inWarehouseVisit
+    ? 'Podgląd stanu auta i braków podczas aktywnej wizyty.'
     : 'Podgląd części przypisanych do auta.';
 
   list.replaceChildren();
@@ -451,7 +452,7 @@ function renderVehicleStock(data) {
     name.textContent = part.nazwa || part.kod || 'Część';
 
     const required = document.createElement('span');
-    required.textContent = part.stanDocelowy === null || part.stanDocelowy === undefined
+    required.textContent = part.stanDocelowy === null || part.stanDocelowy === undefined || Number(part.stanDocelowy) <= 0
       ? 'Wymagane: —'
       : `Wymagane: ${formatVehicleQty(part.stanDocelowy)} szt.`;
 
@@ -466,6 +467,46 @@ function renderVehicleStock(data) {
       : `Stan: ${formatVehicleQty(part.stanAktualny)} szt.`;
 
     qty.append(current);
+
+    if (inWarehouseVisit) {
+      const target = Number(part.stanDocelowy);
+      const actual = Number(part.stanAktualny);
+
+      if (
+        Number.isFinite(target) &&
+        target > 0 &&
+        part.stanAktualny !== null &&
+        part.stanAktualny !== undefined &&
+        Number.isFinite(actual)
+      ) {
+        const difference = actual - target;
+        const balance = document.createElement('span');
+        balance.className = 'vehicle-balance';
+
+        if (difference < 0) {
+          balance.classList.add('shortage');
+          balance.textContent = `Brakuje: ${Math.abs(difference)} szt.`;
+        } else if (difference > 0) {
+          balance.classList.add('surplus');
+          balance.textContent = `Nadstan: ${difference} szt.`;
+        } else {
+          balance.classList.add('ok');
+          balance.textContent = 'Stan zgodny';
+        }
+
+        qty.append(balance);
+      } else if (
+        Number.isFinite(target) &&
+        target > 0 &&
+        (part.stanAktualny === null || part.stanAktualny === undefined)
+      ) {
+        const balance = document.createElement('span');
+        balance.className = 'vehicle-balance unknown';
+        balance.textContent = 'Brak danych o stanie';
+        qty.append(balance);
+      }
+    }
+
     row.append(main, qty);
     list.appendChild(row);
   }
