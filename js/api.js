@@ -75,8 +75,8 @@ export const api = {
     return request('POBIERZ_DANE_STARTOWE', { idEkipy });
   },
 
-  getVehicleStock(idEkipy) {
-    return request('POBIERZ_STAN_AUTA', { idEkipy });
+  getVehicleStock(idEkipy, nazwaEkipy = '') {
+    return request('POBIERZ_STAN_AUTA', { idEkipy, nazwaEkipy });
   },
 
   startVisit({ idEkipy, kodMagazynu, idWizyty }) {
