@@ -701,6 +701,34 @@ function vehicleVersionsMatch(localData, meta) {
   );
 }
 
+function warmVehicleStateInBackground() {
+  if (
+    !state.team?.id ||
+    isDemoMode() ||
+    !navigator.onLine ||
+    getVehicleCacheEntry()?.data ||
+    vehicleStockRequest
+  ) {
+    return;
+  }
+
+  window.setTimeout(() => {
+    if (
+      !state.team?.id ||
+      !navigator.onLine ||
+      getVehicleCacheEntry()?.data ||
+      vehicleStockRequest
+    ) {
+      return;
+    }
+
+    fetchVehicleStockOnce()
+      .catch(error => {
+        console.warn('Wstępne pobieranie stanu auta nie powiodło się.', error);
+      });
+  }, 350);
+}
+
 function refreshVehicleSyncInBackground(entry) {
   if (!navigator.onLine || !state.team?.id || !entry?.data) return;
 
@@ -1120,6 +1148,7 @@ async function login() {
     renderWarehouse();
 
     refreshStartDataInBackground(team.id);
+    warmVehicleStateInBackground();
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -1194,6 +1223,7 @@ async function startVisit(code) {
 
     $('warehouseCodeInput').value = '';
     renderVisit();
+    warmVehicleStateInBackground();
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -1975,8 +2005,10 @@ function init() {
 
   if (state.team && state.visit?.idWizyty) {
     renderVisit();
+    warmVehicleStateInBackground();
   } else if (state.team) {
     renderWarehouse();
+    warmVehicleStateInBackground();
   } else {
     showScreen('screenLogin');
   }
