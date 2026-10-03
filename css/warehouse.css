@@ -760,6 +760,14 @@ body:has(#screenVehicle.active) .app-signature {
   background: transparent;
 }
 
+.vehicle-control-card:not(.visit-mode) {
+  display: block;
+}
+
+.vehicle-control-card:not(.visit-mode) .vehicle-weekly-report-btn {
+  width: 100%;
+}
+
 .vehicle-control-card.visit-mode {
   display: block;
   margin: 8px 0 0;
@@ -819,6 +827,7 @@ body:has(#screenVehicle.active) .app-signature {
   font-size: 11px !important;
   font-weight: 800;
   letter-spacing: .1px;
+  text-align: right;
 }
 
 .vehicle-pending-change {
