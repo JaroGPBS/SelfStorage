@@ -24,3 +24,6 @@
 
 /js/device.js
   Cache-Control: no-cache
+
+/js/admin-ui.js
+  Cache-Control: no-cache
