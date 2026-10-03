@@ -77,6 +77,11 @@ async function closeTopOverlayForSystemBack() {
     return true;
   }
 
+  if ($('vehicleChangeModal')?.classList.contains('show')) {
+    closeVehicleChangeModal();
+    return true;
+  }
+
   if ($('quantityModal')?.classList.contains('show')) {
     closeQuantityModal();
     return true;
@@ -120,7 +125,17 @@ async function handleSystemBack() {
     return false;
   }
 
+  if (activeScreen === 'screenVehicleInventory') {
+    closeWeeklyReport();
+    return false;
+  }
+
   if (activeScreen === 'screenVehicle') {
+    if (!state.visit?.idWizyty && hasVehicleManualChanges()) {
+      showToast('Masz niezapisane zmiany. Kliknij „Zapisz”.', true);
+      return false;
+    }
+
     if (state.visit?.idWizyty) {
       renderVisit();
     } else {
