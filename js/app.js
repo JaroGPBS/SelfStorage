@@ -2598,7 +2598,40 @@ function bindEvents() {
 
   $('vehicleStatePreBtn')?.addEventListener('click', openVehicleStock);
   $('vehiclePartsBtn')?.addEventListener('click', openVehicleStock);
-  $('vehicleBackBtn')?.addEventListener('click', closeVehicleStock);
+
+  $('vehicleBackBtn')?.addEventListener('click', () => {
+    if (!state.visit?.idWizyty && hasVehicleManualChanges()) {
+      saveVehicleManualChanges();
+      return;
+    }
+
+    closeVehicleStock();
+  });
+
+  $('vehicleWeeklyReportBtn')?.addEventListener('click', openWeeklyReport);
+  $('vehicleReportBackBtn')?.addEventListener('click', closeWeeklyReport);
+  $('vehicleReportSaveBtn')?.addEventListener('click', saveWeeklyReport);
+
+  $('vehicleChangeQtyInput')?.addEventListener('input', event => {
+    event.target.value = event.target.value.replace(/\D/g, '');
+    updateVehicleChangeActions();
+  });
+
+  $('vehicleReceiveBtn')?.addEventListener('click', () => {
+    applyVehicleManualChange(1);
+  });
+
+  $('vehicleUseBtn')?.addEventListener('click', () => {
+    applyVehicleManualChange(-1);
+  });
+
+  $('vehicleChangeCancelBtn')?.addEventListener('click', closeVehicleChangeModal);
+
+  $('vehicleChangeModal')?.addEventListener('click', event => {
+    if (event.target === $('vehicleChangeModal')) {
+      closeVehicleChangeModal();
+    }
+  });
 
   $('pobranieBtn').addEventListener('click', () => beginOperation('POBRANIE'));
   $('zwrotBtn').addEventListener('click', () => beginOperation('ZWROT'));
