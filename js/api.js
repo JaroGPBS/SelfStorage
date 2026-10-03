@@ -97,12 +97,20 @@ export const api = {
     });
   },
 
-  updateVehicleStock({ idEkipy, nazwaEkipy = '', idUrzadzenia = '', idZmiany, zmiany = [] }) {
+  updateVehicleStock({
+    idEkipy,
+    nazwaEkipy = '',
+    idUrzadzenia = '',
+    idZmiany,
+    typZmiany = 'RĘCZNA ZMIANA',
+    zmiany = []
+  }) {
     return request('AKTUALIZUJ_STAN_AUTA', {
       idEkipy,
       nazwaEkipy,
       idUrzadzenia,
       idZmiany,
+      typZmiany,
       zmiany
     });
   },
