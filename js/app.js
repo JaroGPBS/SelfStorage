@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 
-const APP_VERSION = '0.45';
+const APP_VERSION = '0.46';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const DEMO_PIN = '0000';
 const DEMO_PARTS = Object.freeze([
