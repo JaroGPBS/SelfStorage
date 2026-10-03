@@ -364,6 +364,20 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function isAdminTeam(team = state.team) {
+  return String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
+}
+
+async function refreshAdminStartData() {
+  if (!state.team?.id || !isAdminTeam()) return null;
+
+  const freshData = await api.getStartData(state.team.id, true);
+  state.startData = freshData;
+  saveCachedStartData(state.team.id, freshData);
+  persist();
+  return freshData;
+}
+
 function cleanScannerValue(value) {
   return String(value || '')
     .replace(/\u0000/g, '')
@@ -1187,9 +1201,20 @@ async function login() {
   try {
     const loginResult = await api.login(pin);
     const team = loginResult.ekipa;
+    const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
+
+    let startData = null;
+
+    if (adminLogin) {
+      setLoading(true, 'Pobieranie aktualnych danych administratora…');
+      startData = await api.getStartData(team.id, true);
+      saveCachedStartData(team.id, startData);
+    } else {
+      startData = loadCachedStartData(team.id);
+    }
 
     state.team = team;
-    state.startData = loadCachedStartData(team.id);
+    state.startData = startData;
     state.visit = null;
     state.pendingStart = null;
     state.operationDraft = null;
@@ -1202,7 +1227,10 @@ async function login() {
     $('loginBtn').disabled = true;
     renderWarehouse();
 
-    refreshStartDataInBackground(team.id);
+    if (!adminLogin) {
+      refreshStartDataInBackground(team.id);
+      warmVehicleStateInBackground();
+    }
     warmVehicleStateInBackground();
   } catch (error) {
     showToast(messageFromError(error), true);
@@ -2048,7 +2076,7 @@ function updateAppVersionBadge() {
   versionEl.textContent = `v${APP_VERSION}`;
 }
 
-function init() {
+async function init() {
   updateAppVersionBadge();
 
   sessionStorage.removeItem('selfstorage_reload_for_update');
@@ -2060,10 +2088,39 @@ function init() {
 
   if (state.team && state.visit?.idWizyty) {
     renderVisit();
-    warmVehicleStateInBackground();
+    if (!isAdminTeam()) {
+      warmVehicleStateInBackground();
+    }
   } else if (state.team) {
-    renderWarehouse();
-    warmVehicleStateInBackground();
+    if (isAdminTeam()) {
+      if (navigator.onLine) {
+        setLoading(true, 'Pobieranie aktualnych danych administratora…');
+        try {
+          await refreshAdminStartData();
+        } catch (error) {
+          state.startData = null;
+          persist();
+          showToast(
+            'Nie udało się pobrać aktualnych danych administratora. Spróbuj zalogować się ponownie.',
+            true
+          );
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        state.startData = null;
+        persist();
+        showToast(
+          'Konto administratora wymaga połączenia z internetem, aby pokazać aktualne dane.',
+          true
+        );
+      }
+
+      renderWarehouse();
+    } else {
+      renderWarehouse();
+      warmVehicleStateInBackground();
+    }
   } else {
     showScreen('screenLogin');
   }
