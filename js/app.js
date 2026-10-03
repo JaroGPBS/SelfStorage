@@ -419,9 +419,41 @@ function formatVehicleQty(value) {
 }
 
 function renderVehicleStock(data) {
-  const parts = (Array.isArray(data?.czesci) ? data.czesci : [])
-    .slice()
-    .sort((a, b) =>
+  const inWarehouseVisit = Boolean(state.visit?.idWizyty);
+
+  let parts = (Array.isArray(data?.czesci) ? data.czesci : [])
+    .slice();
+
+  if (inWarehouseVisit) {
+    parts = parts.filter(part => {
+      const target = Number(part.stanDocelowy);
+      const actual = Number(part.stanAktualny);
+
+      if (!Number.isFinite(target) || target <= 0) return false;
+      if (part.stanAktualny === null || part.stanAktualny === undefined) return false;
+      if (!Number.isFinite(actual)) return false;
+
+      return actual !== target;
+    });
+
+    parts.sort((a, b) => {
+      const diffA = Number(a.stanAktualny) - Number(a.stanDocelowy);
+      const diffB = Number(b.stanAktualny) - Number(b.stanDocelowy);
+
+      const typeA = diffA < 0 ? 0 : 1;
+      const typeB = diffB < 0 ? 0 : 1;
+
+      if (typeA !== typeB) return typeA - typeB;
+
+      return String(a?.nazwa || a?.kod || '')
+        .localeCompare(
+          String(b?.nazwa || b?.kod || ''),
+          'pl',
+          { sensitivity: 'base' }
+        );
+    });
+  } else {
+    parts.sort((a, b) =>
       String(a?.nazwa || a?.kod || '')
         .localeCompare(
           String(b?.nazwa || b?.kod || ''),
@@ -429,14 +461,15 @@ function renderVehicleStock(data) {
           { sensitivity: 'base' }
         )
     );
+  }
+
   const list = $('vehiclePartsList');
   const empty = $('vehiclePartsEmpty');
-  const inWarehouseVisit = Boolean(state.visit?.idWizyty);
 
   $('vehicleTeamName').textContent = data?.ekipa?.nazwa || state.team?.nazwa || '—';
   $('vehiclePartCount').textContent = String(parts.length);
   $('vehicleModeNote').textContent = inWarehouseVisit
-    ? 'Podgląd stanu auta i braków podczas aktywnej wizyty.'
+    ? 'Pokazujemy tylko braki i nadstany względem wymaganej ilości.'
     : 'Podgląd części przypisanych do auta.';
 
   list.replaceChildren();
@@ -471,40 +504,20 @@ function renderVehicleStock(data) {
     if (inWarehouseVisit) {
       const target = Number(part.stanDocelowy);
       const actual = Number(part.stanAktualny);
+      const difference = actual - target;
 
-      if (
-        Number.isFinite(target) &&
-        target > 0 &&
-        part.stanAktualny !== null &&
-        part.stanAktualny !== undefined &&
-        Number.isFinite(actual)
-      ) {
-        const difference = actual - target;
-        const balance = document.createElement('span');
-        balance.className = 'vehicle-balance';
+      const balance = document.createElement('span');
+      balance.className = 'vehicle-balance';
 
-        if (difference < 0) {
-          balance.classList.add('shortage');
-          balance.textContent = `Brakuje: ${Math.abs(difference)} szt.`;
-        } else if (difference > 0) {
-          balance.classList.add('surplus');
-          balance.textContent = `Nadstan: ${difference} szt.`;
-        } else {
-          balance.classList.add('ok');
-          balance.textContent = 'Stan zgodny';
-        }
-
-        qty.append(balance);
-      } else if (
-        Number.isFinite(target) &&
-        target > 0 &&
-        (part.stanAktualny === null || part.stanAktualny === undefined)
-      ) {
-        const balance = document.createElement('span');
-        balance.className = 'vehicle-balance unknown';
-        balance.textContent = 'Brak danych o stanie';
-        qty.append(balance);
+      if (difference < 0) {
+        balance.classList.add('shortage');
+        balance.textContent = `Brakuje: ${Math.abs(difference)} szt.`;
+      } else {
+        balance.classList.add('surplus');
+        balance.textContent = `Nadstan: ${difference} szt.`;
       }
+
+      qty.append(balance);
     }
 
     row.append(main, qty);
@@ -512,6 +525,19 @@ function renderVehicleStock(data) {
   }
 
   empty.classList.toggle('hidden', parts.length > 0);
+
+  if (!parts.length && inWarehouseVisit) {
+    const strong = empty.querySelector('strong');
+    const span = empty.querySelector('span');
+    if (strong) strong.textContent = 'Brak różnic';
+    if (span) span.textContent = 'Stan auta jest zgodny z wymaganymi ilościami.';
+  } else if (!parts.length) {
+    const strong = empty.querySelector('strong');
+    const span = empty.querySelector('span');
+    if (strong) strong.textContent = 'Brak części do wyświetlenia';
+    if (span) span.textContent = 'Sprawdź konfigurację zakładki Samochody.';
+  }
+
   showScreen('screenVehicle');
 }
 
