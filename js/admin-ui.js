@@ -1,10 +1,6 @@
 import { loadState } from './storage.js';
 import './install.js';
 
-const ADMIN_WAREHOUSE_FALLBACK = [
-  { id: 'BOX01', nazwa: 'TULUZA', kod: 'MAG-TL7A2Q', aktywny: true }
-];
-
 function normalizeRoleLabel(value) {
   const role = String(value || '').trim().toUpperCase();
   if (role === 'KIEROWNIK') return 'KOORDYNATOR';
@@ -47,7 +43,7 @@ function normalizeWarehouse(item) {
   const activeText = String(rawActive).trim().toUpperCase();
   const aktywny = rawActive === true || ['TAK', 'TRUE', '1', 'AKTYWNY'].includes(activeText);
 
-  if (!nazwa || !kod || !aktywny) return null;
+  if (!nazwa || !id || !aktywny) return null;
   return { id, nazwa, kod, aktywny: true };
 }
 
@@ -56,11 +52,10 @@ function getAdminWarehouses(saved) {
     ? saved.startData.magazyny.map(normalizeWarehouse).filter(Boolean)
     : [];
 
-  const source = liveWarehouses.length > 0 ? liveWarehouses : ADMIN_WAREHOUSE_FALLBACK;
   const unique = new Map();
 
-  for (const warehouse of source) {
-    unique.set(warehouse.kod, warehouse);
+  for (const warehouse of liveWarehouses) {
+    unique.set(warehouse.id || warehouse.kod || warehouse.nazwa, warehouse);
   }
 
   return Array.from(unique.values()).sort((a, b) => a.nazwa.localeCompare(b.nazwa, 'pl'));
@@ -124,7 +119,11 @@ function renderAdminWarehousePicker(saved) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'btn btn-secondary admin-warehouse-btn';
-    button.textContent = warehouse.nazwa;
+    const hasCode = Boolean(String(warehouse.kod || '').trim());
+    button.textContent = hasCode
+      ? warehouse.nazwa
+      : `${warehouse.nazwa} — brak kodu`;
+    button.disabled = !hasCode;
     button.style.minHeight = '58px';
     button.style.margin = '0';
     button.style.background = '#303844';
@@ -133,7 +132,14 @@ function renderAdminWarehousePicker(saved) {
     button.style.fontSize = '17px';
     button.style.fontWeight = '850';
     button.style.letterSpacing = '.3px';
-    button.addEventListener('click', () => startWarehouseFromPicker(warehouse.kod));
+
+    if (hasCode) {
+      button.addEventListener('click', () => startWarehouseFromPicker(warehouse.kod));
+    } else {
+      button.style.opacity = '.55';
+      button.title = 'Magazyn jest aktywny, ale nie ma jeszcze przypisanego kodu.';
+    }
+
     list.appendChild(button);
   }
 
