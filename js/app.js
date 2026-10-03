@@ -238,7 +238,9 @@ async function refreshStartDataInBackground(teamId) {
   if (!teamId || !navigator.onLine) return;
 
   try {
-    const freshData = await api.getStartData(teamId);
+    // Dla ekipy logowanie ma być lekkie, ale dane w tle mają być naprawdę świeże.
+    // fresh=true omija wielodniowy cache Service Workera i pobiera aktualne dane z serwera.
+    const freshData = await api.getStartData(teamId, true);
     saveCachedStartData(teamId, freshData);
 
     if (state.team?.id === teamId) {
@@ -793,6 +795,30 @@ function warmVehicleStateInBackground() {
   }, 350);
 }
 
+function syncVehicleStateInBackground() {
+  if (!state.team?.id || isDemoMode() || !navigator.onLine) return;
+
+  const entry = getVehicleCacheEntry();
+
+  if (entry?.data) {
+    refreshVehicleSyncInBackground(entry);
+    return;
+  }
+
+  warmVehicleStateInBackground();
+}
+
+async function refreshTeamDataInBackground(teamId) {
+  if (!teamId || isAdminTeam() || !navigator.onLine) return;
+
+  // Najpierw świeża konfiguracja/lista części. Stan auta rusza dopiero później,
+  // żeby dwa cięższe zapytania nie konkurowały podczas samego logowania.
+  await refreshStartDataInBackground(teamId);
+
+  if (state.team?.id !== teamId || isAdminTeam()) return;
+  syncVehicleStateInBackground();
+}
+
 function refreshVehicleSyncInBackground(entry) {
   if (!navigator.onLine || !state.team?.id || !entry?.data) return;
 
@@ -1269,10 +1295,8 @@ async function login() {
     renderWarehouse();
 
     if (!adminLogin) {
-      refreshStartDataInBackground(team.id);
-      warmVehicleStateInBackground();
+      refreshTeamDataInBackground(team.id);
     }
-    warmVehicleStateInBackground();
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -1347,7 +1371,10 @@ async function startVisit(code) {
 
     $('warehouseCodeInput').value = '';
     renderVisit();
-    warmVehicleStateInBackground();
+
+    if (!isAdminTeam()) {
+      syncVehicleStateInBackground();
+    }
   } catch (error) {
     showToast(messageFromError(error), true);
   } finally {
@@ -2130,7 +2157,7 @@ async function init() {
   if (state.team && state.visit?.idWizyty) {
     renderVisit();
     if (!isAdminTeam()) {
-      warmVehicleStateInBackground();
+      refreshTeamDataInBackground(state.team.id);
     }
   } else if (state.team) {
     if (isAdminTeam()) {
@@ -2160,7 +2187,7 @@ async function init() {
       renderWarehouse();
     } else {
       renderWarehouse();
-      warmVehicleStateInBackground();
+      refreshTeamDataInBackground(state.team.id);
     }
   } else {
     showScreen('screenLogin');
