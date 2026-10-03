@@ -942,6 +942,522 @@ function markVehicleSessionSynced(event) {
   }
 }
 
+function makeVehicleChangeId(prefix = 'AUTO') {
+  return `${prefix}-APP-${Date.now()}-${randomToken(12)}`;
+}
+
+function hasVehicleManualChanges() {
+  return Object.values(vehicleManualDraft).some(value => Number(value) !== 0);
+}
+
+function getVehicleManualDelta(code) {
+  return Number(vehicleManualDraft[String(code || '').trim()] || 0);
+}
+
+function getVehicleDisplayedQty(part) {
+  if (
+    part?.stanAktualny === null ||
+    part?.stanAktualny === undefined ||
+    part?.stanAktualny === ''
+  ) {
+    return null;
+  }
+
+  const base = Number(part.stanAktualny);
+  if (!Number.isFinite(base)) return null;
+
+  return Math.max(
+    0,
+    Math.floor(base + getVehicleManualDelta(part.kod))
+  );
+}
+
+function updateVehicleBackButton() {
+  const button = $('vehicleBackBtn');
+  if (!button) return;
+
+  const saveMode =
+    !state.visit?.idWizyty &&
+    hasVehicleManualChanges();
+
+  button.textContent = saveMode ? 'Zapisz' : '← Wróć';
+  button.classList.toggle('vehicle-save-mode', saveMode);
+}
+
+function bindVehiclePartTap(row, part) {
+  let pointerStart = null;
+
+  row.setAttribute('role', 'button');
+  row.setAttribute('tabindex', '0');
+
+  row.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    pointerStart = {
+      x: event.clientX,
+      y: event.clientY
+    };
+  });
+
+  row.addEventListener('pointerup', event => {
+    if (!pointerStart) return;
+
+    const distance = Math.hypot(
+      event.clientX - pointerStart.x,
+      event.clientY - pointerStart.y
+    );
+
+    pointerStart = null;
+
+    if (distance <= 9) {
+      openVehicleChangeModal(part);
+    }
+  });
+
+  row.addEventListener('pointercancel', () => {
+    pointerStart = null;
+  });
+
+  row.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openVehicleChangeModal(part);
+  });
+}
+
+function openVehicleChangeModal(part) {
+  if (
+    state.visit?.idWizyty ||
+    !part ||
+    part.stanAktualny === null ||
+    part.stanAktualny === undefined
+  ) {
+    return;
+  }
+
+  const current = getVehicleDisplayedQty(part);
+  if (current === null) return;
+
+  vehicleManualPart = {
+    kod: String(part.kod || '').trim(),
+    nazwa: part.nazwa || part.kod || 'Część',
+    current
+  };
+
+  $('vehicleChangePartName').textContent = vehicleManualPart.nazwa;
+  $('vehicleChangeCurrent').textContent = `Aktualny stan: ${current} szt.`;
+  $('vehicleChangeQtyInput').value = '';
+  updateVehicleChangeActions();
+
+  const modal = $('vehicleChangeModal');
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+
+  window.setTimeout(() => {
+    $('vehicleChangeQtyInput')?.focus();
+  }, 80);
+}
+
+function closeVehicleChangeModal() {
+  vehicleManualPart = null;
+  $('vehicleChangeQtyInput').value = '';
+
+  const modal = $('vehicleChangeModal');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden', 'true');
+}
+
+function updateVehicleChangeActions() {
+  const raw = String($('vehicleChangeQtyInput')?.value || '').trim();
+  const qty = raw ? Number(raw) : 0;
+  const valid = Number.isInteger(qty) && qty > 0;
+  const current = Number(vehicleManualPart?.current || 0);
+
+  const receive = $('vehicleReceiveBtn');
+  const use = $('vehicleUseBtn');
+  const receiveResult = $('vehicleReceiveResult');
+  const useResult = $('vehicleUseResult');
+
+  if (!valid) {
+    receive.disabled = true;
+    use.disabled = true;
+    receiveResult.textContent = 'Dodaj do stanu';
+    useResult.textContent = 'Odejmij ze stanu';
+    return;
+  }
+
+  receive.disabled = false;
+  receiveResult.textContent = `+${qty} → stan ${current + qty}`;
+
+  if (qty > current) {
+    use.disabled = true;
+    useResult.textContent = `Brak ${qty - current} szt.`;
+  } else {
+    use.disabled = false;
+    useResult.textContent = `-${qty} → stan ${current - qty}`;
+  }
+}
+
+function applyVehicleManualChange(sign) {
+  if (!vehicleManualPart) return;
+
+  const qty = Number($('vehicleChangeQtyInput').value);
+  if (!Number.isInteger(qty) || qty <= 0) return;
+
+  if (sign < 0 && qty > vehicleManualPart.current) {
+    showToast('Nie możesz zużyć więcej sztuk niż masz na aucie.', true);
+    return;
+  }
+
+  const code = vehicleManualPart.kod;
+  const next =
+    getVehicleManualDelta(code) +
+    (sign * qty);
+
+  if (next === 0) {
+    delete vehicleManualDraft[code];
+  } else {
+    vehicleManualDraft[code] = next;
+  }
+
+  closeVehicleChangeModal();
+
+  const data = getVehicleCacheEntry()?.data;
+  if (data) {
+    renderVehicleStock(data);
+  }
+}
+
+function buildVehicleLocalDataFromDeltas(data, deltas, result = {}) {
+  if (!data) return data;
+
+  const next = {
+    ...data,
+    wersjaStanu:
+      result.wersjaStanu ??
+      data.wersjaStanu,
+    wersjaListy:
+      result.wersjaListy ??
+      data.wersjaListy,
+    hashStanu:
+      result.hashStanu ??
+      data.hashStanu,
+    inwentaryzacjaWykonana:
+      result.inwentaryzacjaWykonana ??
+      data.inwentaryzacjaWykonana,
+    ostatniaInwentaryzacja:
+      result.ostatniaInwentaryzacja ??
+      data.ostatniaInwentaryzacja,
+    czesci: (Array.isArray(data.czesci) ? data.czesci : []).map(part => {
+      const delta = Number(deltas[String(part.kod || '').trim()] || 0);
+
+      if (
+        !delta ||
+        part.stanAktualny === null ||
+        part.stanAktualny === undefined
+      ) {
+        return { ...part };
+      }
+
+      return {
+        ...part,
+        stanAktualny: Math.max(
+          0,
+          Math.floor(Number(part.stanAktualny || 0) + delta)
+        )
+      };
+    })
+  };
+
+  return next;
+}
+
+async function saveVehicleManualChanges() {
+  if (!hasVehicleManualChanges()) {
+    closeVehicleStock();
+    return;
+  }
+
+  if (!navigator.onLine) {
+    showToast('Zapis zmiany stanu auta wymaga internetu.', true);
+    return;
+  }
+
+  const changes = Object.entries(vehicleManualDraft)
+    .filter(([, delta]) => Number(delta) !== 0)
+    .map(([kod, delta]) => ({
+      kod,
+      delta: Number(delta)
+    }));
+
+  const snapshot = { ...vehicleManualDraft };
+  setLoading(true, 'Zapisywanie stanu auta…');
+
+  try {
+    const result = await api.updateVehicleStock({
+      idEkipy: state.team.id,
+      nazwaEkipy: state.team?.nazwa || '',
+      idUrzadzenia: DEVICE_ID,
+      idZmiany: makeVehicleChangeId('RECZNA'),
+      typZmiany: 'RĘCZNA ZMIANA',
+      zmiany: changes
+    });
+
+    const currentData = getVehicleCacheEntry()?.data;
+    const localData = buildVehicleLocalDataFromDeltas(
+      currentData,
+      snapshot,
+      result
+    );
+
+    vehicleManualDraft = {};
+
+    if (localData) {
+      storeVehicleStockCache(localData);
+      renderVehicleStock(localData);
+    }
+
+    showToast('Stan auta zapisany.');
+
+    fetchVehicleStockOnce()
+      .then(data => {
+        if (getActiveScreenId() === 'screenVehicle') {
+          renderVehicleStock(data);
+        }
+      })
+      .catch(error => {
+        console.warn('Odświeżenie stanu auta po zapisie nie powiodło się.', error);
+      });
+  } catch (error) {
+    showToast(messageFromError(error), true);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function openWeeklyReport() {
+  if (state.visit?.idWizyty) return;
+
+  if (hasVehicleManualChanges()) {
+    showToast('Najpierw zapisz ręczne zmiany stanu auta.', true);
+    return;
+  }
+
+  const data = getVehicleCacheEntry()?.data;
+  const parts = (Array.isArray(data?.czesci) ? data.czesci : [])
+    .slice()
+    .sort((a, b) =>
+      String(a?.nazwa || a?.kod || '')
+        .localeCompare(
+          String(b?.nazwa || b?.kod || ''),
+          'pl',
+          { sensitivity: 'base' }
+        )
+    );
+
+  if (!parts.length) {
+    showToast('Brak części do raportu.', true);
+    return;
+  }
+
+  vehicleInventoryParts = parts;
+  $('vehicleReportCount').textContent = `${parts.length} pozycji`;
+
+  const list = $('vehicleReportList');
+  list.replaceChildren();
+
+  parts.forEach((part, index) => {
+    const row = document.createElement('label');
+    row.className = 'vehicle-report-row';
+    row.dataset.code = String(part.kod || '').trim();
+
+    const name = document.createElement('strong');
+    name.textContent = part.nazwa || part.kod || 'Część';
+
+    const input = document.createElement('input');
+    input.className = 'vehicle-report-input';
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.pattern = '[0-9]*';
+    input.autocomplete = 'off';
+    input.placeholder = '—';
+    input.dataset.code = row.dataset.code;
+    input.setAttribute(
+      'enterkeyhint',
+      index === parts.length - 1 ? 'done' : 'next'
+    );
+
+    input.addEventListener('input', event => {
+      event.target.value = event.target.value.replace(/\D/g, '');
+      if (event.target.value !== '') {
+        row.classList.remove('is-missing');
+      }
+    });
+
+    input.addEventListener('keydown', event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+
+      const inputs = Array.from(
+        list.querySelectorAll('.vehicle-report-input')
+      );
+
+      const currentIndex = inputs.indexOf(event.target);
+      const next = inputs[currentIndex + 1];
+
+      if (next) {
+        next.focus();
+        next.select();
+      } else {
+        event.target.blur();
+      }
+    });
+
+    row.append(name, input);
+    list.appendChild(row);
+  });
+
+  showScreen('screenVehicleInventory');
+  ensureSystemBackGuard();
+}
+
+function closeWeeklyReport() {
+  vehicleInventoryParts = [];
+  const data = getVehicleCacheEntry()?.data;
+
+  if (data) {
+    renderVehicleStock(data);
+  } else {
+    renderWarehouse();
+  }
+}
+
+function buildVehicleLocalDataFromInventory(data, valuesByCode, result = {}) {
+  if (!data) return data;
+
+  return {
+    ...data,
+    wersjaStanu:
+      result.wersjaStanu ??
+      data.wersjaStanu,
+    wersjaListy:
+      result.wersjaListy ??
+      data.wersjaListy,
+    hashStanu:
+      result.hashStanu ??
+      data.hashStanu,
+    inwentaryzacjaWykonana: true,
+    ostatniaInwentaryzacja:
+      result.ostatniaInwentaryzacja ||
+      new Date().toISOString(),
+    czesci: (Array.isArray(data.czesci) ? data.czesci : []).map(part => {
+      const code = String(part.kod || '').trim();
+
+      if (!Object.prototype.hasOwnProperty.call(valuesByCode, code)) {
+        return { ...part };
+      }
+
+      return {
+        ...part,
+        stanAktualny: valuesByCode[code]
+      };
+    })
+  };
+}
+
+async function saveWeeklyReport() {
+  const list = $('vehicleReportList');
+  const inputs = Array.from(
+    list.querySelectorAll('.vehicle-report-input')
+  );
+
+  const missing = inputs.filter(input => String(input.value).trim() === '');
+
+  list.querySelectorAll('.vehicle-report-row').forEach(row => {
+    row.classList.remove('is-missing');
+  });
+
+  if (missing.length) {
+    missing.forEach(input => {
+      input.closest('.vehicle-report-row')?.classList.add('is-missing');
+    });
+
+    const first = missing[0];
+    first.closest('.vehicle-report-row')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center'
+    });
+
+    window.setTimeout(() => first.focus(), 280);
+
+    showToast(
+      `Nie uzupełniono wszystkich pozycji. Brakuje: ${missing.length}.`,
+      true
+    );
+    return;
+  }
+
+  if (!navigator.onLine) {
+    showToast('Wysłanie cotygodniowego raportu wymaga internetu.', true);
+    return;
+  }
+
+  const valuesByCode = {};
+  const changes = inputs.map(input => {
+    const code = String(input.dataset.code || '').trim();
+    const stan = Number(input.value);
+    valuesByCode[code] = stan;
+
+    return {
+      kod: code,
+      stan
+    };
+  });
+
+  setLoading(true, 'Zapisywanie cotygodniowego raportu…');
+
+  try {
+    const result = await api.updateVehicleStock({
+      idEkipy: state.team.id,
+      nazwaEkipy: state.team?.nazwa || '',
+      idUrzadzenia: DEVICE_ID,
+      idZmiany: makeVehicleChangeId('INW'),
+      typZmiany: 'INWENTARYZACJA',
+      zmiany: changes
+    });
+
+    const currentData = getVehicleCacheEntry()?.data;
+    const localData = buildVehicleLocalDataFromInventory(
+      currentData,
+      valuesByCode,
+      result
+    );
+
+    vehicleInventoryParts = [];
+    vehicleManualDraft = {};
+
+    if (localData) {
+      storeVehicleStockCache(localData);
+      renderVehicleStock(localData);
+    }
+
+    showToast('Cotygodniowy raport zapisany.');
+
+    fetchVehicleStockOnce()
+      .then(data => {
+        if (getActiveScreenId() === 'screenVehicle') {
+          renderVehicleStock(data);
+        }
+      })
+      .catch(error => {
+        console.warn('Odświeżenie auta po raporcie nie powiodło się.', error);
+      });
+  } catch (error) {
+    showToast(messageFromError(error), true);
+  } finally {
+    setLoading(false);
+  }
+}
+
 function renderVehicleStock(data) {
   const inWarehouseVisit = Boolean(state.visit?.idWizyty);
   const inventoryDone = data?.inwentaryzacjaWykonana !== false;
