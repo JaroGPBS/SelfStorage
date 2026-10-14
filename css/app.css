@@ -172,6 +172,8 @@ p { color: var(--muted); line-height: 1.5; }
 
 .modal { position: fixed; inset: 0; z-index: 800; display: none; align-items: flex-end; justify-content: center; padding: 16px; background: rgba(8,10,13,.72); backdrop-filter: blur(6px); }
 .modal.show { display: flex; }
+/* Potwierdzenie zakończenia wizyty: okno na środku ekranu. */
+#finishModal { align-items: center; }
 .modal-card { width: 100%; max-width: 540px; border-radius: 22px; padding: 20px; }
 .modal-card.compact { max-width: 440px; }
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
