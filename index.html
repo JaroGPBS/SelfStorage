@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>SelfStorage</title>
+  <title>GPBS Storage</title>
 
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
@@ -162,12 +162,12 @@
       font-size: 11px;
     }
   </style>
-  <script type="module" src="./js/app.js?v=32"></script>
+  <script type="module" src="./js/app.js?v=33"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js?v=3"></script>
-  <script type="module" src="./js/admin-ui.js?v=3"></script>
+  <script type="module" src="./js/admin-ui.js?v=4"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -176,7 +176,7 @@
         <img src="./icons/gpbs-logo.svg" alt="" style="display:block;width:110px;height:auto;max-height:64px;object-fit:contain;">
       </div>
       <div class="brand-copy">
-        <strong style="font-size:22px;">SelfStorage</strong>
+        <strong style="font-size:22px;">Storage</strong>
       </div>
       <div id="networkBadge" class="network-badge online">
         <span class="network-dot"></span>
@@ -224,6 +224,13 @@
         </div>
 
         <button id="logoutBtn" class="btn btn-ghost danger-text">Wyloguj</button>
+      </section>
+
+      <section id="screenBelleville" class="screen">
+        <div class="section-head" style="align-items:center;gap:12px;">
+          <h2 style="margin:0;">Belleville</h2>
+          <button id="bellevilleBackBtn" class="instruction-link-btn" type="button">← Wróć</button>
+        </div>
       </section>
 
       <section id="screenVehicle" class="screen vehicle-screen">
@@ -499,7 +506,7 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <div id="appVersion" style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.47</div>
+  <div id="appVersion" style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:10px;line-height:1;color:#78818c;opacity:.65;pointer-events:none;user-select:none;">v0.48</div>
 
   <script>
     (() => {
