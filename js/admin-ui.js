@@ -221,8 +221,6 @@ function chooseBellevilleOperation(operation) {
     return;
   }
   document.getElementById('bellevilleTransportForm')?.reset();
-  const title = document.getElementById('bellevilleFormTitle');
-  if (title) title.textContent = operation === 'PZ' ? 'Przyjęcia — nowa sesja' : 'Wydania — nowa sesja';
   showBellevilleView('form');
 }
 
@@ -236,7 +234,7 @@ function startBellevilleSession(event) {
   const trailerInput = document.getElementById('bellevilleTrailerInput');
   if (!routeInput || !plateInput || !carrierInput || !trailerInput) return;
 
-  const route = routeInput.value.trim();
+  const route = routeInput.value.trim().toUpperCase();
   const plate = plateInput.value.trim().toUpperCase();
   if (!route) {
     routeInput.value = '';
@@ -256,7 +254,7 @@ function startBellevilleSession(event) {
     teamId,
     route,
     plate,
-    carrier: carrierInput.value.trim(),
+    carrier: carrierInput.value.trim().toUpperCase(),
     trailer: trailerInput.value.trim().toUpperCase(),
     startedAt: new Date().toISOString()
   });
@@ -441,6 +439,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('bellevilleBackBtn')?.addEventListener('click', closeBellevilleScreen);
   document.querySelectorAll('#screenBelleville .belleville-option').forEach(button => {
     button.addEventListener('click', () => chooseBellevilleOperation(button.dataset.bellevilleOperation));
+  });
+  document.querySelectorAll('#bellevilleTransportForm .text-input').forEach(input => {
+    input.addEventListener('input', () => {
+      const uppercase = input.value.toUpperCase();
+      if (input.value === uppercase) return;
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      input.value = uppercase;
+      if (start !== null && end !== null) input.setSelectionRange(start, end);
+    });
   });
   document.getElementById('bellevilleTransportForm')?.addEventListener('submit', startBellevilleSession);
   document.getElementById('bellevilleCancelFormBtn')?.addEventListener('click', backBellevilleView);
