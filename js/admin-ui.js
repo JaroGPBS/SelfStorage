@@ -155,6 +155,8 @@ function renderAdminWarehousePicker(saved) {
   list.appendChild(bellevilleBtn);
 
   for (const warehouse of warehouses) {
+    if (warehouse.nazwa.trim().toUpperCase() === 'BELLEVILLE' && !warehouse.kod) continue;
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'btn btn-secondary admin-warehouse-btn';
