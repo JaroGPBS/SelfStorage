@@ -3,7 +3,7 @@ import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 
-const APP_VERSION = '0.48';
+const APP_VERSION = '0.49';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -145,7 +145,7 @@ async function handleSystemBack() {
   }
 
   if (activeScreen === 'screenBelleville') {
-    renderWarehouse();
+    if (!window.gpbsBellevilleBack?.()) renderWarehouse();
     return false;
   }
 
