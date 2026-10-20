@@ -114,6 +114,24 @@ function startWarehouseFromPicker(code) {
   confirmButton.click();
 }
 
+function openBellevilleScreen() {
+  const saved = loadState();
+  if (normalizeRoleLabel(saved?.team?.rola) !== 'ADMIN') return;
+
+  document.querySelectorAll('.screen').forEach(screen => {
+    screen.classList.toggle('active', screen.id === 'screenBelleville');
+  });
+  window.scrollTo(0, 0);
+}
+
+function closeBellevilleScreen() {
+  document.querySelectorAll('.screen').forEach(screen => {
+    screen.classList.toggle('active', screen.id === 'screenWarehouse');
+  });
+  window.scrollTo(0, 0);
+  updateRoleControls();
+}
+
 function renderAdminWarehousePicker(saved) {
   const picker = ensureAdminWarehousePicker();
   const list = document.getElementById('adminWarehouseList');
@@ -121,6 +139,20 @@ function renderAdminWarehousePicker(saved) {
 
   const warehouses = getAdminWarehouses(saved);
   list.replaceChildren();
+
+  const bellevilleBtn = document.createElement('button');
+  bellevilleBtn.type = 'button';
+  bellevilleBtn.className = 'btn btn-secondary admin-warehouse-btn';
+  bellevilleBtn.textContent = 'Belleville — Magazynier';
+  bellevilleBtn.style.minHeight = '58px';
+  bellevilleBtn.style.margin = '0';
+  bellevilleBtn.style.background = '#344456';
+  bellevilleBtn.style.border = '1px solid #8fb9f2';
+  bellevilleBtn.style.color = '#f4f6f8';
+  bellevilleBtn.style.fontSize = '17px';
+  bellevilleBtn.style.fontWeight = '850';
+  bellevilleBtn.addEventListener('click', openBellevilleScreen);
+  list.appendChild(bellevilleBtn);
 
   for (const warehouse of warehouses) {
     const button = document.createElement('button');
@@ -150,7 +182,7 @@ function renderAdminWarehousePicker(saved) {
     list.appendChild(button);
   }
 
-  picker.classList.toggle('hidden', warehouses.length === 0);
+  picker.classList.remove('hidden');
 }
 
 function updateWarehouseControls(saved, role) {
@@ -262,6 +294,7 @@ function observeWarehouseScreen() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('bellevilleBackBtn')?.addEventListener('click', closeBellevilleScreen);
   updateRoleControls();
   observeVisitScreen();
   observeWarehouseScreen();
