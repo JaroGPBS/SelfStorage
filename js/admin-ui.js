@@ -143,7 +143,7 @@ function renderAdminWarehousePicker(saved) {
   const bellevilleBtn = document.createElement('button');
   bellevilleBtn.type = 'button';
   bellevilleBtn.className = 'btn btn-secondary admin-warehouse-btn';
-  bellevilleBtn.textContent = 'Belleville — Magazynier';
+  bellevilleBtn.textContent = 'Belleville';
   bellevilleBtn.style.minHeight = '58px';
   bellevilleBtn.style.margin = '0';
   bellevilleBtn.style.background = '#344456';
