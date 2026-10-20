@@ -244,20 +244,62 @@ body:has(#screenLogin.active)::before {
   font-size: 14px;
 }
 
-/* Belleville — formularz transportu i aktywna sesja. */
-#screenBelleville .belleville-transport-form,
+/* Belleville — kompaktowy, jednookranowy formularz transportu. */
+body:has(#screenBelleville.active #bellevilleTransportForm:not(.hidden)) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(#screenBelleville.active #bellevilleTransportForm:not(.hidden)) .app-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body:has(#screenBelleville.active #bellevilleTransportForm:not(.hidden)) .app-main {
+  height: calc(100dvh - clamp(82px, 10dvh, 98px) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  min-height: 0;
+  padding-top: clamp(5px, 1.3dvh, 10px);
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+#screenBelleville.active:has(#bellevilleTransportForm:not(.hidden)) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#screenBelleville:has(#bellevilleTransportForm:not(.hidden)) > .section-head {
+  margin: 0 2px clamp(5px, 1.1dvh, 10px);
+}
+
+#screenBelleville:has(#bellevilleTransportForm:not(.hidden)) > .section-head h2 {
+  font-size: clamp(22px, 3.3dvh, 26px);
+}
+
+#screenBelleville .belleville-transport-form {
+  width: 100%;
+  padding: 0 0 4px;
+}
+
 #screenBelleville .belleville-operation-view {
   width: 100%;
   padding: 6px 0 24px;
 }
 
-#screenBelleville .belleville-transport-form h3,
+#screenBelleville .belleville-transport-form h3 {
+  font-size: clamp(18px, 3dvh, 22px);
+  margin: 3px 0 4px;
+}
+
 #screenBelleville .belleville-operation-view h3 {
   font-size: 23px;
   margin: 16px 0 10px;
 }
 
-#screenBelleville .belleville-transport-form > p,
 #screenBelleville .belleville-operation-note {
   color: #c7cdd5;
   font-size: 14px;
@@ -265,10 +307,11 @@ body:has(#screenLogin.active)::before {
 }
 
 #screenBelleville .belleville-transport-form .field-label {
-  margin-top: 17px;
-  margin-bottom: 7px;
+  margin-top: clamp(8px, 1.7dvh, 13px);
+  margin-bottom: clamp(3px, .7dvh, 6px);
   color: #e7eaee;
-  font-size: 14px;
+  font-size: clamp(12px, 1.9dvh, 14px);
+  line-height: 1.2;
 }
 
 #screenBelleville .belleville-transport-form .field-label span {
@@ -278,10 +321,13 @@ body:has(#screenLogin.active)::before {
 }
 
 #screenBelleville .belleville-transport-form .text-input {
-  min-height: 56px;
+  height: clamp(40px, 6.8dvh, 48px);
+  min-height: 0;
+  padding: 0 12px;
   background: rgba(19, 22, 27, .94);
   border-color: rgba(255, 255, 255, .22);
   font-size: 16px;
+  text-transform: uppercase;
 }
 
 #screenBelleville .belleville-transport-form .text-input:focus {
@@ -290,11 +336,46 @@ body:has(#screenLogin.active)::before {
 }
 
 #screenBelleville .belleville-start-btn {
-  margin-top: 27px;
+  min-height: clamp(48px, 7dvh, 56px);
+  padding: 8px 12px;
+  margin-top: clamp(12px, 2dvh, 18px);
+  font-size: clamp(16px, 2.5dvh, 19px);
 }
 
 #screenBelleville .belleville-cancel-btn {
-  margin-top: 12px;
+  min-height: clamp(38px, 5dvh, 44px);
+  margin-top: clamp(6px, 1dvh, 9px);
+  padding: 8px 12px;
+}
+
+@media (max-height: 600px) {
+  #screenBelleville:has(#bellevilleTransportForm:not(.hidden)) > .section-head {
+    margin-bottom: 5px;
+  }
+
+  #screenBelleville .belleville-transport-form h3 {
+    margin: 0 0 3px;
+  }
+
+  #screenBelleville .belleville-transport-form .field-label {
+    margin-top: 6px;
+    margin-bottom: 3px;
+    font-size: 12px;
+  }
+
+  #screenBelleville .belleville-transport-form .text-input {
+    height: 38px;
+  }
+
+  #screenBelleville .belleville-start-btn {
+    min-height: 46px;
+    margin-top: 10px;
+  }
+
+  #screenBelleville .belleville-cancel-btn {
+    min-height: 34px;
+    margin-top: 6px;
+  }
 }
 
 #screenBelleville .belleville-session-card {
