@@ -244,6 +244,99 @@ body:has(#screenLogin.active)::before {
   font-size: 14px;
 }
 
+/* Belleville — formularz transportu i aktywna sesja. */
+#screenBelleville .belleville-transport-form,
+#screenBelleville .belleville-operation-view {
+  width: 100%;
+  padding: 6px 0 24px;
+}
+
+#screenBelleville .belleville-transport-form h3,
+#screenBelleville .belleville-operation-view h3 {
+  font-size: 23px;
+  margin: 16px 0 10px;
+}
+
+#screenBelleville .belleville-transport-form > p,
+#screenBelleville .belleville-operation-note {
+  color: #c7cdd5;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#screenBelleville .belleville-transport-form .field-label {
+  margin-top: 17px;
+  margin-bottom: 7px;
+  color: #e7eaee;
+  font-size: 14px;
+}
+
+#screenBelleville .belleville-transport-form .field-label span {
+  color: #aeb7c0;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+#screenBelleville .belleville-transport-form .text-input {
+  min-height: 56px;
+  background: rgba(19, 22, 27, .94);
+  border-color: rgba(255, 255, 255, .22);
+  font-size: 16px;
+}
+
+#screenBelleville .belleville-transport-form .text-input:focus {
+  border-color: #ff4545;
+  box-shadow: 0 0 0 3px rgba(255, 45, 45, .15);
+}
+
+#screenBelleville .belleville-start-btn {
+  margin-top: 27px;
+}
+
+#screenBelleville .belleville-cancel-btn {
+  margin-top: 12px;
+}
+
+#screenBelleville .belleville-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 55, 55, .52);
+  border-radius: 16px;
+  padding: 15px 17px;
+  background: rgba(20, 23, 28, .88);
+  overflow-wrap: anywhere;
+}
+
+#screenBelleville .belleville-session-card > span {
+  font-size: 11px;
+  color: #e6a3a3;
+  letter-spacing: 1.1px;
+  font-weight: 800;
+}
+
+#screenBelleville .belleville-session-card > strong {
+  font-size: 19px;
+}
+
+#screenBelleville .belleville-session-card > small {
+  font-size: 13px;
+  color: #d3d8df;
+  line-height: 1.4;
+}
+
+#screenBelleville .belleville-end-session {
+  margin-top: 20px;
+  border: 1px solid rgba(255, 102, 102, .48);
+  background: rgba(45, 30, 34, .88);
+  color: #ffe5e5;
+}
+
+#screenBelleville .belleville-operation-note {
+  margin: 24px 0;
+}
+
 /* WYBÓR MAGAZYNU */
 #screenWarehouse .warehouse-login-copy,
 #screenWarehouse .warehouse-scan-title {
