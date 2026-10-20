@@ -244,32 +244,44 @@ body:has(#screenLogin.active)::before {
   font-size: 14px;
 }
 
-/* Belleville — kompaktowy, jednookranowy formularz transportu. */
-body:has(#screenBelleville.active #bellevilleTransportForm:not(.hidden)) {
+/* Belleville: wszystkie trzy widoki bez przewijania, ze stałym miejscem na podpis. */
+body:has(#screenBelleville.active) {
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
 }
 
-body:has(#screenBelleville.active #bellevilleTransportForm:not(.hidden)) .app-shell {
+body:has(#screenBelleville.active) .app-shell {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
 
-body:has(#screenBelleville.active #bellevilleTransportForm:not(.hidden)) .app-main {
-  height: calc(100dvh - clamp(82px, 10dvh, 98px) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+body:has(#screenBelleville.active) .app-main {
+  height: calc(100dvh - clamp(82px, 10dvh, 98px) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 38px);
   min-height: 0;
   padding-top: clamp(5px, 1.3dvh, 10px);
   padding-bottom: 0;
   overflow: hidden;
 }
 
-#screenBelleville.active:has(#bellevilleTransportForm:not(.hidden)) {
+#screenBelleville.active {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+/* Stopka niezależna od długości menu i formularza; nie jest ucinana przez app-shell. */
+body:has(#screenBelleville.active) .app-signature {
+  position: fixed;
+  left: 50%;
+  bottom: max(9px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  min-height: 0;
+  padding: 0;
+  z-index: 2;
+  opacity: .60;
 }
 
 #screenBelleville:has(#bellevilleTransportForm:not(.hidden)) > .section-head {
