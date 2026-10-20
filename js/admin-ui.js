@@ -142,15 +142,8 @@ function renderAdminWarehousePicker(saved) {
 
   const bellevilleBtn = document.createElement('button');
   bellevilleBtn.type = 'button';
-  bellevilleBtn.className = 'btn btn-secondary admin-warehouse-btn';
+  bellevilleBtn.className = 'btn gpbs-menu-btn admin-warehouse-btn';
   bellevilleBtn.textContent = 'Belleville';
-  bellevilleBtn.style.minHeight = '58px';
-  bellevilleBtn.style.margin = '0';
-  bellevilleBtn.style.background = '#344456';
-  bellevilleBtn.style.border = '1px solid #8fb9f2';
-  bellevilleBtn.style.color = '#f4f6f8';
-  bellevilleBtn.style.fontSize = '17px';
-  bellevilleBtn.style.fontWeight = '850';
   bellevilleBtn.addEventListener('click', openBellevilleScreen);
   list.appendChild(bellevilleBtn);
 
@@ -159,25 +152,16 @@ function renderAdminWarehousePicker(saved) {
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'btn btn-secondary admin-warehouse-btn';
+    button.className = 'btn gpbs-menu-btn admin-warehouse-btn';
     const hasCode = Boolean(String(warehouse.kod || '').trim());
     button.textContent = hasCode
       ? warehouse.nazwa
       : `${warehouse.nazwa} — brak kodu`;
     button.disabled = !hasCode;
-    button.style.minHeight = '58px';
-    button.style.margin = '0';
-    button.style.background = '#303844';
-    button.style.border = '1px solid #4f8ee8';
-    button.style.color = '#f4f6f8';
-    button.style.fontSize = '17px';
-    button.style.fontWeight = '850';
-    button.style.letterSpacing = '.3px';
 
     if (hasCode) {
       button.addEventListener('click', () => startWarehouseFromPicker(warehouse.kod));
     } else {
-      button.style.opacity = '.55';
       button.title = 'Magazyn jest aktywny, ale nie ma jeszcze przypisanego kodu.';
     }
 
@@ -297,6 +281,14 @@ function observeWarehouseScreen() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('bellevilleBackBtn')?.addEventListener('click', closeBellevilleScreen);
+  document.querySelectorAll('#screenBelleville .belleville-option').forEach(button => {
+    button.addEventListener('click', () => {
+      const info = document.getElementById('bellevilleInfo');
+      if (!info) return;
+      info.textContent = `Funkcja „${button.textContent.trim()}” zostanie dodana w kolejnym kroku.`;
+      info.classList.remove('hidden');
+    });
+  });
   updateRoleControls();
   observeVisitScreen();
   observeWarehouseScreen();
