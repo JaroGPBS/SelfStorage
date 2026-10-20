@@ -158,7 +158,8 @@ body:has(#screenLogin.active)::before {
     inset 0 1px 0 rgba(255, 255, 255, .04);
 }
 
-#screenLogin #loginBtn {
+#screenLogin #loginBtn,
+.gpbs-menu-btn {
   min-height: clamp(62px, 8dvh, 72px);
   margin-top: 18px;
   border: 1px solid rgba(255, 45, 45, .96);
@@ -173,7 +174,8 @@ body:has(#screenLogin.active)::before {
   font-size: clamp(18px, 4.5vw, 22px);
 }
 
-#screenLogin #loginBtn:not(:disabled) {
+#screenLogin #loginBtn:not(:disabled),
+.gpbs-menu-btn:not(:disabled) {
   border-color: #ff3131;
   box-shadow:
     0 0 0 1px rgba(255, 0, 0, .23),
@@ -181,12 +183,14 @@ body:has(#screenLogin.active)::before {
     inset 0 0 20px rgba(255, 24, 24, .05);
 }
 
-#screenLogin #loginBtn:active:not(:disabled) {
+#screenLogin #loginBtn:active:not(:disabled),
+.gpbs-menu-btn:active:not(:disabled) {
   transform: scale(.995);
   background: linear-gradient(180deg, #2b292c, #1b1719);
 }
 
-#screenLogin #loginBtn:disabled {
+#screenLogin #loginBtn:disabled,
+.gpbs-menu-btn:disabled {
   opacity: .62;
   color: #d5d8dc;
 }
@@ -203,6 +207,36 @@ body:has(#screenLogin.active)::before {
   border-color: rgba(255, 255, 255, .16);
   box-shadow: 0 8px 22px rgba(0, 0, 0, .20);
   backdrop-filter: blur(8px);
+}
+
+/* Jednolity wygląd przycisków menu: identyczny jak „Zaloguj”. */
+.gpbs-menu-btn {
+  width: 100%;
+  margin-top: 0;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.gpbs-menu-btn:focus-visible {
+  outline: 2px solid #ff6969;
+  outline-offset: 3px;
+}
+
+#adminWarehouseList .gpbs-menu-btn {
+  margin: 0;
+}
+
+#screenBelleville .belleville-menu {
+  display: grid;
+  gap: 14px;
+  margin-top: 34px;
+}
+
+#screenBelleville .belleville-info {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
 }
 
 /* WYBÓR MAGAZYNU */
@@ -344,7 +378,8 @@ body:has(#screenLogin.active)::before {
     height: 66px;
   }
 
-  #screenLogin #loginBtn {
+  #screenLogin #loginBtn,
+  .gpbs-menu-btn {
     min-height: 56px;
   }
 
