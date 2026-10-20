@@ -114,6 +114,163 @@ function startWarehouseFromPicker(code) {
   confirmButton.click();
 }
 
+const BELLEVILLE_SESSION_STORAGE_KEY = 'gpbs-belleville-transport-session-v1';
+let bellevilleSession = null;
+let bellevilleView = 'menu';
+let bellevilleTargetOperation = null;
+
+function getBellevilleSession() {
+  const team = loadState()?.team;
+  if (normalizeRoleLabel(team?.rola) !== 'ADMIN' || !team?.id) return null;
+  const teamId = String(team.id);
+  if (bellevilleSession?.teamId === teamId) return bellevilleSession;
+
+  bellevilleSession = null;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(BELLEVILLE_SESSION_STORAGE_KEY) || 'null');
+    if (saved?.teamId === teamId && saved.route && saved.plate) {
+      bellevilleSession = saved;
+    }
+  } catch (error) {
+    console.warn('Nie udało się odczytać sesji Belleville.', error);
+  }
+  return bellevilleSession;
+}
+
+function saveBellevilleSession(session) {
+  bellevilleSession = session;
+  try {
+    sessionStorage.setItem(BELLEVILLE_SESSION_STORAGE_KEY, JSON.stringify(session));
+  } catch (error) {
+    console.warn('Nie udało się zapamiętać sesji Belleville w przeglądarce.', error);
+  }
+}
+
+function clearBellevilleSession() {
+  bellevilleSession = null;
+  try {
+    sessionStorage.removeItem(BELLEVILLE_SESSION_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Nie udało się usunąć sesji Belleville z przeglądarki.', error);
+  }
+}
+
+function renderBellevilleSessionInfo() {
+  const session = getBellevilleSession();
+  document.getElementById('bellevilleSessionCard')?.classList.toggle('hidden', !session);
+  document.getElementById('bellevilleEndSessionBtn')?.classList.toggle('hidden', !session);
+  if (!session) return;
+
+  for (const id of ['bellevilleSessionRoute', 'bellevilleOperationRoute']) {
+    const target = document.getElementById(id);
+    if (target) target.textContent = 'Trasa: ' + session.route;
+  }
+  const details = [session.plate, session.trailer ? 'Naczepa: ' + session.trailer : '', session.carrier].filter(Boolean).join(' • ');
+  for (const id of ['bellevilleSessionPlate', 'bellevilleOperationPlate']) {
+    const target = document.getElementById(id);
+    if (target) target.textContent = details;
+  }
+}
+
+function showBellevilleView(view) {
+  bellevilleView = view;
+  const sections = {
+    menu: 'bellevilleMenuView',
+    form: 'bellevilleTransportForm',
+    operation: 'bellevilleOperationView'
+  };
+  for (const [name, id] of Object.entries(sections)) {
+    document.getElementById(id)?.classList.toggle('hidden', name !== view);
+  }
+  if (view === 'menu') renderBellevilleSessionInfo();
+  window.scrollTo(0, 0);
+}
+
+function backBellevilleView() {
+  if (bellevilleView === 'menu') return false;
+  bellevilleTargetOperation = null;
+  showBellevilleView('menu');
+  return true;
+}
+
+function enterBellevilleOperation(operation) {
+  const session = getBellevilleSession();
+  if (!session) return;
+  const title = document.getElementById('bellevilleOperationTitle');
+  if (title) title.textContent = operation === 'PZ' ? 'Przyjęcia' : 'Wydania';
+  renderBellevilleSessionInfo();
+  bellevilleTargetOperation = null;
+  showBellevilleView('operation');
+}
+
+function chooseBellevilleOperation(operation) {
+  if (normalizeRoleLabel(loadState()?.team?.rola) !== 'ADMIN') return;
+  const info = document.getElementById('bellevilleInfo');
+  info?.classList.add('hidden');
+  if (operation === 'EKIPY') {
+    if (!info) return;
+    info.textContent = 'Funkcję „Zaopatrzenie ekip” dodamy w kolejnym kroku.';
+    info.classList.remove('hidden');
+    return;
+  }
+  if (operation !== 'PZ' && operation !== 'WZ') return;
+
+  bellevilleTargetOperation = operation;
+  if (getBellevilleSession()) {
+    enterBellevilleOperation(operation);
+    return;
+  }
+  document.getElementById('bellevilleTransportForm')?.reset();
+  const title = document.getElementById('bellevilleFormTitle');
+  if (title) title.textContent = operation === 'PZ' ? 'Przyjęcia — nowa sesja' : 'Wydania — nowa sesja';
+  showBellevilleView('form');
+}
+
+function startBellevilleSession(event) {
+  event.preventDefault();
+  if (normalizeRoleLabel(loadState()?.team?.rola) !== 'ADMIN') return;
+  if (bellevilleTargetOperation !== 'PZ' && bellevilleTargetOperation !== 'WZ') return;
+  const routeInput = document.getElementById('bellevilleRouteInput');
+  const plateInput = document.getElementById('bellevillePlateInput');
+  const carrierInput = document.getElementById('bellevilleCarrierInput');
+  const trailerInput = document.getElementById('bellevilleTrailerInput');
+  if (!routeInput || !plateInput || !carrierInput || !trailerInput) return;
+
+  const route = routeInput.value.trim();
+  const plate = plateInput.value.trim().toUpperCase();
+  if (!route) {
+    routeInput.value = '';
+    routeInput.reportValidity();
+    return;
+  }
+  if (!plate) {
+    plateInput.value = '';
+    plateInput.reportValidity();
+    return;
+  }
+  const teamId = String(loadState()?.team?.id || '');
+  if (!teamId) return;
+
+  const operation = bellevilleTargetOperation;
+  saveBellevilleSession({
+    teamId,
+    route,
+    plate,
+    carrier: carrierInput.value.trim(),
+    trailer: trailerInput.value.trim().toUpperCase(),
+    startedAt: new Date().toISOString()
+  });
+  enterBellevilleOperation(operation);
+}
+
+function finishBellevilleSession() {
+  if (!getBellevilleSession()) return;
+  if (!window.confirm('Zakończyć sesję samochodu? Dane formularza zostaną wyczyszczone.')) return;
+  clearBellevilleSession();
+  bellevilleTargetOperation = null;
+  showBellevilleView('menu');
+}
+
 function openBellevilleScreen() {
   const saved = loadState();
   if (normalizeRoleLabel(saved?.team?.rola) !== 'ADMIN') return;
@@ -121,10 +278,11 @@ function openBellevilleScreen() {
   document.querySelectorAll('.screen').forEach(screen => {
     screen.classList.toggle('active', screen.id === 'screenBelleville');
   });
-  window.scrollTo(0, 0);
+  showBellevilleView('menu');
 }
 
 function closeBellevilleScreen() {
+  if (backBellevilleView()) return;
   document.querySelectorAll('.screen').forEach(screen => {
     screen.classList.toggle('active', screen.id === 'screenWarehouse');
   });
@@ -282,13 +440,13 @@ function observeWarehouseScreen() {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('bellevilleBackBtn')?.addEventListener('click', closeBellevilleScreen);
   document.querySelectorAll('#screenBelleville .belleville-option').forEach(button => {
-    button.addEventListener('click', () => {
-      const info = document.getElementById('bellevilleInfo');
-      if (!info) return;
-      info.textContent = `Funkcja „${button.textContent.trim()}” zostanie dodana w kolejnym kroku.`;
-      info.classList.remove('hidden');
-    });
+    button.addEventListener('click', () => chooseBellevilleOperation(button.dataset.bellevilleOperation));
   });
+  document.getElementById('bellevilleTransportForm')?.addEventListener('submit', startBellevilleSession);
+  document.getElementById('bellevilleCancelFormBtn')?.addEventListener('click', backBellevilleView);
+  document.getElementById('bellevilleOperationBackBtn')?.addEventListener('click', backBellevilleView);
+  document.getElementById('bellevilleEndSessionBtn')?.addEventListener('click', finishBellevilleSession);
+  window.gpbsBellevilleBack = backBellevilleView;
   updateRoleControls();
   observeVisitScreen();
   observeWarehouseScreen();
