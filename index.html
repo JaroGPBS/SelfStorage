@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=5">
   <link rel="stylesheet" href="./css/warehouse.css?v=17">
-  <link rel="stylesheet" href="./css/theme-gpbs.css?v=5">
+  <link rel="stylesheet" href="./css/theme-gpbs.css?v=6">
   <style>
     .toast {
       top: 40%;
@@ -167,7 +167,7 @@
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js?v=3"></script>
-  <script type="module" src="./js/admin-ui.js?v=8"></script>
+  <script type="module" src="./js/admin-ui.js?v=9"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -248,14 +248,13 @@
         </div>
 
         <form id="bellevilleTransportForm" class="belleville-transport-form hidden">
-          <h3 id="bellevilleFormTitle">Rozpocznij sesję</h3>
-          <p>Dane transportu wpisujesz tylko raz, niezależnie od tego, czy wykonujesz przyjęcie, czy wydanie.</p>
+          <h3 id="bellevilleFormTitle">Wpisz dane transportu</h3>
           <label class="field-label" for="bellevilleRouteInput">Numer trasy *</label>
-          <input id="bellevilleRouteInput" class="text-input" name="route" type="text" required maxlength="60" autocomplete="off" placeholder="Np. 245/26">
+          <input id="bellevilleRouteInput" class="text-input" name="route" type="text" required maxlength="60" autocapitalize="characters" autocomplete="off" placeholder="Np. 245/26">
           <label class="field-label" for="bellevillePlateInput">Numer rejestracyjny samochodu *</label>
           <input id="bellevillePlateInput" class="text-input" name="plate" type="text" required maxlength="25" autocapitalize="characters" autocomplete="off" placeholder="Np. AB 123 CD">
           <label class="field-label" for="bellevilleCarrierInput">Przewoźnik <span>(opcjonalnie)</span></label>
-          <input id="bellevilleCarrierInput" class="text-input" name="carrier" type="text" maxlength="100" autocomplete="off" placeholder="Nazwa przewoźnika">
+          <input id="bellevilleCarrierInput" class="text-input" name="carrier" type="text" maxlength="100" autocapitalize="characters" autocomplete="off" placeholder="Nazwa przewoźnika">
           <label class="field-label" for="bellevilleTrailerInput">Numer rejestracyjny naczepy <span>(opcjonalnie)</span></label>
           <input id="bellevilleTrailerInput" class="text-input" name="trailer" type="text" maxlength="25" autocapitalize="characters" autocomplete="off" placeholder="Numer naczepy">
           <button class="btn gpbs-menu-btn belleville-start-btn" type="submit">Rozpocznij sesję</button>
