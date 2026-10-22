@@ -303,13 +303,6 @@ function renderAdminWarehousePicker(saved) {
   bellevilleBtn.addEventListener('click', openBellevilleScreen);
   list.appendChild(bellevilleBtn);
 
-  const tychyBtn = document.createElement('button');
-  tychyBtn.type = 'button';
-  tychyBtn.className = 'btn gpbs-menu-btn admin-warehouse-btn';
-  tychyBtn.textContent = 'Tychy';
-  tychyBtn.addEventListener('click', openTychyScreen);
-  list.appendChild(tychyBtn);
-
   for (const warehouse of warehouses) {
     if (warehouse.nazwa.trim().toUpperCase() === 'BELLEVILLE' && !warehouse.kod) continue;
 
@@ -442,101 +435,7 @@ function observeWarehouseScreen() {
   });
 }
 
-
-let tychyParts = [];
-let tychyLoading = false;
-
-function openTychyScreen() {
-  if (normalizeRoleLabel(loadState()?.team?.rola) !== 'ADMIN') return;
-  tychyParts = [];
-  document.getElementById('tychyAuthForm')?.reset();
-  document.getElementById('tychyAuthForm')?.classList.remove('hidden');
-  document.getElementById('tychyCatalogView')?.classList.add('hidden');
-  const status = document.getElementById('tychyPartsStatus');
-  if (status) status.textContent = 'Podaj PIN, aby wczytać katalog.';
-  document.querySelectorAll('.screen').forEach(screen => {
-    screen.classList.toggle('active', screen.id === 'screenTychy');
-  });
-}
-
-function closeTychyScreen() {
-  document.getElementById('tychyPinInput')?.setAttribute('value', '');
-  document.querySelectorAll('.screen').forEach(screen => {
-    screen.classList.toggle('active', screen.id === 'screenWarehouse');
-  });
-  updateRoleControls();
-}
-
-function renderTychyParts() {
-  const list = document.getElementById('tychyPartList');
-  const status = document.getElementById('tychyPartsStatus');
-  if (!list || !status) return;
-  const query = String(document.getElementById('tychyPartSearch')?.value || '').trim().toLocaleLowerCase('pl');
-  const matching = tychyParts.filter(part => {
-    const terms = [part.name, part.part_number, part.sap_number];
-    return terms.some(term => String(term || '').toLocaleLowerCase('pl').includes(query));
-  });
-  const fragment = document.createDocumentFragment();
-  for (const part of matching) {
-    const card = document.createElement('div');
-    card.className = 'tychy-part-card';
-    const name = document.createElement('strong');
-    name.textContent = String(part.name || 'Brak nazwy');
-    const index = document.createElement('span');
-    index.textContent = 'Indeks: ' + String(part.part_number || '—');
-    const sap = document.createElement('small');
-    sap.textContent = 'SAP: ' + String(part.sap_number || '—');
-    card.append(name, index, sap);
-    fragment.appendChild(card);
-  }
-  list.replaceChildren(fragment);
-  status.textContent = 'Wyświetlono ' + matching.length + ' z ' + tychyParts.length + ' części.';
-}
-
-async function loadTychyParts(event) {
-  event.preventDefault();
-  if (tychyLoading || normalizeRoleLabel(loadState()?.team?.rola) !== 'ADMIN') return;
-  const input = document.getElementById('tychyPinInput');
-  const button = document.getElementById('tychyLoadPartsBtn');
-  const status = document.getElementById('tychyPartsStatus');
-  const pin = String(input?.value || '').trim();
-  if (!/^\d{4}$/.test(pin)) {
-    if (status) status.textContent = 'Wprowadź czterocyfrowy PIN.';
-    return;
-  }
-  tychyLoading = true;
-  if (button) button.disabled = true;
-  if (status) status.textContent = 'Pobieranie katalogu z D1…';
-  try {
-    const response = await fetch('/api/pl/parts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin }),
-      cache: 'no-store'
-    });
-    const data = await response.json();
-    if (!response.ok || !data?.ok || !Array.isArray(data.parts)) {
-      throw new Error(data?.error || 'Nie udało się wczytać katalogu.');
-    }
-    tychyParts = data.parts.sort((x, y) => String(x.name || '').localeCompare(String(y.name || ''), 'pl'));
-    document.getElementById('tychyPartSearch').value = '';
-    document.getElementById('tychyAuthForm')?.classList.add('hidden');
-    document.getElementById('tychyCatalogView')?.classList.remove('hidden');
-    renderTychyParts();
-  } catch (error) {
-    if (status) status.textContent = error?.message || 'Błąd połączenia z bazą D1.';
-  } finally {
-    if (input) input.value = '';
-    tychyLoading = false;
-    if (button) button.disabled = false;
-  }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('tychyBackBtn')?.addEventListener('click', closeTychyScreen);
-  document.getElementById('tychyAuthForm')?.addEventListener('submit', loadTychyParts);
-  document.getElementById('tychyPartSearch')?.addEventListener('input', renderTychyParts);
-  window.gpbsTychyBack = closeTychyScreen;
   document.getElementById('bellevilleBackBtn')?.addEventListener('click', closeBellevilleScreen);
   document.querySelectorAll('#screenBelleville .belleville-option').forEach(button => {
     button.addEventListener('click', () => chooseBellevilleOperation(button.dataset.bellevilleOperation));
