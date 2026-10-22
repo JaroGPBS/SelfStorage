@@ -36,7 +36,7 @@ export async function onRequestGet({ env }) {
   }
 }
 
-export function onRequest() {
+export function onRequestPost() {
   return new Response(null, {
     status: 405,
     headers: { Allow: 'GET', 'Cache-Control': 'no-store' }
