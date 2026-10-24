@@ -22,7 +22,7 @@ Cloudflare Pages projektu `selfstorage` → Settings → Variables and secrets
 → produkcyjne środowisko. Dodaj **dwa odrębne sekrety**, bez umieszczania ich w kodzie,
 w czacie, linkach ani w plikach:
 
-- `PANEL_ADMIN_PASSWORD` — nowe, długie, losowe hasło administracyjne (co najmniej 32 znaki).
+- `PANEL_ADMIN_PASSWORD` — hasło administracyjne o długości **minimum 8 znaków** (zalecane dłuższe, unikalne).
 - `PANEL_SESSION_SECRET` — odrębny, losowy klucz do podpisywania sesji
   (co najmniej 32 znaki). Zmiana klucza wyloguje dotychczasowe sesje.
 
