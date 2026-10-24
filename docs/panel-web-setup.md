@@ -38,6 +38,35 @@ Cookie sesji ma `HttpOnly; Secure; SameSite=Strict` i ważność 8 godzin.
 uwierzytelniania dla ról D1, kontroli prób, dziennika audytu oraz przejścia
 na centralny system kont (bez polegania na legacy Apps Script).
 
+## Blokady logowania (D1)
+
+Wymagana tabela `panel_login_attempts` w bazie `gpbs-storage`
+(utworzona przez administratora z poziomu konsoli D1):
+```sql
+CREATE TABLE IF NOT EXISTS panel_login_attempts (
+  identifier TEXT PRIMARY KEY,
+  failures INTEGER NOT NULL DEFAULT 0,
+  locked_until INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT 0
+);
+```
+
+Dla panelu administratora:
+- **5 prób w ciągu 15 minut z jednego adresu IP** powoduje blokadę na **5 minut**.
+- Po poprawnym haśle panelu osobna **wspólna pula 5 prób PIN-u**
+  blokuje weryfikację PIN-u na **30 minut**.
+- Żądania są liczone w D1 *przed* porównaniem poświadczeń; piąta próba
+  w danym oknie zostaje zablokowana nawet wtedy, gdy byłaby poprawna.
+- Udane, pełne logowanie czyści oba liczniki.
+- Identyfikator IP w D1 jest skrótem HMAC; nie przechowujemy jawnego adresu IP.
+- Brak połączenia D1 lub nagłówka `CF-Connecting-IP` powoduje odmowę logowania.
+- Przy atakach rozproszonych wskazana dodatkowa reguła Cloudflare WAF/rate-limit.
+  Sama tabela D1 nie zastępuje WAF.
+
+**Przed produkcyjnym udostępnieniem panelu:** techniczny `PANEL_SESSION_SECRET`
+powinien być niezależnym, losowym kluczem wygenerowanym i zachowanym prywatnie,
+nie kluczem kopiowanym z jawnej rozmowy lub repozytorium.
+
 ## D1
 
 Panel odczytuje następujące istniejące tabele:
