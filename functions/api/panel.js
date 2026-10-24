@@ -440,6 +440,7 @@ async function route(request,env) {
     const session=await readSession(request,env.PANEL_SESSION_SECRET);
     if(!session) return fail('Zaloguj się do panelu.',401);
     const view=url.searchParams.get('view')||'summary';
+    if(view==='directory' && session.role!=='ADMIN') return fail('Brak uprawnień.',403);
     try {
       return respond({ok:true,view,data:await queryPanel(env,view,url),user:{role:'ADMIN'}});
     } catch(e) {
@@ -500,6 +501,18 @@ async function route(request,env) {
     return respond({ok:true},200,{
       'Set-Cookie':COOKIE_NAME+'=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'
     });
+  if(body?.action==='createStaff'||body?.action==='updateStaff') {
+    if(session.role!=='ADMIN') return fail('Brak uprawnień.',403);
+    try {
+      return await staffMutation(env,body,session.id,body.action==='updateStaff');
+    } catch(e) {
+      const message=String(e?.message||'').toLowerCase();
+      if(message.includes('unique constraint') && message.includes('display_code'))
+        return fail('Symbol użytkownika jest zajęty. Spróbuj ponownie.',409);
+      console.error('GPBS private staff update',e?.name||'Error');
+      return fail('Nie udało się zapisać kartoteki pracownika.',500);
+    }
+  }
   if(body?.action==='createUser') {
     try{return await addUser(env,body,session.id);}
     catch(e){
