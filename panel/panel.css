@@ -148,3 +148,16 @@ tr:hover td{background:#ffffff04}
   .login-foot{font-size:9px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Security settings and user-edit actions */
+[hidden]{display:none!important}
+.btn.mini{padding:7px 12px;min-height:32px;font-size:11px;border-radius:8px}
+.security-content{padding:25px;max-width:860px}
+.security-content>p{color:#aebcca;line-height:1.7;font-size:13px}
+.security-content strong{color:#f4f7fa}
+.security-actions{display:flex;flex-wrap:wrap;gap:10px;margin:23px 0 16px}
+.security-content .secret-label{display:block;font-size:12px;color:#cbd4df;margin-bottom:9px}
+.secret-value{width:100%;font-size:13px;letter-spacing:.4px;white-space:nowrap}
+.security-content code{font-size:12px;background:#ffffff0a;padding:2px 5px;border-radius:4px;color:#ff9999}
+.account-status{margin:15px 0 0}
+.security-card .table-title{flex-wrap:wrap}
