@@ -413,14 +413,14 @@
     for(const item of entries) {
       const label=String(item.name||item.userId||'Użytkownik');
       const pin=String(item.pin||'');
-      if(!/^\\d{4}$/.test(pin))continue;
+      if(!/^\d{4}$/.test(pin))continue;
       const row=document.createElement('div');row.className='pin-result-item';
       const who=document.createElement('strong');who.textContent=label;
       const value=document.createElement('code');value.textContent=pin;
       row.append(who,value);target.append(row);
       lines.push(label+': '+pin);
     }
-    state.generatedPinText=lines.join('\\n');
+    state.generatedPinText=lines.join('\n');
     $('copyGeneratedPins').disabled=lines.length===0;
     dialog.showModal();
   }
