@@ -153,6 +153,8 @@ async function generateForUser(db, key, user, reset = false) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_USER; attempt++) {
     const pin = randomPin();
     const digest = await pinDigest(key, pin);
+    // A reset must not accidentally re-issue the same PIN.
+    if (reset && digest === existing.pin_digest) continue;
     try {
       let result;
       if (reset) {
@@ -176,6 +178,9 @@ async function generateForUser(db, key, user, reset = false) {
         };
       }
 
+      if (reset) {
+        return { status: 'CHANGED_CONCURRENTLY', userId: user.id };
+      }
       if (await credential(db, user.id)) {
         return { status: 'ALREADY_HAS_PIN', userId: user.id };
       }
