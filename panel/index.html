@@ -46,6 +46,7 @@
         <button data-view="movements" class="nav-item" type="button"><span class="nav-symbol">⇄</span> Ruchy PZ / WZ</button>
         <div class="side-section administrative">ADMINISTRACJA</div>
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
+        <button data-view="security" class="nav-item" type="button"><span class="nav-symbol">⚿</span> Bezpieczeństwo</button>
       </nav>
       <div class="sidebar-footer">
         <div class="role-dot"></div>
@@ -88,6 +89,23 @@
             <div id="dashboardWarehouses" class="table-scroll"></div>
           </div>
         </section>
+        <section id="securityView" class="view hidden">
+          <div class="table-panel security-card">
+            <div class="table-title"><div><h2>Nowy klucz zabezpieczający sesje</h2><p>Zastąp klucz, który był widoczny we wcześniejszej rozmowie. Ten generator działa wyłącznie w Twojej przeglądarce.</p></div><span class="pill blue">LOKALNIE</span></div>
+            <div class="security-content">
+              <p>1. Kliknij <strong>Generuj nowy klucz</strong>, a następnie <strong>Kopiuj klucz</strong>.</p>
+              <p>2. W Cloudflare otwórz <strong>Variables and Secrets</strong> i edytuj <code>PANEL_SESSION_SECRET</code> (typ: Secret).</p>
+              <p>3. Wklej klucz, zapisz i poczekaj na udane wdrożenie. Nastąpi wylogowanie ze wszystkich dotychczasowych sesji — zalogujesz się ponownie zwykłym hasłem i PIN-em.</p>
+              <div class="security-actions">
+                <button id="generateSessionSecret" type="button" class="btn primary">Generuj nowy klucz</button>
+                <button id="copySessionSecret" type="button" class="btn ghost" disabled>Kopiuj klucz</button>
+              </div>
+              <label class="secret-label" for="sessionSecretOutput">Klucz do skopiowania — nie wysyłaj go nikomu</label>
+              <input id="sessionSecretOutput" class="secret-value mono" type="password" readonly autocomplete="off" spellcheck="false" placeholder="Najpierw wygeneruj klucz">
+              <p class="hint">Klucz nie jest wysyłany na serwer ani zapisywany przez panel. Nie zmieniaj swojego <code>PANEL_ADMIN_PASSWORD</code>.</p>
+            </div>
+          </div>
+        </section>
         <section id="tableView" class="view hidden">
           <div class="table-panel">
             <div class="table-title">
@@ -104,14 +122,16 @@
   </div>
 
   <dialog id="userDialog" class="modal">
+    <input type="hidden" id="editUserId" value="">
     <form id="createUserForm" method="dialog" class="modal-inner">
-      <div class="modal-heading"><div><div class="eyebrow">ADMINISTRACJA</div><h2>Nowy użytkownik</h2><p>Przypisz rolę i dostęp do magazynów.</p></div><button type="button" id="closeUserDialog" aria-label="Zamknij" class="icon-button">×</button></div>
+      <div class="modal-heading"><div><div class="eyebrow">ADMINISTRACJA</div><h2 id="userDialogTitle">Nowy użytkownik</h2><p>Przypisz rolę i dostęp do magazynów.</p></div><button type="button" id="closeUserDialog" aria-label="Zamknij" class="icon-button">×</button></div>
       <label for="userName">Nazwa użytkownika / ekipy</label>
       <input id="userName" type="text" minlength="2" maxlength="100" required placeholder="Np. Magazynier Tychy">
       <label for="userRole">Rola</label>
       <select id="userRole" class="select" required></select>
+      <label class="checkbox-row account-status" id="userStatusRow" hidden><input type="checkbox" id="userActive" checked><span>Konto aktywne</span></label>
       <fieldset id="userWarehouses"><legend>Dostęp do magazynów</legend></fieldset>
-      <p class="hint">PIN nadasz później w zabezpieczonym generatorze. Nowe konto na razie nie umożliwia logowania.</p>
+      <p class="hint">Nadawanie PIN-ów podłączymy po uzgodnieniu wspólnej puli PIN-ów dla Polski i Francji. Sama zmiana danych konta nie zmienia jego PIN-u.</p>
       <div class="dialog-actions"><button id="cancelUser" class="btn ghost" type="button">Anuluj</button><button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button></div>
     </form>
   </dialog>
