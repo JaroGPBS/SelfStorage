@@ -417,7 +417,7 @@
     const id=$('editUserId').value;
     const nickname=$('userName').value;
     if(!id)return;
-    if(!window.confirm('Usunąć użytkownika '+nickname+' z listy?\\n\\nKonto zostanie przeniesione do archiwum, zdezaktywowane i utraci PIN. Jego ID i historia operacji pozostaną zapisane.'))return;
+    if(!window.confirm('Usunąć użytkownika '+nickname+' z listy?\n\nKonto zostanie przeniesione do archiwum, zdezaktywowane i utraci PIN. Jego ID i historia operacji pozostaną zapisane.'))return;
     const button=$('archiveUserBtn');busy(button,true);
     try {
       await post({action:'archiveUser',userId:id});
@@ -431,7 +431,7 @@
   }
 
   async function restoreUser(user) {
-    if(!window.confirm('Przywrócić '+user.name+' z archiwum?\\nKonto pozostanie nieaktywne i będzie wymagać nadania nowego PIN-u.'))return;
+    if(!window.confirm('Przywrócić '+user.name+' z archiwum?\nKonto pozostanie nieaktywne i będzie wymagać nadania nowego PIN-u.'))return;
     try {
       await post({action:'restoreUser',userId:user.id});
       state.expandedUserId=null;
