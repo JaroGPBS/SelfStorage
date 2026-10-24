@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, expandedUserId:null};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, expandedUserId:null, pinReady:false, generatedPinText:''};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
@@ -176,7 +176,20 @@
 
       const role=td('');role.append(pill(user.role_code,'blue'));row.append(role);
       row.append(td(user.warehouses||'—'));
-      const pin=td('');pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));row.append(pin);
+      const pin=td('');pin.className='pin-cell';
+      pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));
+      if(user.active) {
+        const pinAction=document.createElement('button');
+        pinAction.className='btn mini pin-action';
+        pinAction.type='button';pinAction.textContent=user.has_pin?'Reset PIN':'Generuj';
+        pinAction.title=state.pinReady?(user.has_pin?'Wygeneruj nowy PIN':'Nadaj nowy PIN'):'Najpierw skonfiguruj generator w Bezpieczeństwo';
+        pinAction.addEventListener('click',event=>{
+          event.stopPropagation();
+          generateUserPin(user,Boolean(user.has_pin));
+        });
+        pin.append(pinAction);
+      }
+      row.append(pin);
       const status=td('');status.append(user.active?pill('Aktywny','green'):pill('Wyłączony','red'));row.append(status);
       const actions=td('');
       const edit=document.createElement('button');edit.type='button';
@@ -261,6 +274,8 @@
     $('tableView').classList.toggle('hidden',view==='summary'||view==='security');
     $('securityView').classList.toggle('hidden',view!=='security');
     $('addUserBtn').classList.toggle('hidden',view!=='users');
+    $('generateMissingPins').classList.toggle('hidden',view!=='users');
+    $('pinRoleFilter').classList.toggle('hidden',view!=='users');
     $('warehouseFilter').classList.toggle('hidden',view!=='parts');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
@@ -279,8 +294,15 @@
         if(state.view===view)renderSummary(a,b);
       } else {
         if(view==='parts')await loadWarehouses();
-        const response=await api(view);
-        state.records=view==='parts'?response.parts:response;
+        if(view==='users') {
+          const [users,setup]=await Promise.all([api('users'),api('pinStatus')]);
+          state.records=users;
+          state.pinReady=Boolean(setup.available);
+          $('generateMissingPins').textContent=state.pinReady?'Generuj brakujące PIN-y':'Skonfiguruj generator PIN-ów';
+        } else {
+          const response=await api(view);
+          state.records=view==='parts'?response.parts:response;
+        }
         if(state.view===view)renderList();
       }
     } catch(error){message(error.message,'error');}
@@ -384,6 +406,102 @@
     finally{busy(button,false);}
   }
 
+  function showGeneratedPins(entries) {
+    const dialog=$('generatedPinsDialog');
+    const target=$('generatedPinsResults');target.replaceChildren();
+    const lines=[];
+    for(const item of entries) {
+      const label=String(item.name||item.userId||'Użytkownik');
+      const pin=String(item.pin||'');
+      if(!/^\\d{4}$/.test(pin))continue;
+      const row=document.createElement('div');row.className='pin-result-item';
+      const who=document.createElement('strong');who.textContent=label;
+      const value=document.createElement('code');value.textContent=pin;
+      row.append(who,value);target.append(row);
+      lines.push(label+': '+pin);
+    }
+    state.generatedPinText=lines.join('\\n');
+    $('copyGeneratedPins').disabled=lines.length===0;
+    dialog.showModal();
+  }
+
+  function dismissGeneratedPins() {
+    $('generatedPinsDialog').close();
+    $('generatedPinsResults').replaceChildren();
+    state.generatedPinText='';
+    $('copyGeneratedPins').disabled=true;
+  }
+
+  async function copyGeneratedPins() {
+    if(!state.generatedPinText)return;
+    try {
+      await navigator.clipboard.writeText(state.generatedPinText);
+      message('Skopiowano wygenerowane PIN-y. Przechowuj je bezpiecznie.','info');
+    } catch {
+      message('Kopiowanie się nie powiodło. Zapisz PIN-y przed zamknięciem okna.','error');
+    }
+  }
+
+  async function generateUserPin(user,reset=false) {
+    if(!state.pinReady) {
+      message('Najpierw skonfiguruj PIN_PEPPER w zakładce Bezpieczeństwo.','error');
+      return;
+    }
+    if(reset&&!window.confirm('Resetować PIN użytkownika '+user.name+'? Stary PIN przestanie działać.'))
+      return;
+    try {
+      const result=await post({action:reset?'pinReset':'pinGenerate',userId:user.id});
+      const pins=result.pins||[result];
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      showGeneratedPins(pins);
+    } catch(error) { message(error.message,'error'); }
+  }
+
+  async function generateMissingPins() {
+    if(!state.pinReady) {
+      navigate('security');
+      message('Wygeneruj klucz PIN_PEPPER i zapisz go w Cloudflare jako Secret.','info');
+      return;
+    }
+    const role=$('pinRoleFilter').value;
+    const missing=state.records.filter(user=>user.active&&!user.has_pin&&(!role||user.role_code===role));
+    if(!missing.length) {
+      message('W wybranej grupie nie ma aktywnych użytkowników bez PIN-u.','info');
+      return;
+    }
+    const limited=Math.min(missing.length,100);
+    if(!window.confirm('Wygenerować PIN-y dla '+limited+' użytkowników bez PIN-u? Istniejące PIN-y pozostaną bez zmian.'))
+      return;
+    const button=$('generateMissingPins');busy(button,true);
+    try {
+      const result=await post({action:'pinGenerateMissing',role});
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      if(result.generated) showGeneratedPins(result.pins||[]);
+      else message('Nie wygenerowano nowych PIN-ów. Dane mogły się już zmienić.','info');
+    } catch(error){message(error.message,'error');}
+    finally{busy(button,false);}
+  }
+
+  function generatePepper() {
+    $('pinPepperOutput').value=randomSessionKey();
+    $('copyPinPepper').disabled=false;
+    message('Skopiuj nowy klucz i zapisz w Cloudflare jako PIN_PEPPER (Secret).','info');
+  }
+
+  async function copyPepper() {
+    const value=$('pinPepperOutput').value;
+    if(!value)return;
+    try {
+      await navigator.clipboard.writeText(value);
+      message('Skopiowano klucz PIN_PEPPER. Wklej go do Cloudflare.','info');
+    } catch {
+      const field=$('pinPepperOutput');field.type='text';field.select();
+      message('Skopiuj zaznaczony klucz Ctrl+C.','info');
+    }
+  }
+
   async function performLogin(event) {
     event.preventDefault();
     const button=$('loginButton');
@@ -427,6 +545,16 @@
     });
     $('sideOverlay').addEventListener('click',closeSide);
     $('addUserBtn').addEventListener('click',()=>openUserDialog());
+    $('generateMissingPins').addEventListener('click',generateMissingPins);
+    $('generatePinPepper').addEventListener('click',generatePepper);
+    $('copyPinPepper').addEventListener('click',copyPepper);
+    $('copyGeneratedPins').addEventListener('click',copyGeneratedPins);
+    $('closeGeneratedPins').addEventListener('click',dismissGeneratedPins);
+    $('doneGeneratedPins').addEventListener('click',dismissGeneratedPins);
+    $('generatedPinsDialog').addEventListener('close',()=>{
+      state.generatedPinText='';
+      $('generatedPinsResults').replaceChildren();
+    });
     $('generateSessionSecret').addEventListener('click',generateSessionKey);
     $('copySessionSecret').addEventListener('click',copySessionKey);
     $('userDialog').addEventListener('close',()=>{
