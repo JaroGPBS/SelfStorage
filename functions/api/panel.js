@@ -227,6 +227,22 @@ async function queryPanel(env,view,url) {
     ).all();
     return rows.results||[];
   }
+  // Full names and phone numbers are restricted to ADMIN-only directory.
+  // Worker/mobile APIs never read this table.
+  if(view==='directory') {
+    const migration=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE name='user_private_profiles' AND type='table'"
+    ).first();
+    if(!migration) throw Error('Kartoteka wymaga migracji D1.');
+    const rows=await env.DB.prepare(
+      'SELECT u.id,u.name AS display_name,u.role_code,u.active,u.created_at,'+
+      'pr.first_name,pr.last_name,pr.phone,pr.display_code,'+
+      "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses "+
+      'FROM users u LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
+      'ORDER BY pr.last_name COLLATE NOCASE,u.name COLLATE NOCASE LIMIT 500'
+    ).all();
+    return rows.results||[];
+  }
   if(view==='roles') {
     const rows=await env.DB.prepare('SELECT code,name FROM user_roles ORDER BY code').all();
     return rows.results||[];
