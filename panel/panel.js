@@ -59,6 +59,40 @@
     target.className=text?'message '+kind:'message hidden';
   }
 
+  // Replaces browser-native confirms, whose text size cannot be styled.
+  // Every dialog resolves to false on Escape or cancellation.
+  function confirmAction({title,description,confirmLabel='Potwierdź',danger=false}) {
+    const dialog=$('confirmDialog');
+    if(dialog.open)return Promise.resolve(false);
+    const approve=$('approveConfirmation');
+    const cancel=$('cancelConfirmation');
+    $('confirmTitle').textContent=title;
+    $('confirmDescription').textContent=description;
+    approve.textContent=confirmLabel;
+    approve.className='btn '+(danger?'archive-danger':'primary');
+
+    return new Promise(resolve=>{
+      const finish=accepted=>{
+        dialog.removeEventListener('cancel',onEscape);
+        dialog.removeEventListener('close',onClose);
+        approve.removeEventListener('click',onApprove);
+        cancel.removeEventListener('click',onDismiss);
+        if(dialog.open)dialog.close();
+        resolve(accepted);
+      };
+      const onApprove=()=>finish(true);
+      const onDismiss=()=>finish(false);
+      const onEscape=event=>{event.preventDefault();finish(false);};
+      const onClose=()=>finish(false);
+      dialog.addEventListener('cancel',onEscape);
+      dialog.addEventListener('close',onClose);
+      approve.addEventListener('click',onApprove);
+      cancel.addEventListener('click',onDismiss);
+      dialog.showModal();
+      cancel.focus();
+    });
+  }
+
   function busy(button,yes) {
     if(button)button.disabled=Boolean(yes);
   }
@@ -417,7 +451,11 @@
     const id=$('editUserId').value;
     const nickname=$('userName').value;
     if(!id)return;
-    if(!window.confirm('Usunąć użytkownika '+nickname+' z listy?\n\nKonto zostanie przeniesione do archiwum, zdezaktywowane i utraci PIN. Jego ID i historia operacji pozostaną zapisane.'))return;
+    if(!await confirmAction({
+      title:'Usunąć użytkownika '+nickname+' z listy?',
+      description:'Konto zostanie przeniesione do archiwum, zdezaktywowane i utraci PIN. Jego ID i historia operacji pozostaną zapisane.',
+      confirmLabel:'Usuń z listy',danger:true
+    }))return;
     const button=$('archiveUserBtn');busy(button,true);
     try {
       await post({action:'archiveUser',userId:id});
@@ -431,7 +469,11 @@
   }
 
   async function restoreUser(user) {
-    if(!window.confirm('Przywrócić '+user.name+' z archiwum?\nKonto pozostanie nieaktywne i będzie wymagać nadania nowego PIN-u.'))return;
+    if(!await confirmAction({
+      title:'Przywrócić '+user.name+' z archiwum?',
+      description:'Konto pozostanie nieaktywne i będzie wymagać nadania nowego PIN-u.',
+      confirmLabel:'Przywróć'
+    }))return;
     try {
       await post({action:'restoreUser',userId:user.id});
       state.expandedUserId=null;
@@ -482,8 +524,11 @@
       message('Najpierw skonfiguruj PIN_PEPPER w zakładce Bezpieczeństwo.','error');
       return;
     }
-    if(reset&&!window.confirm('Resetować PIN użytkownika '+user.name+'? Stary PIN przestanie działać.'))
-      return;
+    if(reset&&!await confirmAction({
+      title:'Resetować PIN użytkownika '+user.name+'?',
+      description:'Stary PIN przestanie działać. Nowy PIN wyświetli się tylko raz.',
+      confirmLabel:'Resetuj PIN',danger:true
+    }))return;
     try {
       const result=await post({action:reset?'pinReset':'pinGenerate',userId:user.id});
       const pins=result.pins||[result];
@@ -510,8 +555,11 @@
       return;
     }
     const limited=Math.min(missing.length,100);
-    if(!window.confirm('Wygenerować PIN-y dla '+limited+' użytkowników bez PIN-u? Istniejące PIN-y pozostaną bez zmian.'))
-      return;
+    if(!await confirmAction({
+      title:'Wygenerować PIN-y dla '+limited+' użytkowników?',
+      description:'Nowe PIN-y dostaną tylko osoby, które ich jeszcze nie mają. Istniejące PIN-y pozostaną bez zmian.',
+      confirmLabel:'Generuj PIN-y'
+    }))return;
     const button=$('generateMissingPins');busy(button,true);
     try {
       const result=await post({action:'pinGenerateMissing',role});
