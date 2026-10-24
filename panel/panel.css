@@ -161,3 +161,14 @@ tr:hover td{background:#ffffff04}
 .security-content code{font-size:12px;background:#ffffff0a;padding:2px 5px;border-radius:4px;color:#ff9999}
 .account-status{margin:15px 0 0}
 .security-card .table-title{flex-wrap:wrap}
+
+/* Private employee directory */
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-grid>div{min-width:0}
+.identity-hint{margin:12px 0 18px!important;color:#a6b5c5!important}
+#userDialog .modal-inner{padding:28px}
+#userDialog{width:min(calc(100% - 26px),650px)}
+#userDialog .modal-heading{margin-bottom:12px}
+#userDialog .field-grid label{margin-top:12px}
+#userDialog #userWarehouses{margin-top:17px}
+@media(max-width:520px){.field-grid{grid-template-columns:1fr;gap:0}#userDialog .modal-inner{padding:19px}}
