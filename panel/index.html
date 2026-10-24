@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Panel biurowy</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=3">
-  <script src="./panel.js?v=3" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=4">
+  <script src="./panel.js?v=4" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -83,6 +83,7 @@
               <option value="EKIPA">Ekipa</option>
             </select>
             <button id="generateMissingPins" class="btn ghost hidden" type="button">Generuj brakujące PIN-y</button>
+            <button id="showArchivedUsers" class="btn ghost hidden" type="button">Pokaż archiwum</button>
             <button id="addUserBtn" class="btn primary hidden" type="button">+ Dodaj użytkownika</button>
           </div>
         </div>
@@ -169,10 +170,20 @@
       <p class="hint identity-hint">Dane kontaktowe można zostawić puste i uzupełnić później. Po kliknięciu użytkownika zobaczysz je w rozwiniętym wierszu. Będą dostępne tylko dla administratora.</p>
       <label for="userRole">Rola</label>
       <select id="userRole" class="select" required></select>
-      <label class="checkbox-row account-status" id="userStatusRow" hidden><input type="checkbox" id="userActive" checked><span>Konto aktywne</span></label>
+      <div id="userStatusRow" class="account-status" hidden>
+        <label for="userStatus">Status konta</label>
+        <select id="userStatus" class="select">
+          <option value="1">Aktywny</option>
+          <option value="0">Nieaktywny — bez dostępu</option>
+        </select>
+      </div>
       <fieldset id="userWarehouses"><legend>Dostęp do magazynów</legend></fieldset>
       <p class="hint">Nadanie i zmiana PIN-u to oddzielna operacja. Edycja danych pracownika nie zmienia PIN-u.</p>
-      <div class="dialog-actions"><button id="cancelUser" class="btn ghost" type="button">Anuluj</button><button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button></div>
+      <div class="dialog-actions">
+        <button id="archiveUserBtn" class="btn archive-danger" type="button" hidden>Usuń z listy</button>
+        <button id="cancelUser" class="btn ghost" type="button">Anuluj</button>
+        <button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button>
+      </div>
     </form>
   </dialog>
 </body>
