@@ -256,7 +256,7 @@
 
   async function openUserDialog(existing=null) {
     try {
-      const [roles,warehouses]=await Promise.all([api('roles'),api('warehouses')]);
+      const [roles,warehouses]=await Promise.all([api('roles'),api('warehouseOptions')]);
       const form=$('createUserForm');form.reset();
       $('editUserId').value=existing?.id||'';
       $('userDialogTitle').textContent=existing?'Edytuj użytkownika':'Nowy użytkownik';
@@ -285,7 +285,7 @@
         checkbox.checked=assigned.has(warehouse.id);
         const label=document.createElement('label');
         label.htmlFor=checkbox.id;
-        label.textContent=warehouse.name+(warehouse.active?'':' (nieaktywny)');
+        label.textContent=warehouse.name+' ('+warehouse.country_code+')'+(warehouse.active?'':' — nieaktywny');
         row.append(checkbox,label);field.append(row);
       }
       $('userDialog').showModal();
