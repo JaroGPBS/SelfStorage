@@ -172,3 +172,22 @@ tr:hover td{background:#ffffff04}
 #userDialog .field-grid label{margin-top:12px}
 #userDialog #userWarehouses{margin-top:17px}
 @media(max-width:520px){.field-grid{grid-template-columns:1fr;gap:0}#userDialog .modal-inner{padding:19px}}
+
+/* Jedna lista uzytkownikow: klikany wiersz + druga linia z kontaktami. */
+.users-table .user-main-row{cursor:pointer}
+.users-table .user-main-row:hover td{background:#ffffff08}
+.users-table .user-main-row:has(+.user-details-row:not([hidden])) td{background:#ff36360a}
+.users-table .user-expand-button{appearance:none;border:none;background:none;color:#eff2f6;font:inherit;font-weight:750;text-align:left;padding:3px 0;display:inline-flex;align-items:center;gap:12px;cursor:pointer}
+.users-table .user-expand-arrow{font-size:15px;color:#ff5959}
+.users-table .user-edit-button{cursor:pointer}
+.users-table .user-details-row td{padding:0!important;background:#11171e;border-top:1px solid #2d3642}
+.users-table .user-details-row:hover td{background:#11171e}
+.user-details-inner{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:17px 21px 20px;border-left:3px solid #ff3636}
+.user-detail-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.user-detail-label{font-size:10px;letter-spacing:.65px;text-transform:uppercase;font-weight:750;color:#8797a9}
+.user-detail-value{color:#e4eaf0;font-weight:650;font-size:13px;white-space:normal;overflow-wrap:anywhere}
+.user-detail-value a{color:#e4eaf0;text-decoration:underline;text-decoration-color:#ff555566;text-underline-offset:3px}
+.user-detail-value a:hover{color:#ff7373}
+@media(max-width:620px){
+  .user-details-inner{grid-template-columns:1fr;gap:14px;padding:17px 15px}
+}
