@@ -255,6 +255,42 @@ async function addUser(env, body, actor) {
   return respond({ok:true,user:{id,name,role,warehouses},pinAssigned:false});
 }
 
+async function updateUser(env, body, actor) {
+  const id=String(body.userId||'');
+  const name=String(body.name||'').trim();
+  const role=String(body.role||'').trim().toUpperCase();
+  const active=body.active;
+  const warehouses=body.warehouses;
+  if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id)||name.length<2||name.length>100||
+     !ALLOWED_ROLES.has(role)||(active!==0&&active!==1)||
+     !Array.isArray(warehouses)||warehouses.length>20||
+     new Set(warehouses).size!==warehouses.length||
+     warehouses.some(x=>typeof x!=='string'||!/^[A-Z0-9-]{2,50}$/.test(x))) {
+    return fail('Sprawdź dane użytkownika.',400);
+  }
+  const existing=await env.DB.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
+  if(!existing)return fail('Nie znaleziono użytkownika.',404);
+  if(!await env.DB.prepare('SELECT code FROM user_roles WHERE code=?').bind(role).first())
+    return fail('Nieznana rola.',400);
+  const assigned=(await env.DB.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?').bind(id).all()).results.map(row=>row.warehouse_id);
+  for(const warehouseId of warehouses) {
+    const warehouse=await env.DB.prepare('SELECT active FROM warehouses WHERE id=?').bind(warehouseId).first();
+    if(!warehouse||(!warehouse.active&&!assigned.includes(warehouseId)))
+      return fail('Magazyn niedostępny: '+warehouseId,400);
+  }
+  const audited=await env.DB.prepare("SELECT name FROM sqlite_master WHERE name='panel_audit_log' AND type='table'").first();
+  if(!audited)return fail('Najpierw wykonaj SQL: db/04-panel-audit.sql',503);
+  const stmts=[
+    env.DB.prepare('UPDATE users SET name=?,role_code=?,active=? WHERE id=?').bind(name,role,active,id),
+    env.DB.prepare('DELETE FROM user_warehouse_access WHERE user_id=?').bind(id),
+    ...warehouses.map(x=>env.DB.prepare('INSERT INTO user_warehouse_access(user_id,warehouse_id) VALUES(?,?)').bind(id,x)),
+    env.DB.prepare('INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)')
+      .bind(crypto.randomUUID(),actor,'USER_UPDATE','USER',id,JSON.stringify({before:existing,after:{name,role,active,warehouses}}))
+  ];
+  await env.DB.batch(stmts);
+  return respond({ok:true,userId:id,pinUnchanged:true});
+}
+
 async function route(request,env) {
   if(!ready(env)) return fail('Panel nie jest jeszcze aktywowany przez administratora.',503);
   const url=new URL(request.url);
@@ -328,6 +364,10 @@ async function route(request,env) {
       console.error('panel create user',e?.name||'Error');
       return fail('Nie udało się dodać użytkownika.',500);
     }
+  }
+  if(body?.action==='updateUser') {
+    try{return await updateUser(env,body,session.id);}
+    catch(e){console.error('panel user edit',e?.name||'Error');return fail('Błąd zapisu danych użytkownika.',500);}
   }
   return fail('Nieznana operacja panelu.',400);
 }
