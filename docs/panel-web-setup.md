@@ -7,13 +7,13 @@ Pierwsza wersja panelu: `/panel/` — jedno menu, wspólny design GPBS, sekcje:
 - Magazyny PL i stany magazynowe (PL-TEST vs PL-TYCHY)
 - Katalog części z indeksami magazynowymi i SAP; filtr po magazynie
 - Historia PZ/WZ i zmiany ilości
-- Użytkownicy, pięć ról, przydziały do magazynów; formularz dodania użytkownika
+- Użytkownicy, pięć ról, przypisania do magazynów we wszystkich krajach; dodawanie, edycja i aktywowanie/dezaktywowanie kont
 
 **Nie jest to jeszcze produkcyjny panel pracowników.**
 W tej fazie dostęp ma tylko główny ADMIN; rolom kierownika, koordynatora,
 magazyniera i ekipy nadamy szczegółowe uprawnienia przed uruchomieniem ich logowań.
 
-Backend: Cloudflare Pages Function `/api/panel`.
+Panel zawiera również zakładkę **Bezpieczeństwo** — lokalny, jednorazowy generator\nlosowego klucza `PANEL_SESSION_SECRET` (48 bajtów, 64 znaki Base64).\nNie przesyła klucza na serwer ani nie zapisuje go w danych panelu.\n\nBackend: Cloudflare Pages Function `/api/panel`.
 Endpoint jest całkowicie oddzielny od `/api` obsługującego magazyny francuskie.
 
 ## Bezpieczne włączenie po stronie Cloudflare
@@ -26,7 +26,7 @@ w czacie, linkach ani w plikach:
 - `PANEL_SESSION_SECRET` — odrębny, losowy klucz do podpisywania sesji
   (co najmniej 32 znaki). Zmiana klucza wyloguje dotychczasowe sesje.
 
-Zapisz sekrety i wykonaj ponowne wdrożenie. Bez prawidłowej konfiguracji
+Jeśli początkowy klucz sesji został ujawniony w rozmowie, należy go\n**wymienić**: otworzyć w panelu **Bezpieczeństwo**, wygenerować i skopiować\nnowy klucz, a następnie podmienić wartość Secret w Cloudflare i wdrożyć.\nZmiana klucza wyloguje aktywne sesje.\n\nZapisz sekrety i wykonaj ponowne wdrożenie. Bez prawidłowej konfiguracji
 API odmawia logowania.
 
 Początkowe logowanie głównego ADMINA odbywa się **dwoma czynnikami wiedzy**:
@@ -74,10 +74,7 @@ Panel odczytuje następujące istniejące tabele:
 `warehouse_operations`, `warehouse_operation_lines`, `users`,
 `user_roles`, `user_warehouse_access`, `user_pin_credentials`.
 
-Dodawanie użytkownika zapisuje do `users` i przypisania do
-`user_warehouse_access` w jednym `batch`; **nie nadaje jeszcze PIN-u**.
-Przed wdrożeniem produkcyjnego administrowania kontami dołączyć zapis
-w tabeli audytu z pliku `db/04-panel-audit.sql`.
+**Przed dodawaniem lub edycją użytkowników należy wykonać w D1\nmigrację `db/04-panel-audit.sql`.** Kod wymaga tabeli `panel_audit_log`\ni odmówi zapisu, dopóki jej nie będzie.\n\nDodawanie i edycja konta zapisują `users`, `user_warehouse_access`\noraz wpis do `panel_audit_log` w **jednej transakcji D1 `batch`**.\nEdytowanie konta umożliwia zmianę nazwy, roli, magazynów i aktywności,\nbez dotykania PIN-u. Nowy użytkownik nie otrzymuje PIN-u automatycznie.
 
 Magazyn `PL-TYCHY` nie ma jeszcze zinwentaryzowanych stanów — pokazywać
 jako „Nieustalony”, nie interpretować pustych stanów jako fizycznego zera.
