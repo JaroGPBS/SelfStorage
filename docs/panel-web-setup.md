@@ -92,32 +92,31 @@ rate-limit dla logowania.
 - Stany produkcyjne `PL-TYCHY` są nadal nieustalone.
 
 
-## Prywatna kartoteka pracowników
+## Użytkownicy: opcjonalne dane kontaktowe
 
-Nowa zakładka **Kartoteka pracowników** jest wyłącznie dla głównego
-administratora (serwer sprawdza rolę ADMIN, a nie tylko widoczność menu).
-Przechowuje osobno imię, nazwisko, opcjonalny telefon oraz unikalny
-symbol pracownika, np. `KK`.
+W panelu jest **jedna zakładka Użytkownicy**. Tabela zachowuje dotychczasowe
+kolumny: Użytkownik, Rola, Magazyny, PIN, Status, Edytuj.
 
-**Przed użyciem trzeba uruchomić w D1 skrypt**
-`db/05-user-private-profiles.sql`. Skrypt nie usuwa ani nie nadpisuje
-już dodanych użytkowników. Stare konta pozostają z pustą kartoteką i
-można je uzupełnić przez **Edytuj**.
+Kliknięcie wiersza (poza przyciskiem Edytuj) rozwija jedną dodatkową linię
+z trzema polami: Imię, Nazwisko i Numer telefonu. Ponowne kliknięcie zwija
+wiersz; rozwinięcie drugiego użytkownika zwija poprzedniego. Na komputerze
+i telefonie kontakt jest dostępny w tym samym miejscu.
 
-Nowe konto przez formularz w zakładce **Użytkownicy**:
-- wymaga imienia i nazwiska, telefon jest opcjonalny;
-- symbol może pozostać pusty — serwer nada pierwsze litery imienia
-  i nazwiska oraz w razie konfliktu numer, np. `KK2`;
-- nazwisko i telefon są zapisane tylko w `user_private_profiles`;
-- do `users.name` trafia samo imię, nie pełne dane kontaktowe;
-- pełna kartoteka dostępna jest tylko przez widok `directory` i
-  wymaga uwierzytelnionej sesji głównego administratora;
-- każda operacja zapisywana jest atomowo z historią zmian, która nie
-  przechowuje numeru telefonu.
+W formularzu dodawania i edycji wymagany pozostaje **identyfikator
+użytkownika** (np. MT), rola i przypisania według potrzeb.
+**Imię, nazwisko i telefon są opcjonalne** — można je uzupełnić później.
+Zmiana tych pól nie zmienia identyfikatora ani PIN-u.
 
-**Widok aplikacji pracownika:** docelowo tylko krótki symbol
-(`display_code`), bez stałego powitania ani pełnego imienia i nazwiska.
-Powitanie można rozważyć później. Obecny skaner i logowanie we
-francuskiej aplikacji są nadal bez zmian; aplikacja pracownika oparta
-na D1 będzie podłączona w kolejnym etapie.
+Dane prywatne pozostają w oddzielnej tabeli
+`user_private_profiles` (`db/05-user-private-profiles.sql`).
+Serwer dołącza je **tylko w widoku Użytkownicy objętym autoryzacją ADMINA**,
+a nie przez API pracownika. `users.name` nadal przechowuje krótki
+identyfikator (MT), nie imię i nazwisko. Kolumna `display_code`
+w prywatnym profilu jest generowana na podstawie identyfikatora i unikalna.
 
+Aktualnie pracownicza aplikacja francuska nie zmienia swojego interfejsu
+ani logowania. Nowy polski interfejs w przyszłości może pokazywać same
+inicjały/identyfikator; żadnego stałego napisu „Dzień dobry” nie dodajemy.
+
+Już dodane konto bez kontaktu pozostaje bez zmian; kliknięcie jego wiersza
+pokaże kreski zamiast brakujących danych. Wystarczy uzupełnić je przez Edytuj.
