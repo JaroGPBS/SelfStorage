@@ -90,3 +90,34 @@ rate-limit dla logowania.
 - Aplikacja mobilna / `index.html` i skaner pozostają bez zmian.
 - Baza samochodów, obsługa ekip i podpisy odłożone na później.
 - Stany produkcyjne `PL-TYCHY` są nadal nieustalone.
+
+
+## Prywatna kartoteka pracowników
+
+Nowa zakładka **Kartoteka pracowników** jest wyłącznie dla głównego
+administratora (serwer sprawdza rolę ADMIN, a nie tylko widoczność menu).
+Przechowuje osobno imię, nazwisko, opcjonalny telefon oraz unikalny
+symbol pracownika, np. `KK`.
+
+**Przed użyciem trzeba uruchomić w D1 skrypt**
+`db/05-user-private-profiles.sql`. Skrypt nie usuwa ani nie nadpisuje
+już dodanych użytkowników. Stare konta pozostają z pustą kartoteką i
+można je uzupełnić przez **Edytuj**.
+
+Nowe konto przez formularz w zakładce **Użytkownicy**:
+- wymaga imienia i nazwiska, telefon jest opcjonalny;
+- symbol może pozostać pusty — serwer nada pierwsze litery imienia
+  i nazwiska oraz w razie konfliktu numer, np. `KK2`;
+- nazwisko i telefon są zapisane tylko w `user_private_profiles`;
+- do `users.name` trafia samo imię, nie pełne dane kontaktowe;
+- pełna kartoteka dostępna jest tylko przez widok `directory` i
+  wymaga uwierzytelnionej sesji głównego administratora;
+- każda operacja zapisywana jest atomowo z historią zmian, która nie
+  przechowuje numeru telefonu.
+
+**Widok aplikacji pracownika:** docelowo tylko krótki symbol
+(`display_code`), bez stałego powitania ani pełnego imienia i nazwiska.
+Powitanie można rozważyć później. Obecny skaner i logowanie we
+francuskiej aplikacji są nadal bez zmian; aplikacja pracownika oparta
+na D1 będzie podłączona w kolejnym etapie.
+
