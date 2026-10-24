@@ -210,3 +210,14 @@ tr:hover td{background:#ffffff04}
   .heading-actions #generateMissingPins{flex-basis:100%}
   .heading-actions #addUserBtn{flex-basis:100%}
 }
+
+/* Account status / archive stay in the existing edit form and users tab. */
+#userStatusRow{margin:17px 0 0}
+#userStatusRow label{margin-bottom:7px}
+.archive-danger{margin-right:auto;border:1px solid #a94a50;background:#481b22;color:#ffb1b5}
+.archive-danger:hover{background:#68202c;color:#fff}
+#showArchivedUsers{white-space:nowrap}
+@media(max-width:560px){
+  #userDialog .dialog-actions{flex-wrap:wrap}
+  #userDialog .dialog-actions .archive-danger{flex-basis:100%;margin:0 0 5px}
+}
