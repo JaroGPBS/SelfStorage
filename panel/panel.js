@@ -307,7 +307,6 @@
     $('createUserForm').addEventListener('submit',saveUser);
     try {
       await api('summary');
-      if(!state.loggedIn)return;
     } catch(error) {
       if(!/Zaloguj się|Sesja wygasła/.test(error.message))
         setError(error.message);
