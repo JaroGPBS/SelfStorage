@@ -301,6 +301,9 @@ async function updateUser(env, body, actor) {
   }
   const existing=await env.DB.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!existing)return fail('Nie znaleziono użytkownika.',404);
+  if(await archiveTableExists(env.DB)&&
+     await env.DB.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first())
+    return fail('Konto w archiwum. Użyj najpierw opcji Przywróć.',409);
   if(!await env.DB.prepare('SELECT code FROM user_roles WHERE code=?').bind(role).first())
     return fail('Nieznana rola.',400);
   const assigned=(await env.DB.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?').bind(id).all()).results.map(row=>row.warehouse_id);
