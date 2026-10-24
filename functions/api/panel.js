@@ -231,6 +231,9 @@ async function queryPanel(env,view,url) {
     ).all();
     return rows.results||[];
   }
+  if(view==='pinStatus')return {
+    available:typeof env.PIN_PEPPER==='string'&&env.PIN_PEPPER.length>=32
+  };
   if(view==='roles') {
     const rows=await env.DB.prepare('SELECT code,name FROM user_roles ORDER BY code').all();
     return rows.results||[];
@@ -430,6 +433,130 @@ async function staffMutation(env,body,actor,edit) {
   return respond({ok:true,userId:id,nickname:staff.nickname,displayCode:code,pinUnchanged:true});
 }
 
+
+/* D1 PIN provisioning, separate from legacy French PIN login.
+   Only a signed ADMIN session may generate/reset. A secret server-side
+   HMAC key permits uniqueness checking without storing 4-digit PINs. */
+const RESERVED_STAFF_PINS = new Set(['0000','1111','1234']);
+const MAX_PIN_BATCH = 100;
+const MAX_PIN_RETRIES = 200;
+
+function randomStaffPin() {
+  const bytes=new Uint16Array(1);
+  for(;;) {
+    crypto.getRandomValues(bytes);
+    if(bytes[0]>=60000)continue; // eliminate modulo bias
+    const pin=String(bytes[0]%10000).padStart(4,'0');
+    if(!RESERVED_STAFF_PINS.has(pin))return pin;
+  }
+}
+
+async function staffPinKey(env) {
+  return crypto.subtle.importKey('raw',enc.encode(env.PIN_PEPPER),
+    {name:'HMAC',hash:'SHA-256'},false,['sign']);
+}
+
+async function staffPinDigest(key,pin) {
+  const bytes=await crypto.subtle.sign('HMAC',key,
+    enc.encode('GPBS:D1:PIN:v1:'+pin));
+  return Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+async function issueStaffPin(db,key,user,actor,reset=false) {
+  const prior=await db.prepare(
+    'SELECT pin_digest FROM user_pin_credentials WHERE user_id=?'
+  ).bind(user.id).first();
+  if(!reset&&prior)return {status:'ALREADY_ASSIGNED',userId:user.id};
+  if(reset&&!prior)return {status:'NOT_ASSIGNED',userId:user.id};
+  for(let i=0;i<MAX_PIN_RETRIES;i++) {
+    const pin=randomStaffPin();
+    const digest=await staffPinDigest(key,pin);
+    if(reset&&digest===prior.pin_digest)continue;
+    try {
+      const operation=reset
+        ?db.prepare('UPDATE user_pin_credentials SET pin_digest=?,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND pin_digest=?')
+          .bind(digest,user.id,prior.pin_digest)
+        :db.prepare('INSERT INTO user_pin_credentials (user_id,pin_digest) VALUES (?,?)').bind(user.id,digest);
+      // Audited in the same atomic batch. No PIN or digest in the audit log.
+      const audit=db.prepare(
+        'INSERT INTO panel_audit_log (id,actor_id,action,target_type,target_id,details) VALUES (?,?,?,?,?,?)'
+      ).bind(crypto.randomUUID(),actor,reset?'PIN_RESET':'PIN_ISSUED','USER',user.id,
+        JSON.stringify({user:user.name,role:user.role_code}));
+      const result=await db.batch([operation,audit]);
+      if(Number(result[0]?.meta?.changes||0)!==1)
+        return {status:'CONCURRENT_CHANGE',userId:user.id};
+      return {status:reset?'RESET':'GENERATED',userId:user.id,
+        name:user.name,role:user.role_code,pin};
+    } catch(error) {
+      const text=String(error?.message||'').toLowerCase();
+      if(!text.includes('constraint'))throw error;
+      const current=await db.prepare(
+        'SELECT pin_digest FROM user_pin_credentials WHERE user_id=?'
+      ).bind(user.id).first();
+      if(reset&&(!current||current.pin_digest!==prior.pin_digest))
+        return {status:'CONCURRENT_CHANGE',userId:user.id};
+      if(!reset&&current)
+        return {status:'ALREADY_ASSIGNED',userId:user.id};
+      // Unique PIN collision with another account: retry.
+    }
+  }
+  throw Error('Brak wolnego PIN-u do przypisania. Skontaktuj się z administratorem.');
+}
+
+async function provisionStaffPins(env,body,actor) {
+  if(typeof env.PIN_PEPPER!=='string'||env.PIN_PEPPER.length<32)
+    return fail('Generator nieaktywny. Skonfiguruj PIN_PEPPER w Cloudflare jako Secret.',503);
+
+  const db=env.DB;
+  const key=await staffPinKey(env);
+  const action=String(body.action||'');
+  if(!['pinGenerate','pinGenerateMissing','pinReset'].includes(action))
+    return fail('Nieznana operacja.',400);
+
+  if(action==='pinGenerateMissing') {
+    const role=String(body.role||'').trim().toUpperCase();
+    if(role&&!ALLOWED_ROLES.has(role))return fail('Nieprawidłowa rola.',400);
+    const sql='SELECT u.id,u.name,u.role_code FROM users u '+
+      'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
+      'WHERE u.active=1 AND p.user_id IS NULL '+
+      (role?'AND u.role_code=? ':'')+
+      'ORDER BY u.created_at,u.id LIMIT ?';
+    const results=role
+      ?await db.prepare(sql).bind(role,MAX_PIN_BATCH).all()
+      :await db.prepare(sql).bind(MAX_PIN_BATCH).all();
+    const issued=[];
+    let skipped=0;
+    for(const user of results.results||[]) {
+      const outcome=await issueStaffPin(db,key,user,actor,false);
+      if(outcome.pin)issued.push(outcome);
+      else skipped++;
+    }
+    return respond({ok:true,generated:issued.length,skipped,
+      pins:issued,maxBatch:MAX_PIN_BATCH,
+      warning:'PIN-y widoczne są tylko teraz. Nie można ich później odczytać; można je zresetować.'});
+  }
+
+  const userId=String(body.userId||'');
+  if(!/^GPBS-U-[a-f0-9-]{36}$/.test(userId))
+    return fail('Nieprawidłowy użytkownik.',400);
+  const user=await db.prepare(
+    'SELECT id,name,role_code FROM users WHERE id=? AND active=1'
+  ).bind(userId).first();
+  if(!user)return fail('Nie znaleziono aktywnego użytkownika.',404);
+
+  const result=await issueStaffPin(db,key,user,actor,action==='pinReset');
+  if(!result.pin) {
+    const errors={
+      ALREADY_ASSIGNED:'Użytkownik ma już PIN. Użyj Resetuj PIN.',
+      NOT_ASSIGNED:'Użytkownik nie ma jeszcze PIN-u.',
+      CONCURRENT_CHANGE:'PIN został zmieniony równocześnie. Odśwież listę.'
+    };
+    return fail(errors[result.status]||'Nie udało się wygenerować PIN-u.',409);
+  }
+  return respond({ok:true,...result,
+    warning:'PIN jest widoczny tylko teraz. Zapisz go bezpiecznie.'});
+}
+
 async function route(request,env) {
   if(!ready(env)) return fail('Panel nie jest jeszcze aktywowany przez administratora.',503);
   const url=new URL(request.url);
@@ -498,6 +625,15 @@ async function route(request,env) {
     return respond({ok:true},200,{
       'Set-Cookie':COOKIE_NAME+'=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'
     });
+  if(['pinGenerate','pinGenerateMissing','pinReset'].includes(body?.action)) {
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try {
+      return await provisionStaffPins(env,body,session.id);
+    } catch(error) {
+      console.error('GPBS PIN provisioning error:',error?.name||'Error');
+      return fail('Nie udało się wygenerować PIN-u. Sprawdź konfigurację i spróbuj ponownie.',500);
+    }
+  }
   if(body?.action==='createStaff'||body?.action==='updateStaff') {
     if(session.role!=='ADMIN') return fail('Brak uprawnień.',403);
     try {
