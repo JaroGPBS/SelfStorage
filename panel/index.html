@@ -46,6 +46,7 @@
         <button data-view="movements" class="nav-item" type="button"><span class="nav-symbol">⇄</span> Ruchy PZ / WZ</button>
         <div class="side-section administrative">ADMINISTRACJA</div>
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
+        <button data-view="directory" class="nav-item" type="button"><span class="nav-symbol">▦</span> Kartoteka pracowników</button>
         <button data-view="security" class="nav-item" type="button"><span class="nav-symbol">⚿</span> Bezpieczeństwo</button>
       </nav>
       <div class="sidebar-footer">
@@ -124,14 +125,21 @@
   <dialog id="userDialog" class="modal">
     <input type="hidden" id="editUserId" value="">
     <form id="createUserForm" method="dialog" class="modal-inner">
-      <div class="modal-heading"><div><div class="eyebrow">ADMINISTRACJA</div><h2 id="userDialogTitle">Nowy użytkownik</h2><p>Przypisz rolę i dostęp do magazynów.</p></div><button type="button" id="closeUserDialog" aria-label="Zamknij" class="icon-button">×</button></div>
-      <label for="userName">Nazwa użytkownika / ekipy</label>
-      <input id="userName" type="text" minlength="2" maxlength="100" required placeholder="Np. Magazynier Tychy">
+      <div class="modal-heading"><div><div class="eyebrow">ADMINISTRACJA</div><h2 id="userDialogTitle">Nowy użytkownik</h2><p>Dane kontaktowe i uprawnienia. Telefon oraz nazwisko pozostają prywatne.</p></div><button type="button" id="closeUserDialog" aria-label="Zamknij" class="icon-button">×</button></div>
+      <div class="field-grid">
+        <div><label for="userFirstName">Imię</label><input id="userFirstName" type="text" minlength="2" maxlength="60" required autocomplete="off" placeholder="Krzysztof"></div>
+        <div><label for="userLastName">Nazwisko</label><input id="userLastName" type="text" minlength="2" maxlength="80" required autocomplete="off" placeholder="Kowalski"></div>
+      </div>
+      <div class="field-grid">
+        <div><label for="userPhone">Telefon (opcjonalny)</label><input id="userPhone" type="tel" maxlength="28" autocomplete="off" placeholder="+48 123 456 789"></div>
+        <div><label for="userCode">Symbol w aplikacji</label><input id="userCode" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="KK (automatycznie)"></div>
+      </div>
+      <p class="hint identity-hint">Pełne dane kontaktowe są widoczne tylko w kartotece administratora. W aplikacji pracownika pojawi się wyłącznie symbol, np. KK. Puste pole symbolu oznacza automatyczne, unikalne inicjały.</p>
       <label for="userRole">Rola</label>
       <select id="userRole" class="select" required></select>
       <label class="checkbox-row account-status" id="userStatusRow" hidden><input type="checkbox" id="userActive" checked><span>Konto aktywne</span></label>
       <fieldset id="userWarehouses"><legend>Dostęp do magazynów</legend></fieldset>
-      <p class="hint">Nadawanie PIN-ów podłączymy po uzgodnieniu wspólnej puli PIN-ów dla Polski i Francji. Sama zmiana danych konta nie zmienia jego PIN-u.</p>
+      <p class="hint">Nadanie i zmiana PIN-u to oddzielna operacja. Edycja danych pracownika nie zmienia PIN-u.</p>
       <div class="dialog-actions"><button id="cancelUser" class="btn ghost" type="button">Anuluj</button><button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button></div>
     </form>
   </dialog>
