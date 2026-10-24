@@ -191,3 +191,22 @@ tr:hover td{background:#ffffff04}
 @media(max-width:620px){
   .user-details-inner{grid-template-columns:1fr;gap:14px;padding:17px 15px}
 }
+
+/* PIN generator: keep original user table columns and add compact actions. */
+.pin-cell{white-space:nowrap}
+.pin-action{margin-left:10px;min-width:63px;padding:6px 9px!important}
+.heading-actions #pinRoleFilter{width:137px}
+.heading-actions #generateMissingPins{white-space:nowrap}
+.pins-result{display:grid;gap:9px;margin:22px 0 25px;max-height:44dvh;overflow:auto}
+.pin-result-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--edge);border-radius:9px;padding:11px 14px;background:#11161d}
+.pin-result-item strong{font-weight:750;font-size:13px}
+.pin-result-item code{color:#ffb4b4;font-size:20px;letter-spacing:5px;font-weight:800;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.secret-subsection{border-top:1px solid var(--edge);margin-top:27px;padding-top:24px}
+.secret-subsection h3{font-size:17px;margin-bottom:10px}
+.secret-subsection p{color:#aebcca;line-height:1.6}
+@media(max-width:820px){.heading-actions{flex-wrap:wrap}}
+@media(max-width:550px){
+  .heading-actions #pinRoleFilter{width:100%;flex-basis:100%}
+  .heading-actions #generateMissingPins{flex-basis:100%}
+  .heading-actions #addUserBtn{flex-basis:100%}
+}
