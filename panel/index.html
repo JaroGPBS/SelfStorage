@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Panel biurowy</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=2">
-  <script src="./panel.js?v=2" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=3">
+  <script src="./panel.js?v=3" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -74,6 +74,15 @@
           </div>
           <div class="heading-actions">
             <select id="warehouseFilter" class="select hidden" aria-label="Wybierz magazyn"></select>
+            <select id="pinRoleFilter" class="select hidden" aria-label="Rola dla zbiorczego generatora PIN-ów">
+              <option value="">Wszystkie role</option>
+              <option value="ADMIN">Admin</option>
+              <option value="KIEROWNIK">Kierownik</option>
+              <option value="KOORDYNATOR">Koordynator</option>
+              <option value="MAGAZYNIER">Magazynier</option>
+              <option value="EKIPA">Ekipa</option>
+            </select>
+            <button id="generateMissingPins" class="btn ghost hidden" type="button">Generuj brakujące PIN-y</button>
             <button id="addUserBtn" class="btn primary hidden" type="button">+ Dodaj użytkownika</button>
           </div>
         </div>
@@ -103,6 +112,16 @@
               <label class="secret-label" for="sessionSecretOutput">Klucz do skopiowania — nie wysyłaj go nikomu</label>
               <input id="sessionSecretOutput" class="secret-value mono" type="password" readonly autocomplete="off" spellcheck="false" placeholder="Najpierw wygeneruj klucz">
               <p class="hint">Klucz nie jest wysyłany na serwer ani zapisywany przez panel. Nie zmieniaj swojego <code>PANEL_ADMIN_PASSWORD</code>.</p>
+              <div class="secret-subsection">
+                <h3>Klucz generatora PIN-ów (jednorazowa konfiguracja)</h3>
+                <p>Generator PIN-ów korzysta z osobnego, tajnego klucza. Kliknij przycisk poniżej i zapisz wynik w Cloudflare pod nazwą <code>PIN_PEPPER</code> jako <strong>Secret</strong>. Nie używaj wartości <code>PANEL_SESSION_SECRET</code>.</p>
+                <div class="security-actions">
+                  <button id="generatePinPepper" type="button" class="btn primary">Generuj klucz PIN-ów</button>
+                  <button id="copyPinPepper" type="button" class="btn ghost" disabled>Kopiuj</button>
+                </div>
+                <input id="pinPepperOutput" class="secret-value mono" type="password" readonly autocomplete="off" spellcheck="false" placeholder="Nowy prywatny klucz PIN-ów">
+                <p class="hint">Nie zmieniaj później PIN_PEPPER bez migracji istniejących PIN-ów — przestaną działać. Wygenerowany klucz nie opuszcza przeglądarki.</p>
+              </div>
             </div>
           </div>
         </section>
@@ -121,6 +140,20 @@
     </div>
   </div>
 
+  <dialog id="generatedPinsDialog" class="modal" aria-labelledby="generatedPinsTitle">
+    <div class="modal-inner">
+      <div class="modal-heading">
+        <div><div class="eyebrow">ADMINISTRACJA / PIN</div><h2 id="generatedPinsTitle">Wygenerowane PIN-y</h2>
+        <p>Te PIN-y są pokazywane tylko raz. Skopiuj je przed zamknięciem.</p></div>
+        <button id="closeGeneratedPins" type="button" class="icon-button" aria-label="Zamknij PIN-y">×</button>
+      </div>
+      <div id="generatedPinsResults" class="pins-result" aria-live="polite"></div>
+      <div class="dialog-actions">
+        <button id="copyGeneratedPins" type="button" class="btn primary">Kopiuj PIN-y</button>
+        <button id="doneGeneratedPins" type="button" class="btn ghost">Zamknij</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="userDialog" class="modal">
     <input type="hidden" id="editUserId" value="">
     <form id="createUserForm" method="dialog" class="modal-inner">
