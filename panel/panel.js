@@ -10,6 +10,7 @@
     parts:['Katalog części','Pełny katalog i stany części w wybranym magazynie.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
+    directory:['Kartoteka pracowników','Prywatna baza kontaktów. Dostęp tylko dla ADMINA.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.']
   };
 
@@ -153,6 +154,18 @@
           u.active?pill('Aktywny','green'):pill('Wyłączony','red'),button];
       })
     ];
+    if(view==='directory')return [
+      ['IMIĘ I NAZWISKO','TELEFON','SYMBOL','ROLA','MAGAZYNY','IDENTYFIKATOR',''],
+      items.map(u=>{
+        const button=document.createElement('button');
+        button.className='btn mini';button.type='button';button.textContent='Edytuj';
+        button.addEventListener('click',()=>openUserDialog(u));
+        const fullName=[u.first_name,u.last_name].filter(Boolean).join(' ');
+        return [fullName||pill('Uzupełnij dane','red'),
+          u.phone||'—',u.display_code?pill(u.display_code,'blue'):'—',
+          pill(u.role_code,'blue'),u.warehouses||'—',u.id,button];
+      })
+    ];
     return [[],[]];
   }
 
@@ -196,7 +209,7 @@
     $('dashboardView').classList.toggle('hidden',view!=='summary');
     $('tableView').classList.toggle('hidden',view==='summary'||view==='security');
     $('securityView').classList.toggle('hidden',view!=='security');
-    $('addUserBtn').classList.toggle('hidden',view!=='users');
+    $('addUserBtn').classList.toggle('hidden',view!=='users'&&view!=='directory');
     $('warehouseFilter').classList.toggle('hidden',view!=='parts');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
@@ -256,11 +269,17 @@
 
   async function openUserDialog(existing=null) {
     try {
-      const [roles,warehouses]=await Promise.all([api('roles'),api('warehouseOptions')]);
+      const [roles,warehouses,contact]=await Promise.all([
+        api('roles'),api('warehouseOptions'),
+        existing?api('directory').then(items=>items.find(u=>u.id===existing.id)||null):Promise.resolve(null)
+      ]);
       const form=$('createUserForm');form.reset();
       $('editUserId').value=existing?.id||'';
       $('userDialogTitle').textContent=existing?'Edytuj użytkownika':'Nowy użytkownik';
-      $('userName').value=existing?.name||'';
+      $('userFirstName').value=contact?.first_name||'';
+      $('userLastName').value=contact?.last_name||'';
+      $('userPhone').value=contact?.phone||'';
+      $('userCode').value=contact?.display_code||'';
       $('userStatusRow').hidden=!existing;
       $('userActive').checked=existing?Boolean(existing.active):true;
 
@@ -273,8 +292,7 @@
       if(existing)roleInput.value=existing.role_code;
 
       const assigned=new Set((existing?.warehouses||'').split(',').map(x=>x.trim()).filter(Boolean));
-      const field=$('userWarehouses');
-      field.replaceChildren();
+      const field=$('userWarehouses');field.replaceChildren();
       const legend=document.createElement('legend');
       legend.textContent='Dostęp do magazynów';field.append(legend);
       for(const warehouse of warehouses.filter(w=>w.active||assigned.has(w.id))) {
@@ -289,28 +307,31 @@
         row.append(checkbox,label);field.append(row);
       }
       $('userDialog').showModal();
-    } catch(error){message(error.message,'error');}
+    }catch(error){message(error.message,'error');}
   }
 
   async function saveUser(event) {
     event.preventDefault();
-    const button=$('saveUser');
-    busy(button,true);
+    const button=$('saveUser');busy(button,true);
     try{
       const warehouses=[...$('userWarehouses').querySelectorAll('input:checked')].map(x=>x.value);
       const userId=$('editUserId').value;
       const body={
-        action:userId?'updateUser':'createUser',
-        name:$('userName').value.trim(),
+        action:userId?'updateStaff':'createStaff',
+        firstName:$('userFirstName').value.trim(),
+        lastName:$('userLastName').value.trim(),
+        phone:$('userPhone').value.trim(),
+        displayCode:$('userCode').value.trim(),
         role:$('userRole').value,
         warehouses,
         ...(userId?{userId,active:$('userActive').checked?1:0}:{})
       };
-      await post(body);
+      const result=await post(body);
       $('userDialog').close();
-      state.records=await api('users');
-      if(state.view==='users')renderList();
-      message(userId?'Zapisano zmiany użytkownika.':'Dodano użytkownika bez PIN-u.','info');
+      state.records=await api(state.view==='directory'?'directory':'users');
+      if(state.view==='users'||state.view==='directory')renderList();
+      message((userId?'Zapisano dane pracownika.':'Dodano pracownika.')+
+        ' Symbol: '+result.displayCode+'. PIN pozostaje bez zmian.','info');
     }catch(error){message(error.message,'error');}
     finally{busy(button,false);}
   }
