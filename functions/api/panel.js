@@ -23,7 +23,7 @@ function respond(body, status=200, extra={}) {
 function fail(message, status=400) { return respond({ok:false,error:message},status); }
 function ready(env) {
   return Boolean(env.DB && typeof env.PANEL_ADMIN_PASSWORD === 'string' &&
-    env.PANEL_ADMIN_PASSWORD.length >= 32 &&
+    env.PANEL_ADMIN_PASSWORD.length >= 8 &&
     typeof env.PANEL_SESSION_SECRET === 'string' && env.PANEL_SESSION_SECRET.length >= 32);
 }
 
