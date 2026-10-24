@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Panel biurowy</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=4">
-  <script src="./panel.js?v=4" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=5">
+  <script src="./panel.js?v=5" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -152,6 +152,17 @@
       <div class="dialog-actions">
         <button id="copyGeneratedPins" type="button" class="btn primary">Kopiuj PIN-y</button>
         <button id="doneGeneratedPins" type="button" class="btn ghost">Zamknij</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="confirmDialog" class="modal confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmDescription">
+    <div class="modal-inner">
+      <div class="eyebrow">GPBS STORAGE / POTWIERDZENIE</div>
+      <h2 id="confirmTitle">Potwierdź operację</h2>
+      <p id="confirmDescription"></p>
+      <div class="dialog-actions">
+        <button id="cancelConfirmation" class="btn ghost" type="button">Anuluj</button>
+        <button id="approveConfirmation" class="btn primary" type="button">Potwierdź</button>
       </div>
     </div>
   </dialog>
