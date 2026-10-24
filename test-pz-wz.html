@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>GPBS Storage | Test PZ/WZ</title>
+  <style>
+    :root {color-scheme: dark;font-family: system-ui,-apple-system,Segoe UI,sans-serif;background:#101318;color:#f1f3f6}
+    *{box-sizing:border-box}body{margin:0;min-height:100dvh;display:grid;place-items:start center;padding:44px 16px}
+    main{width:min(100%,490px);background:#1b2028;border:1px solid #3b4350;border-radius:16px;padding:26px;box-shadow:0 16px 60px #0006}
+    h1{font-size:23px;margin:0 0 7px}h2{font-size:15px;color:#d8e0e9;margin:22px 0 6px}
+    p{color:#b7c2d0;font-size:14px;line-height:1.5}
+    .tag{display:inline-block;margin-bottom:16px;border:1px solid #637084;border-radius:8px;padding:5px 9px;color:#e2e9f1;font-size:12px;font-weight:750}
+    label{display:block;margin-top:20px;margin-bottom:8px;font-weight:650;font-size:14px}
+    input{display:block;width:100%;background:#101318;color:#fff;border:1px solid #6a7587;border-radius:9px;min-height:49px;padding:10px 13px;font-size:17px;letter-spacing:.4px}
+    input:focus-visible,button:focus-visible{outline:3px solid #7aa9ff;outline-offset:2px}
+    .buttons{display:grid;gap:12px;margin:18px 0}
+    button{min-height:52px;width:100%;border:0;border-radius:10px;font-size:15px;font-weight:780;cursor:pointer;color:#fff;background:#32699a}
+    button.secondary{background:#6a4242}button:disabled{opacity:.55;cursor:wait}
+    .small{color:#aab4c0;font-size:12px}
+    #result{white-space:pre-wrap;overflow-wrap:anywhere;background:#11171f;border:1px solid #354053;border-radius:10px;padding:16px;font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+    #result.success{border-color:#379c7b}#result.error{border-color:#db6565}
+    strong{color:#fff}
+  </style>
+</head>
+<body>
+<main>
+  <div class="tag">TESTOWY MAGAZYN PL-TEST</div>
+  <h1>Test przyjęcia i wydania</h1>
+  <p>Wykonujemy operację na <strong>jednej części</strong> (<code>GPBS-P-000001</code>), bez zmian w Tychy ani we francuskich magazynach.</p>
+
+  <label for="adminPin">PIN administratora</label>
+  <input id="adminPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" spellcheck="false" placeholder="Wpisz PIN" aria-describedby="pinNote">
+  <p id="pinNote" class="small">PIN służy tylko do autoryzacji tego testu; strona go nie zapisuje.</p>
+
+  <div class="buttons">
+    <button id="pz" type="button">PZ — przyjmij 1 sztukę (+1)</button>
+    <button id="wz" type="button" class="secondary">WZ — wydaj 1 sztukę (−1)</button>
+  </div>
+
+  <h2>Wynik operacji</h2>
+  <div id="result" role="status" aria-live="polite">Wybierz PZ lub WZ. Test nie został jeszcze uruchomiony.</div>
+  <p class="small">Operacje zapisują się w D1 i w historii. Jeżeli połączenie zostanie przerwane, ponowne kliknięcie tego samego rodzaju operacji najpierw ponowi jej identyfikator, żeby nie naliczyć części podwójnie.</p>
+</main>
+<script>
+(() => {
+  'use strict';
+  const result = document.getElementById('result');
+  const pinInput = document.getElementById('adminPin');
+  const buttons = [document.getElementById('pz'), document.getElementById('wz')];
+  let sending = false;
+  const idKeys = {PZ:'gpbs_pl_test_form_pending_pz',WZ:'gpbs_pl_test_form_pending_wz'};
+
+  function output(message, style = '') {
+    result.textContent = message;
+    result.className = style;
+  }
+
+  async function submit(type) {
+    if (sending) return;
+    const pin = pinInput.value.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      output('Wpisz prawidłowy czterocyfrowy PIN administratora.', 'error');
+      pinInput.focus();
+      return;
+    }
+    const key = idKeys[type];
+    let operationId = sessionStorage.getItem(key);
+    if (!operationId) {
+      operationId = crypto.randomUUID();
+      sessionStorage.setItem(key, operationId);
+    }
+    const data = {
+      pin,
+      operationId,
+      warehouseId:'PL-TEST',
+      type,
+      recipientName:type === 'WZ' ? 'ODBIOR TESTOWY' : '',
+      notes:'Test z formularza GPBS',
+      lines:[{partId:'GPBS-P-000001',quantity:1}]
+    };
+    sending = true;
+    for(const b of buttons) b.disabled = true;
+    output('Łączę z D1 i zapisuję ' + type + '…');
+    try {
+      const response = await fetch('/api/pl/warehouse-operation', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        cache:'no-store',
+        body:JSON.stringify(data)
+      });
+      const reply = await response.json();
+      if (!response.ok || !reply?.ok) {
+        // Validation and authorization failures cannot have committed.
+        // Network failures keep their id for safe retries.
+        if (response.status >= 400 && response.status < 500 && response.status !== 409) {
+          sessionStorage.removeItem(key);
+        }
+        throw Error(reply?.error || 'Serwer zwrócił błąd HTTP ' + response.status);
+      }
+      sessionStorage.removeItem(key);
+      output(
+        'ZAPISANO POPRAWNIE\n' +
+        'Operacja: ' + type + '\n' +
+        'Magazyn: PL-TEST\n' +
+        'Część: GPBS-P-000001\n' +
+        'Zmiana: ' + (type === 'PZ' ? '+1' : '−1') + '\n' +
+        (reply.alreadySaved
+          ? 'Powtórne żądanie — bez ponownego naliczenia.\n'
+          : 'Zapisano nową operację.\n') +
+        (reply.lines?.[0]?.stockAfter !== undefined
+          ? 'Stan po operacji: ' + reply.lines[0].stockAfter + ' szt.\n'
+          : '') +
+        'ID: ' + reply.operationId,
+        'success'
+      );
+    } catch (error) {
+      output('Nie udało się zapisać: ' + (error?.message || 'Błąd połączenia.') +
+        '\nMożesz spróbować ponownie.', 'error');
+    } finally {
+      pinInput.value = '';
+      sending = false;
+      for(const b of buttons) b.disabled = false;
+    }
+  }
+  buttons[0].addEventListener('click',()=>submit('PZ'));
+  buttons[1].addEventListener('click',()=>submit('WZ'));
+})();
+</script>
+</body>
+</html>
