@@ -188,6 +188,12 @@ async function queryPanel(env,view,url) {
     ).all();
     return rows.results||[];
   }
+  if(view==='warehouseOptions') {
+    const rows=await env.DB.prepare(
+      'SELECT id,name,country_code,active FROM warehouses ORDER BY country_code,name'
+    ).all();
+    return rows.results||[];
+  }
   if(view==='parts') {
     const warehouse=url.searchParams.get('warehouse')||'PL-TYCHY';
     const allowed=await env.DB.prepare(
