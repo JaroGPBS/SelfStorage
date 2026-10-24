@@ -162,3 +162,34 @@ Nie zmieniaj `PIN_PEPPER` po pierwszym nadaniu PIN-ów: istniejące
 skróty przestaną pasować. Jeżeli kod nie został skopiowany z
 jednorazowego widoku, należy go świadomie zresetować.
 
+
+
+## Nieaktywni i archiwum użytkowników
+
+Zakładka `Użytkownicy` zachowuje te same kolumny. Po kliknięciu
+`Edytuj` dostępne jest pole `Status konta` (Aktywny lub Nieaktywny).
+Zmiana statusu nie usuwa konta, ID, przypisań ani historii.
+
+Przycisk `Usuń z listy` przy edycji przenosi pracownika do archiwum,
+zamiast trwale usuwać historyczne dane. Po potwierdzeniu system:
+- ustawia `users.active=0`;
+- usuwa zapis PIN-u z `user_pin_credentials`, aby unieważnić D1 PIN;
+- dodaje identyfikator do `user_archives` i dziennika audytu;
+- zostawia konto użytkownika, ID, role, uprawnienia, dane kontaktowe
+  oraz całą historię magazynową nietknięte.
+
+`Pokaż archiwum` to przełącznik w tej samej zakładce. Można użyć
+`Przywróć`, co przywraca konto jako **nieaktywne**; do ponownego
+dopuszczenia do pracy trzeba je włączyć i nadać nowy PIN.
+
+Jednorazowa migracja w Cloudflare D1:
+`db/06-user-archive.sql`. Dopóki jej nie wykonano, dotychczasowe
+zapisane konta i obsługa listy nadal działają, natomiast próba
+archiwizacji zwraca komunikat o wymaganym SQL.
+
+W przyszłym logowaniu D1 obowiązkowo sprawdzamy `users.active=1`
+i brak wpisu w `user_archives` przy każdej nowej sesji oraz przy
+operacjach wymagających autoryzacji. Nieaktywni i zarchiwizowani
+nie dostają PIN-ów z generatora.
+
+Francuska aplikacja i jej logowanie są niezależne.
