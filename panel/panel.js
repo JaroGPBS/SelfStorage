@@ -452,9 +452,13 @@
     try {
       const result=await post({action:reset?'pinReset':'pinGenerate',userId:user.id});
       const pins=result.pins||[result];
-      state.records=await api('users');
-      if(state.view==='users')renderList();
-      showGeneratedPins(pins);
+      showGeneratedPins(pins); // immediately show one-time secrets before any other request
+      try {
+        state.records=await api('users');
+        if(state.view==='users')renderList();
+      } catch {
+        message('PIN zapisany. Nie udało się odświeżyć listy; skopiuj PIN teraz.','error');
+      }
     } catch(error) { message(error.message,'error'); }
   }
 
@@ -476,10 +480,14 @@
     const button=$('generateMissingPins');busy(button,true);
     try {
       const result=await post({action:'pinGenerateMissing',role});
-      state.records=await api('users');
-      if(state.view==='users')renderList();
       if(result.generated) showGeneratedPins(result.pins||[]);
       else message('Nie wygenerowano nowych PIN-ów. Dane mogły się już zmienić.','info');
+      try {
+        state.records=await api('users');
+        if(state.view==='users')renderList();
+      } catch {
+        message('PIN-y zapisano, ale lista nie została odświeżona. Skopiuj PIN-y teraz.','error');
+      }
     } catch(error){message(error.message,'error');}
     finally{busy(button,false);}
   }
