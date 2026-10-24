@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e11">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>GPBS Storage — Panel biurowy</title>
+  <link rel="icon" href="/icons/app-icon-192.png?v=8">
+  <link rel="stylesheet" href="./panel.css?v=1">
+  <script src="./panel.js?v=1" defer></script>
+</head>
+<body>
+  <div class="login-wrap" id="loginWrap">
+    <div class="login-ambient" aria-hidden="true"></div>
+    <section class="login-card" aria-labelledby="loginTitle">
+      <div class="login-brand">
+        <img src="/icons/gpbs-logo.svg" alt="GPBS">
+        <span>STORAGE <small>MANAGEMENT SYSTEM</small></span>
+      </div>
+      <div class="login-label">PANEL BIUROWY / ADMINISTRACYJNY</div>
+      <h1 id="loginTitle">Zarządzanie magazynami.<br><em>W jednym miejscu.</em></h1>
+      <p>Stany części, historia ruchów i zarządzanie użytkownikami — w jednym, zabezpieczonym panelu.</p>
+      <form id="loginForm" autocomplete="on">
+        <label for="panelPassword">Hasło administracyjne panelu</label>
+        <input id="panelPassword" type="password" required minlength="32" autocomplete="current-password" placeholder="Hasło administratora">
+        <label for="panelPin">Twój PIN GPBS Storage</label>
+        <input id="panelPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" placeholder="4 cyfry">
+        <button class="btn primary login-button" type="submit" id="loginButton">Zaloguj do panelu <span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="login-error hidden" id="loginError" role="alert"></p>
+      <div class="login-foot">Dostęp wyłącznie dla uprawnionych użytkowników. <span>GPBS Storage • D1</span></div>
+    </section>
+  </div>
+
+  <div id="app" class="app hidden">
+    <div id="sideOverlay" class="side-overlay hidden"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="side-brand"><img src="/icons/gpbs-logo.svg" alt="GPBS"><span><strong>STORAGE</strong><small>PANEL ZARZĄDZANIA</small></span></div>
+      <div class="side-section">PRZEGLĄD</div>
+      <nav aria-label="Nawigacja panelu" id="mainNav">
+        <button data-view="summary" class="nav-item active" type="button"><span class="nav-symbol">◈</span> Pulpit</button>
+        <button data-view="warehouses" class="nav-item" type="button"><span class="nav-symbol">▣</span> Magazyny</button>
+        <button data-view="parts" class="nav-item" type="button"><span class="nav-symbol">▤</span> Katalog części</button>
+        <button data-view="movements" class="nav-item" type="button"><span class="nav-symbol">⇄</span> Ruchy PZ / WZ</button>
+        <div class="side-section administrative">ADMINISTRACJA</div>
+        <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="role-dot"></div>
+        <div><strong>Administrator</strong><small>Pełny dostęp</small></div>
+        <button title="Wyloguj" aria-label="Wyloguj" class="icon-button" id="logoutBtn" type="button">↗</button>
+      </div>
+    </aside>
+    <div class="main-layout">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="sidebarToggle" type="button" class="icon-button mobile-toggle" aria-label="Otwórz menu">☰</button>
+          <span class="breadcrumb">GPBS Storage <span class="slash">/</span> <strong id="breadcrumbCurrent">Pulpit</strong></span>
+        </div>
+        <div class="topbar-right">
+          <span class="connection" id="connectionStatus"><i></i> Baza D1</span>
+          <span class="admin-badge">ADMIN</span>
+        </div>
+      </header>
+      <main class="workspace">
+        <div class="heading">
+          <div>
+            <div class="eyebrow">GPBS STORAGE / POLSKA</div>
+            <h1 id="pageTitle">Pulpit</h1>
+            <p id="pageSubtitle">Przegląd operacji i magazynów.</p>
+          </div>
+          <div class="heading-actions">
+            <select id="warehouseFilter" class="select hidden" aria-label="Wybierz magazyn"></select>
+            <button id="addUserBtn" class="btn primary hidden" type="button">+ Dodaj użytkownika</button>
+          </div>
+        </div>
+        <div id="message" class="message hidden" role="status" aria-live="polite"></div>
+        <section id="dashboardView" class="view hidden">
+          <div class="intro-banner">
+            <div><span class="intro-kicker">PANEL BIUROWY</span><h2>Wszystkie magazyny.<br><em>Pełna kontrola.</em></h2><p>Zarządzaj stanami i historią operacji w jednym miejscu.</p></div>
+            <div class="intro-decoration" aria-hidden="true">G</div>
+          </div>
+          <div id="statGrid" class="stat-grid"></div>
+          <div class="table-panel">
+            <div class="table-title"><h2>Magazyny w Polsce</h2><span class="meta">AKTUALNY PODGLĄD</span></div>
+            <div id="dashboardWarehouses" class="table-scroll"></div>
+          </div>
+        </section>
+        <section id="tableView" class="view hidden">
+          <div class="table-panel">
+            <div class="table-title">
+              <div><h2 id="tableTitle"></h2><p id="tableDescription"></p></div>
+              <input id="tableSearch" class="search-input" type="search" autocomplete="off" placeholder="Szukaj w tabeli…">
+            </div>
+            <div id="tableResults" class="table-scroll"></div>
+            <div id="tableFooter" class="table-footer"></div>
+          </div>
+        </section>
+        <div class="workspace-footer">GPBS Storage <span>•</span> Panel biurowy i administracyjny <span>•</span> Cloudflare D1</div>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="userDialog" class="modal">
+    <form id="createUserForm" method="dialog" class="modal-inner">
+      <div class="modal-heading"><div><div class="eyebrow">ADMINISTRACJA</div><h2>Nowy użytkownik</h2><p>Przypisz rolę i dostęp do magazynów.</p></div><button type="button" id="closeUserDialog" aria-label="Zamknij" class="icon-button">×</button></div>
+      <label for="userName">Nazwa użytkownika / ekipy</label>
+      <input id="userName" type="text" minlength="2" maxlength="100" required placeholder="Np. Magazynier Tychy">
+      <label for="userRole">Rola</label>
+      <select id="userRole" class="select" required></select>
+      <fieldset id="userWarehouses"><legend>Dostęp do magazynów</legend></fieldset>
+      <p class="hint">PIN nadasz później w zabezpieczonym generatorze. Nowe konto na razie nie umożliwia logowania.</p>
+      <div class="dialog-actions"><button id="cancelUser" class="btn ghost" type="button">Anuluj</button><button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
