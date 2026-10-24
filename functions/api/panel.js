@@ -219,6 +219,12 @@ async function queryPanel(env,view,url) {
   }
   // Only chief ADMIN accesses private contact fields in this combined view.
   if(view==='users') {
+    // Archive is optional until db/06-user-archive.sql has been executed.
+    const hasArchiveTable=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='user_archives'"
+    ).first();
+    const archived=url.searchParams.get('archived')==='1';
+    if(archived&&!hasArchiveTable)return [];
     const rows=await env.DB.prepare(
       'SELECT u.id,u.name,u.role_code,u.active,u.created_at,'+
       'pr.first_name,pr.last_name,pr.phone,pr.display_code, '+
@@ -227,6 +233,10 @@ async function queryPanel(env,view,url) {
       'FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
       'LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
+      (hasArchiveTable?'LEFT JOIN user_archives ar ON ar.user_id=u.id ':'')+
+      (hasArchiveTable
+        ? (archived?'WHERE ar.user_id IS NOT NULL ':'WHERE ar.user_id IS NULL ')
+        : '')+
       'ORDER BY u.active DESC,u.name COLLATE NOCASE LIMIT 500'
     ).all();
     return rows.results||[];
@@ -389,6 +399,10 @@ async function staffMutation(env,body,actor,edit) {
       'FROM users u LEFT JOIN user_private_profiles p ON p.user_id=u.id WHERE u.id=?'
     ).bind(id).first();
     if(!before)return fail('Nie znaleziono użytkownika.',404);
+    if(await archiveTableExists(db)) {
+      const archived=await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first();
+      if(archived)return fail('Użytkownik jest archiwalny. Najpierw go przywróć.',409);
+    }
     prior=(await db.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?')
       .bind(id).all()).results.map(r=>r.warehouse_id);
   }
@@ -433,6 +447,46 @@ async function staffMutation(env,body,actor,edit) {
   return respond({ok:true,userId:id,nickname:staff.nickname,displayCode:code,pinUnchanged:true});
 }
 
+
+async function archiveTableExists(db) {
+  return Boolean(await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='user_archives'"
+  ).first());
+}
+
+async function changeStaffArchive(env,body,actor,restore) {
+  const id=String(body?.userId||'');
+  if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Nieprawidłowe konto.',400);
+  const db=env.DB;
+  if(!await archiveTableExists(db))
+    return fail('Najpierw wykonaj migrację db/06-user-archive.sql w Cloudflare D1.',503);
+  const user=await db.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
+  if(!user)return fail('Nie znaleziono użytkownika.',404);
+  const archive=await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first();
+  if(restore&&!archive)return fail('To konto nie jest zarchiwizowane.',409);
+  if(!restore&&archive)return fail('Konto zostało już zarchiwizowane.',409);
+
+  // History and immutable ID must survive. Archive deactivates immediately
+  // and removes the D1 PIN digest. Restore never reactivates automatically.
+  const statements=restore
+    ? [
+      db.prepare('DELETE FROM user_archives WHERE user_id=?').bind(id),
+      db.prepare('UPDATE users SET active=0 WHERE id=?').bind(id)
+    ]
+    : [
+      db.prepare('UPDATE users SET active=0 WHERE id=?').bind(id),
+      db.prepare('DELETE FROM user_pin_credentials WHERE user_id=?').bind(id),
+      db.prepare('INSERT INTO user_archives(user_id,archived_by) VALUES (?,?)').bind(id,actor)
+    ];
+  statements.push(db.prepare(
+    'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES (?,?,?,?,?,?)'
+  ).bind(crypto.randomUUID(),actor,restore?'USER_RESTORED':'USER_ARCHIVED','USER',id,
+    JSON.stringify({nickname:user.name,previousActive:user.active,restoredInactive:restore})));
+  await db.batch(statements);
+  return respond({ok:true,userId:id,archived:!restore,active:0,
+    message:restore?'Przywrócono konto jako nieaktywne. Nadaj PIN i aktywuj, jeśli ma pracować.':
+      'Konto przeniesiono do archiwum. ID i historia pozostają bez zmian.'});
+}
 
 /* D1 PIN provisioning, separate from legacy French PIN login.
    Only a signed ADMIN session may generate/reset. A secret server-side
@@ -519,6 +573,7 @@ async function provisionStaffPins(env,body,actor) {
     const sql='SELECT u.id,u.name,u.role_code FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
       'WHERE u.active=1 AND p.user_id IS NULL '+
+      (await archiveTableExists(db)?'AND NOT EXISTS (SELECT 1 FROM user_archives ar WHERE ar.user_id=u.id) ':'')+
       (role?'AND u.role_code=? ':'')+
       'ORDER BY u.created_at,u.id LIMIT ?';
     const results=role
@@ -543,6 +598,9 @@ async function provisionStaffPins(env,body,actor) {
     'SELECT id,name,role_code FROM users WHERE id=? AND active=1'
   ).bind(userId).first();
   if(!user)return fail('Nie znaleziono aktywnego użytkownika.',404);
+  if(await archiveTableExists(db) &&
+    await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(userId).first())
+    return fail('Nie można nadać PIN-u użytkownikowi w archiwum.',409);
 
   const result=await issueStaffPin(db,key,user,actor,action==='pinReset');
   if(!result.pin) {
@@ -632,6 +690,15 @@ async function route(request,env) {
     } catch(error) {
       console.error('GPBS PIN provisioning error:',error?.name||'Error');
       return fail('Nie udało się wygenerować PIN-u. Sprawdź konfigurację i spróbuj ponownie.',500);
+    }
+  }
+  if(body?.action==='archiveUser'||body?.action==='restoreUser') {
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try {
+      return await changeStaffArchive(env,body,session.id,body.action==='restoreUser');
+    } catch(error) {
+      console.error('GPBS archive mutation',error?.name||'Error');
+      return fail('Nie udało się zmienić stanu archiwum.',500);
     }
   }
   if(body?.action==='createStaff'||body?.action==='updateStaff') {
