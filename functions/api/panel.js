@@ -311,41 +311,45 @@ async function updateUser(env, body, actor) {
 
 // Private staff details: stored separately from users.name (public greeting).
 function normalizeStaff(body) {
+  const nickname=String(body?.nickname||'').trim();
   const first=String(body?.firstName||'').trim();
   const last=String(body?.lastName||'').trim();
   const phone=String(body?.phone||'').trim();
   const role=String(body?.role||'').trim().toUpperCase();
   const warehouses=body?.warehouses;
   const active=body?.active===undefined?1:body.active;
-  const code=String(body?.displayCode||'').trim().toUpperCase();
-  if(first.length<2||first.length>60||last.length<2||last.length>80||
+  if(nickname.length<2||nickname.length>100||
+     first.length>60||last.length>80||
      phone.length>28||(phone&&!/^[+0-9() .-]+$/.test(phone))||
      (phone&&(phone.match(/[0-9]/g)||[]).length<6)||
      !ALLOWED_ROLES.has(role)||(![0,1].includes(active))||
      !Array.isArray(warehouses)||warehouses.length>20||
      new Set(warehouses).size!==warehouses.length||
-     warehouses.some(w=>typeof w!=='string'||!/^[A-Z0-9-]{2,50}$/.test(w))||
-     (code&&!/^[A-Z0-9]{2,12}$/.test(code))) return null;
-  return {first,last,phone,role,warehouses,active,code};
+     warehouses.some(w=>typeof w!=='string'||!/^[A-Z0-9-]{2,50}$/.test(w))) return null;
+  return {nickname,first,last,phone,role,warehouses,active};
 }
 
-function initial(first,last) {
-  const normalize=s=>s.replace(/[Łł]/g,'L').normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]/g,'');
-  return (normalize(first)[0]||'U').toUpperCase()+
-         (normalize(last)[0]||'X').toUpperCase();
+// A nickname such as MT remains MT. Longer names get compact initials.
+function symbolFromNickname(nickname) {
+  const normalize=word=>word.replace(/[Łł]/g,'L').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+  const words=nickname.split(/\s+/).map(normalize).filter(Boolean);
+  if(!words.length)return 'UZ';
+  const value=words.length>1
+    ? words.map(w=>w[0]).join('')
+    : words[0];
+  return value.slice(0,10).padEnd(2,'X');
 }
 
-async function chooseStaffCode(db,staff,userId='') {
-  const root=staff.code||initial(staff.first,staff.last);
+async function chooseStaffCode(db,staff,userId='',previous=null) {
+  const root=(previous?.name===staff.nickname && previous?.display_code)
+    ? previous.display_code : symbolFromNickname(staff.nickname);
   for(let i=1;i<=99;i++) {
-    const candidate=i===1?root:root+String(i);
-    if(candidate.length>12)break;
+    const candidate=i===1?root:root.slice(0,12-String(i).length)+String(i);
     const occupied=await db.prepare(
       'SELECT user_id FROM user_private_profiles WHERE display_code = ? COLLATE NOCASE'
     ).bind(candidate).first();
     if(!occupied || occupied.user_id===userId) return candidate;
-    if(staff.code)break; // manually chosen code must stay exactly as requested
   }
   return null;
 }
@@ -370,7 +374,7 @@ async function validateStaffWarehouses(db,staff,previous=[]) {
 async function staffMutation(env,body,actor,edit) {
   const db=env.DB;
   const staff=normalizeStaff(body);
-  if(!staff) return fail('Wpisz imię, nazwisko, poprawny telefon i sprawdź rolę.',400);
+  if(!staff) return fail('Podaj użytkownika, rolę i poprawne dane kontaktowe, jeśli je wpisujesz.',400);
   if(!await requireStaffSchema(db))
     return fail('Najpierw wykonaj migrację db/05-user-private-profiles.sql w D1.',503);
   const id=edit?String(body.userId||''):'GPBS-U-'+crypto.randomUUID();
@@ -385,15 +389,20 @@ async function staffMutation(env,body,actor,edit) {
     prior=(await db.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?')
       .bind(id).all()).results.map(r=>r.warehouse_id);
   }
+  // The short visible nickname must identify one account unambiguously.
+  const nicknameUsed=await db.prepare(
+    'SELECT id FROM users WHERE name = ? COLLATE NOCASE AND id <> ? LIMIT 1'
+  ).bind(staff.nickname,id).first();
+  if(nicknameUsed) return fail('Taki identyfikator użytkownika już istnieje.',409);
   const error=await validateStaffWarehouses(db,staff,prior);
   if(error)return fail(error,400);
-  const code=await chooseStaffCode(db,staff,id);
+  const code=await chooseStaffCode(db,staff,id,before);
   if(!code)return fail('Symbol jest zajęty. Wybierz inny.',409);
 
   const stmts=[];
   if(edit) {
     stmts.push(db.prepare('UPDATE users SET name=?,role_code=?,active=? WHERE id=?')
-      .bind(staff.first,staff.role,staff.active,id));
+      .bind(staff.nickname,staff.role,staff.active,id));
     stmts.push(db.prepare(
       'INSERT INTO user_private_profiles (user_id,first_name,last_name,phone,display_code) '+
       'VALUES (?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET '+
@@ -403,7 +412,7 @@ async function staffMutation(env,body,actor,edit) {
     stmts.push(db.prepare('DELETE FROM user_warehouse_access WHERE user_id=?').bind(id));
   } else {
     stmts.push(db.prepare('INSERT INTO users (id,name,role_code,active) VALUES (?,?,?,?)')
-      .bind(id,staff.first,staff.role,staff.active));
+      .bind(id,staff.nickname,staff.role,staff.active));
     stmts.push(db.prepare(
       'INSERT INTO user_private_profiles (user_id,first_name,last_name,phone,display_code) VALUES (?,?,?,?,?)'
     ).bind(id,staff.first,staff.last,staff.phone||null,code));
@@ -416,9 +425,9 @@ async function staffMutation(env,body,actor,edit) {
   stmts.push(db.prepare(
     'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
   ).bind(crypto.randomUUID(),actor,edit?'STAFF_UPDATE':'STAFF_CREATE','USER',id,
-    JSON.stringify({code,role:staff.role,active:staff.active,warehouses:staff.warehouses})));
+    JSON.stringify({nickname:staff.nickname,code,role:staff.role,active:staff.active,warehouses:staff.warehouses})));
   await db.batch(stmts);
-  return respond({ok:true,userId:id,displayName:staff.first,displayCode:code,pinUnchanged:true});
+  return respond({ok:true,userId:id,nickname:staff.nickname,displayCode:code,pinUnchanged:true});
 }
 
 async function route(request,env) {
