@@ -79,6 +79,74 @@ async function equalSecret(actual,expected) {
   return diff===0;
 }
 
+// D1-backed login limits. All checks fail closed if D1 cannot update.
+const LOGIN_WINDOW_SECONDS = 15 * 60;
+const IP_MAX_ATTEMPTS = 5;        // 5 attempts / 15 minutes -> 5-minute lock
+const IP_LOCK_SECONDS = 5 * 60;
+const ADMIN_PIN_MAX_ATTEMPTS = 5; // only reached after correct panel password
+const ADMIN_PIN_LOCK_SECONDS = 30 * 60;
+
+async function loginIpIdentifier(request, secret) {
+  // Trust only Cloudflare's network-provided header, never a user-supplied X-Forwarded-For.
+  const ip = (request.headers.get('CF-Connecting-IP') || '').trim().toLowerCase();
+  if (!/^[a-f0-9:.]{3,45}$/.test(ip)) return null;
+  const key = await signingKey(secret);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode('GPBS:PANEL:LOGIN:IP:' + ip));
+  return 'ip:' + b64(new Uint8Array(sig).slice(0, 16));
+}
+
+function blocked(seconds) {
+  const retry = Math.max(1, Math.ceil(seconds));
+  return respond({
+    ok: false,
+    error: 'Zbyt wiele prób logowania. Spróbuj ponownie za ' + Math.ceil(retry / 60) + ' min.',
+    retryAfterSeconds: retry
+  }, 429, { 'Retry-After': String(retry) });
+}
+
+async function reserveLoginAttempt(db, identifier, maxAttempts, lockSeconds) {
+  const now = Math.floor(Date.now() / 1000);
+  const prior = await db.prepare(
+    'SELECT locked_until FROM panel_login_attempts WHERE identifier = ?'
+  ).bind(identifier).first();
+  if (prior && Number(prior.locked_until) > now) {
+    return Number(prior.locked_until) - now;
+  }
+
+  // Atomic upsert: simultaneous requests increment one serialized D1 counter,
+  // with the lock checked again after reservation, before credentials are validated.
+  // Once an expired lock expires, the user receives a fresh attempts window.
+  await db.prepare(
+    'INSERT INTO panel_login_attempts (identifier, failures, locked_until, updated_at) ' +
+    'VALUES (?, 1, 0, ?) ' +
+    'ON CONFLICT(identifier) DO UPDATE SET ' +
+    'locked_until = CASE ' +
+    'WHEN updated_at < ? OR (locked_until > 0 AND locked_until <= ?) THEN 0 ' +
+    'WHEN failures + 1 >= ? THEN ? ELSE 0 END, ' +
+    'failures = CASE ' +
+    'WHEN updated_at < ? OR (locked_until > 0 AND locked_until <= ?) THEN 1 ' +
+    'ELSE failures + 1 END, ' +
+    'updated_at = ?'
+  ).bind(
+    identifier, now,
+    now - LOGIN_WINDOW_SECONDS, now, maxAttempts, now + lockSeconds,
+    now - LOGIN_WINDOW_SECONDS, now,
+    now
+  ).run();
+
+  const current = await db.prepare(
+    'SELECT locked_until FROM panel_login_attempts WHERE identifier = ?'
+  ).bind(identifier).first();
+  return Math.max(0, Number(current?.locked_until || 0) - now);
+}
+
+async function clearLoginAttempts(db, identifiers) {
+  // Successful, fully verified login resets both restrictions.
+  await db.batch(identifiers.map(id =>
+    db.prepare('DELETE FROM panel_login_attempts WHERE identifier = ?').bind(id)
+  ));
+}
+
 async function verifyLegacyAdmin(pin,env) {
   if (typeof pin!=='string'||!/^\d{4}$/.test(pin)) return null;
   const controller=new AbortController();
@@ -213,15 +281,40 @@ async function route(request,env) {
     body=JSON.parse(raw);
   }catch{return fail('Niepoprawne dane JSON.',400);}
   if(body?.action==='login') {
-    if(!await equalSecret(body.password,env.PANEL_ADMIN_PASSWORD))
-      return fail('Nieprawidłowe dane logowania.',401);
-    let actor=null;
-    try{actor=await verifyLegacyAdmin(body.pin,env);}catch{ return fail('Logowanie chwilowo niedostępne.',503);}
-    if(!actor) return fail('Nieprawidłowe dane logowania.',401);
-    const token=await createToken(env.PANEL_SESSION_SECRET,actor);
-    return respond({ok:true,role:'ADMIN'},200,{
-      'Set-Cookie':COOKIE_NAME+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=28800'
-    });
+    // The public entry point counts attempts even if the password is wrong.
+    // PIN guesses have a second, shared counter after the password is valid.
+    // Never contact the legacy Apps Script if a limit is exceeded.
+    try {
+      const ipKey = await loginIpIdentifier(request, env.PANEL_SESSION_SECRET);
+      if(!ipKey) return fail('Nie można bezpiecznie zweryfikować połączenia.',503);
+
+      const ipLock = await reserveLoginAttempt(
+        env.DB, ipKey, IP_MAX_ATTEMPTS, IP_LOCK_SECONDS
+      );
+      if(ipLock>0) return blocked(ipLock);
+
+      if(!await equalSecret(body.password,env.PANEL_ADMIN_PASSWORD))
+        return fail('Nieprawidłowe dane logowania.',401);
+
+      const adminKey='admin-pin:primary';
+      const pinLock = await reserveLoginAttempt(
+        env.DB, adminKey, ADMIN_PIN_MAX_ATTEMPTS, ADMIN_PIN_LOCK_SECONDS
+      );
+      if(pinLock>0) return blocked(pinLock);
+
+      const actor=await verifyLegacyAdmin(body.pin,env);
+      if(!actor) return fail('Nieprawidłowe dane logowania.',401);
+
+      // A failed database cleanup must not issue a session: fail closed.
+      await clearLoginAttempts(env.DB,[ipKey,adminKey]);
+      const token=await createToken(env.PANEL_SESSION_SECRET,actor);
+      return respond({ok:true,role:'ADMIN'},200,{
+        'Set-Cookie':COOKIE_NAME+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=28800'
+      });
+    } catch(error) {
+      console.error('GPBS panel login unavailable:',error?.name||'Error');
+      return fail('Logowanie chwilowo niedostępne. Spróbuj ponownie później.',503);
+    }
   }
   const session=await readSession(request,env.PANEL_SESSION_SECRET);
   if(!session) return fail('Sesja wygasła. Zaloguj się ponownie.',401);
