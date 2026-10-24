@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, expandedUserId:null, pinReady:false, generatedPinText:''};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
@@ -15,7 +15,8 @@
 
   async function api(view) {
     const url='/api/panel?view='+encodeURIComponent(view)+
-      (view==='parts'?'&warehouse='+encodeURIComponent(state.currentPartsWarehouse):'');
+      (view==='parts'?'&warehouse='+encodeURIComponent(state.currentPartsWarehouse):'')+
+      (view==='users'&&state.showArchives?'&archived=1':'');
     const res=await fetch(url,{cache:'no-store',credentials:'same-origin'});
     let json=null;
     try{json=await res.json();}catch{}
@@ -178,7 +179,7 @@
       row.append(td(user.warehouses||'—'));
       const pin=td('');pin.className='pin-cell';
       pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));
-      if(user.active) {
+      if(user.active&&!state.showArchives) {
         const pinAction=document.createElement('button');
         pinAction.className='btn mini pin-action';
         pinAction.type='button';pinAction.textContent=user.has_pin?'Reset PIN':'Generuj';
@@ -190,11 +191,14 @@
         pin.append(pinAction);
       }
       row.append(pin);
-      const status=td('');status.append(user.active?pill('Aktywny','green'):pill('Wyłączony','red'));row.append(status);
+      const status=td('');status.append(state.showArchives?pill('Archiwum','red'):(user.active?pill('Aktywny','green'):pill('Nieaktywny','red')));row.append(status);
       const actions=td('');
       const edit=document.createElement('button');edit.type='button';
-      edit.className='btn mini user-edit-button';edit.textContent='Edytuj';
-      edit.addEventListener('click',event=>{event.stopPropagation();openUserDialog(user);});
+      edit.className='btn mini user-edit-button';edit.textContent=state.showArchives?'Przywróć':'Edytuj';
+      edit.addEventListener('click',event=>{event.stopPropagation();
+        if(state.showArchives)restoreUser(user);
+        else openUserDialog(user);
+      });
       actions.append(edit);row.append(actions);
 
       const cell=detail.insertCell();cell.colSpan=6;
@@ -273,9 +277,11 @@
     $('dashboardView').classList.toggle('hidden',view!=='summary');
     $('tableView').classList.toggle('hidden',view==='summary'||view==='security');
     $('securityView').classList.toggle('hidden',view!=='security');
-    $('addUserBtn').classList.toggle('hidden',view!=='users');
-    $('generateMissingPins').classList.toggle('hidden',view!=='users');
-    $('pinRoleFilter').classList.toggle('hidden',view!=='users');
+    $('addUserBtn').classList.toggle('hidden',view!=='users'||state.showArchives);
+    $('showArchivedUsers').classList.toggle('hidden',view!=='users');
+    $('showArchivedUsers').textContent=state.showArchives?'Wróć do użytkowników':'Pokaż archiwum';
+    $('generateMissingPins').classList.toggle('hidden',view!=='users'||state.showArchives);
+    $('pinRoleFilter').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('warehouseFilter').classList.toggle('hidden',view!=='parts');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
@@ -353,7 +359,8 @@
       $('userLastName').value=existing?.last_name||'';
       $('userPhone').value=existing?.phone||'';
       $('userStatusRow').hidden=!existing;
-      $('userActive').checked=existing?Boolean(existing.active):true;
+      $('userStatus').value=existing?(existing.active?'1':'0'):'1';
+      $('archiveUserBtn').hidden=!existing;
 
       const roleInput=$('userRole');roleInput.replaceChildren();
       for(const role of roles) {
@@ -395,7 +402,7 @@
         phone:$('userPhone').value.trim(),
         role:$('userRole').value,
         warehouses,
-        ...(userId?{userId,active:$('userActive').checked?1:0}:{})
+        ...(userId?{userId,active:Number($('userStatus').value)}:{})
       };
       await post(body);
       $('userDialog').close();
@@ -404,6 +411,34 @@
       message(userId?'Zapisano zmiany użytkownika.':'Dodano użytkownika bez PIN-u.','info');
     }catch(error){message(error.message,'error');}
     finally{busy(button,false);}
+  }
+
+  async function archiveCurrentUser() {
+    const id=$('editUserId').value;
+    const nickname=$('userName').value;
+    if(!id)return;
+    if(!window.confirm('Usunąć użytkownika '+nickname+' z listy?\\n\\nKonto zostanie przeniesione do archiwum, zdezaktywowane i utraci PIN. Jego ID i historia operacji pozostaną zapisane.'))return;
+    const button=$('archiveUserBtn');busy(button,true);
+    try {
+      await post({action:'archiveUser',userId:id});
+      $('userDialog').close();
+      state.expandedUserId=null;
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      message('Użytkownik '+nickname+' jest w archiwum. Zachowano ID i historię.','info');
+    } catch(error) {message(error.message,'error');}
+    finally{busy(button,false);}
+  }
+
+  async function restoreUser(user) {
+    if(!window.confirm('Przywrócić '+user.name+' z archiwum?\\nKonto pozostanie nieaktywne i będzie wymagać nadania nowego PIN-u.'))return;
+    try {
+      await post({action:'restoreUser',userId:user.id});
+      state.expandedUserId=null;
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      message('Przywrócono '+user.name+' jako nieaktywnego. Edytuj status, gdy ma wrócić do pracy.','info');
+    }catch(error){message(error.message,'error');}
   }
 
   function showGeneratedPins(entries) {
@@ -553,6 +588,12 @@
     });
     $('sideOverlay').addEventListener('click',closeSide);
     $('addUserBtn').addEventListener('click',()=>openUserDialog());
+    $('showArchivedUsers').addEventListener('click',async()=>{
+      state.showArchives=!state.showArchives;
+      state.expandedUserId=null;
+      await navigate('users');
+    });
+    $('archiveUserBtn').addEventListener('click',archiveCurrentUser);
     $('generateMissingPins').addEventListener('click',generateMissingPins);
     $('generatePinPepper').addEventListener('click',generatePepper);
     $('copyPinPepper').addEventListener('click',copyPepper);
