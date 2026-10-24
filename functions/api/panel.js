@@ -321,6 +321,118 @@ async function updateUser(env, body, actor) {
   return respond({ok:true,userId:id,pinUnchanged:true});
 }
 
+// Private staff details: stored separately from users.name (public greeting).
+function normalizeStaff(body) {
+  const first=String(body?.firstName||'').trim();
+  const last=String(body?.lastName||'').trim();
+  const phone=String(body?.phone||'').trim();
+  const role=String(body?.role||'').trim().toUpperCase();
+  const warehouses=body?.warehouses;
+  const active=body?.active===undefined?1:body.active;
+  const code=String(body?.displayCode||'').trim().toUpperCase();
+  if(first.length<2||first.length>60||last.length<2||last.length>80||
+     phone.length>28||(phone&&!/^[+0-9() .-]+$/.test(phone))||
+     (phone&&(phone.match(/[0-9]/g)||[]).length<6)||
+     !ALLOWED_ROLES.has(role)||(![0,1].includes(active))||
+     !Array.isArray(warehouses)||warehouses.length>20||
+     new Set(warehouses).size!==warehouses.length||
+     warehouses.some(w=>typeof w!=='string'||!/^[A-Z0-9-]{2,50}$/.test(w))||
+     (code&&!/^[A-Z0-9]{2,12}$/.test(code))) return null;
+  return {first,last,phone,role,warehouses,active,code};
+}
+
+function initial(first,last) {
+  const normalize=s=>s.replace(/[Łł]/g,'L').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]/g,'');
+  return (normalize(first)[0]||'U').toUpperCase()+
+         (normalize(last)[0]||'X').toUpperCase();
+}
+
+async function chooseStaffCode(db,staff,userId='') {
+  const root=staff.code||initial(staff.first,staff.last);
+  for(let i=1;i<=99;i++) {
+    const candidate=i===1?root:root+String(i);
+    if(candidate.length>12)break;
+    const occupied=await db.prepare(
+      'SELECT user_id FROM user_private_profiles WHERE display_code = ? COLLATE NOCASE'
+    ).bind(candidate).first();
+    if(!occupied || occupied.user_id===userId) return candidate;
+    if(staff.code)break; // manually chosen code must stay exactly as requested
+  }
+  return null;
+}
+
+async function requireStaffSchema(db) {
+  const rows=await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('panel_audit_log','user_private_profiles')"
+  ).all();
+  return new Set((rows.results||[]).map(row=>row.name)).size===2;
+}
+
+async function validateStaffWarehouses(db,staff,previous=[]) {
+  if(!await db.prepare('SELECT code FROM user_roles WHERE code=?').bind(staff.role).first())
+    return 'Nie znaleziono wybranej roli.';
+  for(const id of staff.warehouses) {
+    const wh=await db.prepare('SELECT id,active FROM warehouses WHERE id=?').bind(id).first();
+    if(!wh||(!wh.active&&!previous.includes(id)))return 'Magazyn jest niedostępny: '+id;
+  }
+  return '';
+}
+
+async function staffMutation(env,body,actor,edit) {
+  const db=env.DB;
+  const staff=normalizeStaff(body);
+  if(!staff) return fail('Wpisz imię, nazwisko, poprawny telefon i sprawdź rolę.',400);
+  if(!await requireStaffSchema(db))
+    return fail('Najpierw wykonaj migrację db/05-user-private-profiles.sql w D1.',503);
+  const id=edit?String(body.userId||''):'GPBS-U-'+crypto.randomUUID();
+  let before=null,prior=[];
+  if(edit) {
+    if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Niepoprawne konto.',400);
+    before=await db.prepare(
+      'SELECT u.id,u.name,u.role_code,u.active,p.first_name,p.last_name,p.phone,p.display_code '+
+      'FROM users u LEFT JOIN user_private_profiles p ON p.user_id=u.id WHERE u.id=?'
+    ).bind(id).first();
+    if(!before)return fail('Nie znaleziono użytkownika.',404);
+    prior=(await db.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?')
+      .bind(id).all()).results.map(r=>r.warehouse_id);
+  }
+  const error=await validateStaffWarehouses(db,staff,prior);
+  if(error)return fail(error,400);
+  const code=await chooseStaffCode(db,staff,id);
+  if(!code)return fail('Symbol jest zajęty. Wybierz inny.',409);
+
+  const stmts=[];
+  if(edit) {
+    stmts.push(db.prepare('UPDATE users SET name=?,role_code=?,active=? WHERE id=?')
+      .bind(staff.first,staff.role,staff.active,id));
+    stmts.push(db.prepare(
+      'INSERT INTO user_private_profiles (user_id,first_name,last_name,phone,display_code) '+
+      'VALUES (?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET '+
+      'first_name=excluded.first_name,last_name=excluded.last_name,'+
+      'phone=excluded.phone,display_code=excluded.display_code,updated_at=CURRENT_TIMESTAMP'
+    ).bind(id,staff.first,staff.last,staff.phone||null,code));
+    stmts.push(db.prepare('DELETE FROM user_warehouse_access WHERE user_id=?').bind(id));
+  } else {
+    stmts.push(db.prepare('INSERT INTO users (id,name,role_code,active) VALUES (?,?,?,?)')
+      .bind(id,staff.first,staff.role,staff.active));
+    stmts.push(db.prepare(
+      'INSERT INTO user_private_profiles (user_id,first_name,last_name,phone,display_code) VALUES (?,?,?,?,?)'
+    ).bind(id,staff.first,staff.last,staff.phone||null,code));
+  }
+  for(const wh of staff.warehouses) {
+    stmts.push(db.prepare('INSERT INTO user_warehouse_access (user_id,warehouse_id) VALUES (?,?)')
+      .bind(id,wh));
+  }
+  // Audit stores the symbol, role and warehouse assignment, NEVER phone numbers.
+  stmts.push(db.prepare(
+    'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
+  ).bind(crypto.randomUUID(),actor,edit?'STAFF_UPDATE':'STAFF_CREATE','USER',id,
+    JSON.stringify({code,role:staff.role,active:staff.active,warehouses:staff.warehouses})));
+  await db.batch(stmts);
+  return respond({ok:true,userId:id,displayName:staff.first,displayCode:code,pinUnchanged:true});
+}
+
 async function route(request,env) {
   if(!ready(env)) return fail('Panel nie jest jeszcze aktywowany przez administratora.',503);
   const url=new URL(request.url);
