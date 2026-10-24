@@ -251,6 +251,14 @@ async function addUser(env, body, actor) {
     statements.push(env.DB.prepare(
       'INSERT INTO user_warehouse_access (user_id,warehouse_id) VALUES (?,?)'
     ).bind(id,warehouseId));
+  const audited=await env.DB.prepare(
+    "SELECT name FROM sqlite_master WHERE name='panel_audit_log' AND type='table'"
+  ).first();
+  if(!audited)return fail('Najpierw wykonaj SQL: db/04-panel-audit.sql',503);
+  statements.push(env.DB.prepare(
+    'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
+  ).bind(crypto.randomUUID(),actor,'USER_CREATE','USER',id,
+    JSON.stringify({name,role,warehouses})));
   await env.DB.batch(statements);
   return respond({ok:true,user:{id,name,role,warehouses},pinAssigned:false});
 }
