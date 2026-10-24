@@ -120,3 +120,45 @@ inicjały/identyfikator; żadnego stałego napisu „Dzień dobry” nie dodajem
 
 Już dodane konto bez kontaktu pozostaje bez zmian; kliknięcie jego wiersza
 pokaże kreski zamiast brakujących danych. Wystarczy uzupełnić je przez Edytuj.
+
+
+## Generator PIN-ów w zakładce „Użytkownicy”
+
+Serwer D1 obsługuje nadawanie jednego PIN-u, reset wybranego PIN-u oraz
+zbiorcze generowanie brakujących PIN-ów (opcjonalnie dla jednej roli).
+Wszystkie akcje działają tylko dla sesji ADMIN z poprawnym origin
+i wymagają ustawienia sekretu `PIN_PEPPER` w Cloudflare Production.
+**PIN_PEPPER musi być odrębnym prywatnym losowym kluczem o długości >= 32.**
+
+Bez tej zmiennej generator jest wyłączony (widok proponuje przejście
+do „Bezpieczeństwo”). W zakładce Bezpieczeństwo można wygenerować
+lokalnie osobny 64-znakowy klucz i go skopiować. Konfiguracja:
+Cloudflare Pages `selfstorage` -> Settings -> Variables and Secrets:
+- Type: Secret
+- Name: `PIN_PEPPER`
+- Value: nowy klucz z generatora
+- Save; potem pomyślne wdrożenie Production.
+
+Backend używa HMAC-SHA256 i UNIQUE w `user_pin_credentials`,
+losując czterocyfrowy PIN i ponawiając próbę przy kolizji. Rezerwuje
+`0000`, `1111`, `1234`. Nie przechowuje czystego PIN-u ani go
+nie loguje. Wynik jest wyświetlany administratorowi tylko raz.
+Reset unieważnia poprzedni PIN wybranej osoby.
+Nadanie PIN-u i wpis audytu są w pojedynczej transakcji D1.
+
+**Istotny podział na etapy:**
+Nowe PIN-y są unikalne w D1, ale jeszcze nie są weryfikowane
+z istniejącymi PIN-ami francuskiego Apps Script. Na razie generator
+dotyczy wyłącznie kont D1; przy połączeniu wszystkich rynków
+należy przeprowadzić migrację/rezerwację PIN-ów francuskich ekip,
+aby uniknąć globalnej kolizji.
+
+**Nadany PIN D1 nie umożliwia jeszcze logowania do polskiego modułu
+magazyniera.** Logowanie magazyniera oraz kontrola prób PIN-u
+powstaną w osobnym API przed uruchomieniem magazynu w Tychach.
+Żadne zmiany nie dotyczą produkcyjnego logowania francuskich ekip.
+
+Nie zmieniaj `PIN_PEPPER` po pierwszym nadaniu PIN-ów: istniejące
+skróty przestaną pasować. Jeżeli kod nie został skopiowany z
+jednorazowego widoku, należy go świadomie zresetować.
+
