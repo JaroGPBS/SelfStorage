@@ -217,29 +217,17 @@ async function queryPanel(env,view,url) {
     ).all();
     return rows.results||[];
   }
+  // Only chief ADMIN accesses private contact fields in this combined view.
   if(view==='users') {
     const rows=await env.DB.prepare(
       'SELECT u.id,u.name,u.role_code,u.active,u.created_at,'+
+      'pr.first_name,pr.last_name,pr.phone,pr.display_code, '+
       'CASE WHEN p.user_id IS NULL THEN 0 ELSE 1 END AS has_pin, '+
       "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses "+
-      'FROM users u LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
+      'FROM users u '+
+      'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
+      'LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
       'ORDER BY u.active DESC,u.name COLLATE NOCASE LIMIT 500'
-    ).all();
-    return rows.results||[];
-  }
-  // Full names and phone numbers are restricted to ADMIN-only directory.
-  // Worker/mobile APIs never read this table.
-  if(view==='directory') {
-    const migration=await env.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE name='user_private_profiles' AND type='table'"
-    ).first();
-    if(!migration) throw Error('Kartoteka wymaga migracji D1.');
-    const rows=await env.DB.prepare(
-      'SELECT u.id,u.name AS display_name,u.role_code,u.active,u.created_at,'+
-      'pr.first_name,pr.last_name,pr.phone,pr.display_code,'+
-      "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses "+
-      'FROM users u LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
-      'ORDER BY pr.last_name COLLATE NOCASE,u.name COLLATE NOCASE LIMIT 500'
     ).all();
     return rows.results||[];
   }
@@ -440,7 +428,7 @@ async function route(request,env) {
     const session=await readSession(request,env.PANEL_SESSION_SECRET);
     if(!session) return fail('Zaloguj się do panelu.',401);
     const view=url.searchParams.get('view')||'summary';
-    if(view==='directory' && session.role!=='ADMIN') return fail('Brak uprawnień.',403);
+    if(view==='users' && session.role!=='ADMIN') return fail('Brak uprawnień.',403);
     try {
       return respond({ok:true,view,data:await queryPanel(env,view,url),user:{role:'ADMIN'}});
     } catch(e) {
