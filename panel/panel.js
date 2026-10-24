@@ -9,7 +9,8 @@
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
     parts:['Katalog części','Pełny katalog i stany części w wybranym magazynie.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
-    users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.']
+    users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
+    security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.']
   };
 
   async function api(view) {
@@ -142,10 +143,15 @@
         m.quantity_before,m.quantity_after,m.operator_id||'—'])
     ];
     if(view==='users')return [
-      ['UŻYTKOWNIK','ROLA','MAGAZYNY','PIN','STATUS'],
-      items.map(u=>[u.name,pill(u.role_code,'blue'),u.warehouses||'—',
-        u.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'),
-        u.active?pill('Aktywny','green'):pill('Wyłączony','red')])
+      ['UŻYTKOWNIK','ROLA','MAGAZYNY','PIN','STATUS',''],
+      items.map(u=>{
+        const button=document.createElement('button');
+        button.className='btn mini';button.type='button';button.textContent='Edytuj';
+        button.addEventListener('click',()=>openUserDialog(u));
+        return [u.name,pill(u.role_code,'blue'),u.warehouses||'—',
+          u.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'),
+          u.active?pill('Aktywny','green'):pill('Wyłączony','red'),button];
+      })
     ];
     return [[],[]];
   }
@@ -188,7 +194,8 @@
     document.title=defs[view][0]+' — GPBS Storage';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security');
+    $('securityView').classList.toggle('hidden',view!=='security');
     $('addUserBtn').classList.toggle('hidden',view!=='users');
     $('warehouseFilter').classList.toggle('hidden',view!=='parts');
     $('tableSearch').value='';
@@ -201,6 +208,7 @@
     showView(view);
     closeSide();
     try {
+      if(view==='security') return;
       if(view==='summary') {
         const [a,b]=await Promise.all([api('summary'),api('warehouses')]);
         state.warehouses=b;
@@ -219,27 +227,67 @@
     $('sideOverlay').classList.add('hidden');
   }
 
-  async function addUserOpen() {
+  function randomSessionKey() {
+    // 48 random bytes -> 64-character base64 secret. Never sent to server.
+    const bytes=new Uint8Array(48);
+    crypto.getRandomValues(bytes);
+    let str='';
+    for(const byte of bytes)str+=String.fromCharCode(byte);
+    return btoa(str);
+  }
+
+  function generateSessionKey() {
+    $('sessionSecretOutput').value=randomSessionKey();
+    $('copySessionSecret').disabled=false;
+    message('Wygenerowano nowy, prywatny klucz. Skopiuj go i wklej do Cloudflare.', 'info');
+  }
+
+  async function copySessionKey() {
+    const field=$('sessionSecretOutput');
+    if(!field.value)return;
+    try {
+      await navigator.clipboard.writeText(field.value);
+      message('Skopiowano klucz. Wklej go do Cloudflare jako PANEL_SESSION_SECRET.', 'info');
+    }catch {
+      field.type='text';field.focus();field.select();
+      message('Zaznaczony klucz skopiuj skrótem Ctrl+C i wklej do Cloudflare.', 'info');
+    }
+  }
+
+  async function openUserDialog(existing=null) {
     try {
       const [roles,warehouses]=await Promise.all([api('roles'),api('warehouses')]);
+      const form=$('createUserForm');form.reset();
+      $('editUserId').value=existing?.id||'';
+      $('userDialogTitle').textContent=existing?'Edytuj użytkownika':'Nowy użytkownik';
+      $('userName').value=existing?.name||'';
+      $('userStatusRow').hidden=!existing;
+      $('userActive').checked=existing?Boolean(existing.active):true;
+
       const roleInput=$('userRole');roleInput.replaceChildren();
       for(const role of roles) {
         const option=document.createElement('option');
         option.value=role.code;option.textContent=role.name;
         roleInput.append(option);
       }
+      if(existing)roleInput.value=existing.role_code;
+
+      const assigned=new Set((existing?.warehouses||'').split(',').map(x=>x.trim()).filter(Boolean));
       const field=$('userWarehouses');
       field.replaceChildren();
-      const legend=document.createElement('legend');legend.textContent='Dostęp do magazynów';field.append(legend);
-      for(const warehouse of warehouses.filter(w=>w.active)){
+      const legend=document.createElement('legend');
+      legend.textContent='Dostęp do magazynów';field.append(legend);
+      for(const warehouse of warehouses.filter(w=>w.active||assigned.has(w.id))) {
         const row=document.createElement('div');row.className='checkbox-row';
         const checkbox=document.createElement('input');
         checkbox.type='checkbox';checkbox.value=warehouse.id;
         checkbox.id='grant-'+warehouse.id;
-        const label=document.createElement('label');label.htmlFor=checkbox.id;label.textContent=warehouse.name;
+        checkbox.checked=assigned.has(warehouse.id);
+        const label=document.createElement('label');
+        label.htmlFor=checkbox.id;
+        label.textContent=warehouse.name+(warehouse.active?'':' (nieaktywny)');
         row.append(checkbox,label);field.append(row);
       }
-      $('createUserForm').reset();
       $('userDialog').showModal();
     } catch(error){message(error.message,'error');}
   }
@@ -250,11 +298,19 @@
     busy(button,true);
     try{
       const warehouses=[...$('userWarehouses').querySelectorAll('input:checked')].map(x=>x.value);
-      await post({action:'createUser',name:$('userName').value.trim(),role:$('userRole').value,warehouses});
+      const userId=$('editUserId').value;
+      const body={
+        action:userId?'updateUser':'createUser',
+        name:$('userName').value.trim(),
+        role:$('userRole').value,
+        warehouses,
+        ...(userId?{userId,active:$('userActive').checked?1:0}:{})
+      };
+      await post(body);
       $('userDialog').close();
-      message('Użytkownik został dodany. PIN nie został jeszcze nadany.','info');
       state.records=await api('users');
       if(state.view==='users')renderList();
+      message(userId?'Zapisano zmiany użytkownika.':'Dodano użytkownika bez PIN-u.','info');
     }catch(error){message(error.message,'error');}
     finally{busy(button,false);}
   }
@@ -301,7 +357,12 @@
       $('sideOverlay').classList.toggle('hidden',!$('sidebar').classList.contains('open'));
     });
     $('sideOverlay').addEventListener('click',closeSide);
-    $('addUserBtn').addEventListener('click',addUserOpen);
+    $('addUserBtn').addEventListener('click',()=>openUserDialog());
+    $('generateSessionSecret').addEventListener('click',generateSessionKey);
+    $('copySessionSecret').addEventListener('click',copySessionKey);
+    $('userDialog').addEventListener('close',()=>{
+      $('editUserId').value='';
+    });
     $('closeUserDialog').addEventListener('click',()=>$('userDialog').close());
     $('cancelUser').addEventListener('click',()=>$('userDialog').close());
     $('createUserForm').addEventListener('submit',saveUser);
