@@ -3,14 +3,13 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, expandedUserId:null};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
     parts:['Katalog części','Pełny katalog i stany części w wybranym magazynie.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
-    directory:['Kartoteka pracowników','Prywatna baza kontaktów. Dostęp tylko dla ADMINA.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.']
   };
 
@@ -143,30 +142,82 @@
         m.warehouse_id,m.part_name,m.quantity_delta>0?'+'+m.quantity_delta:m.quantity_delta,
         m.quantity_before,m.quantity_after,m.operator_id||'—'])
     ];
-    if(view==='users')return [
-      ['UŻYTKOWNIK','ROLA','MAGAZYNY','PIN','STATUS',''],
-      items.map(u=>{
-        const button=document.createElement('button');
-        button.className='btn mini';button.type='button';button.textContent='Edytuj';
-        button.addEventListener('click',()=>openUserDialog(u));
-        return [u.name,pill(u.role_code,'blue'),u.warehouses||'—',
-          u.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'),
-          u.active?pill('Aktywny','green'):pill('Wyłączony','red'),button];
-      })
-    ];
-    if(view==='directory')return [
-      ['IMIĘ I NAZWISKO','TELEFON','SYMBOL','ROLA','MAGAZYNY','IDENTYFIKATOR',''],
-      items.map(u=>{
-        const button=document.createElement('button');
-        button.className='btn mini';button.type='button';button.textContent='Edytuj';
-        button.addEventListener('click',()=>openUserDialog(u));
-        const fullName=[u.first_name,u.last_name].filter(Boolean).join(' ');
-        return [fullName||pill('Uzupełnij dane','red'),
-          u.phone||'—',u.display_code?pill(u.display_code,'blue'):'—',
-          pill(u.role_code,'blue'),u.warehouses||'—',u.id,button];
-      })
-    ];
     return [[],[]];
+  }
+
+  // Keep exactly the original six columns. Click the row to reveal
+  // one extra line containing ONLY optional contact details.
+  function renderUsersTable(users) {
+    const table=document.createElement('table');
+    table.className='users-table';
+    const header=table.createTHead().insertRow();
+    for(const title of ['UŻYTKOWNIK','ROLA','MAGAZYNY','PIN','STATUS','']) {
+      const th=document.createElement('th');th.textContent=title;header.append(th);
+    }
+    const tbody=table.createTBody();
+
+    for(const user of users) {
+      const row=tbody.insertRow();row.className='user-main-row';
+      const detail=tbody.insertRow();detail.className='user-details-row';
+      const open=state.expandedUserId===user.id;
+      detail.hidden=!open;
+
+      const name=td('');
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='user-expand-button';
+      button.setAttribute('aria-expanded',String(open));
+      button.setAttribute('aria-label',(open?'Zwiń':'Rozwiń')+' dane użytkownika '+user.name);
+      button.textContent=user.name;
+      const arrow=document.createElement('span');arrow.className='user-expand-arrow';
+      arrow.textContent=open?'▴':'▾';arrow.setAttribute('aria-hidden','true');
+      button.append(arrow);name.append(button);
+      row.append(name);
+
+      const role=td('');role.append(pill(user.role_code,'blue'));row.append(role);
+      row.append(td(user.warehouses||'—'));
+      const pin=td('');pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));row.append(pin);
+      const status=td('');status.append(user.active?pill('Aktywny','green'):pill('Wyłączony','red'));row.append(status);
+      const actions=td('');
+      const edit=document.createElement('button');edit.type='button';
+      edit.className='btn mini user-edit-button';edit.textContent='Edytuj';
+      edit.addEventListener('click',event=>{event.stopPropagation();openUserDialog(user);});
+      actions.append(edit);row.append(actions);
+
+      const cell=detail.insertCell();cell.colSpan=6;
+      const box=document.createElement('div');box.className='user-details-inner';
+      const fields=[
+        ['Imię',user.first_name||'—'],
+        ['Nazwisko',user.last_name||'—'],
+        ['Numer telefonu',user.phone||'—']
+      ];
+      for(const [title,value] of fields) {
+        const field=document.createElement('div');field.className='user-detail-field';
+        const label=document.createElement('span');label.className='user-detail-label';
+        label.textContent=title;
+        const data=document.createElement('span');data.className='user-detail-value';
+        if(title==='Numer telefonu' && user.phone) {
+          const phone=document.createElement('a');
+          phone.href='tel:'+user.phone.replace(/[^0-9+]/g,'');
+          phone.textContent=user.phone;
+          data.append(phone);
+        }else data.textContent=value;
+        field.append(label,data);box.append(field);
+      }
+      cell.append(box);
+
+      function toggle() {
+        state.expandedUserId=state.expandedUserId===user.id?null:user.id;
+        renderList();
+      }
+      button.addEventListener('click',event=>{event.stopPropagation();toggle();});
+      row.addEventListener('click',event=>{
+        if(event.target.closest('.user-edit-button'))return;
+        if(event.target.closest('.user-expand-button'))return;
+        toggle();
+      });
+    }
+    return table;
   }
 
   function renderList() {
@@ -180,7 +231,7 @@
       const empty=document.createElement('div');empty.className='empty';
       empty.textContent=state.records.length?'Nie znaleziono pasujących pozycji.':'Brak danych do wyświetlenia.';
       $('tableResults').append(empty);
-    }else $('tableResults').append(buildTable(columns,rows));
+    }else $('tableResults').append(state.view==='users'?renderUsersTable(matching):buildTable(columns,rows));
     $('tableFooter').textContent='Wyświetlono '+matching.length+' z '+state.records.length+' pozycji';
   }
 
@@ -209,7 +260,7 @@
     $('dashboardView').classList.toggle('hidden',view!=='summary');
     $('tableView').classList.toggle('hidden',view==='summary'||view==='security');
     $('securityView').classList.toggle('hidden',view!=='security');
-    $('addUserBtn').classList.toggle('hidden',view!=='users'&&view!=='directory');
+    $('addUserBtn').classList.toggle('hidden',view!=='users');
     $('warehouseFilter').classList.toggle('hidden',view!=='parts');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
@@ -269,17 +320,16 @@
 
   async function openUserDialog(existing=null) {
     try {
-      const [roles,warehouses,contact]=await Promise.all([
-        api('roles'),api('warehouseOptions'),
-        existing?api('directory').then(items=>items.find(u=>u.id===existing.id)||null):Promise.resolve(null)
+      const [roles,warehouses]=await Promise.all([
+        api('roles'),api('warehouseOptions')
       ]);
       const form=$('createUserForm');form.reset();
       $('editUserId').value=existing?.id||'';
       $('userDialogTitle').textContent=existing?'Edytuj użytkownika':'Nowy użytkownik';
-      $('userFirstName').value=contact?.first_name||'';
-      $('userLastName').value=contact?.last_name||'';
-      $('userPhone').value=contact?.phone||'';
-      $('userCode').value=contact?.display_code||'';
+      $('userName').value=existing?.name||'';
+      $('userFirstName').value=existing?.first_name||'';
+      $('userLastName').value=existing?.last_name||'';
+      $('userPhone').value=existing?.phone||'';
       $('userStatusRow').hidden=!existing;
       $('userActive').checked=existing?Boolean(existing.active):true;
 
@@ -301,8 +351,7 @@
         checkbox.type='checkbox';checkbox.value=warehouse.id;
         checkbox.id='grant-'+warehouse.id;
         checkbox.checked=assigned.has(warehouse.id);
-        const label=document.createElement('label');
-        label.htmlFor=checkbox.id;
+        const label=document.createElement('label');label.htmlFor=checkbox.id;
         label.textContent=warehouse.name+' ('+warehouse.country_code+')'+(warehouse.active?'':' — nieaktywny');
         row.append(checkbox,label);field.append(row);
       }
@@ -318,20 +367,19 @@
       const userId=$('editUserId').value;
       const body={
         action:userId?'updateStaff':'createStaff',
+        nickname:$('userName').value.trim(),
         firstName:$('userFirstName').value.trim(),
         lastName:$('userLastName').value.trim(),
         phone:$('userPhone').value.trim(),
-        displayCode:$('userCode').value.trim(),
         role:$('userRole').value,
         warehouses,
         ...(userId?{userId,active:$('userActive').checked?1:0}:{})
       };
-      const result=await post(body);
+      await post(body);
       $('userDialog').close();
-      state.records=await api(state.view==='directory'?'directory':'users');
-      if(state.view==='users'||state.view==='directory')renderList();
-      message((userId?'Zapisano dane pracownika.':'Dodano pracownika.')+
-        ' Symbol: '+result.displayCode+'. PIN pozostaje bez zmian.','info');
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      message(userId?'Zapisano zmiany użytkownika.':'Dodano użytkownika bez PIN-u.','info');
     }catch(error){message(error.message,'error');}
     finally{busy(button,false);}
   }
