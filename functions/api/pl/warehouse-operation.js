@@ -300,6 +300,13 @@ export async function onRequestPost({ request, env }) {
   }
 }
 
-export function onRequestGet() {
-  return bad('Endpoint przyjmuje wyłącznie POST.', 405);
+// Non-sensitive deployment check; never returns stock, parts or credentials.
+export function onRequestGet({ env }) {
+  return json({
+    ok: true,
+    service: 'GPBS PL warehouse PZ/WZ',
+    databaseConnected: Boolean(env.DB),
+    testWritesEnabled: env.PL_TEST_WRITES_ENABLED === 'true',
+    mode: 'PL-TEST only'
+  });
 }
