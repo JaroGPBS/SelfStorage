@@ -73,6 +73,21 @@ export async function onRequestGet({request,env}) {
       return fail('Najpierw wykonaj migrację D1: '+MIGRATION,503);
     const warehouse=await getWarehouse(env.DB,warehouseId);
     if(!warehouse)return fail('Magazyn jest nieaktywny lub niedostępny.',404);
+    const view=new URL(request.url).searchParams.get('view')||'draft';
+    if(view==='history'){
+      const data=await env.DB.prepare(
+        "SELECT i.id,i.actor_id,i.committed_at,COUNT(l.part_id) AS part_count "+
+        "FROM pl_warehouse_inventories i "+
+        "LEFT JOIN pl_warehouse_inventory_lines l ON l.inventory_id=i.id "+
+        "WHERE i.warehouse_id=? AND i.status='COMMITTED' "+
+        "GROUP BY i.id ORDER BY i.committed_at DESC,i.id DESC LIMIT 20"
+      ).bind(warehouseId).all();
+      return workerJson({ok:true,warehouse,history:(data.results||[]).map(r=>({
+        id:r.id,actorId:r.actor_id,
+        committedAt:r.committed_at,partCount:Number(r.part_count||0)
+      }))});
+    }
+    if(view!=='draft')return fail('Nieznany widok.',400);
     const draft=await readDraft(env.DB,warehouseId,auth.user.id);
     const catalog=await env.DB.prepare(
       'SELECT COUNT(*) AS n FROM parts WHERE active=1'
