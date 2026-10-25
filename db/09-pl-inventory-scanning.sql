@@ -31,5 +31,9 @@ CREATE TABLE IF NOT EXISTS pl_part_verifications (
   FOREIGN KEY(warehouse_id) REFERENCES warehouses(id),
   FOREIGN KEY(created_by) REFERENCES users(id)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pl_part_verifications_code
+  ON pl_part_verifications(raw_code)
+  WHERE raw_code IS NOT NULL AND TRIM(raw_code)<>'';
+
 CREATE INDEX IF NOT EXISTS idx_pl_part_verifications_pending
   ON pl_part_verifications(status,created_at);
