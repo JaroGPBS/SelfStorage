@@ -220,6 +220,7 @@
       });
       if(state.warehouse?.id!==warehouseId)return;
       el('inventoryNewPartDialog').close();
+      state.busy=false;
       showCount(data.part,'add');
     }catch(error){showError('inventoryNewPartError',error.message);}
     finally{
