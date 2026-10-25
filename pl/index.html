@@ -9,8 +9,8 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=3">
-  <script src="./pl.js?v=3" defer></script>
+  <link rel="stylesheet" href="./pl.css?v=4">
+  <script src="./pl.js?v=4" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -96,11 +96,11 @@
             <strong>Wydanie</strong>
             <span class="action-caption">W przygotowaniu</span>
           </div>
-          <div class="action-tile action-pending">
+          <button id="openInventoryButton" class="action-tile action-available" type="button">
             <span class="action-icon" aria-hidden="true">☷</span>
             <strong>Inwentaryzacja</strong>
-            <span class="action-caption">W przygotowaniu</span>
-          </div>
+            <span class="action-caption">Policz części i zapisz arkusz</span>
+          </button>
           <button id="openStockButton" class="action-tile action-available" type="button">
             <span class="action-icon" aria-hidden="true">▤</span>
             <strong>Stany magazynowe</strong>
@@ -131,6 +131,51 @@
         <button id="stockMoreButton" class="btn btn-outline stock-more" type="button" hidden>Wczytaj więcej</button>
       </div>
 
+      <div id="inventoryScreen" hidden>
+        <button id="backFromInventoryButton" class="text-button back-button" type="button">← Wróć do magazynu</button>
+        <h2 class="section-title">Inwentaryzacja</h2>
+        <p id="inventoryWarehouseCaption" class="section-info"></p>
+        <div class="inventory-explainer">
+          <strong>Arkusz roboczy</strong>
+          <p>Wybierz część, wpisz faktycznie policzoną ilość i dodaj ją do arkusza. Zero wpisz tylko, jeśli sprawdzono, że części nie ma. Pozostałe części pozostają nieustalone. Możesz wrócić do arkusza później.</p>
+        </div>
+        <p id="inventoryError" class="error" role="alert" aria-live="assertive" hidden></p>
+        <section class="inventory-draft">
+          <div class="inventory-section-heading">
+            <h3>Policzone pozycje</h3>
+            <span id="inventoryCounter" class="count-pill">0 / 30</span>
+          </div>
+          <p id="inventoryDraftInfo" class="section-info">Pobieranie arkusza…</p>
+          <div id="inventoryDraftLines" class="inventory-draft-lines"></div>
+          <button id="inventoryCommitButton" class="btn btn-primary inventory-commit" type="button" disabled>Zatwierdź policzone pozycje</button>
+          <p id="inventoryPublishInfo" class="field-hint">Zatwierdzenie zaktualizuje stany magazynowe i zapisze historię zmian.</p>
+        </section>
+
+        <section class="inventory-catalog">
+          <div class="inventory-section-heading"><h3>Dodaj część do arkusza</h3></div>
+          <form id="inventorySearchForm" class="search-row" role="search">
+            <label class="visually-hidden" for="inventoryQuery">Szukaj części do inwentaryzacji</label>
+            <input id="inventoryQuery" type="search" maxlength="80" autocomplete="off" placeholder="Nazwa, numer części lub SAP">
+            <button id="inventorySearchButton" class="btn btn-search" type="submit">Szukaj</button>
+          </form>
+          <p id="inventorySearchStatus" class="field-hint" role="status" aria-live="polite"></p>
+          <div id="inventoryResults" class="inventory-search-results"></div>
+          <button id="inventoryMoreButton" class="btn btn-outline stock-more" type="button" hidden>Wczytaj więcej części</button>
+          <form id="inventoryQuantityForm" class="inventory-quantity-form" hidden>
+            <strong id="inventorySelectedPartName">—</strong>
+            <p id="inventorySelectedPartNumber" class="section-info"></p>
+            <label for="inventoryQuantity" class="input-label">Faktycznie policzona ilość</label>
+            <input id="inventoryQuantity" type="number" inputmode="numeric" min="0" max="100000"
+              step="1" required autocomplete="off" placeholder="Wpisz ilość, np. 0 lub 15">
+            <p class="field-hint">Puste pole to niepoliczona pozycja. Wpisanie 0 oznacza potwierdzony brak.</p>
+            <div class="inventory-form-actions">
+              <button id="inventoryCancelPart" class="btn btn-outline" type="button">Anuluj</button>
+              <button id="inventorySavePart" class="btn btn-primary" type="submit">Zapisz do arkusza</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
       <div id="crewHome" hidden>
         <h2 class="section-title">Ekipa serwisowa</h2>
         <p class="section-info">Wybierz funkcję, z której chcesz korzystać.</p>
@@ -159,5 +204,17 @@
 
     <footer class="page-footer">GPBS STORAGE <span aria-hidden="true">•</span> SYSTEM MAGAZYNOWY</footer>
   </main>
+  <dialog id="inventoryConfirmDialog" class="inventory-dialog" aria-labelledby="inventoryConfirmTitle" aria-describedby="inventoryConfirmText">
+    <div class="inventory-dialog-inner">
+      <div class="panel-kicker">GPBS STORAGE / INWENTARYZACJA</div>
+      <h2 id="inventoryConfirmTitle">Zatwierdzić inwentaryzację?</h2>
+      <p id="inventoryConfirmText"></p>
+      <p class="inventory-dialog-warning">Po zatwierdzeniu ilości zostaną zapisane w magazynie. Zmiany będą widoczne w historii inwentaryzacji.</p>
+      <div class="inventory-dialog-actions">
+        <button id="inventoryConfirmCancel" class="btn btn-outline" type="button">Sprawdź ponownie</button>
+        <button id="inventoryConfirmApprove" class="btn btn-primary" type="button">Zatwierdź</button>
+      </div>
+    </div>
+  </dialog>
 </body>
 </html>
