@@ -9,9 +9,9 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=5">
+  <link rel="stylesheet" href="./pl.css?v=6">
   <script src="./inventory-scanner.js?v=1" defer></script>
-  <script src="./inventory-flow.js?v=1" defer></script>
+  <script src="./inventory-flow.js?v=2" defer></script>
   <script src="./pl.js?v=5" defer></script>
 </head>
 <body>
@@ -228,9 +228,23 @@
       <p id="inventoryCountPart" class="inventory-count-part"></p>
       <p id="inventoryCountHint" class="inventory-count-hint">Podaj znalezioną ilość. Zostanie dodana do sumy.</p>
       <label for="inventoryCountQuantity" class="visually-hidden">Ilość sztuk do dodania</label>
-      <input id="inventoryCountQuantity" type="text" inputmode="numeric"
-        pattern="[0-9]{1,6}" autocomplete="off" enterkeyhint="done"
-        maxlength="6" placeholder="Ile sztuk?" required>
+      <input id="inventoryCountQuantity" type="text" inputmode="none" readonly
+        pattern="[0-9]{1,6}" autocomplete="off"
+        maxlength="6" placeholder="Ile sztuk?" aria-describedby="inventoryCountHint">
+      <div id="inventoryKeypad" class="inventory-keypad" role="group" aria-label="Klawiatura numeryczna">
+        <button type="button" data-digit="1">1</button>
+        <button type="button" data-digit="2">2</button>
+        <button type="button" data-digit="3">3</button>
+        <button type="button" data-digit="4">4</button>
+        <button type="button" data-digit="5">5</button>
+        <button type="button" data-digit="6">6</button>
+        <button type="button" data-digit="7">7</button>
+        <button type="button" data-digit="8">8</button>
+        <button type="button" data-digit="9">9</button>
+        <button type="button" data-digit="clear" class="inventory-keypad-action" aria-label="Wyczyść">C</button>
+        <button type="button" data-digit="0">0</button>
+        <button type="button" data-digit="backspace" class="inventory-keypad-action" aria-label="Usuń ostatnią cyfrę">⌫</button>
+      </div>
       <p id="inventoryCountError" class="error" role="alert" hidden></p>
       <div class="inventory-dialog-actions">
         <button id="inventoryCountCancel" class="btn btn-outline" type="button">Anuluj</button>
