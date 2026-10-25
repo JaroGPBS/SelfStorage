@@ -97,21 +97,24 @@ serwer wylicza wszystko sam.
 - Finalne ujednolicenie grafiki mobilnej z głównym GPBS Storage.
 
 
-## Skanowanie ciągłe, sumowanie i nowe części
+## Skanowanie na żądanie, sumowanie i nowe części
 
-Od kolejnego etapu ekran `/pl/` automatycznie otwiera aparat po wejściu
-w Inwentaryzację. Obsługiwane są **QR i Code128**; korzysta z oddzielnego
-`pl/inventory-scanner.js` i tego samego modułu biblioteki aparatu co FR,
-ale bez zmian w głównej aplikacji FR.
+Na ekranie `/pl/` aparat jest **domyślnie wyłączony**. Pracownik
+klika `Skanuj`, odczytuje jeden kod QR lub Code128, a aplikacja
+**natychmiast zatrzymuje i zwalnia kamerę** przed pokazaniem okienka
+z nazwą części i pustym polem ilości. `Dodaj` zapisuje policzoną
+ilość w arkuszu, nie uruchamiając ponownie aparatu. Każdy następny
+skan wymaga ponownego kliknięcia `Skanuj`.
 
-Przebieg: skan → wstrzymanie odczytu → puste pole ilości z klawiaturą
-numeryczną → `Dodaj` → wznowienie **tej samej sesji kamery** bez klikania
-`Skanuj` ponownie. `X` zamyka skaner, zwalnia kamerę i przenosi
-do wyszukiwania ręcznego po nazwie / numerze / SAP. Przycisk
-`Otwórz skaner QR` pozwala wrócić do aparatu. Jeśli przeglądarka
-nie otworzy klawiatury po programowym ustawieniu fokusu, użytkownik
-może dotknąć już pustego pola — ograniczenie systemowej klawiatury
-Android, nie aplikacji.
+Przycisk `X` zamyka aparat, a `Wyszukaj lub dodaj część ręcznie`
+jest dostępny również na ekranie przy wyłączonym skanerze.
+Aplikacja nie włącza automatycznie kamery po powrocie z tła,
+po anulowaniu liczenia ani po zapisaniu nowej części.
+Zmiana ogranicza zużycie baterii, nagrzewanie telefonu i ryzyko
+odczytu przypadkowych kodów podczas przemieszczania się.
+
+Skaner wykorzystuje oddzielny `pl/inventory-scanner.js`, bez
+zmiany głównej francuskiej aplikacji.
 
 **Domyślnie wpisana ilość jest przyrostem** do sumy w bieżącym arkuszu:
 5 + 8 + 6 = 19. Nie pokazujemy stanów bazowych w formularzu.
@@ -148,5 +151,6 @@ pozostaje wyłączona. Nie twórz fikcyjnych części w katalogu produkcyjnym.
 
 Klawiatura numeryczna zawsze jest dostępna w oknie liczenia:
 cyfry 0–9, wyczyszczenie (`C`) i cofnięcie jednej cyfry (`⌫`).
-Nie ma potrzeby wywoływania klawiatury systemowej Androida ani
-ponownego wciskania `Skanuj` po każdej pozycji.
+Nie ma potrzeby wywoływania klawiatury systemowej Androida.
+Po `Dodaj` kamera pozostaje wyłączona; następny skan wymaga
+świadomego ponownego naciśnięcia `Skanuj`.
