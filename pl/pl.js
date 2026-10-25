@@ -70,6 +70,12 @@
     byId('stockSearchButton').disabled=false;
   }
 
+  function stopInventorySearch() {
+    state.inventory.searchSequence++;
+    state.inventory.searchBusy=false;
+    byId('inventorySearchButton').disabled=false;
+  }
+
   function setInventoryNotice(knownItems, catalogItems) {
     const known=Number(knownItems);
     const total=Number(catalogItems);
@@ -125,7 +131,7 @@
     state.subview='';
     state.inventoryNoticeSequence++;
     state.inventory.loadSequence++;
-    state.inventory.searchSequence++;
+    stopInventorySearch();
     state.inventory.draft=null;
     state.inventory.selectedPart=null;
     state.inventory.mutationBusy=false;
@@ -155,7 +161,7 @@
     state.warehouse=state.user.warehouses.find(w=>w.id===warehouse.id);
     state.inventoryNoticeSequence++;
     state.inventory.loadSequence++;
-    state.inventory.searchSequence++;
+    stopInventorySearch();
     state.inventory.draft=null;
     state.inventory.selectedPart=null;
     byId('inventoryQuantityForm').hidden=true;
@@ -173,7 +179,7 @@
   function showWarehousePicker() {
     state.warehouse=null;
     state.inventory.loadSequence++;
-    state.inventory.searchSequence++;
+    stopInventorySearch();
     state.inventory.draft=null;
     state.inventory.selectedPart=null;
     byId('inventoryQuantityForm').hidden=true;
@@ -476,6 +482,7 @@
     if(!state.warehouse)return;
     const warehouseId=state.warehouse.id;
     const sequence=++inv.loadSequence;
+    stopInventorySearch();
     inventoryError('');
     inventoryFeedback('');
     inv.selectedPart=null;
@@ -494,7 +501,7 @@
       inv.searchPage=0;
       inv.searchQuery='';
       byId('inventoryQuery').value='';
-      fetchInventoryParts();
+      if(state.subview==='inventoryScreen')fetchInventoryParts();
     }catch(error) {
       if(sequence!==inv.loadSequence)return;
       inv.draft=null;
@@ -687,7 +694,7 @@
   byId('openInventoryButton').addEventListener('click',openInventory);
   byId('backFromInventoryButton').addEventListener('click',()=>{
     state.inventory.loadSequence++;
-    state.inventory.searchSequence++;
+    stopInventorySearch();
     state.inventory.selectedPart=null;
     byId('inventoryQuantityForm').hidden=true;
     subview('warehouseHome');
