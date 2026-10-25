@@ -59,11 +59,12 @@
       await loadLibrary();
       if(local!==generation)return;
       const formats=window.Html5QrcodeSupportedFormats;
-      scanner=new window.Html5Qrcode('inventoryReader',formats?{
+      const reader=new window.Html5Qrcode('inventoryReader',formats?{
         formatsToSupport:[formats.QR_CODE,formats.CODE_128],verbose:false
       }:{verbose:false});
+      scanner=reader;
       locked=false;
-      await scanner.start({facingMode:'environment'},{
+      await reader.start({facingMode:'environment'},{
         fps:12,
         qrbox:(width,height)=>{
           const edge=Math.max(170,Math.floor(Math.min(width,height)*0.72));
@@ -84,9 +85,9 @@
         }
       },()=>{});
       if(local!==generation){
-        try{await scanner.stop();}catch{}
-        try{scanner.clear();}catch{}
-        scanner=null;
+        try{if(reader.isScanning)await reader.stop();}catch{}
+        try{reader.clear();}catch{}
+        if(scanner===reader)scanner=null;
       }else active=true;
     }finally{starting=false;}
   }
