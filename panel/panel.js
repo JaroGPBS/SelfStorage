@@ -738,6 +738,8 @@
     $('closeUserDialog').addEventListener('click',()=>$('userDialog').close());
     $('cancelUser').addEventListener('click',()=>$('userDialog').close());
     $('createUserForm').addEventListener('submit',saveUser);
+    $('partEditForm').addEventListener('submit',savePartEditor);
+    $('partEditCancel').addEventListener('click',()=>$('partEditDialog').close());
     try {
       await api('summary');
     } catch(error) {
