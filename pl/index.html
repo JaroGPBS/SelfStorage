@@ -9,8 +9,9 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=4">
-  <script src="./pl.js?v=4" defer></script>
+  <link rel="stylesheet" href="./pl.css?v=5">
+  <script src="./inventory-scanner.js?v=1" defer></script>
+  <script src="./pl.js?v=5" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -135,14 +136,27 @@
         <button id="backFromInventoryButton" class="text-button back-button" type="button">← Wróć do magazynu</button>
         <h2 class="section-title">Inwentaryzacja</h2>
         <p id="inventoryWarehouseCaption" class="section-info"></p>
+        <div id="inventoryScannerPanel" class="inventory-scanner-panel">
+          <div class="inventory-scanner-top">
+            <strong><span class="scan-live-dot"></span> Skanowanie części</strong>
+            <button id="inventoryCloseScanner" type="button" class="scanner-close-button" aria-label="Zamknij skaner">✕</button>
+          </div>
+          <div id="inventoryReader" class="inventory-reader" aria-label="Podgląd kamery do skanowania QR i Code128"></div>
+          <p id="inventoryScannerMessage" class="scanner-message" role="status" aria-live="polite">Skieruj kamerę na kod QR lub kreskowy części.</p>
+          <button id="inventoryScannerManual" type="button" class="text-button">⌕ Wyszukaj lub dodaj część ręcznie</button>
+        </div>
+        <div id="inventoryScannerClosed" class="scanner-closed" hidden>
+          <p>Skaner zamknięty. Możesz wyszukać część ręcznie albo wznowić skanowanie.</p>
+          <button id="inventoryStartScanner" class="btn btn-primary" type="button">Otwórz skaner QR</button>
+        </div>
         <div class="inventory-explainer">
-          <strong>Arkusz roboczy</strong>
-          <p>Wybierz część, wpisz faktycznie policzoną ilość i dodaj ją do arkusza. Zero wpisz tylko, jeśli sprawdzono, że części nie ma. Pozostałe części pozostają nieustalone. Możesz wrócić do arkusza później.</p>
+          <strong>Inwentaryzacja — dodawanie sztuk</strong>
+          <p>Skanuj kod, wpisz ilość właśnie znalezionych sztuk i naciśnij „Dodaj”. Skaner automatycznie wróci do pracy. Kolejne znalezione ilości tej samej części system sumuje. Nie pokazujemy stanu bazowego.</p>
         </div>
         <p id="inventoryError" class="error" role="alert" aria-live="assertive" hidden></p>
         <section class="inventory-draft">
           <div class="inventory-section-heading">
-            <h3>Policzone pozycje</h3>
+            <h3>Policzone pozycje (suma)</h3>
             <span id="inventoryCounter" class="count-pill">0 / 30</span>
           </div>
           <p id="inventoryDraftInfo" class="section-info">Pobieranie arkusza…</p>
@@ -152,8 +166,9 @@
           <p id="inventoryPublishInfo" class="field-hint">Zatwierdzenie zaktualizuje stany magazynowe i zapisze historię zmian.</p>
         </section>
 
-        <section class="inventory-catalog">
-          <div class="inventory-section-heading"><h3>Dodaj część do arkusza</h3></div>
+        <section class="inventory-catalog" id="inventoryManual" hidden>
+          <div class="inventory-section-heading"><h3>Wyszukiwanie ręczne</h3></div>
+          <button id="inventoryNewPartButton" class="btn btn-outline inventory-new-part" type="button">+ Dodaj część spoza katalogu</button>
           <form id="inventorySearchForm" class="search-row" role="search">
             <label class="visually-hidden" for="inventoryQuery">Szukaj części do inwentaryzacji</label>
             <input id="inventoryQuery" type="search" maxlength="80" autocomplete="off" placeholder="Nazwa, numer części lub SAP">
@@ -165,13 +180,13 @@
           <form id="inventoryQuantityForm" class="inventory-quantity-form" hidden>
             <strong id="inventorySelectedPartName">—</strong>
             <p id="inventorySelectedPartNumber" class="section-info"></p>
-            <label for="inventoryQuantity" class="input-label">Faktycznie policzona ilość</label>
+            <label for="inventoryQuantity" class="input-label">Ilość dodawana do sumy</label>
             <input id="inventoryQuantity" type="number" inputmode="numeric" min="0" max="100000"
               step="1" required autocomplete="off" placeholder="Wpisz ilość, np. 0 lub 15">
-            <p class="field-hint">Puste pole to niepoliczona pozycja. Wpisanie 0 oznacza potwierdzony brak.</p>
+            <p class="field-hint">Wpisz wyłącznie nowo znalezione sztuki. Aplikacja doliczy je do wcześniejszych.</p>
             <div class="inventory-form-actions">
               <button id="inventoryCancelPart" class="btn btn-outline" type="button">Anuluj</button>
-              <button id="inventorySavePart" class="btn btn-primary" type="submit">Zapisz do arkusza</button>
+              <button id="inventorySavePart" class="btn btn-primary" type="submit">Dodaj do sumy</button>
             </div>
           </form>
         </section>
@@ -205,6 +220,39 @@
 
     <footer class="page-footer">GPBS STORAGE <span aria-hidden="true">•</span> SYSTEM MAGAZYNOWY</footer>
   </main>
+  <dialog id="inventoryCountDialog" class="inventory-dialog inventory-count-dialog" aria-labelledby="inventoryCountTitle">
+    <form id="inventoryCountForm" class="inventory-dialog-inner">
+      <div class="panel-kicker">INWENTARYZACJA / POLICZONE SZTUKI</div>
+      <h2 id="inventoryCountTitle">Wpisz ilość</h2>
+      <p id="inventoryCountPart" class="inventory-count-part"></p>
+      <p id="inventoryCountHint" class="inventory-count-hint">Podaj znalezioną ilość. Zostanie dodana do sumy.</p>
+      <label for="inventoryCountQuantity" class="visually-hidden">Ilość sztuk do dodania</label>
+      <input id="inventoryCountQuantity" type="text" inputmode="numeric"
+        pattern="[0-9]{1,6}" autocomplete="off" enterkeyhint="done"
+        maxlength="6" placeholder="Ile sztuk?" required>
+      <p id="inventoryCountError" class="error" role="alert" hidden></p>
+      <div class="inventory-dialog-actions">
+        <button id="inventoryCountCancel" class="btn btn-outline" type="button">Anuluj</button>
+        <button id="inventoryCountAdd" class="btn btn-primary" type="submit">Dodaj</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="inventoryNewPartDialog" class="inventory-dialog" aria-labelledby="inventoryNewPartTitle">
+    <form id="inventoryNewPartForm" class="inventory-dialog-inner">
+      <div class="panel-kicker">INWENTARYZACJA / NOWA CZĘŚĆ</div>
+      <h2 id="inventoryNewPartTitle">Dodaj nową część</h2>
+      <p>Jeśli nie ma jej w katalogu, podaj nazwę. Część zostanie oznaczona do weryfikacji w panelu.</p>
+      <label class="input-label" for="inventoryNewPartCode">Kod QR / indeks (opcjonalnie)</label>
+      <input id="inventoryNewPartCode" type="text" maxlength="120" autocomplete="off" placeholder="Kod, jeśli go masz">
+      <label class="input-label" for="inventoryNewPartName">Nazwa części — wymagana</label>
+      <input id="inventoryNewPartName" type="text" maxlength="120" minlength="2" required autocomplete="off" placeholder="Np. Profil do maszyny">
+      <p id="inventoryNewPartError" class="error" role="alert" hidden></p>
+      <div class="inventory-dialog-actions">
+        <button id="inventoryNewPartCancel" class="btn btn-outline" type="button">Anuluj</button>
+        <button id="inventoryNewPartSave" class="btn btn-primary" type="submit">Dodaj część</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="inventoryConfirmDialog" class="inventory-dialog" aria-labelledby="inventoryConfirmTitle" aria-describedby="inventoryConfirmText">
     <div class="inventory-dialog-inner">
       <div class="panel-kicker">GPBS STORAGE / INWENTARYZACJA</div>
