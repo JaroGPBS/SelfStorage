@@ -253,6 +253,10 @@
   el('inventoryCloseScanner').addEventListener('click',()=>stop(true));
   el('inventoryScannerManual').addEventListener('click',()=>stop(true));
   el('inventoryStartScanner').addEventListener('click',start);
+  el('inventoryShowManual').addEventListener('click',()=>{
+    el('inventoryManual').hidden=false;
+    el('inventoryManual').scrollIntoView({behavior:'smooth',block:'start'});
+  });
   el('inventoryCountForm').addEventListener('submit',addQuantity);
   el('inventoryKeypad').addEventListener('click',event=>{
     const button=event.target.closest('button[data-digit]');
