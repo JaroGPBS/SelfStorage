@@ -6,7 +6,7 @@
 
   const byId = id => document.getElementById(id);
   const pinInput = byId('workerPin');
-  const subscreens = ['warehouseSelection','warehouseHome','stockScreen','crewHome','officeHome'];
+  const subscreens = ['warehouseSelection','warehouseHome','stockScreen','inventoryScreen','crewHome','officeHome'];
   const warehouseRoles = new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
   const roleLabels = {
     ADMIN:'Administrator', KIEROWNIK:'Kierownik', KOORDYNATOR:'Koordynator',
@@ -15,7 +15,10 @@
   const state = {
     user:null, warehouse:null, subview:'', busy:false, stockBusy:false,
     stockPage:0, stockQuery:'', hasMore:false, stockSequence:0,
-    inventoryNoticeSequence:0
+    inventoryNoticeSequence:0,
+    inventory:{draft:null,maxLines:30,publishingEnabled:false,selectedPart:null,
+      searchPage:0,searchQuery:'',searchMore:false,searchBusy:false,searchSequence:0,
+      loadSequence:0,mutationBusy:false}
   };
 
   function view(which) {
@@ -121,6 +124,13 @@
     state.warehouse=null;
     state.subview='';
     state.inventoryNoticeSequence++;
+    state.inventory.loadSequence++;
+    state.inventory.searchSequence++;
+    state.inventory.draft=null;
+    state.inventory.selectedPart=null;
+    state.inventory.mutationBusy=false;
+    byId('inventoryQuantityForm').hidden=true;
+    byId('inventoryDraftLines').replaceChildren();
     setInventoryNotice(null,null);
     stopStockRequest();
     state.hasMore=false;
@@ -144,6 +154,11 @@
         !state.user.warehouses.some(w=>w.id===warehouse.id)) return;
     state.warehouse=state.user.warehouses.find(w=>w.id===warehouse.id);
     state.inventoryNoticeSequence++;
+    state.inventory.loadSequence++;
+    state.inventory.searchSequence++;
+    state.inventory.draft=null;
+    state.inventory.selectedPart=null;
+    byId('inventoryQuantityForm').hidden=true;
     setInventoryNotice(null,null);
     stopStockRequest();
     state.stockQuery='';
@@ -157,6 +172,11 @@
 
   function showWarehousePicker() {
     state.warehouse=null;
+    state.inventory.loadSequence++;
+    state.inventory.searchSequence++;
+    state.inventory.draft=null;
+    state.inventory.selectedPart=null;
+    byId('inventoryQuantityForm').hidden=true;
     state.inventoryNoticeSequence++;
     setInventoryNotice(null,null);
     stopStockRequest();
@@ -200,9 +220,15 @@
     const previous=state.user?.id===user.id&&state.user.role===role ?
       state.warehouse?.id:null;
     const previousSubview=state.subview;
-    const keepStock=Boolean(previous && previousSubview==='stockScreen' &&
+    const keepWorkScreen=Boolean(previous &&
+      (previousSubview==='stockScreen'||previousSubview==='inventoryScreen') &&
       warehouses.some(w=>w.id===previous) && warehouseRoles.has(role));
-    if(!keepStock)stopStockRequest();
+    if(!keepWorkScreen) {
+      stopStockRequest();
+      state.inventory.loadSequence++;
+      state.inventory.searchSequence++;
+      state.inventory.draft=null;
+    }
     state.user={...user,role,warehouses};
     byId('sessionTitle').textContent=nickname;
     byId('workerRole').textContent=roleLabels[role];
@@ -222,7 +248,7 @@
       if(selected) {
         state.warehouse=selected;
         renderWarehouseHeading();
-        subview(previous && previousSubview==='stockScreen'?'stockScreen':'warehouseHome');
+        subview(keepWorkScreen?previousSubview:'warehouseHome');
         loadInventoryNotice();
       } else {
         showWarehousePicker();
@@ -306,6 +332,297 @@
     fetchStock();
   }
 
+
+  function inventoryFeedback(text) {
+    const el=byId('inventoryFeedback');
+    el.textContent=text||'';
+    el.hidden=!text;
+  }
+
+  function inventoryError(text) {
+    errorText(byId('inventoryError'),text);
+  }
+
+  function inventoryPartLabel(line) {
+    return String(line.name||line.number||line.partId||'Część');
+  }
+
+  function inventoryDraftLineButton(label,handler) {
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='inventory-inline-button';
+    button.textContent=label;
+    button.addEventListener('click',handler);
+    return button;
+  }
+
+  function renderInventoryDraft(draft) {
+    const inv=state.inventory;
+    inv.draft=draft||{id:null,revision:0,lines:[],count:0};
+    const lines=Array.isArray(inv.draft.lines)?inv.draft.lines:[];
+    const list=byId('inventoryDraftLines');
+    list.replaceChildren();
+    byId('inventoryCounter').textContent=lines.length+' / '+inv.maxLines;
+    byId('inventoryDraftInfo').textContent=lines.length
+      ?'Pozycje są zapisane w D1. Możesz je poprawiać przed zatwierdzeniem.'
+      :'Arkusz jest pusty. Wybierz część i wpisz policzoną ilość.';
+
+    for(const line of lines) {
+      const row=document.createElement('div');
+      row.className='inventory-draft-row';
+      const desc=document.createElement('div');
+      desc.className='inventory-draft-desc';
+      const name=document.createElement('strong');
+      name.textContent=inventoryPartLabel(line);
+      const nr=document.createElement('small');
+      nr.textContent=String(line.number||line.partId);
+      desc.append(name,nr);
+
+      const quantity=document.createElement('strong');
+      quantity.className='inventory-draft-qty';
+      quantity.textContent=String(line.quantity)+' szt.';
+      const actions=document.createElement('div');
+      actions.className='inventory-draft-actions';
+      actions.append(
+        inventoryDraftLineButton('Popraw',()=>chooseInventoryPart({
+          id:line.partId,name:line.name,number:line.number,sap:line.sap
+        })),
+        inventoryDraftLineButton('Usuń',()=>removeInventoryLine(line.partId))
+      );
+      row.append(desc,quantity,actions);
+      list.append(row);
+    }
+    byId('inventoryCommitButton').disabled=
+      !inv.publishingEnabled||inv.mutationBusy||lines.length===0;
+    byId('inventoryPublishInfo').textContent=inv.publishingEnabled
+      ?'Zatwierdzenie trwale zaktualizuje stany w D1 i zapisze historię. '+
+       'Niepoliczone części pozostaną bez zmian.'
+      :'Zatwierdzanie stanów jest na razie wyłączone. Możesz bezpiecznie '+
+       'przygotować i poprawiać arkusz; magazyn nie zostanie zmieniony.';
+  }
+
+  function chooseInventoryPart(item) {
+    if(state.inventory.mutationBusy)return;
+    state.inventory.selectedPart=item;
+    const saved=state.inventory.draft?.lines?.find(x=>x.partId===item.id);
+    byId('inventorySelectedPartName').textContent=inventoryPartLabel(item);
+    byId('inventorySelectedPartNumber').textContent=String(item.number||item.id)+
+      (item.sap?' · SAP '+item.sap:'');
+    byId('inventoryQuantity').value=saved?String(saved.quantity):'';
+    byId('inventoryQuantityForm').hidden=false;
+    inventoryError('');
+    byId('inventoryQuantityForm').scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+
+  function renderInventorySearchPart(part) {
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='inventory-search-item';
+    const text=document.createElement('span');
+    text.className='inventory-search-label';
+    const name=document.createElement('strong');
+    name.textContent=inventoryPartLabel(part);
+    const sub=document.createElement('small');
+    sub.textContent=String(part.number||part.id)+(part.sap?' · SAP '+part.sap:'');
+    text.append(name,sub);
+    const badge=document.createElement('span');
+    badge.className='inventory-search-badge';
+    const saved=state.inventory.draft?.lines?.find(x=>x.partId===part.id);
+    badge.textContent=saved?'Policzono: '+saved.quantity:'Dodaj →';
+    button.append(text,badge);
+    button.addEventListener('click',()=>chooseInventoryPart(part));
+    return button;
+  }
+
+  async function fetchInventoryParts({append=false}={}) {
+    const inv=state.inventory;
+    if(inv.searchBusy||!state.warehouse)return;
+    inv.searchBusy=true;
+    const sequence=++inv.searchSequence;
+    const warehouseId=state.warehouse.id;
+    const page=append?inv.searchPage+1:0;
+    if(!append)byId('inventoryResults').replaceChildren();
+    byId('inventorySearchButton').disabled=true;
+    byId('inventorySearchStatus').textContent='Wyszukiwanie części…';
+    byId('inventoryMoreButton').hidden=true;
+    try {
+      const url='/api/pl/warehouse?warehouse='+encodeURIComponent(warehouseId)+
+        '&q='+encodeURIComponent(inv.searchQuery)+'&page='+page;
+      const result=await request('GET',url);
+      if(sequence!==inv.searchSequence||state.warehouse?.id!==warehouseId)return;
+      inv.searchPage=page;
+      inv.searchMore=Boolean(result.stock?.hasMore);
+      for(const part of result.stock?.items||[])
+        byId('inventoryResults').append(renderInventorySearchPart(part));
+      byId('inventorySearchStatus').textContent=byId('inventoryResults').children.length
+        ?'Wybierz część z listy, aby wpisać ilość.'
+        :'Nie znaleziono części w katalogu.';
+      byId('inventoryMoreButton').hidden=!inv.searchMore;
+    }catch(error) {
+      if(sequence===inv.searchSequence) {
+        byId('inventorySearchStatus').textContent=error.message;
+        byId('inventoryMoreButton').hidden=true;
+      }
+    }finally{
+      if(sequence===inv.searchSequence){
+        inv.searchBusy=false;
+        byId('inventorySearchButton').disabled=false;
+      }
+    }
+  }
+
+  async function loadInventory() {
+    const inv=state.inventory;
+    if(!state.warehouse)return;
+    const warehouseId=state.warehouse.id;
+    const sequence=++inv.loadSequence;
+    inventoryError('');
+    inventoryFeedback('');
+    inv.selectedPart=null;
+    byId('inventoryQuantityForm').hidden=true;
+    byId('inventoryWarehouseCaption').textContent=state.warehouse.name+
+      ' · '+warehouseId;
+    byId('inventoryDraftInfo').textContent='Pobieranie arkusza…';
+    byId('inventoryCommitButton').disabled=true;
+    try {
+      const response=await request('GET','/api/pl/inventory?warehouse='+
+        encodeURIComponent(warehouseId));
+      if(sequence!==inv.loadSequence||state.warehouse?.id!==warehouseId)return;
+      inv.maxLines=response.maxLines||30;
+      inv.publishingEnabled=Boolean(response.publishingEnabled);
+      renderInventoryDraft(response.draft);
+      inv.searchPage=0;
+      inv.searchQuery='';
+      byId('inventoryQuery').value='';
+      fetchInventoryParts();
+    }catch(error) {
+      if(sequence!==inv.loadSequence)return;
+      inv.draft=null;
+      inv.publishingEnabled=false;
+      byId('inventoryDraftInfo').textContent='Nie można wczytać arkusza.';
+      byId('inventoryCounter').textContent='—';
+      byId('inventoryCommitButton').disabled=true;
+      byId('inventoryResults').replaceChildren();
+      inventoryError(error.message);
+    }
+  }
+
+  function openInventory() {
+    if(!state.warehouse||!warehouseRoles.has(state.user?.role))return;
+    subview('inventoryScreen');
+    loadInventory();
+  }
+
+  async function inventoryMutation(action,partId,quantity) {
+    const inv=state.inventory;
+    if(inv.mutationBusy||!state.warehouse||!inv.draft)return;
+    inv.mutationBusy=true;
+    const warehouseId=state.warehouse.id;
+    byId('inventorySavePart').disabled=true;
+    byId('inventoryCommitButton').disabled=true;
+    inventoryError('');
+    inventoryFeedback('');
+    try {
+      const data=await request('POST','/api/pl/inventory',{
+        action,warehouseId,partId,...(action==='save'?{quantity}:{})
+      });
+      if(state.warehouse?.id!==warehouseId)return;
+      renderInventoryDraft(data.draft);
+      inv.selectedPart=null;
+      byId('inventoryQuantityForm').hidden=true;
+      inventoryFeedback(action==='save'?'Pozycja zapisana w arkuszu.':'Pozycja usunięta z arkusza.');
+      // Refresh part badges when the draft changes.
+      inv.searchQuery=byId('inventoryQuery').value.trim();
+      fetchInventoryParts();
+    }catch(error){
+      inventoryError(error.message);
+    }finally{
+      inv.mutationBusy=false;
+      byId('inventorySavePart').disabled=false;
+      if(inv.draft)renderInventoryDraft(inv.draft);
+    }
+  }
+
+  function saveInventoryPart(event) {
+    event.preventDefault();
+    const inv=state.inventory;
+    if(inv.mutationBusy||!inv.selectedPart)return;
+    const value=byId('inventoryQuantity').value.trim();
+    if(!/^\d{1,6}$/.test(value)||Number(value)>100000){
+      inventoryError('Wpisz policzoną liczbę sztuk od 0 do 100000.');
+      return;
+    }
+    inventoryMutation('save',inv.selectedPart.id,Number(value));
+  }
+
+  function removeInventoryLine(partId) {
+    if(state.inventory.mutationBusy)return;
+    inventoryMutation('remove',partId);
+  }
+
+  function confirmInventoryCommit(count) {
+    const dialog=byId('inventoryConfirmDialog');
+    byId('inventoryConfirmText').textContent=
+      'Zatwierdzisz '+count+' policzonych pozycji dla magazynu '+
+      String(state.warehouse?.name||'')+'. Zmieni to stany magazynowe w D1.';
+    return new Promise(resolve=>{
+      if(dialog.open)dialog.close();
+      const yes=byId('inventoryConfirmApprove');
+      const no=byId('inventoryConfirmCancel');
+      const finish=answer=>{
+        yes.removeEventListener('click',onYes);
+        no.removeEventListener('click',onNo);
+        dialog.removeEventListener('cancel',onEscape);
+        dialog.removeEventListener('close',onClose);
+        if(dialog.open)dialog.close();
+        resolve(answer);
+      };
+      const onYes=()=>finish(true);
+      const onNo=()=>finish(false);
+      const onEscape=e=>{e.preventDefault();finish(false);};
+      const onClose=()=>finish(false);
+      yes.addEventListener('click',onYes);
+      no.addEventListener('click',onNo);
+      dialog.addEventListener('cancel',onEscape);
+      dialog.addEventListener('close',onClose);
+      dialog.showModal();
+    });
+  }
+
+  async function commitInventory() {
+    const inv=state.inventory;
+    const draft=inv.draft;
+    if(inv.mutationBusy||!inv.publishingEnabled||!draft?.id||!draft.count||
+       !state.warehouse)return;
+    const warehouseId=state.warehouse.id;
+    if(!await confirmInventoryCommit(draft.count))return;
+    if(state.warehouse?.id!==warehouseId)return;
+    inv.mutationBusy=true;
+    byId('inventoryCommitButton').disabled=true;
+    inventoryError('');
+    inventoryFeedback('');
+    try {
+      const result=await request('POST','/api/pl/inventory',{
+        action:'commit',warehouseId,
+        inventoryId:draft.id,revision:draft.revision,confirm:true
+      });
+      if(state.warehouse?.id!==warehouseId)return;
+      const count=result.committedLines||draft.count;
+      // Re-read server state, never invent updated quantities client-side.
+      await loadInventory();
+      loadInventoryNotice();
+      inventoryFeedback('Inwentaryzacja zatwierdzona. Zapisano '+count+
+        ' policzonych pozycji. Stany magazynowe zostały zaktualizowane.');
+    }catch(error){
+      inventoryError(error.message);
+      // A conflict requires fresh data before trying again.
+      if(error.status===409)loadInventory();
+    }finally{
+      inv.mutationBusy=false;
+      if(inv.draft)renderInventoryDraft(inv.draft);
+    }
+  }
+
   async function refreshSession() {
     try {
       const result=await request('GET','/api/pl/auth');
@@ -367,6 +684,31 @@
   byId('logoutButton').addEventListener('click',logout);
   byId('switchWarehouseButton').addEventListener('click',showWarehousePicker);
   byId('openStockButton').addEventListener('click',openStock);
+  byId('openInventoryButton').addEventListener('click',openInventory);
+  byId('backFromInventoryButton').addEventListener('click',()=>{
+    state.inventory.loadSequence++;
+    state.inventory.searchSequence++;
+    state.inventory.selectedPart=null;
+    byId('inventoryQuantityForm').hidden=true;
+    subview('warehouseHome');
+  });
+  byId('inventorySearchForm').addEventListener('submit',event=>{
+    event.preventDefault();
+    if(state.inventory.searchBusy)return;
+    state.inventory.searchQuery=byId('inventoryQuery').value.trim().slice(0,80);
+    state.inventory.selectedPart=null;
+    byId('inventoryQuantityForm').hidden=true;
+    fetchInventoryParts();
+  });
+  byId('inventoryMoreButton').addEventListener('click',()=>{
+    fetchInventoryParts({append:true});
+  });
+  byId('inventoryQuantityForm').addEventListener('submit',saveInventoryPart);
+  byId('inventoryCancelPart').addEventListener('click',()=>{
+    state.inventory.selectedPart=null;
+    byId('inventoryQuantityForm').hidden=true;
+  });
+  byId('inventoryCommitButton').addEventListener('click',commitInventory);
   byId('backFromStockButton').addEventListener('click',()=>{
     stopStockRequest();
     subview('warehouseHome');
