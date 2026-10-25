@@ -51,7 +51,7 @@
     }catch{}
   }
 
-  async function start(onCode) {
+  async function start(onCode, readerId='inventoryReader') {
     if(active||starting)return;
     starting=true;
     const local=++generation;
@@ -59,7 +59,7 @@
       await loadLibrary();
       if(local!==generation)return;
       const formats=window.Html5QrcodeSupportedFormats;
-      const reader=new window.Html5Qrcode('inventoryReader',formats?{
+      const reader=new window.Html5Qrcode(readerId,formats?{
         formatsToSupport:[formats.QR_CODE,formats.CODE_128],verbose:false
       }:{verbose:false});
       scanner=reader;
