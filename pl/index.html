@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1116">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>GPBS Storage — Magazyn Polska</title>
+  <link rel="icon" href="/icons/app-icon-192.png?v=8">
+  <link rel="stylesheet" href="./pl.css?v=1">
+  <script src="./pl.js?v=1" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="brand" aria-label="GPBS Storage">
+      <img src="/icons/gpbs-logo.svg" alt="GPBS">
+      <div class="brand-name">
+        <strong>STORAGE</strong>
+        <span>MAGAZYN / POLSKA</span>
+      </div>
+      <span class="market-badge">PL</span>
+    </header>
+
+    <div id="loadingScreen" class="panel loading" role="status" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Sprawdzanie logowania…</p>
+    </div>
+
+    <section id="loginScreen" class="panel" aria-labelledby="loginTitle" hidden>
+      <div class="panel-kicker">DOSTĘP PRACOWNIKA</div>
+      <h1 id="loginTitle">Zaloguj się</h1>
+      <p class="subheading">Wpisz swój 4-cyfrowy PIN GPBS Storage.</p>
+
+      <form id="loginForm" autocomplete="off">
+        <label for="workerPin" class="input-label">PIN użytkownika</label>
+        <input id="workerPin" class="pin-input" name="worker-pin" type="password"
+          inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4"
+          autocomplete="off" autocapitalize="off" spellcheck="false"
+          enterkeyhint="go" placeholder="••••" required
+          aria-describedby="pinHelp">
+        <p id="pinHelp" class="field-hint">Cztery cyfry. Nie wpisuj nazwiska ani identyfikatora.</p>
+        <p id="loginError" class="error" role="alert" aria-live="assertive" hidden></p>
+        <button id="loginButton" class="btn btn-primary" type="submit">Zaloguj <span aria-hidden="true">→</span></button>
+      </form>
+      <p class="fineprint">Dostęp wyłącznie dla uprawnionych pracowników przypisanych do magazynu w Polsce.</p>
+    </section>
+
+    <section id="sessionScreen" class="panel signed-in" aria-labelledby="sessionTitle" hidden>
+      <div class="session-header">
+        <div class="session-avatar" id="workerBadge" aria-hidden="true">—</div>
+        <div>
+          <div class="panel-kicker">ZALOGOWANY UŻYTKOWNIK</div>
+          <h1 id="sessionTitle">—</h1>
+        </div>
+        <span class="status-pill"><span class="status-dot"></span> Aktywny</span>
+      </div>
+      <div class="session-divider"></div>
+      <div class="session-block">
+        <h2>Dostępne magazyny</h2>
+        <div id="warehouseList" class="warehouse-list" aria-live="polite"></div>
+      </div>
+      <div class="next-step" role="note">
+        <div class="next-icon" aria-hidden="true">▣</div>
+        <div>
+          <strong>Logowanie aktywne</strong>
+          <p>W następnym etapie podłączymy skanowanie QR magazynu oraz pobrania i zwroty części.</p>
+        </div>
+      </div>
+      <p id="sessionError" class="error" role="alert" aria-live="assertive" hidden></p>
+      <button id="logoutButton" class="btn btn-outline" type="button">Wyloguj się</button>
+    </section>
+
+    <footer class="page-footer">GPBS STORAGE <span aria-hidden="true">•</span> SYSTEM MAGAZYNOWY</footer>
+  </main>
+</body>
+</html>
