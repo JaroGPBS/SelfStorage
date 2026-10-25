@@ -15,6 +15,7 @@ Pierwszy dzień produkcji ma wyglądać tak:
   dla danego magazynu. Nie generować ani nie importować zer;
 - robocze i zatwierdzone inwentaryzacje oraz skany: **BRAK**;
 - PZ, WZ, ruchy, wydania, zwroty, transfery, operacje ekip: **BRAK**;
+- sesje zbiorcze PZ/WZ i ich pozycje: **BRAK**;
 - historia, audyt testów i archiwa użytkowników: **BRAK**;
 - samochody, zespoły i przypisania testowe: **BRAK**;
 - nowe niezweryfikowane części utworzone w testach: **NIE PRZENOSIĆ**.
@@ -77,6 +78,7 @@ automatycznie żadnego czyszczenia ani nie przełącza aktualnej usługi.**
    - `db/07-pl-login-limits.sql`;
    - `db/08-pl-warehouse-inventories.sql`;
    - `db/09-pl-inventory-scanning.sql`.
+   - `db/11-pl-warehouse-sessions.sql`.
    
    **BLOKER PRZED CUTOVER:** repo NIE zawiera obecnie jednej
    kanonicznej migracji tworzącej komplet bazowych tabel.
