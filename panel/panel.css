@@ -235,3 +235,22 @@ tr:hover td{background:#ffffff04}
   .confirm-dialog h2{font-size:20px}
   .confirm-dialog #confirmDescription{font-size:15px;line-height:1.6}
 }
+
+
+/* Pending scanned parts are unmistakable in the admin catalogue. */
+.parts-review-table tr.part-pending-verification td{
+  background:rgba(182,44,58,.20);
+  border-top-color:#a74f5a;
+  border-bottom-color:#a74f5a;
+}
+.parts-review-table tr.part-pending-verification:hover td{background:rgba(190,52,65,.28)}
+.parts-review-table .part-review-status{
+  color:#ffc1c5;font-size:12px;font-weight:900;letter-spacing:.3px
+}
+.part-verify-choice{display:flex!important;align-items:flex-start;gap:12px;
+  margin:20px 0;padding:15px;border:1px solid #85545b;background:#35232b;
+  border-radius:10px;line-height:1.55;color:#f5d4d6}
+.part-verify-choice input{flex:0 0 auto;width:19px;height:19px;margin:2px 0 0}
+#partEditDialog{max-width:min(560px,calc(100vw - 24px))}
+#partEditDialog .modal-inner{max-height:calc(100dvh - 50px);overflow:auto}
+#partEditDialog .dialog-actions .btn{min-height:43px}
