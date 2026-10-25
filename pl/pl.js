@@ -714,6 +714,23 @@
     byId('inventoryQuantityForm').hidden=true;
   });
   byId('inventoryCommitButton').addEventListener('click',commitInventory);
+  document.addEventListener('gpbs-pl-inventory-updated',event=>{
+    const draft=event.detail?.draft;
+    if(!draft||state.subview!=='inventoryScreen')return;
+    renderInventoryDraft(draft);
+    const count=Number(event.detail?.added||0);
+    const partId=event.detail?.partId;
+    const line=draft.lines?.find(x=>x.partId===partId);
+    inventoryFeedback(event.detail?.mode==='set'
+      ?'Poprawiono łączną ilość części.'
+      :'Dodano '+count+' szt. Łącznie policzono: '+(line?.quantity??'—')+' szt.');
+    inventoryError('');
+    if(!byId('inventoryManual').hidden){
+      state.inventory.searchQuery=byId('inventoryQuery').value.trim();
+      fetchInventoryParts();
+    }
+  });
+
   byId('backFromStockButton').addEventListener('click',()=>{
     stopStockRequest();
     subview('warehouseHome');
