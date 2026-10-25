@@ -200,3 +200,35 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
   .inventory-draft-row{padding:12px 10px}
   .inventory-search-badge{font-size:10px}
 }
+
+
+/* Continuous inventory scan viewport and quick-count dialogs. */
+.inventory-scanner-panel{border:1px solid #75525c;background:#121921;border-radius:14px;overflow:hidden;margin:10px 0 14px}
+.inventory-scanner-top{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#25232b;padding:11px 13px}
+.inventory-scanner-top strong{font-size:13px;display:flex;align-items:center;gap:8px}
+.scan-live-dot{display:inline-block;width:8px;height:8px;border-radius:100%;background:#6ed09e;box-shadow:0 0 0 4px #6ed09e22}
+.scanner-close-button{display:grid;place-items:center;width:40px;height:40px;background:#60313b;color:#fff;border:1px solid #b75b67;border-radius:10px;font-size:19px;font-weight:750}
+.scanner-close-button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.inventory-reader{background:#070c11;min-height:210px;width:100%;overflow:hidden}
+.inventory-reader video{width:100%!important;max-height:370px;object-fit:cover}
+.inventory-reader img{max-width:100%}
+.scanner-message{color:#d6e1ea;font-size:12px;line-height:1.6;margin:12px 13px 4px}
+.inventory-scanner-panel>.text-button{padding:12px 13px 15px;width:100%;text-align:center;font-weight:750}
+.scanner-closed{border:1px dashed #637181;border-radius:12px;background:#202833;padding:14px;margin:12px 0}
+.scanner-closed p{font-size:13px;color:#cad5df;line-height:1.6;margin:0 0 13px}
+.inventory-new-part{margin:0 0 14px;font-size:13px;min-height:46px}
+.inventory-count-dialog{width:min(100% - 24px,430px)}
+.inventory-count-dialog .inventory-dialog-inner{padding:24px 21px}
+.inventory-count-dialog h2{margin:9px 0}
+.inventory-count-part{font-weight:850!important;font-size:17px!important;color:#fff!important;margin:8px 0 4px!important}
+.inventory-count-hint{font-size:12px!important;color:#f7d6c8!important;margin:7px 0 12px!important;line-height:1.55!important}
+#inventoryCountQuantity{width:100%;height:68px;text-align:center;background:#111822;border:2px solid #c45e67;border-radius:13px;color:#fff;font-size:30px;font-weight:850;letter-spacing:1px;font-variant-numeric:tabular-nums}
+#inventoryCountQuantity:focus{outline:2px solid #fd929b;outline-offset:1px}
+#inventoryNewPartForm input{display:block;width:100%;min-height:49px;background:#111822;color:#fff;border:1px solid #6b7480;border-radius:10px;padding:11px;margin:7px 0 14px;font-size:15px}
+#inventoryNewPartForm label{display:block;margin-top:13px}
+#inventoryNewPartForm input:focus{outline:2px solid #fd929b}
+@media(max-width:360px){
+  .inventory-count-dialog .inventory-dialog-inner{padding:19px 15px}
+  .inventory-reader{min-height:175px}
+  .inventory-count-dialog .inventory-dialog-actions .btn{font-size:12px}
+}
