@@ -1,4 +1,5 @@
-// GPBS Storage PL — seamless scan -> blank numeric input -> ADD -> scan.
+// GPBS Storage PL — user-triggered one-shot scan -> numeric input -> ADD.
+// Camera is released after each decoded code; the next scan needs a new tap.
 // Runs only in the isolated /pl/ module. The main French scanner is untouched.
 (() => {
   'use strict';
@@ -31,18 +32,19 @@
     return data;
   }
 
-  function resume() {
-    if(!state.warehouse||!state.scanning)return;
-    if(camera()?.resume())notify('Gotowe. Skanuj kolejną część.');
-    else notify('Skaner zatrzymany. Naciśnij „Otwórz skaner QR”.');
+  function idleMessage(message) {
+    el('inventoryScannerIdleMessage').textContent=message||
+      'Aby odczytać następną część, naciśnij „Skanuj”. Aparat jest wyłączony.';
   }
 
-  function showCount(part,mode='add') {
+  async function showCount(part,mode='add') {
     if(state.busy||!part?.id||!state.warehouse)return;
+    const warehouseId=state.warehouse.id;
+    if(state.scanning||state.opening)await stop(false);
+    if(state.warehouse?.id!==warehouseId)return;
     state.part=part;
     state.mode=mode==='set'?'set':'add';
     state.pendingId=null;
-    camera()?.pause();
     const previous=state.draft?.lines?.find(line=>line.partId===part.id);
     const dlg=el('inventoryCountDialog');
     if(dlg.open)dlg.close();
@@ -68,12 +70,14 @@
     state.pendingId=null;
     el('inventoryCountQuantity').value='';
     showError('inventoryCountError','');
-    resume();
+    idleMessage('Ilość nie została dodana. Gdy zechcesz skanować, naciśnij „Skanuj”.');
   }
 
-  function showNewPart(code='') {
+  async function showNewPart(code='') {
     if(!state.warehouse)return;
-    camera()?.pause();
+    const warehouseId=state.warehouse.id;
+    if(state.scanning||state.opening)await stop(false);
+    if(state.warehouse?.id!==warehouseId)return;
     const dlg=el('inventoryNewPartDialog');
     if(dlg.open)dlg.close();
     el('inventoryNewPartForm').reset();
@@ -86,25 +90,27 @@
   function closeNewPart() {
     if(state.busy)return;
     if(el('inventoryNewPartDialog').open)el('inventoryNewPartDialog').close();
-    resume();
+    idleMessage('Skaner jest wyłączony. Naciśnij „Skanuj”, aby odczytać kolejną część.');
   }
 
   async function onScan(raw,epoch,warehouseId) {
     if(epoch!==state.epoch||state.warehouse?.id!==warehouseId)return;
     const code=String(raw||'').replace(/\u0000/g,'').trim();
-    notify('Rozpoznawanie części…');
+    // Stop camera immediately, before the network lookup or quantity dialog.
+    // This prevents accidental reads and lowers battery/heat use between parts.
+    await stop(false);
+    const scanEpoch=state.epoch;
+    if(state.warehouse?.id!==warehouseId)return;
+    idleMessage('Kod zeskanowany. Aparat jest wyłączony.');
     try{
       const data=await api('GET','/api/pl/warehouse?view=resolve&warehouse='+
         encodeURIComponent(warehouseId)+'&code='+encodeURIComponent(code));
-      if(epoch!==state.epoch||state.warehouse?.id!==warehouseId)return;
-      showCount(data.part);
+      if(scanEpoch!==state.epoch||state.warehouse?.id!==warehouseId)return;
+      await showCount(data.part);
     }catch(error){
-      if(epoch!==state.epoch||state.warehouse?.id!==warehouseId)return;
-      if(error.status===404)showNewPart(code);
-      else {
-        notify(error.message);
-        resume();
-      }
+      if(scanEpoch!==state.epoch||state.warehouse?.id!==warehouseId)return;
+      if(error.status===404)await showNewPart(code);
+      else idleMessage(error.message+' Naciśnij „Skanuj”, aby spróbować ponownie.');
     }
   }
 
@@ -127,40 +133,46 @@
       await camera().start(code=>onScan(code,epoch,warehouseId));
       if(epoch!==state.epoch)return;
       state.scanning=camera().isActive();
-      notify('Skanuj QR lub Code128. Po „Dodaj” kamera wznowi się automatycznie.');
+      notify('Skieruj aparat na QR lub Code128. Po odczycie kamera wyłączy się automatycznie.');
     }catch(error){
       if(epoch!==state.epoch)return;
-      notify('Nie udało się uruchomić aparatu: '+error.message);
-      el('inventoryScannerClosed').hidden=false;
+      await stop(false);
+      idleMessage('Nie udało się uruchomić aparatu: '+error.message+
+        ' Możesz spróbować ponownie przyciskiem „Skanuj”.');
       el('inventoryManual').hidden=false;
     }finally{
       if(epoch===state.epoch)state.opening=false;
     }
   }
 
-  async function stop(manual=true) {
+  async function stop(manual=false,exit=false) {
     state.epoch++;
     state.scanning=false;
     state.opening=false;
     el('inventoryScannerPanel').hidden=true;
-    el('inventoryScannerClosed').hidden=!manual;
+    el('inventoryScannerClosed').hidden=exit;
+    if(!exit)idleMessage('Aparat jest wyłączony. Naciśnij „Skanuj”, aby odczytać następną część.');
     if(manual) {
       el('inventoryManual').hidden=false;
       el('inventoryManual').scrollIntoView({behavior:'smooth',block:'start'});
     }
-    state.stopPromise=Promise.resolve(camera()?.stop()).catch(()=>{});
-    await state.stopPromise;
-    state.stopPromise=null;
+    const stopping=Promise.resolve(camera()?.stop()).catch(()=>{});
+    state.stopPromise=stopping;
+    await stopping;
+    if(state.stopPromise===stopping)state.stopPromise=null;
   }
 
   function open(warehouse){
     if(!warehouse?.id)return;
     state.warehouse=warehouse;
     state.draft=null;
-    start();
+    el('inventoryScannerPanel').hidden=true;
+    el('inventoryScannerClosed').hidden=false;
+    el('inventoryManual').hidden=true;
+    idleMessage('Naciśnij „Skanuj”, aby odczytać pierwszą część. Aparat jest wyłączony.');
   }
   function close(){
-    stop(false);
+    stop(false,true);
     state.warehouse=null;
     state.part=null;
     state.pendingId=null;
@@ -183,7 +195,6 @@
     el('inventoryCountAdd').disabled=true;
     // Keep one UUID through uncertain network errors: retry never double-counts.
     if(!state.pendingId)state.pendingId='PL-EVT-'+crypto.randomUUID();
-    const epoch=state.epoch;
     const warehouseId=state.warehouse.id;
     const part=state.part;
     const amount=Number(value);
@@ -201,7 +212,7 @@
       state.part=null;
       state.pendingId=null;
       input.value='';
-      if(epoch===state.epoch)resume();
+      idleMessage('Dodano ilość. Gdy dojdziesz do następnej części, naciśnij „Skanuj”.');
     }catch(error){
       showError('inventoryCountError',error.message);
       // For a permanent conflict a new attempt must use a new event id.
@@ -270,9 +281,8 @@
   });
 
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden)camera()?.pause();
-    else if(state.scanning&&!el('inventoryCountDialog').open&&
-      !el('inventoryNewPartDialog').open)resume();
+    if(document.hidden&&(state.scanning||state.opening))stop(false);
+    // Never automatically restart the camera when the app regains focus.
   });
 
   window.GPBSPlInventory={open,close,showCount,setDraft:draft=>{state.draft=draft;}};
