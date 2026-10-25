@@ -9,10 +9,11 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=8">
+  <link rel="stylesheet" href="./pl.css?v=9">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
-  <script src="./pl.js?v=8" defer></script>
+  <script src="./warehouse-operations.js?v=1" defer></script>
+  <script src="./pl.js?v=9" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -88,16 +89,16 @@
 
         <h2 class="section-title section-spaced">Operacje magazynowe</h2>
         <div class="action-grid">
-          <div class="action-tile action-pending">
+          <button id="openReceiptButton" class="action-tile action-available" type="button">
             <span class="action-icon" aria-hidden="true">＋</span>
-            <strong>Przyjęcie</strong>
-            <span class="action-caption">W przygotowaniu</span>
-          </div>
-          <div class="action-tile action-pending">
+            <strong>Przyjęcie (PZ)</strong>
+            <span class="action-caption">Jedna sesja PZ i WZ</span>
+          </button>
+          <button id="openIssueButton" class="action-tile action-available" type="button">
             <span class="action-icon" aria-hidden="true">↗</span>
-            <strong>Wydanie</strong>
-            <span class="action-caption">W przygotowaniu</span>
-          </div>
+            <strong>Wydanie (WZ)</strong>
+            <span class="action-caption">Jedna sesja PZ i WZ</span>
+          </button>
           <button id="openInventoryButton" class="action-tile action-available" type="button">
             <span class="action-icon" aria-hidden="true">☷</span>
             <strong>Inwentaryzacja</strong>
@@ -131,6 +132,66 @@
         <p id="stockStatus" class="section-info" role="status" aria-live="polite"></p>
         <div id="stockList" class="stock-list"></div>
         <button id="stockMoreButton" class="btn btn-outline stock-more" type="button" hidden>Wczytaj więcej</button>
+      </div>
+
+
+      <div id="operationScreen" hidden>
+        <button id="backFromOperationButton" class="text-button back-button" type="button">← Wróć do magazynu</button>
+        <h2 class="section-title">Przyjęcie i wydanie · jedna sesja</h2>
+        <p id="operationWarehouseCaption" class="section-info"></p>
+        <p id="operationReadyNotice" class="inventory-notice" role="status" hidden></p>
+        <div id="operationForm" hidden>
+          <label for="operationCounterparty" class="input-label">Ekipa / dostawca / odbiorca</label>
+          <input id="operationCounterparty" class="operation-counterparty" type="text" minlength="2" maxlength="120"
+            autocomplete="off" placeholder="Np. Ekipa MT, Dostawa ABC, InPost">
+          <p class="field-hint">Wpisz dowolną nazwę pozwalającą rozpoznać operację. Datę i godzinę zapisze serwer.</p>
+          <div class="operation-tabs" role="group" aria-label="Rodzaj operacji">
+            <button id="operationTabPZ" type="button" aria-pressed="true">＋ Przyjęcie PZ</button>
+            <button id="operationTabWZ" type="button" aria-pressed="false">↗ Wydanie WZ</button>
+          </div>
+          <p id="operationSearchCaption" class="section-info">Dodaj część przyjmowaną do magazynu.</p>
+          <div id="operationScanPanel" class="inventory-scanner-panel" hidden>
+            <div class="inventory-scanner-top">
+              <strong>Skanowanie QR / Code128</strong>
+              <button id="operationStopScan" class="scanner-close-button" type="button" aria-label="Zamknij skaner">✕</button>
+            </div>
+            <div id="operationReader" class="inventory-reader"></div>
+            <p id="operationScannerStatus" class="scanner-message">Skieruj aparat na kod części.</p>
+          </div>
+          <button id="operationStartScan" class="btn btn-outline" type="button">Skanuj część</button>
+          <form id="operationSearchForm" class="search-row" role="search">
+            <label for="operationSearchQuery" class="visually-hidden">Wyszukaj część</label>
+            <input id="operationSearchQuery" type="search" maxlength="80" placeholder="Nazwa, indeks lub SAP" autocomplete="off">
+            <button id="operationSearchButton" class="btn btn-search" type="submit">Szukaj</button>
+          </form>
+          <button id="operationClearSearch" class="text-button" type="button">Wyczyść wyszukiwanie</button>
+          <div id="operationSearchResults" class="operation-search-results"></div>
+          <button id="operationMore" class="btn btn-outline stock-more" type="button" hidden>Wczytaj więcej części</button>
+          <form id="operationQuantityForm" class="operation-quantity-panel" hidden>
+            <strong id="operationPartName"></strong>
+            <label class="input-label" for="operationQuantity">Dodaj ilość</label>
+            <input id="operationQuantity" type="number" min="1" max="100000" step="1" inputmode="numeric"
+              autocomplete="off" required placeholder="Liczba sztuk">
+            <div class="operation-quantity-actions">
+              <button id="operationCancelPart" class="btn btn-outline" type="button">Anuluj</button>
+              <button id="operationAddButton" class="btn btn-primary" type="submit">Dodaj</button>
+            </div>
+          </form>
+          <p id="operationStatus" class="operation-status" role="status" aria-live="polite" hidden></p>
+          <section class="operation-summary">
+            <div class="operation-section">
+              <div class="operation-section-heading"><strong>Przyjęcie (PZ)</strong><span id="operationPZCount">0 poz.</span></div>
+              <div id="operationPZList" class="operation-lines"></div>
+            </div>
+            <div class="operation-section">
+              <div class="operation-section-heading"><strong>Wydanie (WZ)</strong><span id="operationWZCount">0 poz.</span></div>
+              <div id="operationWZList" class="operation-lines"></div>
+            </div>
+          </section>
+          <p class="field-hint">Sesja zapisze jednocześnie PZ i WZ (lub tylko wybrany rodzaj). Części muszą mieć wcześniej ustalone stany.</p>
+          <button id="operationSave" class="btn btn-primary" type="button" disabled>Zakończ i zapisz sesję</button>
+          <button id="operationCancelSession" class="text-button" type="button">Wyczyść szkic sesji</button>
+        </div>
       </div>
 
       <div id="inventoryScreen" hidden>
@@ -227,6 +288,19 @@
 
     <footer class="page-footer">GPBS STORAGE <span aria-hidden="true">•</span> SYSTEM MAGAZYNOWY</footer>
   </main>
+
+  <dialog id="operationConfirmDialog" class="inventory-dialog" aria-labelledby="operationConfirmTitle" aria-describedby="operationConfirmText">
+    <div class="inventory-dialog-inner">
+      <div class="panel-kicker">GPBS STORAGE / MAGAZYN</div>
+      <h2 id="operationConfirmTitle">Zatwierdzić całą sesję?</h2>
+      <p id="operationConfirmText" class="operation-confirm-text"></p>
+      <p class="field-hint">Zapis obu rodzajów operacji jest wspólny. Nie można zatwierdzić tylko połowy sesji.</p>
+      <div class="inventory-dialog-actions">
+        <button id="operationConfirmCancel" class="btn btn-outline" type="button">Wróć</button>
+        <button id="operationConfirmApprove" class="btn btn-primary" type="button">Zapisz PZ / WZ</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="inventoryCountDialog" class="inventory-dialog inventory-count-dialog" aria-labelledby="inventoryCountTitle">
     <form id="inventoryCountForm" class="inventory-dialog-inner">
       <div class="panel-kicker">INWENTARYZACJA / POLICZONE SZTUKI</div>
