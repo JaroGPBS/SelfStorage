@@ -6,7 +6,7 @@
 
   const byId = id => document.getElementById(id);
   const pinInput = byId('workerPin');
-  const subscreens = ['warehouseSelection','warehouseHome','stockScreen','inventoryScreen','crewHome','officeHome'];
+  const subscreens = ['warehouseSelection','warehouseHome','stockScreen','operationScreen','inventoryScreen','crewHome','officeHome'];
   const warehouseRoles = new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
   const roleLabels = {
     ADMIN:'Administrator', KIEROWNIK:'Kierownik', KOORDYNATOR:'Koordynator',
@@ -31,7 +31,7 @@
   // The server validates the signed session and live warehouse grants again
   // after every reload before any remembered screen is restored.
   const SCREEN_STORAGE_KEY='gpbs_pl_last_screen_v1';
-  const REMEMBERED_SCREENS=new Set(['warehouseHome','stockScreen','inventoryScreen']);
+  const REMEMBERED_SCREENS=new Set(['warehouseHome','stockScreen','operationScreen','inventoryScreen']);
 
   function rememberScreen(which) {
     try {
@@ -168,6 +168,7 @@
   function clearSession() {
     forgetScreen();
     window.GPBSPlInventory?.close();
+    window.GPBSPlOperations?.close();
     state.user=null;
     state.warehouse=null;
     state.subview='';
@@ -199,6 +200,7 @@
 
   function selectWarehouse(warehouse) {
     window.GPBSPlInventory?.close();
+    window.GPBSPlOperations?.close();
     if (!state.user || !warehouseRoles.has(state.user.role) ||
         !state.user.warehouses.some(w=>w.id===warehouse.id)) return;
     state.warehouse=state.user.warehouses.find(w=>w.id===warehouse.id);
@@ -221,6 +223,7 @@
 
   function showWarehousePicker() {
     window.GPBSPlInventory?.close();
+    window.GPBSPlOperations?.close();
     state.warehouse=null;
     state.inventory.loadSequence++;
     stopInventorySearch();
@@ -274,7 +277,7 @@
       state.warehouse?.id:null;
     const previousSubview=state.subview;
     const keepWorkScreen=Boolean(previous &&
-      (previousSubview==='stockScreen'||previousSubview==='inventoryScreen') &&
+      (previousSubview==='stockScreen'||previousSubview==='inventoryScreen'||previousSubview==='operationScreen') &&
       warehouses.some(w=>w.id===previous) && warehouseRoles.has(role));
     if(!keepWorkScreen) {
       stopStockRequest();
@@ -312,6 +315,8 @@
           loadInventory();
         } else if(firstLoad && destination==='stockScreen') {
           fetchStock();
+        } else if(firstLoad && destination==='operationScreen') {
+          window.GPBSPlOperations?.open(selected,user.id,'PZ');
         }
       } else {
         showWarehousePicker();
@@ -808,6 +813,20 @@
   byId('switchWarehouseButton').addEventListener('click',showWarehousePicker);
   byId('openStockButton').addEventListener('click',openStock);
   byId('openInventoryButton').addEventListener('click',openInventory);
+  function openOperation(direction) {
+    if(!state.warehouse||!state.user||!warehouseRoles.has(state.user.role))return;
+    window.GPBSPlInventory?.close();
+    subview('operationScreen');
+    window.GPBSPlOperations?.open(state.warehouse,state.user.id,direction);
+  }
+  byId('openReceiptButton').addEventListener('click',()=>openOperation('PZ'));
+  byId('openIssueButton').addEventListener('click',()=>openOperation('WZ'));
+  byId('backFromOperationButton').addEventListener('click',()=>{
+    window.GPBSPlOperations?.close();
+    subview('warehouseHome');
+    loadInventoryNotice();
+  });
+  document.addEventListener('gpbs-pl-operation-committed',loadInventoryNotice);
   byId('backFromInventoryButton').addEventListener('click',()=>{
     window.GPBSPlInventory?.close();
     state.inventory.loadSequence++;
