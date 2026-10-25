@@ -27,26 +27,38 @@ Tworzy tabele:
 Migracja **nie dopisuje żadnych stanów magazynowych**. Nie zmienia
 produkcji FR, nie usuwa danych ani nie nadpisuje istniejącego `warehouse_stock`.
 
-## Tryb bezpiecznego wdrożenia
+## Zakończenie inwentaryzacji i publikowanie stanów
 
-Nowa flaga w Cloudflare Pages Production:
-`PL_INVENTORY_PUBLISH_ENABLED` = `true` (Plain text, świadomy opt-in).
+Zgodnie z decyzją użytkownika, **polskie magazyny mogą już zatwierdzać
+rzeczywiste stany**. Po wdrożeniu bieżącej wersji endpoint domyślnie
+umożliwia zakończenie inwentaryzacji; wyłącznie użytkownik z ważnym
+PIN-em i uprawnieniami do danego, aktywnego magazynu PL ma dostęp.
+System nigdy nie publikuje przez ten endpoint do magazynów FR.
 
-**Domyślnie flaga nie istnieje, czyli zatwierdzenie NIE DZIAŁA.**
-Można zalogować się do magazynu, wyszukiwać części, wpisywać
-policzone ilości od 0 do 100000, poprawiać je i przechowywać
-roboczy arkusz w D1 — ale `warehouse_stock` nie jest w tym
-trybie zmieniany. To bezpieczny etap testowania.
+Opcjonalny wyłącznik bezpieczeństwa: w Cloudflare Pages Production
+`PL_INVENTORY_PUBLISH_ENABLED=false` blokuje zatwierdzanie, ale nie
+blokuje skanowania i tworzenia arkusza. Wartość `true` lub brak
+zmiennej zezwala na zatwierdzanie w aktywnych magazynach PL.
 
-Po potwierdzeniu gotowości do zapisania prawdziwych stanów
-administrator ustawia flagę i wykonuje wdrożenie Cloudflare.
-Wtedy dopiero przycisk `Zatwierdź policzone pozycje` działa
-(po niezależnym potwierdzeniu w oknie).
+`Zakończ inwentaryzację` pobiera aktualne podsumowanie z serwera,
+prezentuje liczbę policzonych i niepoliczonych **pozycji katalogowych**
+oraz liczbę nowych pozycji do weryfikacji. Po świadomym potwierdzeniu
+jedna transakcja D1:
+- weryfikuje stan arkusza, uprawnienia pracownika i wszystkie
+  zapamiętane stany bazowe;
+- zapisuje historię przed/po każdej policzonej części;
+- aktualizuje WYŁĄCZNIE policzone części w `warehouse_stock`;
+- kończy arkusz i pozwala na rozpoczęcie kolejnego.
 
-**Nie włączaj flagi wyłącznie dla testu na PL-TYCHY**, jeśli
-wpisane ilości nie odpowiadają faktycznie policzonym częściom.
-Można też przeprowadzić próbę na `PL-TEST`, o ile aktywne
-konto ma do niego dostęp.
+Niepoliczone części zachowują poprzednie stany, a te bez zapisanego
+stanu pozostają `Nieustalony`. `0` jest zapisywane wyłącznie
+jeśli pracownik świadomie policzył zero.
+
+Nie ma już limitu 30 pozycji. Arkusz dopuszcza do **5000 różnych
+części** (techniczny bezpiecznik znacznie powyżej zakładanych
+300+), a zatwierdzenie używa **3 instrukcji SQL w jednej transakcji**,
+nie dwóch instrukcji na każdą część. Gwarantuje atomowy zapis
+przy dużych arkuszach i zachowanie historii.
 
 ## Obsługa
 
@@ -54,11 +66,11 @@ konto ma do niego dostęp.
 2. Wyszukaj część po nazwie, numerze części albo SAP i wybierz ją.
 3. Wpisz faktyczną ilość. `0` jest dozwolone tylko jako świadome
    potwierdzenie, że części nie ma. Puste pole oznacza `niepoliczona`.
-4. Zapisz do roboczego arkusza; można ją `Popraw` lub `Usuń`.
+4. Zapisz do roboczego arkusza; można ją `Popraw sumę` lub `Usuń`.
    Arkusz zachowuje się po odświeżeniu strony.
-5. Zatwierdzenie (gdy jest włączone) zapisuje jednocześnie
-   wszystkie pozycje w bieżącym arkuszu i ich historię. Maksymalnie
-   30 części na jeden arkusz; po zatwierdzeniu można prowadzić kolejny.
+5. Zakończenie zapisuje jednocześnie wszystkie policzone pozycje
+   w bieżącym arkuszu i ich historię. Arkusz mieści 5000 różnych części;
+   po zatwierdzeniu można prowadzić kolejny.
    Pozostałe niepoliczone części zachowują wcześniejsze stany lub
    pozostają `Nieustalony`.
 
@@ -90,7 +102,6 @@ serwer wylicza wszystko sam.
 
 ### Co będzie później
 
-- Dalszy moduł skanowania części kodami kreskowymi podczas inwentaryzacji.
 - Wprowadzenie historii inwentaryzacji do wspólnego panelu biurowego
   i administracyjnego.
 - Możliwość rozbudowy do bardziej szczegółowych przebiegów inwentaryzacji.
@@ -154,3 +165,23 @@ cyfry 0–9, wyczyszczenie (`C`) i cofnięcie jednej cyfry (`⌫`).
 Nie ma potrzeby wywoływania klawiatury systemowej Androida.
 Po `Dodaj` kamera pozostaje wyłączona; następny skan wymaga
 świadomego ponownego naciśnięcia `Skanuj`.
+
+
+## Docelowy „punkt zero” po testach — NIE wykonywać teraz
+
+Reset testowych stanów powinien być oddzielną, wyraźnie oznaczoną
+operacją **tylko w panelu administracyjnym**, nie dostępną dla
+magazyniera. Administrator wybiera konkretny aktywny magazyn PL
+(np. PL-TYCHY), widzi podsumowanie wpływu i potwierdza kodem
+/ wymaganą frazą. Przed wykonaniem tworzymy eksport stanu i
+historyczne zdarzenie resetu; następnie w jednej kontrolowanej
+operacji czyścimy `warehouse_stock` tylko dla wybranego magazynu,
+a jego niezakończone arkusze unieważniamy, aby nie mogły zostać
+opublikowane po resecie. **Nie wolno kasować katalogu części
+wspólnego dla magazynów ani historii audytu bez oddzielnej zgody**.
+Przy resetowaniu testowo dodanych części trzeba je najpierw
+wytypować po `pl_part_verifications` i sprawdzić zależności.
+
+Nie uruchamiaj ręcznego `DELETE FROM warehouse_stock` w produkcji
+bez tego procesu — jest ryzyko starych arkuszy i utraty śladu zmian.
+Na obecnym etapie resetu NIE implementujemy ani nie wykonujemy.
