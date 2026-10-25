@@ -126,7 +126,7 @@
     el('operationSearchCaption').textContent=state.direction==='PZ'
       ?'Dodaj część przyjmowaną do magazynu.'
       :'Dodaj część wydawaną z magazynu.';
-    el('operationQuantityPanel').hidden=!state.part;
+    el('operationQuantityForm').hidden=!state.part;
     disableDuringPending();
   }
 
@@ -136,7 +136,7 @@
     state.part=null;
     el('operationSearchResults').replaceChildren();
     el('operationSearchQuery').value='';
-    el('operationQuantityPanel').hidden=true;
+    el('operationQuantityForm').hidden=true;
     stopScanner();
     render();
   }
@@ -146,7 +146,7 @@
     state.part=part;
     el('operationPartName').textContent=part.name+' · '+part.number;
     el('operationQuantity').value='';
-    el('operationQuantityPanel').hidden=false;
+    el('operationQuantityForm').hidden=false;
     el('operationQuantity').focus({preventScroll:true});
   }
 
@@ -328,7 +328,7 @@
       state.pending=null;state.pz.clear();state.wz.clear();state.part=null;
       el('operationCounterparty').value='';
       el('operationSearchResults').replaceChildren();
-      el('operationQuantityPanel').hidden=true;
+      el('operationQuantityForm').hidden=true;
       saveDraft();
       status((data.alreadySaved?'Sesja już była zapisana. ':'Zapisano sesję. ')+
         'PZ: '+data.pzItems+' pozycji, WZ: '+data.wzItems+
@@ -371,7 +371,7 @@
     el('operationWarehouseCaption').textContent=warehouse.name+' · '+warehouse.id;
     el('operationSearchResults').replaceChildren();
     el('operationSearchQuery').value='';
-    el('operationQuantityPanel').hidden=true;
+    el('operationQuantityForm').hidden=true;
     el('operationScanPanel').hidden=true;
     el('operationStartScan').hidden=false;
     status('');
