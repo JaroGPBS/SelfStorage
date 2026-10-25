@@ -271,6 +271,83 @@
     return table;
   }
 
+  // Newly created warehouse parts stay visible in red until the admin
+  // has verified the name, index and optional SAP.
+  function renderPartsTable(items) {
+    const table=document.createElement('table');
+    table.className='parts-review-table';
+    const header=table.createTHead().insertRow();
+    for(const label of ['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ILOŚĆ','WERYFIKACJA','']) {
+      const cell=document.createElement('th');
+      cell.textContent=label;
+      header.append(cell);
+    }
+    const body=table.createTBody();
+    for(const part of items) {
+      const row=body.insertRow();
+      const pending=part.verification_status==='PENDING';
+      if(pending)row.classList.add('part-pending-verification');
+      row.append(td(part.name||'—'));
+      row.append(td(part.part_number||'—'));
+      row.append(td(part.sap_number||'—'));
+      row.append(td(part.quantity===null||part.quantity===undefined
+        ?'Nieustalony':formatNum(part.quantity)+' szt.'));
+      const status=td('');
+      status.textContent=pending?'DO WERYFIKACJI':'—';
+      status.className=pending?'part-review-status':'';
+      row.append(status);
+      const action=td('');
+      const edit=document.createElement('button');
+      edit.type='button';
+      edit.className='btn mini';
+      edit.textContent=pending?'Sprawdź / edytuj':'Edytuj';
+      edit.addEventListener('click',()=>openPartEditor(part));
+      action.append(edit);
+      row.append(action);
+    }
+    return table;
+  }
+
+  function openPartEditor(part) {
+    $('partEditId').value=part.id;
+    $('partEditName').value=part.name||'';
+    $('partEditNumber').value=part.part_number||'';
+    $('partEditSap').value=part.sap_number||'';
+    $('partEditVerify').checked=false;
+    $('partEditStatus').textContent=part.verification_status==='PENDING'
+      ?'Nowa część. Sprawdź nazwę, indeks i SAP przed oznaczeniem jako zweryfikowana.'
+      :'Możesz skorygować dane tej części.';
+    $('partEditVerify').parentElement.hidden=part.verification_status!=='PENDING';
+    $('partEditError').classList.add('hidden');
+    $('partEditError').textContent='';
+    $('partEditDialog').showModal();
+  }
+
+  async function savePartEditor(event) {
+    event.preventDefault();
+    const button=$('partEditSave');
+    button.disabled=true;
+    $('partEditError').classList.add('hidden');
+    try {
+      const result=await post({
+        action:'updatePart',
+        partId:$('partEditId').value,
+        name:$('partEditName').value.trim(),
+        number:$('partEditNumber').value.trim(),
+        sap:$('partEditSap').value.trim(),
+        verify:$('partEditVerify').checked
+      });
+      $('partEditDialog').close();
+      message(result.message||'Zapisano dane części.','success');
+      const response=await api('parts');
+      state.records=response.parts||[];
+      if(state.view==='parts')renderList();
+    }catch(error) {
+      $('partEditError').textContent=error.message;
+      $('partEditError').classList.remove('hidden');
+    }finally{button.disabled=false;}
+  }
+
   function renderList() {
     const q=$('tableSearch').value.toLocaleLowerCase('pl').trim();
     const matching=state.records.filter(row=>
@@ -282,7 +359,8 @@
       const empty=document.createElement('div');empty.className='empty';
       empty.textContent=state.records.length?'Nie znaleziono pasujących pozycji.':'Brak danych do wyświetlenia.';
       $('tableResults').append(empty);
-    }else $('tableResults').append(state.view==='users'?renderUsersTable(matching):buildTable(columns,rows));
+    }else $('tableResults').append(state.view==='users'?renderUsersTable(matching)
+      :state.view==='parts'?renderPartsTable(matching):buildTable(columns,rows));
     $('tableFooter').textContent='Wyświetlono '+matching.length+' z '+state.records.length+' pozycji';
   }
 
