@@ -57,9 +57,36 @@ operacje magazynowe mają odnosić się do niezmiennego `users.id`.
 - W razie braku konfiguracji lub tabeli brak logowania zamiast
   omijania sprawdzeń.
 
+## Ekran logowania na telefonie (etap UI)
+
+Adres: `https://selfstorage-43f.pages.dev/pl/` (osobny moduł,
+nie zastępuje działającej aplikacji `/` dla Francji).
+
+Nowe pliki: `pl/index.html`, `pl/pl.css`, `pl/pl.js`.
+Wygląd GPBS Storage, mobilny, pole PIN 4 cyfry z klawiaturą
+numeryczną. Przy pierwszym otwarciu sprawdza `GET /api/pl/auth`.
+Po przesłaniu PIN-u wywołuje `POST /api/pl/auth`, pokazuje
+wyłącznie identyfikator (`nickname`) i przypisane magazyny w Polsce.
+Nie pokazuje pełnego nazwiska, telefonu, PIN-u ani ID technicznego.
+Przycisk Wyloguj wywołuje `POST /api/pl/auth` z akcją `logout`.
+
+PIN nie jest zapisywany w localStorage, sessionStorage ani w pamięci
+przeglądarki po wysłaniu formularza. Sesję utrzymuje podpisane
+ciasteczko HttpOnly. Informacja o aktywności i magazynach pochodzi
+z bieżącej odpowiedzi serwera, a nie z lokalnej bazy.
+
+**Test:** po udanym wdrożeniu, zaloguj się PIN-em istniejącego
+aktywnego użytkownika D1, przypisanego do aktywnego magazynu PL;
+upewnij się, że widzisz jego krótką nazwę (np. MT) i magazyn.
+Po odświeżeniu sesja powinna pozostać aktywna. Przycisk Wyloguj
+powinien wrócić do formularza. Nie przekazuj PIN-u w rozmowie.
+
+Uwaga: ekran jest na razie przeznaczony do weryfikacji logowania;
+moduł skanowania QR i PZ/WZ nie jest jeszcze podłączony.
+
 ## Granice tego etapu
 
-Brak jeszcze pracowniczego ekranu logowania oraz PZ/WZ przez tę sesję.
+Pracowniczy ekran logowania już jest, lecz nie obsługuje jeszcze PZ/WZ przez tę sesję.
 Testowe PZ/WZ `/api/pl/warehouse-operation` nadal są odrębnym,
 wyłączonym domyślnie narzędziem tylko dla `PL-TEST`.
 
