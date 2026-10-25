@@ -393,14 +393,15 @@
       const actions=document.createElement('div');
       actions.className='inventory-draft-actions';
       actions.append(
-        inventoryDraftLineButton('Popraw',()=>chooseInventoryPart({
+        inventoryDraftLineButton('Popraw sumę',()=>window.GPBSPlInventory?.showCount({
           id:line.partId,name:line.name,number:line.number,sap:line.sap
-        })),
+        },'set')),
         inventoryDraftLineButton('Usuń',()=>removeInventoryLine(line.partId))
       );
       row.append(desc,quantity,actions);
       list.append(row);
     }
+    window.GPBSPlInventory?.setDraft(inv.draft);
     byId('inventoryCommitButton').disabled=
       !inv.publishingEnabled||inv.mutationBusy||lines.length===0;
     byId('inventoryPublishInfo').textContent=inv.publishingEnabled
@@ -412,15 +413,7 @@
 
   function chooseInventoryPart(item) {
     if(state.inventory.mutationBusy)return;
-    state.inventory.selectedPart=item;
-    const saved=state.inventory.draft?.lines?.find(x=>x.partId===item.id);
-    byId('inventorySelectedPartName').textContent=inventoryPartLabel(item);
-    byId('inventorySelectedPartNumber').textContent=String(item.number||item.id)+
-      (item.sap?' · SAP '+item.sap:'');
-    byId('inventoryQuantity').value=saved?String(saved.quantity):'';
-    byId('inventoryQuantityForm').hidden=false;
-    inventoryError('');
-    byId('inventoryQuantityForm').scrollIntoView({block:'nearest',behavior:'smooth'});
+    window.GPBSPlInventory?.showCount(item,'add');
   }
 
   function renderInventorySearchPart(part) {
