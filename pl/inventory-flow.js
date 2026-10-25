@@ -139,7 +139,10 @@
     state.opening=false;
     el('inventoryScannerPanel').hidden=true;
     el('inventoryScannerClosed').hidden=!manual;
-    if(manual)el('inventoryManual').hidden=false;
+    if(manual) {
+      el('inventoryManual').hidden=false;
+      el('inventoryManual').scrollIntoView({behavior:'smooth',block:'start'});
+    }
     try{await camera()?.stop();}catch{}
   }
 
