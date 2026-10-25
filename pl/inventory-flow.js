@@ -5,7 +5,7 @@
   const el=id=>document.getElementById(id);
   const camera=()=>window.GPBSInventoryCamera;
   const state={warehouse:null,epoch:0,opening:false,scanning:false,
-    part:null,mode:'add',pendingId:null,busy:false,draft:null};
+    part:null,mode:'add',pendingId:null,busy:false,draft:null,stopPromise:null};
 
   function notify(message){
     el('inventoryScannerMessage').textContent=message;
@@ -113,6 +113,11 @@
     const epoch=++state.epoch;
     const warehouseId=state.warehouse.id;
     state.opening=true;
+    if(state.stopPromise)await state.stopPromise;
+    if(epoch!==state.epoch||state.warehouse?.id!==warehouseId){
+      state.opening=false;
+      return;
+    }
     el('inventoryScannerPanel').hidden=false;
     el('inventoryScannerClosed').hidden=true;
     el('inventoryManual').hidden=true;
@@ -143,7 +148,9 @@
       el('inventoryManual').hidden=false;
       el('inventoryManual').scrollIntoView({behavior:'smooth',block:'start'});
     }
-    try{await camera()?.stop();}catch{}
+    state.stopPromise=Promise.resolve(camera()?.stop()).catch(()=>{});
+    await state.stopPromise;
+    state.stopPromise=null;
   }
 
   function open(warehouse){
