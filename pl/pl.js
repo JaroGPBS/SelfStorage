@@ -27,9 +27,49 @@
     byId('sessionScreen').hidden = which !== 'session';
   }
 
+  // Remember only the screen and warehouse, never a PIN or inventory data.
+  // The server validates the signed session and live warehouse grants again
+  // after every reload before any remembered screen is restored.
+  const SCREEN_STORAGE_KEY='gpbs_pl_last_screen_v1';
+  const REMEMBERED_SCREENS=new Set(['warehouseHome','stockScreen','inventoryScreen']);
+
+  function rememberScreen(which) {
+    try {
+      if(!state.user || !state.warehouse ||
+         !warehouseRoles.has(state.user.role) || !REMEMBERED_SCREENS.has(which))return;
+      sessionStorage.setItem(SCREEN_STORAGE_KEY,JSON.stringify({
+        userId:state.user.id,warehouseId:state.warehouse.id,screen:which
+      }));
+    }catch(error) {
+      // Storage can be disabled by browser privacy settings. Navigation still works.
+    }
+  }
+
+  function rememberedScreen(user,warehouses) {
+    try {
+      const raw=sessionStorage.getItem(SCREEN_STORAGE_KEY);
+      if(!raw)return null;
+      const saved=JSON.parse(raw);
+      if(saved?.userId!==user.id || !REMEMBERED_SCREENS.has(saved.screen) ||
+         !warehouses.some(w=>w.id===saved.warehouseId)) {
+        sessionStorage.removeItem(SCREEN_STORAGE_KEY);
+        return null;
+      }
+      return saved;
+    }catch(error) {
+      try{sessionStorage.removeItem(SCREEN_STORAGE_KEY);}catch{}
+      return null;
+    }
+  }
+
+  function forgetScreen() {
+    try{sessionStorage.removeItem(SCREEN_STORAGE_KEY);}catch{}
+  }
+
   function subview(which) {
     state.subview = which;
     for (const name of subscreens) byId(name).hidden = name !== which;
+    rememberScreen(which);
   }
 
   function errorText(target, content) {
@@ -126,6 +166,7 @@
   }
 
   function clearSession() {
+    forgetScreen();
     window.GPBSPlInventory?.close();
     state.user=null;
     state.warehouse=null;
@@ -226,6 +267,9 @@
     if(!nickname||!user?.id||warehouses.length===0||!roleLabels[role])
       throw new Error('Konto nie ma przypisanego aktywnego magazynu w Polsce.');
 
+    const firstLoad=!state.user;
+    const saved=firstLoad && warehouseRoles.has(role)
+      ?rememberedScreen(user,warehouses):null;
     const previous=state.user?.id===user.id&&state.user.role===role ?
       state.warehouse?.id:null;
     const previousSubview=state.subview;
@@ -253,12 +297,22 @@
       subview('crewHome');
     } else if(warehouseRoles.has(role)) {
       const selected=warehouses.find(w=>w.id===previous) ||
+        (saved?warehouses.find(w=>w.id===saved.warehouseId):null) ||
         (warehouses.length===1?warehouses[0]:null);
       if(selected) {
         state.warehouse=selected;
         renderWarehouseHeading();
-        subview(keepWorkScreen?previousSubview:'warehouseHome');
+        const destination=keepWorkScreen?previousSubview:
+          (saved?.warehouseId===selected.id?saved.screen:'warehouseHome');
+        subview(destination);
         loadInventoryNotice();
+        // Reload the draft from D1; never reactivate the camera after refresh.
+        if(firstLoad && destination==='inventoryScreen') {
+          window.GPBSPlInventory?.open(selected);
+          loadInventory();
+        } else if(firstLoad && destination==='stockScreen') {
+          fetchStock();
+        }
       } else {
         showWarehousePicker();
       }
