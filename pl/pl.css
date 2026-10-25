@@ -133,3 +133,21 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
   .stock-quantity{font-size:11px}
   .status-pill{display:none}
 }
+
+
+/* Initial / incomplete warehouse inventory notice. */
+.inventory-notice{display:flex;align-items:flex-start;gap:12px;
+  margin:16px 0 3px;padding:15px 14px;border:1px solid #b37b48;
+  border-radius:12px;background:linear-gradient(125deg,#3c3025,#262327);
+  color:#f6e1cc}
+.inventory-notice-icon{flex:0 0 auto;display:grid;place-items:center;
+  width:28px;height:28px;border-radius:50%;
+  background:#8c542f;color:#fff;font-size:17px;font-weight:900}
+.inventory-notice strong{display:block;font-size:14px;line-height:1.35;
+  font-weight:850;letter-spacing:.1px}
+.inventory-notice p{font-size:12px;line-height:1.6;color:#e2c9af;margin:7px 0 0}
+#stockScreen .inventory-notice{margin:0 0 17px}
+@media(max-width:360px){
+  .inventory-notice{padding:13px 11px;gap:9px}
+  .inventory-notice strong{font-size:13px}
+}
