@@ -126,6 +126,7 @@
   }
 
   function clearSession() {
+    window.GPBSPlInventory?.close();
     state.user=null;
     state.warehouse=null;
     state.subview='';
@@ -156,6 +157,7 @@
   }
 
   function selectWarehouse(warehouse) {
+    window.GPBSPlInventory?.close();
     if (!state.user || !warehouseRoles.has(state.user.role) ||
         !state.user.warehouses.some(w=>w.id===warehouse.id)) return;
     state.warehouse=state.user.warehouses.find(w=>w.id===warehouse.id);
@@ -177,6 +179,7 @@
   }
 
   function showWarehousePicker() {
+    window.GPBSPlInventory?.close();
     state.warehouse=null;
     state.inventory.loadSequence++;
     stopInventorySearch();
@@ -517,6 +520,7 @@
   function openInventory() {
     if(!state.warehouse||!warehouseRoles.has(state.user?.role))return;
     subview('inventoryScreen');
+    window.GPBSPlInventory?.open(state.warehouse);
     loadInventory();
   }
 
@@ -693,6 +697,7 @@
   byId('openStockButton').addEventListener('click',openStock);
   byId('openInventoryButton').addEventListener('click',openInventory);
   byId('backFromInventoryButton').addEventListener('click',()=>{
+    window.GPBSPlInventory?.close();
     state.inventory.loadSequence++;
     stopInventorySearch();
     state.inventory.selectedPart=null;
