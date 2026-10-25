@@ -330,9 +330,16 @@
       el('operationSearchResults').replaceChildren();
       el('operationQuantityForm').hidden=true;
       saveDraft();
+      let committedAt='';
+      if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(data.committedAt||'')){
+        const date=new Date(data.committedAt.replace(' ','T')+'Z');
+        committedAt=' Data i godzina (Polska): '+new Intl.DateTimeFormat('pl-PL',{
+          timeZone:'Europe/Warsaw',dateStyle:'short',timeStyle:'short'
+        }).format(date)+'.';
+      }
       status((data.alreadySaved?'Sesja już była zapisana. ':'Zapisano sesję. ')+
         'PZ: '+data.pzItems+' pozycji, WZ: '+data.wzItems+
-        ' pozycji. Numer: '+data.id+'.');
+        ' pozycji. Numer: '+data.id+'.'+committedAt);
       document.dispatchEvent(new Event('gpbs-pl-operation-committed'));
     }catch(error){
       if(error.status===400||error.status===403||error.status===409){
