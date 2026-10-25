@@ -130,6 +130,123 @@ async function saveLine(db,warehouseId,actorId,partId,quantity) {
   return workerJson({ok:true,draft:await readDraft(db,warehouseId,actorId)});
 }
 
+// ADD is incremental (5 then 8 = 13); SET is an explicit correction
+// of the total. Each client event is unique and cannot be applied twice.
+async function countEvent(db,warehouseId,actorId,body) {
+  const partId=String(body.partId||'');
+  const quantity=body.quantity;
+  const eventId=String(body.eventId||'');
+  const type=body.action==='set'?'SET':'ADD';
+  if(!ID_PATTERN.test(partId)||!Number.isSafeInteger(quantity)||
+    quantity<0||quantity>MAX_QUANTITY||
+    !/^PL-EVT-[a-f0-9-]{36}$/.test(eventId))
+    return fail('Nieprawidłowy kod, ilość lub identyfikator dodania.',400);
+
+  const part=await db.prepare('SELECT id FROM parts WHERE id=? AND active=1')
+    .bind(partId).first();
+  if(!part)return fail('Nie znaleziono aktywnej części.',404);
+  const draft=await createOrLoadDraft(db,warehouseId,actorId);
+  if(!draft)return fail('Nie można przygotować arkusza.',503);
+  const previous=await db.prepare(
+    'SELECT inventory_id,warehouse_id,part_id,actor_id,event_type,quantity '+
+    'FROM pl_warehouse_inventory_events WHERE id=?'
+  ).bind(eventId).first();
+  if(previous) {
+    if(previous.inventory_id===draft.id && previous.warehouse_id===warehouseId &&
+      previous.part_id===partId && previous.actor_id===actorId &&
+      previous.event_type===type && Number(previous.quantity)===quantity)
+      return workerJson({ok:true,alreadySaved:true,
+        draft:await readDraft(db,warehouseId,actorId)});
+    return fail('To dodanie już istnieje z innymi danymi.',409);
+  }
+
+  const stmts=[
+    db.prepare(
+      'INSERT INTO pl_warehouse_inventory_events '+
+      '(id,inventory_id,warehouse_id,part_id,actor_id,event_type,quantity) '+
+      'VALUES (?,?,?,?,?,?,?)'
+    ).bind(eventId,draft.id,warehouseId,partId,actorId,type,quantity),
+    db.prepare(
+      'INSERT INTO pl_warehouse_inventory_lines '+
+      '(inventory_id,part_id,counted_quantity,base_quantity) '+
+      'SELECT ?,p.id,?,(SELECT quantity FROM warehouse_stock WHERE warehouse_id=? AND part_id=p.id) '+
+      'FROM parts p WHERE p.id=? AND p.active=1 AND '+
+      '((SELECT COUNT(*) FROM pl_warehouse_inventory_lines WHERE inventory_id=?)<? '+
+      'OR EXISTS(SELECT 1 FROM pl_warehouse_inventory_lines WHERE inventory_id=? AND part_id=?)) '+
+      "AND EXISTS(SELECT 1 FROM pl_warehouse_inventories WHERE id=? AND status='DRAFT') "+
+      'ON CONFLICT(inventory_id,part_id) DO UPDATE SET '+
+      'counted_quantity='+(
+        type==='ADD'
+          ? 'pl_warehouse_inventory_lines.counted_quantity+excluded.counted_quantity'
+          : 'excluded.counted_quantity'
+      )+',updated_at=CURRENT_TIMESTAMP'
+    ).bind(draft.id,quantity,warehouseId,partId,draft.id,MAX_LINES,
+      draft.id,partId,draft.id),
+    db.prepare(
+      'UPDATE pl_warehouse_inventories SET revision=revision+1,updated_at=CURRENT_TIMESTAMP, '+
+      'commit_guard=CASE WHEN status=\'DRAFT\' AND '+
+      'EXISTS(SELECT 1 FROM pl_warehouse_inventory_lines WHERE inventory_id=? AND part_id=?) '+
+      'THEN 1 ELSE 0 END WHERE id=?'
+    ).bind(draft.id,partId,draft.id)
+  ];
+  try {
+    await db.batch(stmts);
+    return workerJson({ok:true,alreadySaved:false,
+      draft:await readDraft(db,warehouseId,actorId)});
+  }catch(error) {
+    // A lost response must not cause a double count when the worker retries.
+    const event=await db.prepare(
+      'SELECT inventory_id,warehouse_id,part_id,actor_id,event_type,quantity '+
+      'FROM pl_warehouse_inventory_events WHERE id=?'
+    ).bind(eventId).first().catch(()=>null);
+    if(event && event.inventory_id===draft.id && event.warehouse_id===warehouseId &&
+      event.part_id===partId && event.actor_id===actorId &&
+      event.event_type===type && Number(event.quantity)===quantity)
+      return workerJson({ok:true,alreadySaved:true,
+        draft:await readDraft(db,warehouseId,actorId)});
+    if(String(error?.message||'').toLowerCase().includes('constraint'))
+      return fail('Nie można dodać kolejnych sztuk: limit 100000 na część '+
+        'lub 30 części w arkuszu. Sprawdź policzone ilości.',409);
+    throw error;
+  }
+}
+
+async function createUnverifiedPart(db,warehouseId,actorId,body) {
+  const name=String(body.name||'').trim().replace(/\s+/g,' ');
+  const rawCode=String(body.code||'').replace(/\u0000/g,'').trim().toUpperCase();
+  if(name.length<2||name.length>120)
+    return fail('Wpisz nazwę części (od 2 do 120 znaków).',400);
+  if(rawCode.length>120||/[\u0000-\u001f\u007f]/.test(rawCode))
+    return fail('Niepoprawny kod części.',400);
+  const number=/^[A-Z0-9._\/-]{2,80}$/.test(rawCode)
+    ?rawCode
+    :'NOWA-PL-'+crypto.randomUUID().slice(0,12).toUpperCase();
+  if(rawCode) {
+    const existing=await db.prepare(
+      'SELECT id FROM parts WHERE UPPER(part_number)=? OR UPPER(sap_number)=? '+
+      'UNION SELECT part_id AS id FROM pl_part_verifications WHERE raw_code=? LIMIT 1'
+    ).bind(rawCode,rawCode,rawCode).first();
+    if(existing)return fail('Część o tym kodzie już istnieje. Wyszukaj ją w katalogu.',409);
+  }
+  const id='GPBS-P-'+crypto.randomUUID();
+  try {
+    await db.batch([
+      db.prepare('INSERT INTO parts (id,part_number,name,active) VALUES (?,?,?,1)')
+        .bind(id,number,name),
+      db.prepare(
+        'INSERT INTO pl_part_verifications '+
+        '(part_id,warehouse_id,raw_code,created_by,status) VALUES (?,?,?,?,\'PENDING\')'
+      ).bind(id,warehouseId,rawCode||null,actorId)
+    ]);
+    return workerJson({ok:true,part:{id,name,number,sap:null,needsVerification:true},
+      message:'Część dodana do katalogu. Wymaga weryfikacji w panelu.'});
+  }catch(error) {
+    if(String(error?.message||'').toLowerCase().includes('constraint'))
+      return fail('Istnieje już część o tym numerze. Wyszukaj ją.',409);
+    throw error;
+  }
+}
+
 async function removeLine(db,warehouseId,actorId,partId) {
   const draft=await draftFor(db,warehouseId,actorId);
   if(!draft)return fail('Brak otwartego arkusza.',404);
@@ -271,6 +388,17 @@ export async function onRequestPost({request,env}) {
     if(!await getWarehouse(env.DB,warehouseId))
       return fail('Magazyn nieaktywny.',404);
 
+    if(['add','set','newPart'].includes(body.action)) {
+      const ready=await env.DB.prepare(
+        "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN "+
+        "('pl_warehouse_inventory_events','pl_part_verifications')"
+      ).first();
+      if(Number(ready?.n)!==2)
+        return fail('Najpierw wykonaj migrację D1: db/09-pl-inventory-scanning.sql',503);
+      if(body.action==='newPart')
+        return await createUnverifiedPart(env.DB,warehouseId,auth.user.id,body);
+      return await countEvent(env.DB,warehouseId,auth.user.id,body);
+    }
     if(body.action==='save'||body.action==='remove') {
       const partId=String(body.partId||'');
       if(!ID_PATTERN.test(partId))return fail('Nieprawidłowa część.',400);
