@@ -9,8 +9,8 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=1">
-  <script src="./pl.js?v=1" defer></script>
+  <link rel="stylesheet" href="./pl.css?v=2">
+  <script src="./pl.js?v=2" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -29,7 +29,7 @@
     </div>
 
     <section id="loginScreen" class="panel" aria-labelledby="loginTitle" hidden>
-      <div class="panel-kicker">DOSTĘP PRACOWNIKA</div>
+      <div class="panel-kicker">APLIKACJA MAGAZYNOWA</div>
       <h1 id="loginTitle">Zaloguj się</h1>
       <p class="subheading">Wpisz swój 4-cyfrowy PIN GPBS Storage.</p>
 
@@ -40,36 +40,106 @@
           autocomplete="off" autocapitalize="off" spellcheck="false"
           enterkeyhint="go" placeholder="••••" required
           aria-describedby="pinHelp">
-        <p id="pinHelp" class="field-hint">Cztery cyfry. Nie wpisuj nazwiska ani identyfikatora.</p>
+        <p id="pinHelp" class="field-hint">Cztery cyfry. Bez nazwy użytkownika.</p>
         <p id="loginError" class="error" role="alert" aria-live="assertive" hidden></p>
         <button id="loginButton" class="btn btn-primary" type="submit">Zaloguj <span aria-hidden="true">→</span></button>
       </form>
-      <p class="fineprint">Dostęp wyłącznie dla uprawnionych pracowników przypisanych do magazynu w Polsce.</p>
+      <p class="fineprint">Panel biurowy i administracyjny mają osobne adresy i logowanie.</p>
     </section>
 
     <section id="sessionScreen" class="panel signed-in" aria-labelledby="sessionTitle" hidden>
       <div class="session-header">
         <div class="session-avatar" id="workerBadge" aria-hidden="true">—</div>
-        <div>
+        <div class="session-identity">
           <div class="panel-kicker">ZALOGOWANY UŻYTKOWNIK</div>
           <h1 id="sessionTitle">—</h1>
+          <p class="role-subtitle" id="workerRole"></p>
         </div>
         <span class="status-pill"><span class="status-dot"></span> Aktywny</span>
       </div>
       <div class="session-divider"></div>
-      <div class="session-block">
-        <h2>Dostępne magazyny</h2>
-        <div id="warehouseList" class="warehouse-list" aria-live="polite"></div>
+
+      <div id="warehouseSelection" hidden>
+        <h2 class="section-title">Wybierz magazyn</h2>
+        <p class="section-info">Masz dostęp do kilku magazynów. Wybierz ten, w którym pracujesz.</p>
+        <div id="warehousePicker" class="warehouse-list"></div>
       </div>
-      <div class="next-step" role="note">
-        <div class="next-icon" aria-hidden="true">▣</div>
-        <div>
-          <strong>Logowanie aktywne</strong>
-          <p>W następnym etapie podłączymy skanowanie QR magazynu oraz pobrania i zwroty części.</p>
+
+      <div id="warehouseHome" hidden>
+        <div class="current-warehouse">
+          <span class="current-warehouse-icon" aria-hidden="true">▣</span>
+          <div>
+            <span class="caption-uppercase">TWÓJ MAGAZYN</span>
+            <h2 id="warehouseName">—</h2>
+            <span id="warehouseCode" class="warehouse-code">—</span>
+          </div>
+        </div>
+        <button id="switchWarehouseButton" class="text-button" type="button" hidden>Zmień magazyn</button>
+
+        <h2 class="section-title section-spaced">Operacje magazynowe</h2>
+        <div class="action-grid">
+          <div class="action-tile action-pending">
+            <span class="action-icon" aria-hidden="true">＋</span>
+            <strong>Przyjęcie</strong>
+            <span class="action-caption">W przygotowaniu</span>
+          </div>
+          <div class="action-tile action-pending">
+            <span class="action-icon" aria-hidden="true">↗</span>
+            <strong>Wydanie</strong>
+            <span class="action-caption">W przygotowaniu</span>
+          </div>
+          <div class="action-tile action-pending">
+            <span class="action-icon" aria-hidden="true">☷</span>
+            <strong>Inwentaryzacja</strong>
+            <span class="action-caption">W przygotowaniu</span>
+          </div>
+          <button id="openStockButton" class="action-tile action-available" type="button">
+            <span class="action-icon" aria-hidden="true">▤</span>
+            <strong>Stany magazynowe</strong>
+            <span class="action-caption">Sprawdź części i ilości</span>
+          </button>
         </div>
       </div>
+
+      <div id="stockScreen" hidden>
+        <button id="backFromStockButton" class="text-button back-button" type="button">← Wróć do magazynu</button>
+        <h2 class="section-title">Stany magazynowe</h2>
+        <p id="stockWarehouseCaption" class="section-info"></p>
+        <form id="stockSearchForm" class="search-row" role="search">
+          <label class="visually-hidden" for="stockQuery">Szukaj części</label>
+          <input id="stockQuery" type="search" maxlength="80" placeholder="Nazwa, numer części lub SAP" autocomplete="off">
+          <button id="stockSearchButton" class="btn btn-search" type="submit">Szukaj</button>
+        </form>
+        <p class="field-hint">„Nieustalony” oznacza brak zapisanego stanu, a nie zero sztuk.</p>
+        <p id="stockStatus" class="section-info" role="status" aria-live="polite"></p>
+        <div id="stockList" class="stock-list"></div>
+        <button id="stockMoreButton" class="btn btn-outline stock-more" type="button" hidden>Wczytaj więcej</button>
+      </div>
+
+      <div id="crewHome" hidden>
+        <h2 class="section-title">Ekipa serwisowa</h2>
+        <p class="section-info">Wybierz funkcję, z której chcesz korzystać.</p>
+        <div class="action-grid">
+          <div class="action-tile action-pending">
+            <span class="action-icon" aria-hidden="true">▣</span>
+            <strong>Wizyty na magazynie</strong>
+            <span class="action-caption">Skanowanie QR — w przygotowaniu dla PL</span>
+          </div>
+          <div class="action-tile action-pending">
+            <span class="action-icon" aria-hidden="true">▰</span>
+            <strong>Stany samochodu</strong>
+            <span class="action-caption">W przygotowaniu dla PL</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="officeHome" hidden>
+        <h2 class="section-title">Konto biurowe</h2>
+        <p class="section-info">Twoja rola KOORDYNATOR nie korzysta z aplikacji magazynowej. Panel biurowy będzie dostępny pod osobnym adresem, z osobnym logowaniem.</p>
+      </div>
+
       <p id="sessionError" class="error" role="alert" aria-live="assertive" hidden></p>
-      <button id="logoutButton" class="btn btn-outline" type="button">Wyloguj się</button>
+      <button id="logoutButton" class="btn btn-outline logout-button" type="button">Wyloguj się</button>
     </section>
 
     <footer class="page-footer">GPBS STORAGE <span aria-hidden="true">•</span> SYSTEM MAGAZYNOWY</footer>
