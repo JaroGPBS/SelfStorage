@@ -9,9 +9,9 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=6">
+  <link rel="stylesheet" href="./pl.css?v=7">
   <script src="./inventory-scanner.js?v=1" defer></script>
-  <script src="./inventory-flow.js?v=2" defer></script>
+  <script src="./inventory-flow.js?v=3" defer></script>
   <script src="./pl.js?v=5" defer></script>
 </head>
 <body>
@@ -137,7 +137,7 @@
         <button id="backFromInventoryButton" class="text-button back-button" type="button">← Wróć do magazynu</button>
         <h2 class="section-title">Inwentaryzacja</h2>
         <p id="inventoryWarehouseCaption" class="section-info"></p>
-        <div id="inventoryScannerPanel" class="inventory-scanner-panel">
+        <div id="inventoryScannerPanel" class="inventory-scanner-panel" hidden>
           <div class="inventory-scanner-top">
             <strong><span class="scan-live-dot"></span> Skanowanie części</strong>
             <button id="inventoryCloseScanner" type="button" class="scanner-close-button" aria-label="Zamknij skaner">✕</button>
@@ -146,13 +146,13 @@
           <p id="inventoryScannerMessage" class="scanner-message" role="status" aria-live="polite">Skieruj kamerę na kod QR lub kreskowy części.</p>
           <button id="inventoryScannerManual" type="button" class="text-button">⌕ Wyszukaj lub dodaj część ręcznie</button>
         </div>
-        <div id="inventoryScannerClosed" class="scanner-closed" hidden>
-          <p>Skaner zamknięty. Możesz wyszukać część ręcznie albo wznowić skanowanie.</p>
-          <button id="inventoryStartScanner" class="btn btn-primary" type="button">Otwórz skaner QR</button>
+        <div id="inventoryScannerClosed" class="scanner-closed">
+          <p id="inventoryScannerIdleMessage">Aby zeskanować część, naciśnij „Skanuj”. Aparat pozostaje wyłączony, dopóki nie rozpoczniesz skanowania.</p>
+          <button id="inventoryStartScanner" class="btn btn-primary" type="button">Skanuj</button>
         </div>
         <div class="inventory-explainer">
           <strong>Inwentaryzacja — dodawanie sztuk</strong>
-          <p>Skanuj kod, wpisz ilość właśnie znalezionych sztuk i naciśnij „Dodaj”. Skaner automatycznie wróci do pracy. Kolejne znalezione ilości tej samej części system sumuje. Nie pokazujemy stanu bazowego.</p>
+          <p>Naciśnij „Skanuj”, zeskanuj kod, wpisz liczbę znalezionych sztuk i wybierz „Dodaj”. Aparat wyłączy się po odczycie kodu. Aby zeskanować kolejną część, ponownie naciśnij „Skanuj”. System sumuje kolejne ilości tej samej części. Nie pokazujemy stanu bazowego.</p>
         </div>
         <p id="inventoryError" class="error" role="alert" aria-live="assertive" hidden></p>
         <section class="inventory-draft">
