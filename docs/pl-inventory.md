@@ -143,3 +143,10 @@ nie zmienia stanów magazynowych, nie dotyka francuskiej aplikacji.
 zmienia już dane D1 (arkusze i katalog), ale nie zmienia
 `warehouse_stock`, dopóki flaga `PL_INVENTORY_PUBLISH_ENABLED`
 pozostaje wyłączona. Nie twórz fikcyjnych części w katalogu produkcyjnym.
+
+### Pole ilości na telefonie
+
+Klawiatura numeryczna zawsze jest dostępna w oknie liczenia:
+cyfry 0–9, wyczyszczenie (`C`) i cofnięcie jednej cyfry (`⌫`).
+Nie ma potrzeby wywoływania klawiatury systemowej Androida ani
+ponownego wciskania `Skanuj` po każdej pozycji.
