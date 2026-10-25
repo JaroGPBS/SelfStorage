@@ -81,8 +81,46 @@ upewnij się, że widzisz jego krótką nazwę (np. MT) i magazyn.
 Po odświeżeniu sesja powinna pozostać aktywna. Przycisk Wyloguj
 powinien wrócić do formularza. Nie przekazuj PIN-u w rozmowie.
 
-Uwaga: ekran jest na razie przeznaczony do weryfikacji logowania;
-moduł skanowania QR i PZ/WZ nie jest jeszcze podłączony.
+Uwaga: ekran pozwala już wejść bez QR do przypisanego magazynu i czytać stany; zapis przyjęć, wydań i inwentaryzacji nie jest jeszcze podłączony.
+
+## Ekran pracy magazyniera / podgląd stanów (następny etap)
+
+Po PIN-ie `MAGAZYNIER`, `KIEROWNIK`, `ADMIN`:
+- jeden aktywny magazyn PL → bez wyboru i bez QR otwiera jego ekran pracy;
+- wiele przypisań → wyłącznie wybór spośród aktualnie dozwolonych magazynów;
+- ekrany: Przyjęcie, Wydanie, Inwentaryzacja (**na razie nieaktywne**),
+  Stany magazynowe (**aktywny odczyt D1**).
+
+Endpoint `GET /api/pl/warehouse?warehouse=PL-TYCHY&page=0&q=`:
+- wymaga ważnej, podpisanej sesji, aktywnego użytkownika i PIN-u,
+- pozwala wyłącznie rolom ADMIN/KIEROWNIK/MAGAZYNIER,
+- sprawdza aktualne przypisanie do aktywnego magazynu polskiego
+  **po stronie serwera**, nie tylko w UI,
+- udostępnia jedynie katalog części i aktualnie zapisane ilości,
+- stan bez wpisu w `warehouse_stock` jest **null/nieustalony**,
+  a potwierdzone zero to osobna wartość 0,
+- stronicowanie po 60 pozycji i wyszukiwanie po nazwie, numerze i SAP,
+- nie zapisuje i nie zmienia stanów; POST zwraca 405.
+
+Dla roli `EKIPA` ekran rozdziela Wizyty na magazynie oraz
+Stany samochodu (na razie nieaktywne w module PL; docelowo QR jest
+obowiązkowy tylko przy wejściu na wizytę magazynową).
+`KOORDYNATOR` nie ma funkcji magazynowych, jedynie informację,
+że panel biurowy powstaje pod osobnym adresem.
+
+**Docelowy podział (uzgodniony):** aplikacja robocza z PIN-em,
+osobny panel biurowy z własnym logowaniem e-mail + hasło,
+osobny panel administracyjny. Role i ich ograniczenia są
+egzekwowane przez serwer. Przynależność do rynku określają
+przypisania magazynów. Ten moduł PL jest nadal etapem wdrożeniowym;
+główna aplikacja FR pozostaje bez zmian.
+
+**Weryfikacja:** po najnowszym wdrożeniu na telefonie otwórz `/pl/`,
+zaloguj się lub odśwież utrzymaną sesję użytkownika MAGAZYNIER
+przypisanego tylko do Tychów. Powinien otworzyć się ekran
+magazynu Tychy bez QR. Wybierz Stany magazynowe i sprawdź
+bezpieczny odczyt z D1 oraz możliwość powrotu.
+Nie wysyłaj PIN-u.
 
 ## Granice tego etapu
 
