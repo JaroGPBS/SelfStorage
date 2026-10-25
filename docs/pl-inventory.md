@@ -95,3 +95,51 @@ serwer wylicza wszystko sam.
   i administracyjnego.
 - Możliwość rozbudowy do bardziej szczegółowych przebiegów inwentaryzacji.
 - Finalne ujednolicenie grafiki mobilnej z głównym GPBS Storage.
+
+
+## Skanowanie ciągłe, sumowanie i nowe części
+
+Od kolejnego etapu ekran `/pl/` automatycznie otwiera aparat po wejściu
+w Inwentaryzację. Obsługiwane są **QR i Code128**; korzysta z oddzielnego
+`pl/inventory-scanner.js` i tego samego modułu biblioteki aparatu co FR,
+ale bez zmian w głównej aplikacji FR.
+
+Przebieg: skan → wstrzymanie odczytu → puste pole ilości z klawiaturą
+numeryczną → `Dodaj` → wznowienie **tej samej sesji kamery** bez klikania
+`Skanuj` ponownie. `X` zamyka skaner, zwalnia kamerę i przenosi
+do wyszukiwania ręcznego po nazwie / numerze / SAP. Przycisk
+`Otwórz skaner QR` pozwala wrócić do aparatu. Jeśli przeglądarka
+nie otworzy klawiatury po programowym ustawieniu fokusu, użytkownik
+może dotknąć już pustego pola — ograniczenie systemowej klawiatury
+Android, nie aplikacji.
+
+**Domyślnie wpisana ilość jest przyrostem** do sumy w bieżącym arkuszu:
+5 + 8 + 6 = 19. Nie pokazujemy stanów bazowych w formularzu.
+Osobny przycisk `Popraw sumę` służy świadomej korekcie całej ilości.
+
+Weryfikacja i idempotencja:
+- skan rozpoznawany wyłącznie względem znanych identyfikatorów części,
+  indeksów GPBS / SAP lub surowego kodu nowej części, nigdy przez
+  niepewne przybliżenia;
+- `POST /api/pl/inventory` z `action:'add'` dodaje sztuki, a
+  `action:'set'` świadomie zastępuje sumę;
+- każde dodanie / korekta ma unikalny `PL-EVT-UUID` zapisywany z
+  operacją w transakcji D1. Ponowienie tego samego żądania nie dolicza
+  sztuk drugi raz;
+- nieznany kod otwiera formularz dodania nowej części. **Nazwa
+  jest obowiązkowa**; SAP może zostać zweryfikowany później;
+- nowa część trafia do `parts` i `pl_part_verifications` ze statusem
+  `PENDING`; stan magazynowy nadal jest nieustalony. W panelu admina
+  cały wiersz jest czerwony do chwili świadomego zatwierdzenia danych
+  przez administratora. W osobnym przyszłym panelu biurowym wykorzystamy
+  ten sam status.
+
+**Nowa jednorazowa migracja SQL przed korzystaniem z tych funkcji**:
+`db/09-pl-inventory-scanning.sql`, wykonywana PO `db/08-pl-warehouse-inventories.sql`.
+Tworzy `pl_warehouse_inventory_events` i `pl_part_verifications`;
+nie zmienia stanów magazynowych, nie dotyka francuskiej aplikacji.
+
+**Uwaga o testach:** przygotowanie arkusza i dodawanie nowych części
+zmienia już dane D1 (arkusze i katalog), ale nie zmienia
+`warehouse_stock`, dopóki flaga `PL_INVENTORY_PUBLISH_ENABLED`
+pozostaje wyłączona. Nie twórz fikcyjnych części w katalogu produkcyjnym.
