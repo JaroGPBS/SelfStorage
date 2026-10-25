@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Panel biurowy</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=5">
-  <script src="./panel.js?v=5" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=6">
+  <script src="./panel.js?v=6" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -194,6 +194,27 @@
         <button id="archiveUserBtn" class="btn archive-danger" type="button" hidden>Usuń z listy</button>
         <button id="cancelUser" class="btn ghost" type="button">Anuluj</button>
         <button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="partEditDialog" class="modal confirm-dialog" aria-labelledby="partEditTitle">
+    <form id="partEditForm" class="modal-inner">
+      <div class="eyebrow">GPBS STORAGE / KATALOG CZĘŚCI</div>
+      <h2 id="partEditTitle">Dane części</h2>
+      <p id="partEditStatus" class="hint"></p>
+      <input id="partEditId" type="hidden">
+      <label for="partEditName">Nazwa części (wymagana)</label>
+      <input id="partEditName" type="text" required minlength="2" maxlength="120" autocomplete="off">
+      <label for="partEditNumber">Indeks magazynowy</label>
+      <input id="partEditNumber" type="text" required minlength="2" maxlength="100" autocomplete="off">
+      <label for="partEditSap">Numer SAP (opcjonalnie)</label>
+      <input id="partEditSap" type="text" maxlength="100" autocomplete="off">
+      <label class="part-verify-choice"><input id="partEditVerify" type="checkbox">
+        Dane zostały sprawdzone — oznacz część jako zweryfikowaną</label>
+      <p id="partEditError" class="message error hidden" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="partEditCancel" class="btn ghost" type="button">Anuluj</button>
+        <button id="partEditSave" class="btn primary" type="submit">Zapisz dane</button>
       </div>
     </form>
   </dialog>
