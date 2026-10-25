@@ -16,7 +16,7 @@
     user:null, warehouse:null, subview:'', busy:false, stockBusy:false,
     stockPage:0, stockQuery:'', hasMore:false, stockSequence:0,
     inventoryNoticeSequence:0,
-    inventory:{draft:null,maxLines:30,publishingEnabled:false,selectedPart:null,
+    inventory:{draft:null,maxLines:5000,publishingEnabled:false,summary:null,selectedPart:null,
       searchPage:0,searchQuery:'',searchMore:false,searchBusy:false,searchSequence:0,
       loadSequence:0,mutationBusy:false}
   };
@@ -425,9 +425,9 @@
     const lines=Array.isArray(inv.draft.lines)?inv.draft.lines:[];
     const list=byId('inventoryDraftLines');
     list.replaceChildren();
-    byId('inventoryCounter').textContent=lines.length+' / '+inv.maxLines;
+    byId('inventoryCounter').textContent=lines.length+' pozycji';
     byId('inventoryDraftInfo').textContent=lines.length
-      ?'Pozycje są zapisane w D1. Możesz je poprawiać przed zatwierdzeniem.'
+      ?'Arkusz zapisany w D1. Zakończ po sprawdzeniu wszystkich policzonych pozycji.'
       :'Arkusz jest pusty. Wybierz część i wpisz policzoną ilość.';
 
     for(const line of lines) {
@@ -545,7 +545,8 @@
       const response=await request('GET','/api/pl/inventory?warehouse='+
         encodeURIComponent(warehouseId));
       if(sequence!==inv.loadSequence||state.warehouse?.id!==warehouseId)return;
-      inv.maxLines=response.maxLines||30;
+      inv.maxLines=response.maxLines||5000;
+      inv.summary=response.summary||null;
       inv.publishingEnabled=Boolean(response.publishingEnabled);
       renderInventoryDraft(response.draft);
       inv.searchPage=0;
@@ -555,6 +556,7 @@
     }catch(error) {
       if(sequence!==inv.loadSequence)return;
       inv.draft=null;
+      inv.summary=null;
       inv.publishingEnabled=false;
       byId('inventoryDraftInfo').textContent='Nie można wczytać arkusza.';
       byId('inventoryCounter').textContent='—';
@@ -618,11 +620,18 @@
     inventoryMutation('remove',partId);
   }
 
-  function confirmInventoryCommit(count) {
+  function confirmInventoryCommit(count,summary) {
     const dialog=byId('inventoryConfirmDialog');
+    const uncounted=Number(summary?.notCountedParts||0);
+    const pending=Number(summary?.pendingVerification||0);
     byId('inventoryConfirmText').textContent=
-      'Zatwierdzisz '+count+' policzonych pozycji dla magazynu '+
-      String(state.warehouse?.name||'')+'. Zmieni to stany magazynowe w D1.';
+      'Magazyn: '+String(state.warehouse?.name||'')+'. '+
+      'Policzone części: '+count+'. '+
+      'Niepoliczone pozycje katalogowe: '+uncounted+
+      ' — ich dotychczasowe stany pozostaną bez zmian. '+
+      'Nowe części wymagające weryfikacji: '+pending+'. '+
+      'Potwierdzenie zapisze policzone ilości jako rzeczywiste stany magazynu '+
+      'i utworzy historię zmian. Czy na pewno zakończyć inwentaryzację?';
     return new Promise(resolve=>{
       if(dialog.open)dialog.close();
       const yes=byId('inventoryConfirmApprove');
@@ -653,7 +662,21 @@
     if(inv.mutationBusy||!inv.publishingEnabled||!draft?.id||!draft.count||
        !state.warehouse)return;
     const warehouseId=state.warehouse.id;
-    if(!await confirmInventoryCommit(draft.count))return;
+    let latest;
+    try {
+      latest=await request('GET','/api/pl/inventory?warehouse='+encodeURIComponent(warehouseId));
+    }catch(error){
+      inventoryError('Nie można sprawdzić inwentaryzacji przed zatwierdzeniem: '+error.message);
+      return;
+    }
+    if(state.warehouse?.id!==warehouseId)return;
+    if(latest.draft?.id!==draft.id ||
+       Number(latest.draft?.revision)!==Number(draft.revision)){
+      renderInventoryDraft(latest.draft);
+      inventoryError('Arkusz zmienił się w międzyczasie. Sprawdź aktualne ilości i spróbuj ponownie.');
+      return;
+    }
+    if(!await confirmInventoryCommit(draft.count,latest.summary))return;
     if(state.warehouse?.id!==warehouseId)return;
     inv.mutationBusy=true;
     byId('inventoryCommitButton').disabled=true;
@@ -669,8 +692,8 @@
       // Re-read server state, never invent updated quantities client-side.
       await loadInventory();
       loadInventoryNotice();
-      inventoryFeedback('Inwentaryzacja zatwierdzona. Zapisano '+count+
-        ' policzonych pozycji. Stany magazynowe zostały zaktualizowane.');
+      inventoryFeedback('Inwentaryzacja zakończona. Zapisano '+count+
+        ' policzonych pozycji do stanów magazynowych. Historia zmian jest zachowana.');
     }catch(error){
       inventoryError(error.message);
       // A conflict requires fresh data before trying again.
