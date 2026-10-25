@@ -324,7 +324,7 @@ async function commitDraft(db,warehouseId,actorId,body,env) {
   const audit=db.prepare(
     'INSERT INTO pl_warehouse_inventory_changes '+
     '(id,inventory_id,warehouse_id,part_id,actor_id,quantity_before,quantity_after,assertion) '+
-    "SELECT 'PL-ADJ-'||lower(hex(randomblob(16))),?,?,?,?,s.quantity,l.counted_quantity, "+
+    "SELECT 'PL-ADJ-'||lower(hex(randomblob(16))),?,?,l.part_id,?,s.quantity,l.counted_quantity, "+
     'CASE WHEN s.quantity IS l.base_quantity THEN 1 ELSE 0 END '+
     'FROM pl_warehouse_inventory_lines l '+
     'LEFT JOIN warehouse_stock s ON s.warehouse_id=? AND s.part_id=l.part_id '+
