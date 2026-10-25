@@ -4,7 +4,7 @@
 import { verifyWorkerSession, workerJson, workerAuthReady } from '../../../lib/pl-worker-auth.js';
 
 const ALLOWED_ROLES = new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
-const MAX_LINES = 30;
+const MAX_LINES = 5000; // operational safety ceiling; 300+ parts per sheet are supported
 const MAX_QUANTITY = 100000;
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
 const WAREHOUSE_PATTERN = /^[A-Z0-9-]{2,50}$/;
@@ -126,7 +126,7 @@ async function saveLine(db,warehouseId,actorId,partId,quantity) {
   const results=await db.batch([save,update]);
   if(Number(results[0]?.meta?.changes||0)!==1 ||
      Number(results[1]?.meta?.changes||0)!==1)
-    return fail('Arkusz ma maksymalnie '+MAX_LINES+' pozycji. Zatwierdź obecny przed dodaniem kolejnych.',409);
+    return fail('Arkusz osiągnął techniczny limit '+MAX_LINES+' części. Zatwierdź go przed dodaniem następnych.',409);
   return workerJson({ok:true,draft:await readDraft(db,warehouseId,actorId)});
 }
 
@@ -205,8 +205,8 @@ async function countEvent(db,warehouseId,actorId,body) {
       return workerJson({ok:true,alreadySaved:true,
         draft:await readDraft(db,warehouseId,actorId)});
     if(String(error?.message||'').toLowerCase().includes('constraint'))
-      return fail('Nie można dodać kolejnych sztuk: limit 100000 na część '+
-        'lub 30 części w arkuszu. Sprawdź policzone ilości.',409);
+      return fail('Nie można dodać kolejnych sztuk: limit 100000 szt. na część '+
+        'lub techniczny limit '+MAX_LINES+' części. Sprawdź policzone ilości.',409);
     throw error;
   }
 }
@@ -286,66 +286,69 @@ async function commitDraft(db,warehouseId,actorId,body,env) {
   if(record.status!=='DRAFT'||record.revision!==revision)
     return fail('Arkusz został zmieniony. Odśwież dane i zatwierdź ponownie.',409);
 
-  const data=await db.prepare(
-    'SELECT l.part_id,l.counted_quantity,l.base_quantity FROM pl_warehouse_inventory_lines l '+
-    'JOIN parts p ON p.id=l.part_id AND p.active=1 WHERE l.inventory_id=? '+
-    'ORDER BY l.part_id'
-  ).bind(inventoryId).all();
-  const lines=data.results||[];
-  if(lines.length<1||lines.length>MAX_LINES)
-    return fail('Arkusz musi zawierać od 1 do '+MAX_LINES+' aktywnych pozycji.',409);
-  const allCount=await db.prepare(
-    'SELECT COUNT(*) AS n FROM pl_warehouse_inventory_lines WHERE inventory_id=?'
-  ).bind(inventoryId).first();
-  if(Number(allCount?.n)!==lines.length)
-    return fail('Arkusz zawiera część usuniętą z katalogu. Usuń ją przed zatwierdzeniem.',409);
+  // One bulk transaction for the WHOLE draft, regardless of whether it has
+  // 30, 300 or 3000 positions. No per-line statements / partial commits.
+  // The first statement atomically checks account/grants, draft revision,
+  // part activity, and every frozen stock baseline before changing status.
+  // Its CHECK(commit_guard=1) aborts/rolls back the batch on ANY mismatch.
+  const guard=db.prepare(
+    "UPDATE pl_warehouse_inventories SET "+
+    "status='COMMITTED',committed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP, "+
+    "commit_guard=CASE WHEN status='DRAFT' AND revision=? "+
+    "AND warehouse_id=? AND actor_id=? "+
+    "AND EXISTS(SELECT 1 FROM users u LEFT JOIN user_archives ar ON ar.user_id=u.id "+
+    "WHERE u.id=? AND u.active=1 AND ar.user_id IS NULL "+
+    "AND u.role_code IN ('ADMIN','KIEROWNIK','MAGAZYNIER')) "+
+    "AND EXISTS(SELECT 1 FROM user_warehouse_access a "+
+    "JOIN warehouses w ON w.id=a.warehouse_id "+
+    "WHERE a.user_id=? AND a.warehouse_id=? AND w.country_code='PL' AND w.active=1) "+
+    "AND EXISTS(SELECT 1 FROM pl_warehouse_inventory_lines WHERE inventory_id=?) "+
+    "AND (SELECT COUNT(*) FROM pl_warehouse_inventory_lines WHERE inventory_id=?)<=? "+
+    "AND NOT EXISTS(SELECT 1 FROM pl_warehouse_inventory_lines l "+
+    "LEFT JOIN parts p ON p.id=l.part_id "+
+    "LEFT JOIN warehouse_stock s ON s.part_id=l.part_id AND s.warehouse_id=? "+
+    "WHERE l.inventory_id=? AND "+
+    "(p.id IS NULL OR p.active<>1 OR "+
+    "l.counted_quantity<0 OR l.counted_quantity>? OR "+
+    "s.quantity IS NOT l.base_quantity)) "+
+    "THEN 1 ELSE 0 END WHERE id=?"
+  ).bind(
+    revision,warehouseId,actorId,
+    actorId,actorId,warehouseId,
+    inventoryId,inventoryId,MAX_LINES,
+    warehouseId,inventoryId,MAX_QUANTITY,inventoryId
+  );
 
-  // Every draft mutation increments revision inside an atomic D1 batch.
-  // The first statement fails its CHECK if another tab edited the draft.
-  // Each adjustment independently fails its CHECK if stock changed since
-  // the count was added. All statements roll back together on failure.
-  const stmts=[
-    db.prepare(
-      "UPDATE pl_warehouse_inventories SET status='COMMITTED',committed_at=CURRENT_TIMESTAMP, "+
-      "updated_at=CURRENT_TIMESTAMP,commit_guard=CASE WHEN status='DRAFT' AND revision=? "+
-      "AND EXISTS(SELECT 1 FROM users u LEFT JOIN user_archives ar ON ar.user_id=u.id "+
-      "WHERE u.id=? AND u.active=1 AND ar.user_id IS NULL "+
-      "AND u.role_code IN ('ADMIN','KIEROWNIK','MAGAZYNIER')) "+
-      "AND EXISTS(SELECT 1 FROM user_warehouse_access a JOIN warehouses w ON w.id=a.warehouse_id "+
-      "WHERE a.user_id=? AND a.warehouse_id=? AND w.country_code='PL' AND w.active=1) "+
-      "THEN 1 ELSE 0 END WHERE id=?"
-    ).bind(revision,actorId,actorId,warehouseId,inventoryId)
-  ];
-  for(const line of lines) {
-    const base=line.base_quantity===null?null:Number(line.base_quantity);
-    const counted=Number(line.counted_quantity);
-    if(!Number.isSafeInteger(counted)||counted<0||counted>MAX_QUANTITY)
-      return fail('Nieprawidłowa policzona ilość w arkuszu.',409);
+  // Snapshot recorded before the update; all lines get an audit row.
+  // 'IS' deliberately treats NULL (unestablished) differently from 0.
+  const audit=db.prepare(
+    'INSERT INTO pl_warehouse_inventory_changes '+
+    '(id,inventory_id,warehouse_id,part_id,actor_id,quantity_before,quantity_after,assertion) '+
+    "SELECT 'PL-ADJ-'||lower(hex(randomblob(16))),?,?,?,?,s.quantity,l.counted_quantity, "+
+    'CASE WHEN s.quantity IS l.base_quantity THEN 1 ELSE 0 END '+
+    'FROM pl_warehouse_inventory_lines l '+
+    'LEFT JOIN warehouse_stock s ON s.warehouse_id=? AND s.part_id=l.part_id '+
+    'WHERE l.inventory_id=?'
+  ).bind(inventoryId,warehouseId,actorId,warehouseId,inventoryId);
 
-    stmts.push(db.prepare(
-      'INSERT INTO pl_warehouse_inventory_changes '+
-      '(id,inventory_id,warehouse_id,part_id,actor_id,quantity_before,quantity_after,assertion) '+
-      'VALUES (?,?,?,?,?,?,?,CASE WHEN '+
-      'EXISTS(SELECT 1 FROM parts WHERE id=? AND active=1) AND ('+
-      '(? IS NULL AND NOT EXISTS(SELECT 1 FROM warehouse_stock WHERE warehouse_id=? AND part_id=?)) '+
-      'OR (? IS NOT NULL AND EXISTS(SELECT 1 FROM warehouse_stock WHERE warehouse_id=? AND part_id=? AND quantity=?))) '+
-      'THEN 1 ELSE 0 END)'
-    ).bind(
-      'PL-ADJ-'+crypto.randomUUID(),inventoryId,warehouseId,line.part_id,
-      actorId,base,counted,line.part_id,base,warehouseId,line.part_id,
-      base,warehouseId,line.part_id,base
-    ));
-    stmts.push(db.prepare(
-      'INSERT INTO warehouse_stock (warehouse_id,part_id,quantity,updated_at) '+
-      'VALUES (?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(warehouse_id,part_id) '+
-      'DO UPDATE SET quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP'
-    ).bind(warehouseId,line.part_id,counted));
-  }
+  // Only explicitly counted parts are written. Every uncounted part retains
+  // its prior quantity or remains unknown. SQLite needs the WHERE 1 disambiguator
+  // to parse ON CONFLICT after INSERT ... SELECT.
+  const stock=db.prepare(
+    'INSERT INTO warehouse_stock (warehouse_id,part_id,quantity,updated_at) '+
+    'SELECT ?,l.part_id,l.counted_quantity,CURRENT_TIMESTAMP '+
+    'FROM pl_warehouse_inventory_lines l WHERE l.inventory_id=? AND 1 '+
+    'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
+    'quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP'
+  ).bind(warehouseId,inventoryId);
 
   try {
-    await db.batch(stmts);
+    await db.batch([guard,audit,stock]);
+    const count=await db.prepare(
+      'SELECT COUNT(*) AS n FROM pl_warehouse_inventory_lines WHERE inventory_id=?'
+    ).bind(inventoryId).first();
     return workerJson({
-      ok:true,inventoryId,alreadyCommitted:false,committedLines:lines.length
+      ok:true,inventoryId,alreadyCommitted:false,committedLines:Number(count?.n||0)
     });
   }catch(error) {
     const existing=await db.prepare(
@@ -355,9 +358,8 @@ async function commitDraft(db,warehouseId,actorId,body,env) {
       return workerJson({ok:true,inventoryId,alreadyCommitted:true});
     const message=String(error?.message||'').toLowerCase();
     if(message.includes('constraint'))
-      return fail('Arkusz, uprawnienia lub stan części zmieniły się w międzyczasie. '+
-        'Nie zapisano żadnych ilości. Jeśli zmienił się stan części, '+
-        'usuń ją z arkusza, przelicz i dodaj ponownie.',409);
+      return fail('Inwentaryzacja, uprawnienia lub stan części zmieniły się. '+
+        'Nie zapisano żadnych ilości. Odśwież dane i przelicz sporne części.',409);
     throw error;
   }
 }
