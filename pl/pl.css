@@ -260,3 +260,51 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
   border:1px solid #344352;border-radius:9px;background:#0f1720}
 .inventory-history-row strong{font-size:13px;font-weight:750}
 .inventory-history-row span{color:#aabaca;font-size:11px;overflow-wrap:anywhere}
+
+
+/* Combined PL warehouse session: mobile PZ and WZ in one visit. */
+.operation-counterparty{width:100%;min-height:50px;border:1px solid #657181;
+  border-radius:11px;background:#111720;color:var(--text);padding:12px 13px;font-size:15px}
+.operation-counterparty::placeholder{color:#8d9bab}
+.operation-tabs{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:22px 0 16px}
+.operation-tabs button{min-height:53px;border:1px solid #53606e;border-radius:11px;
+  background:#1a242d;color:#c8d3df;font-weight:800;font-size:13px;padding:10px}
+.operation-tabs button.selected{background:#45252e;color:#fff;border-color:#e87078}
+.operation-search-results{display:grid;gap:6px;margin:12px 0}
+.operation-result{width:100%;display:flex;align-items:flex-start;flex-direction:column;gap:6px;
+  border-radius:9px;border:1px solid #3b4957;background:#121a23;color:#f0f4f8;
+  padding:12px;text-align:left;font-size:13px}
+.operation-result:hover{border-color:#d96670;background:#222b35}
+.operation-result small{font-size:11px;color:#aebcca}
+.operation-quantity-panel{margin:14px 0;padding:15px;border-radius:12px;
+  border:1px solid #99616b;background:#2b232a;display:grid;gap:11px}
+.operation-quantity-panel strong{font-size:14px;overflow-wrap:anywhere}
+.operation-quantity-panel .input-label{margin-bottom:0}
+.operation-quantity-panel input{width:100%;min-height:52px;border:1px solid #738091;
+  border-radius:9px;background:#111720;color:white;padding:12px;font-size:20px}
+.operation-quantity-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.operation-quantity-actions button{min-width:0}
+.operation-status{padding:11px 13px;border:1px solid #3e725a;background:#1d382c;
+  border-radius:10px;color:#b4e9c6;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.operation-status.error{color:#ffd9da;background:#54242a;border-color:#a34b53}
+.operation-summary{display:grid;gap:15px;margin:24px 0 15px}
+.operation-section{border:1px solid #46515e;border-radius:12px;background:#131b24;padding:14px}
+.operation-section-heading{display:flex;justify-content:space-between;align-items:center;
+  gap:8px;margin-bottom:12px;font-size:14px}
+.operation-section-heading span{color:#b2bdc9;font-size:12px;white-space:nowrap}
+.operation-lines{display:grid;gap:9px}
+.operation-line{display:flex;justify-content:space-between;gap:9px;align-items:center;
+  border-top:1px solid #313e4b;padding-top:9px}
+.operation-line-description{display:flex;flex-direction:column;gap:4px;min-width:0;
+  overflow-wrap:anywhere}
+.operation-line-description strong{font-size:12px;line-height:1.5}
+.operation-line-description small{color:#acbac8;font-size:11px}
+.operation-remove{border:1px solid #8b5257;background:#3b282c;color:#ffc5c7;
+  border-radius:8px;padding:7px 9px;font-weight:750;font-size:11px}
+.operation-empty{font-size:12px;color:#9dabb9;margin:0}
+.operation-confirm-text{white-space:pre-line;line-height:1.8;color:#dae1ea;
+  font-size:13px}
+#operationCancelSession{margin-top:13px}
+#operationStartScan{margin-bottom:12px}
+#operationScanPanel{margin:12px 0}
+#operationReader{width:100%;min-height:170px}
