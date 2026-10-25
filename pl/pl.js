@@ -60,12 +60,17 @@
     return data;
   }
 
+  function stopStockRequest() {
+    state.stockSequence++;
+    state.stockBusy=false;
+    byId('stockSearchButton').disabled=false;
+  }
+
   function clearSession() {
     state.user=null;
     state.warehouse=null;
     state.subview='';
-    state.stockSequence++;
-    state.stockBusy=false;
+    stopStockRequest();
     state.hasMore=false;
     byId('sessionTitle').textContent='—';
     byId('workerBadge').textContent='—';
@@ -86,7 +91,7 @@
     if (!state.user || !warehouseRoles.has(state.user.role) ||
         !state.user.warehouses.some(w=>w.id===warehouse.id)) return;
     state.warehouse=state.user.warehouses.find(w=>w.id===warehouse.id);
-    state.stockSequence++;
+    stopStockRequest();
     state.stockQuery='';
     state.stockPage=0;
     byId('stockQuery').value='';
@@ -97,7 +102,7 @@
 
   function showWarehousePicker() {
     state.warehouse=null;
-    state.stockSequence++;
+    stopStockRequest();
     const list=byId('warehousePicker');
     list.replaceChildren();
     for (const warehouse of state.user.warehouses) {
@@ -138,6 +143,9 @@
     const previous=state.user?.id===user.id&&state.user.role===role ?
       state.warehouse?.id:null;
     const previousSubview=state.subview;
+    const keepStock=Boolean(previous && previousSubview==='stockScreen' &&
+      warehouses.some(w=>w.id===previous) && warehouseRoles.has(role));
+    if(!keepStock)stopStockRequest();
     state.user={...user,role,warehouses};
     byId('sessionTitle').textContent=nickname;
     byId('workerRole').textContent=roleLabels[role];
@@ -300,7 +308,10 @@
   byId('logoutButton').addEventListener('click',logout);
   byId('switchWarehouseButton').addEventListener('click',showWarehousePicker);
   byId('openStockButton').addEventListener('click',openStock);
-  byId('backFromStockButton').addEventListener('click',()=>subview('warehouseHome'));
+  byId('backFromStockButton').addEventListener('click',()=>{
+    stopStockRequest();
+    subview('warehouseHome');
+  });
   byId('stockSearchForm').addEventListener('submit',event=>{
     event.preventDefault();
     if(state.stockBusy)return;
