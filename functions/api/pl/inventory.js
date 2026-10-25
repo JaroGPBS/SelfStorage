@@ -1,6 +1,6 @@
 // GPBS Storage PL — warehouse inventory draft and controlled adjustments.
-// Isolated from legacy French /api. Publishing is OFF until explicitly
-// enabled with PL_INVENTORY_PUBLISH_ENABLED=true in Cloudflare Production.
+// Isolated from legacy French /api. Applies only to authorized PL warehouses.
+// PL_INVENTORY_PUBLISH_ENABLED=false can temporarily disable stock publishing.
 import { verifyWorkerSession, workerJson, workerAuthReady } from '../../../lib/pl-worker-auth.js';
 
 const ALLOWED_ROLES = new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
@@ -74,9 +74,26 @@ export async function onRequestGet({request,env}) {
     const warehouse=await getWarehouse(env.DB,warehouseId);
     if(!warehouse)return fail('Magazyn jest nieaktywny lub niedostępny.',404);
     const draft=await readDraft(env.DB,warehouseId,auth.user.id);
+    const catalog=await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM parts WHERE active=1'
+    ).first();
+    const pending= draft.id ? await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM pl_warehouse_inventory_lines l "+
+      "JOIN pl_part_verifications v ON v.part_id=l.part_id "+
+      "WHERE l.inventory_id=? AND v.status='PENDING'"
+    ).bind(draft.id).first() : {n:0};
+    const catalogCount=Number(catalog?.n||0);
     return workerJson({
       ok:true,warehouse,draft,maxLines:MAX_LINES,
-      publishingEnabled:env.PL_INVENTORY_PUBLISH_ENABLED==='true'
+      summary:{
+        countedParts:draft.count,
+        catalogParts:catalogCount,
+        notCountedParts:Math.max(0,catalogCount-draft.count),
+        pendingVerification:Number(pending?.n||0)
+      },
+      // Publishing applies only to a live authorized Polish warehouse.
+      // Can be explicitly disabled again for maintenance.
+      publishingEnabled:env.PL_INVENTORY_PUBLISH_ENABLED!=='false'
     });
   }catch(error){
     console.error('GPBS PL inventory get failed',error?.name||'Error');
@@ -266,8 +283,8 @@ async function removeLine(db,warehouseId,actorId,partId) {
 }
 
 async function commitDraft(db,warehouseId,actorId,body,env) {
-  if(env.PL_INVENTORY_PUBLISH_ENABLED!=='true')
-    return fail('Zatwierdzanie stanów jest wyłączone do czasu uruchomienia inwentaryzacji.',403);
+  if(env.PL_INVENTORY_PUBLISH_ENABLED==='false')
+    return fail('Zatwierdzanie inwentaryzacji zostało tymczasowo wyłączone.',403);
   if(body.confirm!==true)
     return fail('Wymagane potwierdzenie zatwierdzenia inwentaryzacji.',400);
   const inventoryId=body.inventoryId;
