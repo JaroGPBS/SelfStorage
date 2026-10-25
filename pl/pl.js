@@ -14,7 +14,8 @@
   };
   const state = {
     user:null, warehouse:null, subview:'', busy:false, stockBusy:false,
-    stockPage:0, stockQuery:'', hasMore:false, stockSequence:0
+    stockPage:0, stockQuery:'', hasMore:false, stockSequence:0,
+    inventoryNoticeSequence:0
   };
 
   function view(which) {
@@ -66,10 +67,61 @@
     byId('stockSearchButton').disabled=false;
   }
 
+  function setInventoryNotice(knownItems, catalogItems) {
+    const known=Number(knownItems);
+    const total=Number(catalogItems);
+    let title='';
+    let description='';
+
+    if(Number.isFinite(total) && total>0 && Number.isFinite(known)) {
+      if(known===0) {
+        title='Wymagana inwentaryzacja';
+        description='Magazyn nie ma jeszcze ustalonych stanów części. '+
+          'Przed rozpoczęciem normalnej pracy należy przeprowadzić pierwszą inwentaryzację.';
+      } else if(known<total) {
+        title='Nie wszystkie stany są ustalone';
+        description='Zapisano stany dla '+known+' z '+total+
+          ' części katalogowych. Pozostałe mają status „Nieustalony”.';
+      }
+    }
+
+    for (const prefix of ['home','stock']) {
+      byId(prefix+'InventoryNotice').hidden=!title;
+      byId(prefix+'InventoryTitle').textContent=title;
+      byId(prefix+'InventoryDetail').textContent=description;
+    }
+  }
+
+  async function loadInventoryNotice() {
+    if(!state.warehouse || !warehouseRoles.has(state.user?.role))return;
+    const warehouseId=state.warehouse.id;
+    const sequence=++state.inventoryNoticeSequence;
+    try {
+      const data=await request('GET','/api/pl/warehouse?warehouse='+
+        encodeURIComponent(warehouseId)+'&view=summary');
+      if(sequence!==state.inventoryNoticeSequence ||
+        state.warehouse?.id!==warehouseId)return;
+      setInventoryNotice(data.stock?.knownItems,data.stock?.catalogItems);
+    } catch(error) {
+      if(sequence!==state.inventoryNoticeSequence ||
+        state.warehouse?.id!==warehouseId)return;
+      if(error.status===401) {
+        clearSession();
+        view('login');
+        errorText(byId('loginError'),'Sesja wygasła. Zaloguj się ponownie.');
+      } else {
+        // A transient metadata error must not be shown as missing stock.
+        setInventoryNotice(null,null);
+      }
+    }
+  }
+
   function clearSession() {
     state.user=null;
     state.warehouse=null;
     state.subview='';
+    state.inventoryNoticeSequence++;
+    setInventoryNotice(null,null);
     stopStockRequest();
     state.hasMore=false;
     byId('sessionTitle').textContent='—';
@@ -91,6 +143,8 @@
     if (!state.user || !warehouseRoles.has(state.user.role) ||
         !state.user.warehouses.some(w=>w.id===warehouse.id)) return;
     state.warehouse=state.user.warehouses.find(w=>w.id===warehouse.id);
+    state.inventoryNoticeSequence++;
+    setInventoryNotice(null,null);
     stopStockRequest();
     state.stockQuery='';
     state.stockPage=0;
@@ -98,10 +152,13 @@
     renderWarehouseHeading();
     subview('warehouseHome');
     errorText(byId('sessionError'),'');
+    loadInventoryNotice();
   }
 
   function showWarehousePicker() {
     state.warehouse=null;
+    state.inventoryNoticeSequence++;
+    setInventoryNotice(null,null);
     stopStockRequest();
     const list=byId('warehousePicker');
     list.replaceChildren();
@@ -166,6 +223,7 @@
         state.warehouse=selected;
         renderWarehouseHeading();
         subview(previous && previousSubview==='stockScreen'?'stockScreen':'warehouseHome');
+        loadInventoryNotice();
       } else {
         showWarehousePicker();
       }
@@ -216,6 +274,7 @@
       const shown=byId('stockList').children.length;
       const totalKnown=Number(result.stock?.knownItems||0);
       const totalCatalog=Number(result.stock?.catalogItems||0);
+      setInventoryNotice(totalKnown,totalCatalog);
       byId('stockStatus').textContent=shown
         ?'Wyświetlono: '+shown+' · Zapisany stan: '+totalKnown+' z '+totalCatalog+' części katalogowych'
         :'Brak pasujących części. Stan magazynu może być jeszcze nieustalony.';
