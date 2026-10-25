@@ -527,6 +527,47 @@
     }
   }
 
+  async function loadInventoryHistory() {
+    const inv=state.inventory;
+    if(!state.warehouse||!byId('inventoryHistoryDetails').open)return;
+    const warehouseId=state.warehouse.id;
+    const seq=inv.loadSequence;
+    const list=byId('inventoryHistoryList');
+    list.replaceChildren();
+    byId('inventoryHistoryStatus').textContent='Pobieranie historii…';
+    try{
+      const result=await request('GET','/api/pl/inventory?view=history&warehouse='+
+        encodeURIComponent(warehouseId));
+      if(seq!==inv.loadSequence||state.warehouse?.id!==warehouseId ||
+        !byId('inventoryHistoryDetails').open)return;
+      const records=Array.isArray(result.history)?result.history:[];
+      for(const record of records){
+        const row=document.createElement('div');
+        row.className='inventory-history-row';
+        const title=document.createElement('strong');
+        const dateRaw=String(record.committedAt||'');
+        let formatted=dateRaw;
+        const parsed=new Date(dateRaw.replace(' ','T')+'Z');
+        if(Number.isFinite(parsed.getTime()))
+          formatted=new Intl.DateTimeFormat('pl-PL',{
+            dateStyle:'short',timeStyle:'short'
+          }).format(parsed);
+        title.textContent=formatted;
+        const meta=document.createElement('span');
+        meta.textContent=String(record.partCount||0)+' części · Operator: '+
+          String(record.actorId||'—');
+        row.append(title,meta);
+        list.append(row);
+      }
+      byId('inventoryHistoryStatus').textContent=records.length
+        ?'Ostatnie '+records.length+' zakończonych inwentaryzacji.'
+        :'Nie ma jeszcze zakończonych inwentaryzacji.';
+    }catch(error){
+      if(seq===inv.loadSequence && state.warehouse?.id===warehouseId)
+        byId('inventoryHistoryStatus').textContent='Błąd historii: '+error.message;
+    }
+  }
+
   async function loadInventory() {
     const inv=state.inventory;
     if(!state.warehouse)return;
@@ -553,6 +594,7 @@
       inv.searchQuery='';
       byId('inventoryQuery').value='';
       if(state.subview==='inventoryScreen')fetchInventoryParts();
+      if(byId('inventoryHistoryDetails').open)loadInventoryHistory();
     }catch(error) {
       if(sequence!==inv.loadSequence)return;
       inv.draft=null;
@@ -791,6 +833,10 @@
     byId('inventoryQuantityForm').hidden=true;
   });
   byId('inventoryCommitButton').addEventListener('click',commitInventory);
+  byId('inventoryHistoryDetails').addEventListener('toggle',()=>{
+    if(byId('inventoryHistoryDetails').open &&
+       state.subview==='inventoryScreen')loadInventoryHistory();
+  });
   document.addEventListener('gpbs-pl-inventory-updated',event=>{
     const draft=event.detail?.draft;
     if(!draft||state.subview!=='inventoryScreen')return;
