@@ -200,9 +200,14 @@ async function queryPanel(env,view,url) {
       "SELECT id FROM warehouses WHERE id=? AND country_code='PL'"
     ).bind(warehouse).first();
     if(!allowed) throw new Error('Nieprawidłowy magazyn.');
+    const verification=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
+    ).first();
     const rows=await env.DB.prepare(
       'SELECT p.id,p.part_number,p.name,p.sap_number,s.quantity '+
+      (verification?' ,v.status AS verification_status ':' ,NULL AS verification_status ')+
       'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
+      (verification?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
       'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE LIMIT 1000'
     ).bind(warehouse).all();
     return {warehouse,parts:rows.results||[]};
@@ -714,6 +719,52 @@ async function route(request,env) {
         return fail('Symbol użytkownika jest zajęty. Spróbuj ponownie.',409);
       console.error('GPBS private staff update',e?.name||'Error');
       return fail('Nie udało się zapisać kartoteki pracownika.',500);
+    }
+  }
+  if(body?.action==='updatePart') {
+    try {
+      const id=String(body.partId||'');
+      const name=String(body.name||'').trim();
+      const number=String(body.number||'').trim().toUpperCase();
+      const sap=String(body.sap||'').trim().toUpperCase();
+      const verify=body.verify===true;
+      if(!/^[A-Za-z0-9_-]{1,100}$/.test(id)||
+        name.length<2||name.length>120||number.length<2||number.length>100||
+        sap.length>100||/[\\r\\n]/.test(name+number+sap))
+        return fail('Podaj poprawną nazwę, indeks i SAP.',400);
+      const exists=await env.DB.prepare('SELECT id FROM parts WHERE id=?')
+        .bind(id).first();
+      if(!exists)return fail('Część nie istnieje.',404);
+      if(verify) {
+        const hasReviewTable=await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
+        ).first();
+        if(!hasReviewTable)return fail('Brak tabeli weryfikacji części.',503);
+      }
+      const statements=[
+        env.DB.prepare(
+          'UPDATE parts SET name=?,part_number=?,sap_number=? WHERE id=?'
+        ).bind(name,number,sap||null,id)
+      ];
+      if(verify)statements.push(env.DB.prepare(
+        "UPDATE pl_part_verifications SET status='VERIFIED',verified_by=?,verified_at=CURRENT_TIMESTAMP "+
+        "WHERE part_id=? AND status='PENDING'"
+      ).bind(session.id,id));
+      statements.push(env.DB.prepare(
+        'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
+        'VALUES (?,?,?,?,?,?)'
+      ).bind(crypto.randomUUID(),session.id,
+        verify?'PART_VERIFY':'PART_UPDATE','PART',id,
+        JSON.stringify({name,number,sap,verified:verify})));
+      await env.DB.batch(statements);
+      return respond({ok:true,message:verify
+        ?'Zapisano dane i zatwierdzono część.'
+        :'Zapisano dane części. Status weryfikacji bez zmian.'});
+    }catch(error) {
+      if(String(error?.message||'').toLowerCase().includes('unique'))
+        return fail('Podany indeks lub numer SAP jest już zajęty.',409);
+      console.error('panel part update',error?.name||'Error');
+      return fail('Nie udało się zapisać danych części.',503);
     }
   }
   if(body?.action==='createUser') {
