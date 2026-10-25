@@ -249,3 +249,14 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
   .inventory-count-dialog h2{font-size:18px;margin:7px 0}
   .inventory-count-dialog .inventory-dialog-inner{padding-top:12px;padding-bottom:12px}
 }
+
+/* Read-only inventory completion history, same compact PL style. */
+.inventory-history{margin:20px 0 0;border:1px solid #404d5b;border-radius:12px;
+  background:#151e27;padding:12px 14px}
+.inventory-history summary{font-weight:750;font-size:13px;color:#e8eef4;cursor:pointer}
+.inventory-history[open] summary{margin-bottom:12px}
+.inventory-history-list{display:grid;gap:8px}
+.inventory-history-row{display:flex;flex-direction:column;gap:3px;padding:11px;
+  border:1px solid #344352;border-radius:9px;background:#0f1720}
+.inventory-history-row strong{font-size:13px;font-weight:750}
+.inventory-history-row span{color:#aabaca;font-size:11px;overflow-wrap:anywhere}
