@@ -104,10 +104,15 @@ async function commit(db,input,actorId){
   // A CHECK constraint on commit_guard makes the entire D1 batch roll back
   // if *any* part is uncounted, unavailable or would become negative.
   // Permission, role and warehouse are checked again inside the same batch.
-  const partGuards=parts.map(()=>
-    "EXISTS(SELECT 1 FROM warehouse_stock s JOIN parts p ON p.id=s.part_id "+
-    "WHERE s.warehouse_id=? AND s.part_id=? AND p.active=1 "+
-    "AND s.quantity+? BETWEEN 0 AND 100000000)").join(' AND ');
+  // One JSON parameter instead of 3 per part: D1 permits <=100 binds/query.
+  // json_each is supported by D1's built-in SQLite JSON extension.
+  const partGuards=
+    "NOT EXISTS(SELECT 1 FROM json_each(?) AS e "+
+    "LEFT JOIN warehouse_stock s ON s.warehouse_id=? "+
+    "AND s.part_id=json_extract(e.value,'$.partId') "+
+    "LEFT JOIN parts p ON p.id=s.part_id "+
+    "WHERE s.part_id IS NULL OR p.active IS NOT 1 OR s.quantity IS NULL "+
+    "OR s.quantity+CAST(json_extract(e.value,'$.delta') AS INTEGER) NOT BETWEEN 0 AND 100000000)";
   const guardSql=
     'INSERT INTO pl_warehouse_sessions '+
     '(id,warehouse_id,actor_id,counterparty,commit_guard) VALUES (?,?,?,?, '+
@@ -119,8 +124,8 @@ async function commit(db,input,actorId){
     "AND w.active=1 AND w.country_code='PL') AND "+
     partGuards+' THEN 1 ELSE 0 END)';
   const guardArgs=[input.id,input.warehouseId,actorId,input.counterparty,
-    actorId,actorId,input.warehouseId];
-  for(const p of parts)guardArgs.push(input.warehouseId,p.id,p.pz-p.wz);
+    actorId,actorId,input.warehouseId,
+    JSON.stringify(parts.map(p=>({partId:p.id,delta:p.pz-p.wz}))),input.warehouseId];
   const statements=[db.prepare(guardSql).bind(...guardArgs)];
   for(const part of parts){
     // Record an accurate before/after snapshot BEFORE updating the stock.
