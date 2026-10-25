@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="./pl.css?v=7">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
-  <script src="./pl.js?v=6" defer></script>
+  <script src="./pl.js?v=7" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -159,13 +159,13 @@
         <section class="inventory-draft">
           <div class="inventory-section-heading">
             <h3>Policzone pozycje (suma)</h3>
-            <span id="inventoryCounter" class="count-pill">0 / 30</span>
+            <span id="inventoryCounter" class="count-pill">0 pozycji</span>
           </div>
           <p id="inventoryDraftInfo" class="section-info">Pobieranie arkusza…</p>
           <p id="inventoryFeedback" class="inventory-feedback" role="status" aria-live="polite" hidden></p>
           <div id="inventoryDraftLines" class="inventory-draft-lines"></div>
-          <button id="inventoryCommitButton" class="btn btn-primary inventory-commit" type="button" disabled>Zatwierdź policzone pozycje</button>
-          <p id="inventoryPublishInfo" class="field-hint">Zatwierdzenie zaktualizuje stany magazynowe i zapisze historię zmian.</p>
+          <button id="inventoryCommitButton" class="btn btn-primary inventory-commit" type="button" disabled>Zakończ inwentaryzację</button>
+          <p id="inventoryPublishInfo" class="field-hint">Zakończenie zapisze tylko policzone części jako stany magazynowe. Niepoliczone pozostaną bez zmian.</p>
         </section>
 
         <section class="inventory-catalog" id="inventoryManual" hidden>
@@ -272,12 +272,12 @@
   <dialog id="inventoryConfirmDialog" class="inventory-dialog" aria-labelledby="inventoryConfirmTitle" aria-describedby="inventoryConfirmText">
     <div class="inventory-dialog-inner">
       <div class="panel-kicker">GPBS STORAGE / INWENTARYZACJA</div>
-      <h2 id="inventoryConfirmTitle">Zatwierdzić inwentaryzację?</h2>
+      <h2 id="inventoryConfirmTitle">Zakończyć inwentaryzację?</h2>
       <p id="inventoryConfirmText"></p>
-      <p class="inventory-dialog-warning">Po zatwierdzeniu ilości zostaną zapisane w magazynie. Zmiany będą widoczne w historii inwentaryzacji.</p>
+      <p class="inventory-dialog-warning">Zakończenie zapisze rzeczywiste stany policzonych części w D1. Niepoliczone części nie zostaną wyzerowane. Historia zmian zostanie zachowana.</p>
       <div class="inventory-dialog-actions">
         <button id="inventoryConfirmCancel" class="btn btn-outline" type="button">Sprawdź ponownie</button>
-        <button id="inventoryConfirmApprove" class="btn btn-primary" type="button">Zatwierdź</button>
+        <button id="inventoryConfirmApprove" class="btn btn-primary" type="button">Zapisz stany i zakończ</button>
       </div>
     </div>
   </dialog>
