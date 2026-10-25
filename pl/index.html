@@ -9,8 +9,8 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=2">
-  <script src="./pl.js?v=2" defer></script>
+  <link rel="stylesheet" href="./pl.css?v=3">
+  <script src="./pl.js?v=3" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -76,6 +76,14 @@
         </div>
         <button id="switchWarehouseButton" class="text-button" type="button" hidden>Zmień magazyn</button>
 
+        <div id="homeInventoryNotice" class="inventory-notice" role="status" hidden>
+          <span class="inventory-notice-icon" aria-hidden="true">!</span>
+          <div>
+            <strong id="homeInventoryTitle">Wymagana inwentaryzacja</strong>
+            <p id="homeInventoryDetail">Stany magazynowe nie zostały jeszcze ustalone.</p>
+          </div>
+        </div>
+
         <h2 class="section-title section-spaced">Operacje magazynowe</h2>
         <div class="action-grid">
           <div class="action-tile action-pending">
@@ -105,6 +113,13 @@
         <button id="backFromStockButton" class="text-button back-button" type="button">← Wróć do magazynu</button>
         <h2 class="section-title">Stany magazynowe</h2>
         <p id="stockWarehouseCaption" class="section-info"></p>
+        <div id="stockInventoryNotice" class="inventory-notice" role="status" hidden>
+          <span class="inventory-notice-icon" aria-hidden="true">!</span>
+          <div>
+            <strong id="stockInventoryTitle">Wymagana inwentaryzacja</strong>
+            <p id="stockInventoryDetail">Brak zapisanych stanów magazynowych.</p>
+          </div>
+        </div>
         <form id="stockSearchForm" class="search-row" role="search">
           <label class="visually-hidden" for="stockQuery">Szukaj części</label>
           <input id="stockQuery" type="search" maxlength="80" placeholder="Nazwa, numer części lub SAP" autocomplete="off">
