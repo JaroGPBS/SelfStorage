@@ -191,8 +191,13 @@ async function commitDraft(db,warehouseId,actorId,body,env) {
     db.prepare(
       "UPDATE pl_warehouse_inventories SET status='COMMITTED',committed_at=CURRENT_TIMESTAMP, "+
       "updated_at=CURRENT_TIMESTAMP,commit_guard=CASE WHEN status='DRAFT' AND revision=? "+
+      "AND EXISTS(SELECT 1 FROM users u LEFT JOIN user_archives ar ON ar.user_id=u.id "+
+      "WHERE u.id=? AND u.active=1 AND ar.user_id IS NULL "+
+      "AND u.role_code IN ('ADMIN','KIEROWNIK','MAGAZYNIER')) "+
+      "AND EXISTS(SELECT 1 FROM user_warehouse_access a JOIN warehouses w ON w.id=a.warehouse_id "+
+      "WHERE a.user_id=? AND a.warehouse_id=? AND w.country_code='PL' AND w.active=1) "+
       "THEN 1 ELSE 0 END WHERE id=?"
-    ).bind(revision,inventoryId)
+    ).bind(revision,actorId,actorId,warehouseId,inventoryId)
   ];
   for(const line of lines) {
     const base=line.base_quantity===null?null:Number(line.base_quantity);
@@ -204,12 +209,13 @@ async function commitDraft(db,warehouseId,actorId,body,env) {
       'INSERT INTO pl_warehouse_inventory_changes '+
       '(id,inventory_id,warehouse_id,part_id,actor_id,quantity_before,quantity_after,assertion) '+
       'VALUES (?,?,?,?,?,?,?,CASE WHEN '+
+      'EXISTS(SELECT 1 FROM parts WHERE id=? AND active=1) AND ('+
       '(? IS NULL AND NOT EXISTS(SELECT 1 FROM warehouse_stock WHERE warehouse_id=? AND part_id=?)) '+
-      'OR (? IS NOT NULL AND EXISTS(SELECT 1 FROM warehouse_stock WHERE warehouse_id=? AND part_id=? AND quantity=?)) '+
+      'OR (? IS NOT NULL AND EXISTS(SELECT 1 FROM warehouse_stock WHERE warehouse_id=? AND part_id=? AND quantity=?))) '+
       'THEN 1 ELSE 0 END)'
     ).bind(
       'PL-ADJ-'+crypto.randomUUID(),inventoryId,warehouseId,line.part_id,
-      actorId,base,counted,base,warehouseId,line.part_id,
+      actorId,base,counted,line.part_id,base,warehouseId,line.part_id,
       base,warehouseId,line.part_id,base
     ));
     stmts.push(db.prepare(
@@ -232,8 +238,9 @@ async function commitDraft(db,warehouseId,actorId,body,env) {
       return workerJson({ok:true,inventoryId,alreadyCommitted:true});
     const message=String(error?.message||'').toLowerCase();
     if(message.includes('constraint'))
-      return fail('Stan części albo arkusz zmienił się w międzyczasie. '+
-        'Nie zapisano żadnych ilości. Odśwież arkusz i sprawdź dane.',409);
+      return fail('Arkusz, uprawnienia lub stan części zmieniły się w międzyczasie. '+
+        'Nie zapisano żadnych ilości. Jeśli zmienił się stan części, '+
+        'usuń ją z arkusza, przelicz i dodaj ponownie.',409);
     throw error;
   }
 }
