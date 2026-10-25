@@ -1,4 +1,4 @@
-// GPBS Storage PL: reusable camera stream for continuous inventory counting.
+// GPBS Storage PL: QR / Code128 camera opened for one deliberate scan at a time.
 // Does not touch the main French scanner or its #reader element.
 (() => {
   'use strict';
