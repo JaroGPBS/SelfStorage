@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="./pl.css?v=7">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
-  <script src="./pl.js?v=7" defer></script>
+  <script src="./pl.js?v=8" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -166,6 +166,11 @@
           <div id="inventoryDraftLines" class="inventory-draft-lines"></div>
           <button id="inventoryCommitButton" class="btn btn-primary inventory-commit" type="button" disabled>Zakończ inwentaryzację</button>
           <p id="inventoryPublishInfo" class="field-hint">Zakończenie zapisze tylko policzone części jako stany magazynowe. Niepoliczone pozostaną bez zmian.</p>
+          <details id="inventoryHistoryDetails" class="inventory-history">
+            <summary>Historia zakończonych inwentaryzacji</summary>
+            <p id="inventoryHistoryStatus" class="field-hint"></p>
+            <div id="inventoryHistoryList" class="inventory-history-list"></div>
+          </details>
         </section>
 
         <section class="inventory-catalog" id="inventoryManual" hidden>
