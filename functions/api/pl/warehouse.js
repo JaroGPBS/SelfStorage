@@ -29,7 +29,9 @@ export async function onRequestGet({request,env}) {
   const warehouseId=url.searchParams.get('warehouse')||'';
   const query=(url.searchParams.get('q')||'').trim();
   const pageValue=url.searchParams.get('page')||'0';
-  if(!/^[A-Z0-9-]{2,50}$/.test(warehouseId)||query.length>80||
+  const view=url.searchParams.get('view')||'parts';
+  if(!['parts','summary'].includes(view)||
+    !/^[A-Z0-9-]{2,50}$/.test(warehouseId)||query.length>80||
     !/^(0|[1-9][0-9]{0,2})$/.test(pageValue)||Number(pageValue)>MAX_PAGE) {
     return failure('Nieprawidłowe parametry.',400);
   }
@@ -52,6 +54,14 @@ export async function onRequestGet({request,env}) {
       'FROM parts p LEFT JOIN warehouse_stock s '+
       'ON s.part_id=p.id AND s.warehouse_id=? WHERE p.active=1'
     ).bind(warehouseId).first();
+
+    if(view==='summary') {
+      return workerJson({
+        ok:true,
+        warehouse:{id:warehouse.id,name:warehouse.name},
+        stock:{knownItems:Number(count?.known_items||0),catalogItems:Number(count?.catalog_items||0)}
+      });
+    }
 
     const filters=['p.active=1'];
     const params=[warehouseId];
