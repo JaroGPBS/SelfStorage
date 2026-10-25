@@ -236,6 +236,17 @@
   el('inventoryScannerManual').addEventListener('click',()=>stop(true));
   el('inventoryStartScanner').addEventListener('click',start);
   el('inventoryCountForm').addEventListener('submit',addQuantity);
+  el('inventoryKeypad').addEventListener('click',event=>{
+    const button=event.target.closest('button[data-digit]');
+    if(!button||state.busy)return;
+    const input=el('inventoryCountQuantity');
+    const digit=button.dataset.digit;
+    if(digit==='clear')input.value='';
+    else if(digit==='backspace')input.value=input.value.slice(0,-1);
+    else if(/^\d$/.test(digit)&&input.value.length<6)input.value+=digit;
+    showError('inventoryCountError','');
+    input.focus({preventScroll:true});
+  });
   el('inventoryCountCancel').addEventListener('click',closeCount);
   el('inventoryCountDialog').addEventListener('cancel',event=>{
     event.preventDefault();closeCount();
