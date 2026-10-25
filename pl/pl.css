@@ -232,3 +232,20 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
   .inventory-reader{min-height:175px}
   .inventory-count-dialog .inventory-dialog-actions .btn{font-size:12px}
 }
+
+
+/* Deterministic on-screen digit pad: available immediately after every scan. */
+.inventory-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:14px}
+.inventory-keypad button{min-height:52px;font-size:24px;font-weight:800;color:#f8f8fb;
+  background:#293440;border:1px solid #667583;border-radius:11px;
+  box-shadow:inset 0 -2px #0002;touch-action:manipulation}
+.inventory-keypad button:active{background:#75424a;border-color:#ef9aa0}
+.inventory-keypad .inventory-keypad-action{background:#513038;color:#ffc4c8;font-size:22px}
+.inventory-count-dialog .inventory-dialog-inner{padding-top:17px;padding-bottom:17px}
+.inventory-count-dialog .inventory-dialog-actions{margin-top:13px}
+@media(max-height:680px){
+  .inventory-keypad button{min-height:43px;font-size:21px}
+  .inventory-keypad{gap:6px}
+  .inventory-count-dialog h2{font-size:18px;margin:7px 0}
+  .inventory-count-dialog .inventory-dialog-inner{padding-top:12px;padding-bottom:12px}
+}
