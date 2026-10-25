@@ -54,6 +54,12 @@ Niepoliczone części zachowują poprzednie stany, a te bez zapisanego
 stanu pozostają `Nieustalony`. `0` jest zapisywane wyłącznie
 jeśli pracownik świadomie policzył zero.
 
+Przycisk `Historia zakończonych inwentaryzacji` otwiera listę
+ostatnich 20 zatwierdzonych arkuszy dla wybranego magazynu PL,
+z datą, operatorem i liczbą pozycji (odczyt z D1).
+Szczegółowe wpisy przed/po pozostają w
+`pl_warehouse_inventory_changes` do przyszłych raportów biurowych.
+
 Nie ma już limitu 30 pozycji. Arkusz dopuszcza do **5000 różnych
 części** (techniczny bezpiecznik znacznie powyżej zakładanych
 300+), a zatwierdzenie używa **3 instrukcji SQL w jednej transakcji**,
