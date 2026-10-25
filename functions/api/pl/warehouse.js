@@ -30,7 +30,9 @@ export async function onRequestGet({request,env}) {
   const query=(url.searchParams.get('q')||'').trim();
   const pageValue=url.searchParams.get('page')||'0';
   const view=url.searchParams.get('view')||'parts';
-  if(!['parts','summary'].includes(view)||
+  const scanCode=(url.searchParams.get('code')||'').replace(/\u0000/g,'').trim().toUpperCase();
+  if(!['parts','summary','resolve'].includes(view)||
+    (view==='resolve'&&(!scanCode||scanCode.length>140))||
     !/^[A-Z0-9-]{2,50}$/.test(warehouseId)||query.length>80||
     !/^(0|[1-9][0-9]{0,2})$/.test(pageValue)||Number(pageValue)>MAX_PAGE) {
     return failure('Nieprawidłowe parametry.',400);
@@ -63,6 +65,34 @@ export async function onRequestGet({request,env}) {
       });
     }
 
+    const verifiedTable=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
+    ).first();
+    if(view==='resolve') {
+      if(!verifiedTable)
+        return failure('Najpierw wykonaj migrację db/09-pl-inventory-scanning.sql.',503);
+      const codes=new Set([scanCode.replace(/^\\][A-Z0-9]{2}/,'').trim()]);
+      const first=[...codes][0];
+      for(const token of first.split(/[\\r\\n\\t |;,]+/g)) {
+        if(token.length>=3&&token.length<=100)codes.add(token.trim());
+      }
+      const candidates=[...codes].filter(Boolean).slice(0,12);
+      const placeholders=candidates.map(()=>'?').join(',');
+      const match=await env.DB.prepare(
+        'SELECT p.id,p.part_number,p.name,p.sap_number,v.status AS review_status '+
+        'FROM parts p LEFT JOIN pl_part_verifications v ON v.part_id=p.id '+
+        'WHERE p.active=1 AND (UPPER(p.part_number) IN ('+placeholders+') '+
+        'OR UPPER(p.sap_number) IN ('+placeholders+') OR UPPER(p.id) IN ('+placeholders+') '+
+        'OR UPPER(v.raw_code) IN ('+placeholders+')) LIMIT 3'
+      ).bind(...candidates,...candidates,...candidates,...candidates).all();
+      const matches=match.results||[];
+      if(matches.length===0)return failure('Nie znaleziono części o zeskanowanym kodzie.',404);
+      if(matches.length>1)return failure('Kod pasuje do kilku części. Wyszukaj ręcznie.',409);
+      const p=matches[0];
+      return workerJson({ok:true,part:{id:p.id,number:p.part_number,name:p.name,
+        sap:p.sap_number||null,needsVerification:p.review_status==='PENDING'}});
+    }
+
     const filters=['p.active=1'];
     const params=[warehouseId];
     if(query) {
@@ -72,8 +102,10 @@ export async function onRequestGet({request,env}) {
       params.push(q,q,q);
     }
     const sql='SELECT p.id,p.part_number,p.name,p.sap_number,s.quantity '+
+      (verifiedTable?' ,v.status AS review_status ':' ,NULL AS review_status ')+
       'FROM parts p LEFT JOIN warehouse_stock s '+
       'ON s.part_id=p.id AND s.warehouse_id=? '+
+      (verifiedTable?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
       'WHERE '+filters.join(' AND ')+' '+
       'ORDER BY p.name COLLATE NOCASE,p.id LIMIT ? OFFSET ?';
     params.push(PAGE_SIZE+1,Number(pageValue)*PAGE_SIZE);
@@ -88,6 +120,7 @@ export async function onRequestGet({request,env}) {
           number:p.part_number,
           name:p.name,
           sap:p.sap_number||null,
+          needsVerification:p.review_status==='PENDING',
           quantity:p.quantity===null||p.quantity===undefined?null:Number(p.quantity)
         })),
         page:Number(pageValue),
