@@ -115,6 +115,17 @@
     return Number(value||0).toLocaleString('pl-PL');
   }
 
+  function formatTimestampPL(value) {
+    if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value))
+      return value||'—';
+    const date=new Date(value.replace(' ','T')+'Z');
+    if(Number.isNaN(date.valueOf()))return value;
+    return new Intl.DateTimeFormat('pl-PL',{
+      timeZone:'Europe/Warsaw',day:'2-digit',month:'2-digit',year:'numeric',
+      hour:'2-digit',minute:'2-digit'
+    }).format(date);
+  }
+
   function buildTable(columns,rows) {
     const table=document.createElement('table');
     const head=table.createTHead().insertRow();
@@ -172,10 +183,16 @@
         p.quantity===null||p.quantity===undefined?'Nieustalony':formatNum(p.quantity)+' szt.'])
     ];
     if(view==='movements')return [
-      ['DATA (UTC)','TYP','MAGAZYN','CZĘŚĆ','ZMIANA','PRZED','PO','OPERATOR'],
-      items.map(m=>[m.created_at,m.operation_type==='PZ'?pill('PZ','green'):pill('WZ','red'),
-        m.warehouse_id,m.part_name,m.quantity_delta>0?'+'+m.quantity_delta:m.quantity_delta,
-        m.quantity_before,m.quantity_after,m.operator_id||'—'])
+      ['DATA (PL)','SESJA / DOKUMENT','TYP','MAGAZYN','EKIPA / DOSTAWCA / ODBIORCA',
+        'CZĘŚĆ','ZMIANA','PRZED','PO','PRACOWNIK'],
+      items.map(m=>[
+        formatTimestampPL(m.created_at),m.session_id||m.id,
+        m.operation_type==='PZ'?pill('PZ','green'):pill('WZ','red'),
+        m.warehouse_id,m.recipient_name||'—',
+        (m.part_name||m.part_number||'—')+(m.part_number?' · '+m.part_number:''),
+        Number(m.quantity_delta)>0?'+'+m.quantity_delta:m.quantity_delta,
+        m.quantity_before,m.quantity_after,m.operator_name||m.operator_id||'—'
+      ])
     ];
     return [[],[]];
   }
