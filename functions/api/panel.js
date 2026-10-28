@@ -169,13 +169,24 @@ async function verifyLegacyAdmin(pin,env) {
 
 async function queryPanel(env,view,url) {
   if(view==='summary') {
-    const [warehouses, operations, parts, users]=await Promise.all([
+    const [warehouses, operations, parts, users, sessionsTable]=await Promise.all([
       env.DB.prepare("SELECT COUNT(*) AS n FROM warehouses WHERE country_code='PL' AND active=1").first(),
       env.DB.prepare("SELECT COUNT(*) AS n FROM warehouse_operations").first(),
       env.DB.prepare("SELECT COUNT(*) AS n FROM parts WHERE active=1").first(),
-      env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE active=1").first()
+      env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE active=1").first(),
+      env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pl_warehouse_session_lines'").first()
     ]);
-    return {warehouses:warehouses?.n||0,operations:operations?.n||0,
+    // One document per direction and session, not one per catalogue part.
+    let recentDocuments=0;
+    if(sessionsTable){
+      const count=await env.DB.prepare(
+        "SELECT COUNT(*) AS n FROM (SELECT session_id,direction "+
+        "FROM pl_warehouse_session_lines GROUP BY session_id,direction)"
+      ).first();
+      recentDocuments=Number(count?.n||0);
+    }
+    return {warehouses:warehouses?.n||0,
+      operations:Number(operations?.n||0)+recentDocuments,
       parts:parts?.n||0,users:users?.n||0};
   }
   if(view==='warehouses') {
@@ -213,14 +224,44 @@ async function queryPanel(env,view,url) {
     return {warehouse,parts:rows.results||[]};
   }
   if(view==='movements') {
-    const rows=await env.DB.prepare(
-      'SELECT o.id,o.operation_type,o.warehouse_id,o.operator_id,o.recipient_name,'+
-      'o.created_at,p.name AS part_name,p.part_number,l.quantity_delta,'+
-      'l.quantity_before,l.quantity_after '+
-      'FROM warehouse_operations o JOIN warehouse_operation_lines l ON l.operation_id=o.id '+
-      'JOIN parts p ON p.id=l.part_id ORDER BY o.created_at DESC,o.id DESC LIMIT 250'
-    ).all();
-    return rows.results||[];
+    // Historical operations and NEW mixed PZ/WZ sessions use separate tables.
+    // Previous panel only queried warehouse_operations, making every new session invisible.
+    const sessionSchema=await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' "+
+      "AND name IN ('pl_warehouse_sessions','pl_warehouse_session_lines')"
+    ).first();
+    const queries=[
+      env.DB.prepare(
+        'SELECT o.id,o.id AS session_id,o.operation_type,o.warehouse_id,'+
+        "o.operator_id,COALESCE(u.name,o.operator_id) AS operator_name,"+
+        'o.recipient_name,o.created_at,p.name AS part_name,p.part_number,'+
+        'l.quantity_delta,l.quantity_before,l.quantity_after '+
+        'FROM warehouse_operations o JOIN warehouse_operation_lines l ON l.operation_id=o.id '+
+        'JOIN parts p ON p.id=l.part_id '+
+        'LEFT JOIN users u ON u.id=o.operator_id '+
+        'ORDER BY o.created_at DESC,o.id DESC LIMIT 250'
+      ).all()
+    ];
+    if(Number(sessionSchema?.n)===2){
+      queries.push(env.DB.prepare(
+        'SELECT s.id,s.id AS session_id,l.direction AS operation_type,'+
+        's.warehouse_id,s.actor_id AS operator_id,'+
+        'COALESCE(u.name,s.actor_id) AS operator_name,'+
+        's.counterparty AS recipient_name,s.committed_at AS created_at,'+
+        'p.name AS part_name,p.part_number,'+
+        "CASE WHEN l.direction='PZ' THEN l.quantity ELSE -l.quantity END AS quantity_delta,"+
+        'l.quantity_before,l.quantity_after '+
+        'FROM pl_warehouse_sessions s '+
+        'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
+        'JOIN parts p ON p.id=l.part_id LEFT JOIN users u ON u.id=s.actor_id '+
+        'ORDER BY s.committed_at DESC,s.id DESC LIMIT 250'
+      ).all());
+    }
+    const results=await Promise.all(queries);
+    return results.flatMap(x=>x.results||[])
+      .sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)) ||
+        String(b.id).localeCompare(String(a.id)))
+      .slice(0,250);
   }
   // Only chief ADMIN accesses private contact fields in this combined view.
   if(view==='users') {
