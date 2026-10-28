@@ -308,3 +308,27 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
 #operationStartScan{margin-bottom:12px}
 #operationScanPanel{margin:12px 0}
 #operationReader{width:100%;min-height:170px}
+
+
+/* Recent warehouse PZ/WZ session history, visible to PL warehouse workers. */
+.operation-history{margin-top:26px;border-top:1px solid #46515e;padding-top:19px}
+.operation-history>summary{cursor:pointer;font-size:14px;font-weight:800;color:#e6edf6;
+  line-height:1.5;padding-bottom:15px}
+.operation-history #operationHistoryRefresh{min-height:44px;font-size:13px;margin-bottom:13px}
+.operation-history-list{display:grid;gap:11px}
+.operation-history-item{border:1px solid #495665;border-radius:11px;
+  background:#111922;overflow:hidden}
+.operation-history-item>summary{cursor:pointer;padding:13px;display:flex;
+  flex-direction:column;gap:6px;line-height:1.4}
+.operation-history-item>summary strong{font-size:13px;overflow-wrap:anywhere}
+.operation-history-item>summary small{font-size:12px;color:#adc0d2}
+.operation-history-meta{font-size:11px;color:#a9b7c6;line-height:1.6;
+  padding:0 13px 10px;margin:0;overflow-wrap:anywhere}
+.operation-history-line{display:flex;align-items:flex-start;gap:8px;
+  border-top:1px solid #303c49;padding:10px 13px;font-size:12px;line-height:1.4}
+.operation-history-line>strong{flex:0 0 26px}
+.operation-history-line>span{flex:1;min-width:0;overflow-wrap:anywhere}
+.operation-history-line>small{font-size:11px;color:#ced9e4;text-align:right;
+  flex:0 0 85px}
+.operation-history-pz{color:#92dfa9}
+.operation-history-wz{color:#ffadb1}
