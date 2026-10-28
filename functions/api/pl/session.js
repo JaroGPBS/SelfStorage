@@ -184,16 +184,36 @@ export async function onRequestGet({request,env}){
     if(view!=='recent')return fail('Nieprawidłowy widok.',400);
     if(!ready)return workerJson({ok:true,ready,history:[]});
     const rows=await env.DB.prepare(
-      'SELECT s.id,s.counterparty,s.committed_at,'+
+      'SELECT s.id,s.counterparty,s.committed_at,s.actor_id,u.name AS operator_name,'+
       "SUM(CASE WHEN l.direction='PZ' THEN 1 ELSE 0 END) AS pz_items,"+
       "SUM(CASE WHEN l.direction='WZ' THEN 1 ELSE 0 END) AS wz_items "+
       'FROM pl_warehouse_sessions s LEFT JOIN pl_warehouse_session_lines l '+
-      'ON l.session_id=s.id WHERE s.warehouse_id=? '+
-      'GROUP BY s.id ORDER BY s.committed_at DESC,s.id DESC LIMIT 15'
+      'ON l.session_id=s.id LEFT JOIN users u ON u.id=s.actor_id '+
+      'WHERE s.warehouse_id=? GROUP BY s.id ORDER BY s.committed_at DESC,s.id DESC LIMIT 15'
     ).bind(wh).all();
-    return workerJson({ok:true,ready,history:(rows.results||[]).map(r=>({
+    const sessions=rows.results||[];
+    if(!sessions.length)return workerJson({ok:true,ready,history:[]});
+    const ids=sessions.map(r=>r.id);
+    const parts=await env.DB.prepare(
+      'SELECT l.session_id,l.direction,l.part_id,l.quantity,l.quantity_before,'+
+      'l.quantity_after,p.name AS part_name,p.part_number '+
+      'FROM pl_warehouse_session_lines l LEFT JOIN parts p ON p.id=l.part_id '+
+      'WHERE l.session_id IN ('+ids.map(()=>'?').join(',')+') '+
+      'ORDER BY CASE l.direction WHEN \'PZ\' THEN 0 ELSE 1 END, l.part_id'
+    ).bind(...ids).all();
+    const bySession=new Map(ids.map(id=>[id,[]]));
+    for(const line of (parts.results||[]))
+      bySession.get(line.session_id)?.push({
+        direction:line.direction,partId:line.part_id,
+        name:line.part_name||line.part_number||line.part_id,
+        number:line.part_number||null,quantity:Number(line.quantity),
+        before:Number(line.quantity_before),after:Number(line.quantity_after)
+      });
+    return workerJson({ok:true,ready,history:sessions.map(r=>({
       id:r.id,counterparty:r.counterparty,committedAt:r.committed_at,
-      pzItems:Number(r.pz_items||0),wzItems:Number(r.wz_items||0)
+      operator:r.operator_name||r.actor_id,
+      pzItems:Number(r.pz_items||0),wzItems:Number(r.wz_items||0),
+      lines:bySession.get(r.id)||[]
     }))});
   }catch(error){
     console.error('PL session GET failed',error?.name||'Error');
