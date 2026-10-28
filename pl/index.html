@@ -9,11 +9,11 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=10">
+  <link rel="stylesheet" href="./pl.css?v=11">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
-  <script src="./warehouse-operations.js?v=2" defer></script>
-  <script src="./pl.js?v=9" defer></script>
+  <script src="./warehouse-operations.js?v=3" defer></script>
+  <script src="./pl.js?v=10" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -104,11 +104,7 @@
             <strong>Inwentaryzacja</strong>
             <span class="action-caption">Policz części i zapisz arkusz</span>
           </button>
-          <button id="openStockButton" class="action-tile action-available" type="button">
-            <span class="action-icon" aria-hidden="true">▤</span>
-            <strong>Stany magazynowe</strong>
-            <span class="action-caption">Sprawdź części i ilości</span>
-          </button>
+
         </div>
       </div>
 
@@ -191,12 +187,7 @@
           <p class="field-hint">Sesja zapisze jednocześnie PZ i WZ (lub tylko wybrany rodzaj). Części muszą mieć wcześniej ustalone stany.</p>
           <button id="operationSave" class="btn btn-primary" type="button" disabled>Zakończ i zapisz sesję</button>
           <button id="operationCancelSession" class="text-button" type="button">Wyczyść szkic sesji</button>
-          <details id="operationHistoryDetails" class="operation-history">
-            <summary>Historia przyjęć i wydań (15 ostatnich sesji)</summary>
-            <button id="operationHistoryRefresh" class="btn btn-outline" type="button">Odśwież historię</button>
-            <p id="operationHistoryStatus" class="section-info" role="status" aria-live="polite"></p>
-            <div id="operationHistoryList" class="operation-history-list"></div>
-          </details>
+
         </div>
       </div>
 
@@ -233,11 +224,7 @@
           <div id="inventoryDraftLines" class="inventory-draft-lines"></div>
           <button id="inventoryCommitButton" class="btn btn-primary inventory-commit" type="button" disabled>Zakończ inwentaryzację</button>
           <p id="inventoryPublishInfo" class="field-hint">Zakończenie zapisze tylko policzone części jako stany magazynowe. Niepoliczone pozostaną bez zmian.</p>
-          <details id="inventoryHistoryDetails" class="inventory-history">
-            <summary>Historia zakończonych inwentaryzacji</summary>
-            <p id="inventoryHistoryStatus" class="field-hint"></p>
-            <div id="inventoryHistoryList" class="inventory-history-list"></div>
-          </details>
+
         </section>
 
         <section class="inventory-catalog" id="inventoryManual" hidden>
