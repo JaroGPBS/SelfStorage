@@ -6,7 +6,7 @@
   const camera=()=>window.GPBSInventoryCamera;
   const state={warehouse:null,userId:'',direction:'PZ',pz:new Map(),wz:new Map(),
     ready:false,part:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
-    scanning:false,stopPromise:null,searchPage:0,hasMore:false,historySeq:0};
+    scanning:false,stopPromise:null,searchPage:0,hasMore:false};
   const MAX_QUANTITY=100000;
 
   function key(){
@@ -128,71 +128,6 @@
       :'Dodaj część wydawaną z magazynu.';
     el('operationQuantityForm').hidden=!state.part;
     disableDuringPending();
-  }
-
-  function localDate(value){
-    if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value))
-      return value||'—';
-    const date=new Date(value.replace(' ','T')+'Z');
-    if(Number.isNaN(date.getTime()))return value;
-    return new Intl.DateTimeFormat('pl-PL',{
-      timeZone:'Europe/Warsaw',dateStyle:'short',timeStyle:'short'
-    }).format(date);
-  }
-
-  async function loadHistory(){
-    if(!state.warehouse||!state.ready)return;
-    const wh=state.warehouse.id;
-    const seq=++state.historySeq;
-    el('operationHistoryStatus').textContent='Pobieranie zapisanych sesji…';
-    const list=el('operationHistoryList');
-    list.replaceChildren();
-    try{
-      const data=await api('/api/pl/session?warehouse='+
-        encodeURIComponent(wh)+'&view=recent');
-      if(seq!==state.historySeq||state.warehouse?.id!==wh)return;
-      const history=data.history||[];
-      if(!history.length){
-        el('operationHistoryStatus').textContent='Nie ma jeszcze żadnych zapisanych sesji PZ/WZ w tym magazynie.';
-        return;
-      }
-      el('operationHistoryStatus').textContent='Ostatnie '+history.length+
-        ' sesji. Otwórz wpis, aby zobaczyć części i stan przed/po.';
-      for(const record of history){
-        const item=document.createElement('details');
-        item.className='operation-history-item';
-        const summary=document.createElement('summary');
-        const title=document.createElement('strong');
-        title.textContent=localDate(record.committedAt)+' · '+record.counterparty;
-        const amounts=document.createElement('small');
-        amounts.textContent='PZ: '+record.pzItems+' poz.  |  WZ: '+record.wzItems+' poz.';
-        summary.append(title,amounts);
-        item.append(summary);
-        const metadata=document.createElement('p');
-        metadata.className='operation-history-meta';
-        metadata.textContent='Sesja: '+record.id+' · Magazyn: '+wh+
-          ' · Pracownik: '+(record.operator||'—');
-        item.append(metadata);
-        for(const line of (record.lines||[])){
-          const lineEl=document.createElement('div');
-          lineEl.className='operation-history-line';
-          const type=document.createElement('strong');
-          type.textContent=line.direction;
-          type.className=line.direction==='PZ'?'operation-history-pz':'operation-history-wz';
-          const description=document.createElement('span');
-          description.textContent=line.name+(line.number?' · '+line.number:'');
-          const quantities=document.createElement('small');
-          quantities.textContent=(line.direction==='PZ'?'+':'−')+line.quantity+
-            ' szt. · '+line.before+' → '+line.after+' szt.';
-          lineEl.append(type,description,quantities);
-          item.append(lineEl);
-        }
-        list.append(item);
-      }
-    }catch(error){
-      if(seq===state.historySeq&&state.warehouse?.id===wh)
-        el('operationHistoryStatus').textContent='Nie udało się wczytać historii: '+error.message;
-    }
   }
 
   function changeDirection(side){
@@ -334,7 +269,6 @@
         :'Moduł PZ/WZ wymaga jeszcze migracji db/11-pl-warehouse-sessions.sql w D1.';
       el('operationForm').hidden=!state.ready;
       render();
-      if(state.ready&&el('operationHistoryDetails').open)loadHistory();
     }catch(error){
       if(state.warehouse?.id!==warehouseId)return;
       state.ready=false;
@@ -407,8 +341,6 @@
         'PZ: '+data.pzItems+' pozycji, WZ: '+data.wzItems+
         ' pozycji. Numer: '+data.id+'.'+committedAt);
       document.dispatchEvent(new Event('gpbs-pl-operation-committed'));
-      el('operationHistoryDetails').open=true;
-      loadHistory();
     }catch(error){
       if(error.status===400||error.status===403||error.status===409){
         // Definitive rejection: allow correcting the draft and a new ID.
@@ -456,7 +388,6 @@
   function close(){
     stopScanner();
     state.searchSeq++;
-    state.historySeq++;
     state.warehouse=null;state.userId='';
     state.part=null;state.ready=false;
   }
@@ -464,10 +395,6 @@
     try{sessionStorage.removeItem('gpbs_pl_session_draft_v1_'+userId+'_'+warehouseId);}catch{}
   }
 
-  el('operationHistoryRefresh').addEventListener('click',loadHistory);
-  el('operationHistoryDetails').addEventListener('toggle',()=>{
-    if(el('operationHistoryDetails').open)loadHistory();
-  });
   el('operationCounterparty').addEventListener('input',saveDraft);
   el('operationTabPZ').addEventListener('click',()=>changeDirection('PZ'));
   el('operationTabWZ').addEventListener('click',()=>changeDirection('WZ'));
