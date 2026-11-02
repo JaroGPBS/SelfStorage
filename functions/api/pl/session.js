@@ -8,7 +8,7 @@ const WH=/^[A-Z0-9-]{2,50}$/;
 const PART=/^[A-Za-z0-9_-]{1,100}$/;
 const MAX_LINES=80;
 const MAX_QUANTITY=100000;
-const MIGRATION='db/12-pl-uninventoried-receipts.sql';
+const MIGRATION='db/13-pl-confirmed-overissues.sql';
 
 function fail(message,status=400){return workerJson({ok:false,error:message},status);}
 
@@ -32,7 +32,8 @@ async function schemaReady(db){
     "WHERE type='table' AND name IN ('pl_warehouse_sessions','pl_warehouse_session_lines')").first();
   if(Number(r?.n)!==2)return false;
   const columns=await db.prepare('PRAGMA table_info(pl_warehouse_session_lines)').all();
-  return (columns.results||[]).some(c=>c.name==='before_unknown');
+  return ['before_unknown','shortage_quantity'].every(name=>
+    (columns.results||[]).some(c=>c.name===name));
 }
 
 function normalizeLines(value,description){
@@ -62,7 +63,23 @@ function normalize(body){
   const wz=normalizeLines(body.wz,'WZ');
   if(pz.length+wz.length<1||pz.length+wz.length>MAX_LINES)
     throw Error('Dodaj od 1 do '+MAX_LINES+' pozycji PZ/WZ w jednej sesji.');
-  return {id,warehouseId,counterparty,pz,wz};
+  const action=body.action===undefined||body.action==='commit'?'commit':body.action;
+  if(!['preview','commit'].includes(action))throw Error('Nieznana operacja.');
+  const stockSnapshot=body.stockSnapshot;
+  if(action==='commit'){
+    const parts=new Set([...pz,...wz].map(r=>r.partId));
+    if(!Array.isArray(stockSnapshot)||stockSnapshot.length!==parts.size)
+      throw Error('Stan magazynu musi być sprawdzony przed zatwierdzeniem. Wróć do podsumowania.');
+    const ids=new Set();
+    for(const row of stockSnapshot){
+      if(!row||!parts.has(row.partId)||ids.has(row.partId)||
+         (row.quantity!==null&&(!Number.isSafeInteger(row.quantity)||row.quantity<0)))
+        throw Error('Nieprawidłowe potwierdzenie stanów magazynowych.');
+      ids.add(row.partId);
+    }
+  }
+  return {id,warehouseId,counterparty,pz,wz,action,
+    stockSnapshot,confirmedOverissue:body.confirmedOverissue===true};
 }
 
 async function duplicate(db,input,actorId){
@@ -87,6 +104,41 @@ async function duplicate(db,input,actorId){
   if(!same)return fail('Identyfikator sesji został już użyty dla innych danych.',409);
   return workerJson({ok:true,id:input.id,alreadySaved:true,
     committedAt:existing.committed_at,pzItems:input.pz.length,wzItems:input.wz.length});
+}
+
+async function preview(db,input){
+  const combined=new Map();
+  for(const line of input.pz)combined.set(line.partId,{partId:line.partId,pz:line.quantity,wz:0});
+  for(const line of input.wz){
+    const row=combined.get(line.partId)||{partId:line.partId,pz:0,wz:0};
+    row.wz=line.quantity;
+    combined.set(line.partId,row);
+  }
+  const parts=[...combined.values()];
+  const result=await db.prepare(
+    "SELECT json_extract(j.value,'$.partId') AS part_id,"+
+    'p.id AS valid_id,p.name AS name,p.active AS active,s.quantity AS quantity '+
+    "FROM json_each(?) j LEFT JOIN parts p ON p.id=json_extract(j.value,'$.partId') "+
+    'LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=?'
+  ).bind(JSON.stringify(parts),input.warehouseId).all();
+  const rows=new Map((result.results||[]).map(r=>[r.part_id,r]));
+  if(rows.size!==parts.length||parts.some(p=>!rows.get(p.partId)?.valid_id||
+    Number(rows.get(p.partId).active)!==1))
+    return fail('Część została wyłączona lub nie istnieje w katalogu. Odśwież listę.',409);
+  const stockSnapshot=[];
+  const warnings=[];
+  for(const p of parts){
+    const row=rows.get(p.partId);
+    const stock=row.quantity===null||row.quantity===undefined?null:Number(row.quantity);
+    stockSnapshot.push({partId:p.partId,quantity:stock});
+    if(p.wz===0)continue;
+    const available=(stock??0)+p.pz;
+    const shortfall=Math.max(0,p.wz-available);
+    if(shortfall>0)warnings.push({partId:p.partId,name:row.name||p.partId,
+      unknown:stock===null,available:stock===null?null:available,
+      received:p.pz,issued:p.wz,shortfall});
+  }
+  return workerJson({ok:true,stockSnapshot,warnings,requiresConfirmation:warnings.length>0});
 }
 
 async function commit(db,input,actorId){
