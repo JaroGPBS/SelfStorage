@@ -235,7 +235,8 @@ async function queryPanel(env,view,url) {
         'SELECT o.id,o.id AS session_id,o.operation_type,o.warehouse_id,'+
         "o.operator_id,COALESCE(u.name,o.operator_id) AS operator_name,"+
         'o.recipient_name,o.created_at,p.name AS part_name,p.part_number,'+
-        'l.quantity_delta,l.quantity_before,l.quantity_after '+
+        'l.quantity_delta,l.quantity_before,l.quantity_after,'+
+        '0 AS shortage_quantity,0 AS before_unknown '+
         'FROM warehouse_operations o JOIN warehouse_operation_lines l ON l.operation_id=o.id '+
         'JOIN parts p ON p.id=l.part_id '+
         'LEFT JOIN users u ON u.id=o.operator_id '+
@@ -248,6 +249,9 @@ async function queryPanel(env,view,url) {
       const originalQuantity=hasUnknownFlag
         ?'CASE WHEN l.before_unknown=1 THEN NULL ELSE l.quantity_before END'
         :'l.quantity_before';
+      const shortageColumn=(columns.results||[]).some(c=>c.name==='shortage_quantity')
+        ?'l.shortage_quantity':'0';
+      const unknownColumn=hasUnknownFlag?'l.before_unknown':'0';
       queries.push(env.DB.prepare(
         'SELECT s.id,s.id AS session_id,l.direction AS operation_type,'+
         's.warehouse_id,s.actor_id AS operator_id,'+
@@ -255,7 +259,8 @@ async function queryPanel(env,view,url) {
         's.counterparty AS recipient_name,s.committed_at AS created_at,'+
         'p.name AS part_name,p.part_number,'+
         "CASE WHEN l.direction='PZ' THEN l.quantity ELSE -l.quantity END AS quantity_delta,"+
-        originalQuantity+' AS quantity_before,l.quantity_after '+
+        originalQuantity+' AS quantity_before,l.quantity_after,'+
+        shortageColumn+' AS shortage_quantity,'+unknownColumn+' AS before_unknown '+
         'FROM pl_warehouse_sessions s '+
         'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
         'JOIN parts p ON p.id=l.part_id LEFT JOIN users u ON u.id=s.actor_id '+
