@@ -16,17 +16,19 @@ operator i magazyn pochodzą z serwera/sesji, nie z formularza.
 
 ## Przed rozpoczęciem testów w Cloudflare
 
-Otwórz Cloudflare -> D1 -> testowa baza \`gpbs-storage\` -> Console
-i uruchom JEDNORAZOWO całość migracji:
+Otwórz Cloudflare -> D1 -> testowa baza \`gpbs-storage\` -> Console.
+Jeżeli migracja \`db/11-pl-warehouse-sessions.sql\` została już
+wykonana, uruchom JEDNORAZOWO kolejną:
 
-\`db/11-pl-warehouse-sessions.sql\`
+\`db/12-pl-uninventoried-receipts.sql\`
 
-Migracja wyłącznie tworzy dwie nowe tabele i indeksy, niczego
-nie kasuje i nie aktualizuje: \`pl_warehouse_sessions\`,
-\`pl_warehouse_session_lines\`.
+Dodaje ona wyłącznie kolumnę \`before_unknown\` do historii PZ/WZ.
+Nie zmienia stanów, nie usuwa operacji ani inwentaryzacji.
+Przy nowej bazie wykonaj migracje 11, następnie 12.
+Nie uruchamiaj nr 12 ponownie, gdy kolumna już istnieje.
 
-Bez tej migracji ekran wyświetla informację i nie pozwoli zapisać
-PZ/WZ. Nie zmieniaj ustawień \`PIN_PEPPER\` ani \`PANEL_SESSION_SECRET\`.
+Bez migracji 12 aplikacja zablokuje nowe PZ/WZ i wyświetli
+informację, co trzeba wykonać. Nie zmieniaj kluczy PIN i sesji.
 
 Endpoint: \`GET /api/pl/session?warehouse=PL-TYCHY\`
 — gotowość do zapisu; \`view=recent\` — 15 ostatnich sesji.
@@ -50,9 +52,14 @@ a API weryfikuje magazyn, autoryzację, role i części. Nie wysyłamy PIN-u.
 
 - **Jeden batch D1:** sesja, pozycje PZ/WZ, migawki przed/po i zmiany
   magazynowe są zapisywane atomowo. Nie może zapisać się tylko PZ.
-- Pozycje bez ustalonego stanu (\`warehouse_stock\` bez wiersza)
-  są **blokowane**. Inwentaryzacja powinna być wykonana przed
-  pracą. Stan 0 jest odmienny od braku stanu.
+- **Pierwsze PZ bez inwentaryzacji jest dozwolone.** Jeśli wcześniej
+  część katalogowa miała stan „Nieustalony”, przyjęcie np. 10 szt.
+  ustala zapisany stan na 10. Nie oznacza to potwierdzenia, że nie
+  było wcześniej innych sztuk; to ustali późniejsza inwentaryzacja.
+- Historia przyjęcia zachowuje \`before_unknown=1\`, a panel wyświetla
+  poprzedni stan jako „Nieustalony”, nie jako fałszywe zero.
+- **WZ niezinwentaryzowanej części bez PZ pozostaje blokowane.**
+  W jednej sesji można przyjąć 10 i wydać z tego 4; stan 6.
 - WZ nie może doprowadzić do ujemnego stanu. Jeśli ta sama część
   występuje w PZ i WZ, rozliczamy PZ, a następnie WZ, w ramach
   pojedynczego atomowego salda.
@@ -72,14 +79,15 @@ a API weryfikuje magazyn, autoryzację, role i części. Nie wysyłamy PIN-u.
 
 ## Testy ręczne po migracji
 
-1. Magazynier Tychy -> PZ: dodaj pozycję ze znanym stanem,
-   zapisz, sprawdź zwiększenie ilości, godzinę i zapis sesji.
+1. Magazynier Tychy -> PZ: przyjmij 10 szt. części o stanie Nieustalony.
+   Po zapisaniu stan 10, poprzedni stan w historii: Nieustalony.
 2. W tym samym szkicu PZ i WZ na różnych częściach:
    zatwierdź, sprawdź oba salda i oba wiersze historii.
 3. PZ i WZ tej samej części: sprawdź wynik netto i obie migawki.
 4. Sam WZ: sprawdź prawidłowe zmniejszenie ilości.
 5. Próba WZ większego niż możliwy stan: HTTP 409 i **zero zmian**.
-6. Próba operacji na stanie \`Nieustalony\`: HTTP 409.
+6. Próba samego WZ przy stanie Nieustalony: HTTP 409.
+   PZ 10 + WZ 4 tego indeksu w jednej sesji: wynik 6.
 7. Symulacja ponownego wysłania tej samej sesji: odpowiedź
    \`alreadySaved=true\`, stany bez podwójnej zmiany.
 8. Druga rola/magazyn bez uprawnień: HTTP 403.
@@ -95,6 +103,6 @@ nowej, czystej D1, jak w \`docs/clean-production-d1-launch.md\`.
 
 - Jeden wspólny identyfikator sesji, nie ma jeszcze osobnych
   drukowalnych numerów dokumentów PZ/WZ.
-- Panel biurowy nie ma jeszcze zakładki historii tych sesji;
-  API ma kontrolowany odczyt ostatnich 15.
+- Historia PZ/WZ jest w panelu biurowym (zakładka Ruchy PZ/WZ),
+  nie w mobilnej aplikacji magazyniera.
 - Nie ma jeszcze podpisu ani załączników.
