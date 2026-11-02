@@ -79,6 +79,7 @@ automatycznie żadnego czyszczenia ani nie przełącza aktualnej usługi.**
    - `db/08-pl-warehouse-inventories.sql`;
    - `db/09-pl-inventory-scanning.sql`.
    - `db/11-pl-warehouse-sessions.sql`.
+   - `db/12-pl-uninventoried-receipts.sql`.
    
    **BLOKER PRZED CUTOVER:** repo NIE zawiera obecnie jednej
    kanonicznej migracji tworzącej komplet bazowych tabel.
