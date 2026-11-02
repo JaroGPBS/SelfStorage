@@ -16,19 +16,21 @@ operator i magazyn pochodzą z serwera/sesji, nie z formularza.
 
 ## Przed rozpoczęciem testów w Cloudflare
 
-Otwórz Cloudflare -> D1 -> testowa baza \`gpbs-storage\` -> Console.
-Jeżeli migracja \`db/11-pl-warehouse-sessions.sql\` została już
-wykonana, uruchom JEDNORAZOWO kolejną:
+Otwórz Cloudflare -> D1 -> testowa baza `gpbs-storage` -> Console.
 
-\`db/12-pl-uninventoried-receipts.sql\`
+Jeżeli w bazie istnieją już dokumenty PZ/WZ, wykonaj tylko brakujące
+migracje, zawsze w kolejności:
 
-Dodaje ona wyłącznie kolumnę \`before_unknown\` do historii PZ/WZ.
-Nie zmienia stanów, nie usuwa operacji ani inwentaryzacji.
-Przy nowej bazie wykonaj migracje 11, następnie 12 i 13.
-Nie uruchamiaj ponownie migracji, jeżeli kolumny już istnieją.
+- `db/12-pl-uninventoried-receipts.sql` (jeśli jeszcze nie wykonana).
+- `db/13-pl-confirmed-overissues.sql` (NOWA, jednorazowo).
 
-Bez migracji 13 aplikacja zablokuje nowe PZ/WZ i wyświetli
-informację, co trzeba wykonać. Nie zmieniaj kluczy PIN i sesji.
+Migracja 13 dodaje wyłącznie kolumnę `shortage_quantity` do tabeli
+historii dokumentów PZ/WZ. Nie usuwa żadnych danych ani stanów.
+Nie uruchamiaj dwa razy tej samej migracji. W nowej bazie D1
+wykonaj najpierw migrację 11, potem 12, następnie 13.
+
+Bez migracji 13 aplikacja zablokuje zapis PZ/WZ i wyświetli
+komunikat o brakującej aktualizacji. Nie zmieniaj kluczy PIN i sesji.
 
 Endpoint: \`GET /api/pl/session?warehouse=PL-TYCHY\`
 — gotowość do zapisu; \`view=recent\` — 15 ostatnich sesji.
