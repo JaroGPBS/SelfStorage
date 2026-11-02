@@ -308,3 +308,18 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
 #operationStartScan{margin-bottom:12px}
 #operationScanPanel{margin:12px 0}
 #operationReader{width:100%;min-height:170px}
+
+/* Only an approval warning, not a new worker screen. */
+.operation-confirm-warning{
+  white-space:pre-line;
+  padding:14px;
+  margin:15px 0;
+  border:2px solid #e85c64;
+  background:#54242a;
+  color:#ffe4e4;
+  border-radius:11px;
+  font-size:14px;
+  line-height:1.6;
+  font-weight:800;
+  overflow-wrap:anywhere;
+}
