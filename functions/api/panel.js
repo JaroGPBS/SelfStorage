@@ -243,6 +243,11 @@ async function queryPanel(env,view,url) {
       ).all()
     ];
     if(Number(sessionSchema?.n)===2){
+      const columns=await env.DB.prepare('PRAGMA table_info(pl_warehouse_session_lines)').all();
+      const hasUnknownFlag=(columns.results||[]).some(c=>c.name==='before_unknown');
+      const originalQuantity=hasUnknownFlag
+        ?'CASE WHEN l.before_unknown=1 THEN NULL ELSE l.quantity_before END'
+        :'l.quantity_before';
       queries.push(env.DB.prepare(
         'SELECT s.id,s.id AS session_id,l.direction AS operation_type,'+
         's.warehouse_id,s.actor_id AS operator_id,'+
@@ -250,7 +255,7 @@ async function queryPanel(env,view,url) {
         's.counterparty AS recipient_name,s.committed_at AS created_at,'+
         'p.name AS part_name,p.part_number,'+
         "CASE WHEN l.direction='PZ' THEN l.quantity ELSE -l.quantity END AS quantity_delta,"+
-        'l.quantity_before,l.quantity_after '+
+        originalQuantity+' AS quantity_before,l.quantity_after '+
         'FROM pl_warehouse_sessions s '+
         'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
         'JOIN parts p ON p.id=l.part_id LEFT JOIN users u ON u.id=s.actor_id '+
