@@ -266,7 +266,7 @@
       state.ready=Boolean(data.ready);
       el('operationReadyNotice').hidden=state.ready;
       el('operationReadyNotice').textContent=state.ready?''
-        :'Moduł PZ/WZ wymaga migracji db/12-pl-uninventoried-receipts.sql w D1.';
+        :'Moduł PZ/WZ wymaga migracji db/13-pl-confirmed-overissues.sql w D1.';
       el('operationForm').hidden=!state.ready;
       render();
     }catch(error){
@@ -292,19 +292,54 @@
       counterparty,pz,wz};
   }
 
-  function review(){
+  async function review(){
     if(!state.ready||state.busy||!state.warehouse)return;
     if(state.pending){submit();return;}
     const input=payloadForCommit();
     if(!input)return;
-    state.reviewPayload=input;
-    const amount=side=>input[side].reduce((n,l)=>n+l.quantity,0);
-    el('operationConfirmText').textContent=
-      'Ekipa / dostawca / odbiorca: '+input.counterparty+
-      '\nPrzyjęcie PZ: '+input.pz.length+' pozycji · '+amount('pz')+' szt.'+
-      '\nWydanie WZ: '+input.wz.length+' pozycji · '+amount('wz')+' szt.'+
-      '\nZapisze oba dokumenty razem i zaktualizuje stany magazynu.';
-    el('operationConfirmDialog').showModal();
+    state.reviewPayload=null;
+    state.busy=true;
+    disableDuringPending();
+    status('Sprawdzanie aktualnych stanów magazynowych…');
+    try{
+      const preview=await api('/api/pl/session',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({...input,action:'preview'})
+      });
+      if(!state.warehouse||state.warehouse.id!==input.warehouseId)return;
+      state.reviewPayload={...input,action:'commit',
+        stockSnapshot:preview.stockSnapshot,
+        confirmedOverissue:preview.requiresConfirmation};
+      const amount=side=>input[side].reduce((n,l)=>n+l.quantity,0);
+      el('operationConfirmText').textContent=
+        'Ekipa / dostawca / odbiorca: '+input.counterparty+
+        '\nPrzyjęcie PZ: '+input.pz.length+' pozycji · '+amount('pz')+' szt.'+
+        '\nWydanie WZ: '+input.wz.length+' pozycji · '+amount('wz')+' szt.'+
+        '\nZapisze oba dokumenty razem i zaktualizuje stany magazynu.';
+      const warnings=preview.warnings||[];
+      const warning=el('operationConfirmWarning');
+      warning.hidden=!warnings.length;
+      warning.textContent=warnings.length?
+        'UWAGA! Wydajesz więcej niż jest na stanie. Czy na pewno ilość się zgadza?\n'+
+        warnings.map(row=>row.unknown
+          ?row.name+': stan nieustalony, wydajesz '+row.issued+
+            ' szt. (w tej sesji przyjęto '+row.received+' szt.).'
+          :row.name+': na stanie po przyjęciu '+row.available+
+            ' szt., wydajesz '+row.issued+
+            ' szt. — różnica '+row.shortfall+' szt.').join('\n')
+        :'';
+      el('operationConfirmTitle').textContent=warnings.length
+        ?'Potwierdź wydanie ponad stan':'Zatwierdzić całą sesję?';
+      el('operationConfirmApprove').textContent=warnings.length
+        ?'Tak, ilości się zgadzają':'Zapisz PZ / WZ';
+      status('');
+      el('operationConfirmDialog').showModal();
+    }catch(error){
+      status('Nie można sprawdzić stanów: '+error.message,true);
+    }finally{
+      state.busy=false;
+      render();
+    }
   }
 
   async function submit(){
