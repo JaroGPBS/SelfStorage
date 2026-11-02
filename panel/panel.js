@@ -191,7 +191,8 @@
         m.warehouse_id,m.recipient_name||'—',
         (m.part_name||m.part_number||'—')+(m.part_number?' · '+m.part_number:''),
         Number(m.quantity_delta)>0?'+'+m.quantity_delta:m.quantity_delta,
-        m.quantity_before,m.quantity_after,m.operator_name||m.operator_id||'—'
+        m.quantity_before===null||m.quantity_before===undefined?'Nieustalony':m.quantity_before,
+        m.quantity_after,m.operator_name||m.operator_id||'—'
       ])
     ];
     return [[],[]];
