@@ -8,7 +8,7 @@ const WH=/^[A-Z0-9-]{2,50}$/;
 const PART=/^[A-Za-z0-9_-]{1,100}$/;
 const MAX_LINES=80;
 const MAX_QUANTITY=100000;
-const MIGRATION='db/11-pl-warehouse-sessions.sql';
+const MIGRATION='db/12-pl-uninventoried-receipts.sql';
 
 function fail(message,status=400){return workerJson({ok:false,error:message},status);}
 
@@ -30,7 +30,9 @@ async function authorized(request,env,warehouseId){
 async function schemaReady(db){
   const r=await db.prepare("SELECT COUNT(*) AS n FROM sqlite_master "+
     "WHERE type='table' AND name IN ('pl_warehouse_sessions','pl_warehouse_session_lines')").first();
-  return Number(r?.n)===2;
+  if(Number(r?.n)!==2)return false;
+  const columns=await db.prepare('PRAGMA table_info(pl_warehouse_session_lines)').all();
+  return (columns.results||[]).some(c=>c.name==='before_unknown');
 }
 
 function normalizeLines(value,description){
@@ -101,18 +103,21 @@ async function commit(db,input,actorId){
     combined.set(line.partId,x);
   }
   const parts=[...combined.values()];
-  // A CHECK constraint on commit_guard makes the entire D1 batch roll back
-  // if *any* part is uncounted, unavailable or would become negative.
-  // Permission, role and warehouse are checked again inside the same batch.
-  // One JSON parameter instead of 3 per part: D1 permits <=100 binds/query.
-  // json_each is supported by D1's built-in SQLite JSON extension.
+  // New, previously uncounted part: PZ establishes known stock, never fake
+  // a historical "zero" as an inventory result. before_unknown=1 audits it.
+  // WZ-only on an unknown part remains blocked; PZ+WZ can work together if
+  // the newly received quantity covers the issue.
+  // One JSON bind for all parts respects D1's 100 binds per query limit.
   const partGuards=
     "NOT EXISTS(SELECT 1 FROM json_each(?) AS e "+
-    "LEFT JOIN warehouse_stock s ON s.warehouse_id=? "+
-    "AND s.part_id=json_extract(e.value,'$.partId') "+
-    "LEFT JOIN parts p ON p.id=s.part_id "+
-    "WHERE s.part_id IS NULL OR p.active IS NOT 1 OR s.quantity IS NULL "+
-    "OR s.quantity+CAST(json_extract(e.value,'$.delta') AS INTEGER) NOT BETWEEN 0 AND 100000000)";
+    "LEFT JOIN parts p ON p.id=json_extract(e.value,'$.partId') "+
+    "LEFT JOIN warehouse_stock s ON s.warehouse_id=? AND s.part_id=p.id "+
+    "WHERE p.id IS NULL OR p.active IS NOT 1 "+
+    "OR (s.part_id IS NULL AND "+
+    "(CAST(json_extract(e.value,'$.pz') AS INTEGER)=0 "+
+    "OR CAST(json_extract(e.value,'$.delta') AS INTEGER)<0)) "+
+    "OR (s.part_id IS NOT NULL AND "+
+    "s.quantity+CAST(json_extract(e.value,'$.delta') AS INTEGER) NOT BETWEEN 0 AND 100000000))";
   const guardSql=
     'INSERT INTO pl_warehouse_sessions '+
     '(id,warehouse_id,actor_id,counterparty,commit_guard) VALUES (?,?,?,?, '+
@@ -125,24 +130,34 @@ async function commit(db,input,actorId){
     partGuards+' THEN 1 ELSE 0 END)';
   const guardArgs=[input.id,input.warehouseId,actorId,input.counterparty,
     actorId,actorId,input.warehouseId,
-    JSON.stringify(parts.map(p=>({partId:p.id,delta:p.pz-p.wz}))),input.warehouseId];
+    JSON.stringify(parts.map(p=>({partId:p.id,pz:p.pz,delta:p.pz-p.wz}))),input.warehouseId];
   const statements=[db.prepare(guardSql).bind(...guardArgs)];
   for(const part of parts){
     // Record an accurate before/after snapshot BEFORE updating the stock.
     // If a part is both received and issued, PZ logically precedes WZ.
     if(part.pz){
+      // Snapshot BEFORE initializing a missing stock row. Unknown stays
+      // explicitly distinguishable from a verified count of zero.
       statements.push(db.prepare(
         'INSERT INTO pl_warehouse_session_lines '+
-        '(session_id,direction,part_id,quantity,quantity_before,quantity_after) '+
-        "SELECT ?,'PZ',?,?,s.quantity,s.quantity+? FROM warehouse_stock s "+
-        'WHERE s.warehouse_id=? AND s.part_id=?'
+        '(session_id,direction,part_id,quantity,quantity_before,quantity_after,before_unknown) '+
+        "SELECT ?,'PZ',?,?,COALESCE(s.quantity,0),COALESCE(s.quantity,0)+?, "+
+        'CASE WHEN s.part_id IS NULL THEN 1 ELSE 0 END '+
+        'FROM parts p LEFT JOIN warehouse_stock s '+
+        'ON s.part_id=p.id AND s.warehouse_id=? WHERE p.id=?'
       ).bind(input.id,part.id,part.pz,part.pz,input.warehouseId,part.id));
+      // Initialize only parts that are being RECEIVED; a WZ-only session
+      // must never implicitly invent a zero baseline.
+      statements.push(db.prepare(
+        'INSERT OR IGNORE INTO warehouse_stock '+
+        '(warehouse_id,part_id,quantity,updated_at) VALUES (?,?,0,CURRENT_TIMESTAMP)'
+      ).bind(input.warehouseId,part.id));
     }
     if(part.wz){
       statements.push(db.prepare(
         'INSERT INTO pl_warehouse_session_lines '+
-        '(session_id,direction,part_id,quantity,quantity_before,quantity_after) '+
-        "SELECT ?,'WZ',?,?,s.quantity+?,s.quantity+?-? FROM warehouse_stock s "+
+        '(session_id,direction,part_id,quantity,quantity_before,quantity_after,before_unknown) '+
+        "SELECT ?,'WZ',?,?,s.quantity+?,s.quantity+?-?,0 FROM warehouse_stock s "+
         'WHERE s.warehouse_id=? AND s.part_id=?'
       ).bind(input.id,part.id,part.wz,part.pz,part.pz,part.wz,
         input.warehouseId,part.id));
@@ -165,8 +180,8 @@ async function commit(db,input,actorId){
     const saved=await duplicate(db,input,actorId).catch(()=>null);
     if(saved)return saved;
     if(/constraint|foreign key|unique/i.test(String(error?.message||'')))
-      return fail('Nie zapisano sesji. Sprawdź stany części, dostęp do magazynu '+
-        'i czy wykonano pierwszą inwentaryzację.',409);
+      return fail('Nie zapisano sesji. Sprawdź dostępne ilości dla WZ '+
+        'oraz uprawnienia do magazynu. Przyjęcie PZ nie wymaga inwentaryzacji.',409);
     console.error('PL warehouse session commit failed',error?.name||'Error');
     return fail('Nie udało się zapisać sesji. Ponów bez zmieniania danych.',503);
   }
@@ -195,7 +210,8 @@ export async function onRequestGet({request,env}){
     if(!sessions.length)return workerJson({ok:true,ready,history:[]});
     const ids=sessions.map(r=>r.id);
     const parts=await env.DB.prepare(
-      'SELECT l.session_id,l.direction,l.part_id,l.quantity,l.quantity_before,'+
+      'SELECT l.session_id,l.direction,l.part_id,l.quantity,'+
+      'CASE WHEN l.before_unknown=1 THEN NULL ELSE l.quantity_before END AS quantity_before,'+
       'l.quantity_after,p.name AS part_name,p.part_number '+
       'FROM pl_warehouse_session_lines l LEFT JOIN parts p ON p.id=l.part_id '+
       'WHERE l.session_id IN ('+ids.map(()=>'?').join(',')+') '+
@@ -207,7 +223,8 @@ export async function onRequestGet({request,env}){
         direction:line.direction,partId:line.part_id,
         name:line.part_name||line.part_number||line.part_id,
         number:line.part_number||null,quantity:Number(line.quantity),
-        before:Number(line.quantity_before),after:Number(line.quantity_after)
+        before:line.quantity_before===null?null:Number(line.quantity_before),
+        after:Number(line.quantity_after)
       });
     return workerJson({ok:true,ready,history:sessions.map(r=>({
       id:r.id,counterparty:r.counterparty,committedAt:r.committed_at,
