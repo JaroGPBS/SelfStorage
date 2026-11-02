@@ -266,7 +266,7 @@
       state.ready=Boolean(data.ready);
       el('operationReadyNotice').hidden=state.ready;
       el('operationReadyNotice').textContent=state.ready?''
-        :'Moduł PZ/WZ wymaga jeszcze migracji db/11-pl-warehouse-sessions.sql w D1.';
+        :'Moduł PZ/WZ wymaga migracji db/12-pl-uninventoried-receipts.sql w D1.';
       el('operationForm').hidden=!state.ready;
       render();
     }catch(error){
