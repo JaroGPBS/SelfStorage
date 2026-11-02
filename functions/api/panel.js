@@ -178,16 +178,26 @@ async function queryPanel(env,view,url) {
     ]);
     // One document per direction and session, not one per catalogue part.
     let recentDocuments=0;
+    let overissuedLines=0;
     if(sessionsTable){
       const count=await env.DB.prepare(
         "SELECT COUNT(*) AS n FROM (SELECT session_id,direction "+
         "FROM pl_warehouse_session_lines GROUP BY session_id,direction)"
       ).first();
       recentDocuments=Number(count?.n||0);
+      const columns=await env.DB.prepare('PRAGMA table_info(pl_warehouse_session_lines)').all();
+      if((columns.results||[]).some(c=>c.name==='shortage_quantity')){
+        const overissued=await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM pl_warehouse_session_lines "+
+          "WHERE direction='WZ' AND shortage_quantity>0"
+        ).first();
+        overissuedLines=Number(overissued?.n||0);
+      }
     }
     return {warehouses:warehouses?.n||0,
       operations:Number(operations?.n||0)+recentDocuments,
-      parts:parts?.n||0,users:users?.n||0};
+      parts:parts?.n||0,users:users?.n||0,
+      overissuedLines};
   }
   if(view==='warehouses') {
     const rows=await env.DB.prepare(
