@@ -184,7 +184,7 @@
     ];
     if(view==='movements')return [
       ['DATA (PL)','SESJA / DOKUMENT','TYP','MAGAZYN','EKIPA / DOSTAWCA / ODBIORCA',
-        'CZĘŚĆ','ZMIANA','PRZED','PO','PRACOWNIK'],
+        'CZĘŚĆ','ZMIANA','PRZED','PO','PRACOWNIK','UWAGI'],
       items.map(m=>[
         formatTimestampPL(m.created_at),m.session_id||m.id,
         m.operation_type==='PZ'?pill('PZ','green'):pill('WZ','red'),
@@ -192,7 +192,12 @@
         (m.part_name||m.part_number||'—')+(m.part_number?' · '+m.part_number:''),
         Number(m.quantity_delta)>0?'+'+m.quantity_delta:m.quantity_delta,
         m.quantity_before===null||m.quantity_before===undefined?'Nieustalony':m.quantity_before,
-        m.quantity_after,m.operator_name||m.operator_id||'—'
+        m.quantity_after,m.operator_name||m.operator_id||'—',
+        m.operation_type==='WZ'&&Number(m.shortage_quantity)>0
+          ?pill(Number(m.before_unknown)===1
+            ?'Wydanie przy nieustalonym stanie · '+m.shortage_quantity+' szt. ponad potwierdzone'
+            :'Wydano ponad stan o '+m.shortage_quantity+' szt.','red')
+          :'—'
       ])
     ];
     return [[],[]];
