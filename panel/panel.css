@@ -254,3 +254,35 @@ tr:hover td{background:#ffffff04}
 #partEditDialog{max-width:min(560px,calc(100vw - 24px))}
 #partEditDialog .modal-inner{max-height:calc(100dvh - 50px);overflow:auto}
 #partEditDialog .dialog-actions .btn{min-height:43px}
+
+/* Warning for confirmed issue above recorded stock; only office/admin UI. */
+.movement-type{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.movement-overissued td{
+  background:rgba(196,40,54,.19);
+  border-top:1px solid rgba(237,76,86,.6);
+}
+.movement-overissued td:first-child{
+  color:#ffd6d9;
+  border-left:4px solid #ff515d;
+}
+.movement-overissued:hover td{background:rgba(210,45,60,.28)}
+.movement-overissued .pill.red{
+  background:rgba(210,50,67,.24);
+  color:#ffd5d7;
+  border-color:#e75160;
+  font-size:11px;
+}
+.overissue-alert{
+  padding:14px 18px;
+  margin:0 0 19px;
+  border-left:5px solid #ff515d;
+  border-top:1px solid #9a303c;
+  border-right:1px solid #9a303c;
+  border-bottom:1px solid #9a303c;
+  color:#ffd9dc;
+  background:rgba(170,30,46,.19);
+  font-size:13px;
+  font-weight:800;
+  line-height:1.6;
+}
+.overissue-alert[hidden]{display:none!important}
