@@ -24,10 +24,10 @@ wykonana, uruchom JEDNORAZOWO kolejną:
 
 Dodaje ona wyłącznie kolumnę \`before_unknown\` do historii PZ/WZ.
 Nie zmienia stanów, nie usuwa operacji ani inwentaryzacji.
-Przy nowej bazie wykonaj migracje 11, następnie 12.
-Nie uruchamiaj nr 12 ponownie, gdy kolumna już istnieje.
+Przy nowej bazie wykonaj migracje 11, następnie 12 i 13.
+Nie uruchamiaj ponownie migracji, jeżeli kolumny już istnieją.
 
-Bez migracji 12 aplikacja zablokuje nowe PZ/WZ i wyświetli
+Bez migracji 13 aplikacja zablokuje nowe PZ/WZ i wyświetli
 informację, co trzeba wykonać. Nie zmieniaj kluczy PIN i sesji.
 
 Endpoint: \`GET /api/pl/session?warehouse=PL-TYCHY\`
@@ -58,11 +58,20 @@ a API weryfikuje magazyn, autoryzację, role i części. Nie wysyłamy PIN-u.
   było wcześniej innych sztuk; to ustali późniejsza inwentaryzacja.
 - Historia przyjęcia zachowuje \`before_unknown=1\`, a panel wyświetla
   poprzedni stan jako „Nieustalony”, nie jako fałszywe zero.
-- **WZ niezinwentaryzowanej części bez PZ pozostaje blokowane.**
-  W jednej sesji można przyjąć 10 i wydać z tego 4; stan 6.
-- WZ nie może doprowadzić do ujemnego stanu. Jeśli ta sama część
-  występuje w PZ i WZ, rozliczamy PZ, a następnie WZ, w ramach
-  pojedynczego atomowego salda.
+- **WZ może przekroczyć zapisany stan**, także gdy stan jest nieustalony.
+  Aplikacja pobiera aktualne ilości z D1, a w już istniejącym oknie
+  zatwierdzenia wyświetla czerwone ostrzeżenie
+  „Wydajesz więcej niż jest na stanie. Czy na pewno ilość się zgadza?”.
+  Magazynier może wrócić lub potwierdzić podaną ilość.
+- WZ zapisuje całą faktycznie wydaną ilość (np. 8 przy stanie 5).
+  `warehouse_stock` pozostaje nieujemny (stan 0); niedobór 3 szt.
+  jest zapamiętany w `pl_warehouse_session_lines.shortage_quantity`
+  i na czerwono wyświetlany w panelu biurowym. Nie znika z historii.
+  W przypadku wcześniej nieustalonego stanu ostrzeżenie nie twierdzi,
+  że brak rzeczywisty jest dokładnie znany.
+- Zmiana stanu po podglądzie, a przed zapisem, powoduje odrzucenie
+  całej sesji i konieczność ponownej weryfikacji ostrzeżenia.
+  Sesja PZ/WZ nadal zapisywana jest atomowo i idempotentnie.
 - Serwer odrzuca nieaktywne części, konta, magazyny i brak grantów.
   Uprawnienia są również sprawdzane **w samej transakcji**.
 - Powtórne wysłanie tego samego ID z identycznymi danymi jest
@@ -85,9 +94,12 @@ a API weryfikuje magazyn, autoryzację, role i części. Nie wysyłamy PIN-u.
    zatwierdź, sprawdź oba salda i oba wiersze historii.
 3. PZ i WZ tej samej części: sprawdź wynik netto i obie migawki.
 4. Sam WZ: sprawdź prawidłowe zmniejszenie ilości.
-5. Próba WZ większego niż możliwy stan: HTTP 409 i **zero zmian**.
-6. Próba samego WZ przy stanie Nieustalony: HTTP 409.
-   PZ 10 + WZ 4 tego indeksu w jednej sesji: wynik 6.
+5. Próba WZ 8 szt. przy znanym stanie 5: czerwone ostrzeżenie,
+   zatwierdzenie, zapis 8 szt., stan 0 i 3 szt. niedoboru w panelu.
+   Rezygnacja w dialogu nie zapisuje żadnej operacji.
+6. Samo WZ przy stanie Nieustalony: ostrzeżenie o nieznanym stanie;
+   po potwierdzeniu zapis z flagą nieustalonego stanu.
+   PZ 10 + WZ 4 tego indeksu w jednej sesji: stan 6 bez ostrzeżenia.
 7. Symulacja ponownego wysłania tej samej sesji: odpowiedź
    \`alreadySaved=true\`, stany bez podwójnej zmiany.
 8. Druga rola/magazyn bez uprawnień: HTTP 403.
