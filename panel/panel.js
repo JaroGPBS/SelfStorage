@@ -126,19 +126,39 @@
     }).format(date);
   }
 
-  function buildTable(columns,rows) {
+  function buildTable(columns,rows,highlightRows=[]) {
     const table=document.createElement('table');
     const head=table.createTHead().insertRow();
     for(const title of columns){const cell=document.createElement('th');cell.textContent=title;head.append(cell);}
     const body=table.createTBody();
-    for(const cols of rows) {
+    for(const [index,cols] of rows.entries()) {
       const tr=body.insertRow();
+      if(highlightRows[index])tr.classList.add('movement-overissued');
       for(const col of cols) {
         if(col && col.nodeType){const cell=tr.insertCell();cell.append(col);}
         else tr.append(td(col));
       }
     }
     return table;
+  }
+
+  function overissueAmount(m) {
+    if(m.operation_type!=='WZ')return 0;
+    const stored=Number(m.shortage_quantity||0);
+    if(stored>0)return stored;
+    if(m.quantity_before===null||m.quantity_before===undefined)return 0;
+    const before=Number(m.quantity_before);
+    const issued=-Number(m.quantity_delta);
+    return Number.isFinite(before)&&Number.isFinite(issued)
+      ?Math.max(0,issued-before):0;
+  }
+
+  function movementType(m) {
+    const wrap=document.createElement('div');
+    wrap.className='movement-type';
+    wrap.append(pill(m.operation_type==='PZ'?'PZ':'WZ',m.operation_type==='PZ'?'green':'red'));
+    if(overissueAmount(m)>0)wrap.append(pill('⚠ PONAD STAN','red'));
+    return wrap;
   }
 
   function warehouseRows(items) {
@@ -173,6 +193,12 @@
       card.append(a,b,c);return card;
     }));
     displayWarehouses(warehouses,'dashboardWarehouses');
+    const alert=$('overissueAlert');
+    const count=Number(summary.overissuedLines||0);
+    alert.hidden=count===0;
+    alert.textContent=count>0
+      ?'⚠ UWAGA: '+count+' pozycji WZ wydano ponad zapisany stan. Szczegóły: Ruchy PZ / WZ.'
+      :'';
   }
 
   function colsFor(view,items) {
@@ -187,16 +213,16 @@
         'CZĘŚĆ','ZMIANA','PRZED','PO','PRACOWNIK','UWAGI'],
       items.map(m=>[
         formatTimestampPL(m.created_at),m.session_id||m.id,
-        m.operation_type==='PZ'?pill('PZ','green'):pill('WZ','red'),
+        movementType(m),
         m.warehouse_id,m.recipient_name||'—',
         (m.part_name||m.part_number||'—')+(m.part_number?' · '+m.part_number:''),
         Number(m.quantity_delta)>0?'+'+m.quantity_delta:m.quantity_delta,
         m.quantity_before===null||m.quantity_before===undefined?'Nieustalony':m.quantity_before,
         m.quantity_after,m.operator_name||m.operator_id||'—',
-        m.operation_type==='WZ'&&Number(m.shortage_quantity)>0
+        overissueAmount(m)>0
           ?pill(Number(m.before_unknown)===1
-            ?'Wydanie przy nieustalonym stanie · '+m.shortage_quantity+' szt. ponad potwierdzone'
-            :'Wydano ponad stan o '+m.shortage_quantity+' szt.','red')
+            ?'Wydanie przy nieustalonym stanie · '+overissueAmount(m)+' szt. ponad potwierdzone'
+            :'Wydano ponad stan o '+overissueAmount(m)+' szt.','red')
           :'—'
       ])
     ];
@@ -383,7 +409,8 @@
       empty.textContent=state.records.length?'Nie znaleziono pasujących pozycji.':'Brak danych do wyświetlenia.';
       $('tableResults').append(empty);
     }else $('tableResults').append(state.view==='users'?renderUsersTable(matching)
-      :state.view==='parts'?renderPartsTable(matching):buildTable(columns,rows));
+      :state.view==='parts'?renderPartsTable(matching):buildTable(columns,rows,
+        state.view==='movements'?matching.map(m=>overissueAmount(m)>0):[]));
     $('tableFooter').textContent='Wyświetlono '+matching.length+' z '+state.records.length+' pozycji';
   }
 
