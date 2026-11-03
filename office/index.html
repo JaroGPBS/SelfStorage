@@ -8,28 +8,37 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Panel biurowy</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=1">
+  <link rel="stylesheet" href="./office.css?v=2">
   <script defer src="./office.js?v=1"></script>
 </head>
 <body>
-  <section id="loginScreen" class="login-screen">
-    <div class="login-card">
-      <div class="login-mark"><span class="brand-symbol">G</span> GPBS <span>STORAGE</span></div>
-      <div class="kicker">PANEL BIUROWY</div>
-      <h1>Witaj ponownie.</h1>
-      <p>Stany magazynowe i historia operacji w jednym miejscu.</p>
-      <form id="loginForm">
-        <label for="pin">PIN użytkownika</label>
-        <input id="pin" type="password" inputmode="numeric" maxlength="4" minlength="4" pattern="[0-9]{4}" autocomplete="off" required placeholder="••••">
-        <button class="primary" id="loginButton" type="submit">Zaloguj się <span aria-hidden="true">→</span></button>
-      </form>
-      <p id="loginError" class="error hidden" role="alert"></p>
-      <div class="login-foot">GPBS Storage · Polska</div>
+  <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
+    <div class="login-shell">
+      <header class="login-brand">
+        <img src="/icons/gpbs-logo.svg" alt="GPBS">
+        <div class="login-brand-name">
+          <strong>STORAGE</strong>
+          <span>PANEL BIUROWY / POLSKA</span>
+        </div>
+        <span class="login-market">PL</span>
+      </header>
+      <div class="login-card">
+        <div class="kicker">LOGOWANIE</div>
+        <h1 id="loginTitle">Zaloguj się</h1>
+        <p>Wpisz swój 4-cyfrowy PIN GPBS Storage.</p>
+        <form id="loginForm">
+          <label for="pin">PIN użytkownika</label>
+          <input id="pin" type="password" inputmode="numeric" maxlength="4" minlength="4" pattern="[0-9]{4}" autocomplete="off" required placeholder="••••">
+          <button class="primary" id="loginButton" type="submit">Zaloguj <span aria-hidden="true">→</span></button>
+        </form>
+        <p id="loginError" class="error hidden" role="alert"></p>
+      </div>
+      <footer class="login-foot">GPBS STORAGE <span aria-hidden="true">•</span> SYSTEM MAGAZYNOWY</footer>
     </div>
   </section>
   <div id="app" class="app hidden">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><span class="brand-symbol">G</span><span>GPBS <strong>STORAGE</strong><small>PANEL BIUROWY</small></span></div>
+      <div class="brand"><img class="sidebar-logo" src="/icons/gpbs-logo.svg" alt="GPBS"><span class="sidebar-brand-name"><strong>STORAGE</strong><small>PANEL BIUROWY</small></span></div>
       <div class="nav-label">NAWIGACJA</div>
       <nav aria-label="Menu główne">
         <button id="warehouseToggle" class="nav-heading" type="button" aria-expanded="true">
