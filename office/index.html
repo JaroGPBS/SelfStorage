@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#30343b">
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
-  <title>GPBS Storage — Storage Management</title>
+  <title>GPBS Storage — Storage Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=4">
+  <link rel="stylesheet" href="./office.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     #loginScreen .login-shell {
@@ -23,17 +23,17 @@
       border-bottom:1px solid rgba(255,255,255,.15);
     }
     #loginScreen .login-brand-lockup {
-      display:flex;align-items:center;flex-direction:row;
+      display:flex;align-items:flex-end;flex-direction:row;
       flex:0 1 auto;min-width:0;gap:clamp(14px,2vw,32px);
     }
     #loginScreen .login-brand-lockup img{
       display:block;flex:none;
-      width:clamp(205px,18vw,330px);
+      width:clamp(164px,14.4vw,264px);
       height:auto;max-height:none;object-fit:contain;
     }
     #loginScreen .login-brand-name{
       display:flex;flex-direction:column;flex:0 1 auto;
-      min-width:0;gap:5px;
+      min-width:0;gap:5px;margin-bottom:5px;
     }
     #loginScreen .login-brand-name strong{
       font-size:clamp(24px,2.2vw,33px);line-height:1.05;
@@ -46,8 +46,8 @@
     }
     #loginScreen .polish-flag{
       display:flex;align-items:center;justify-content:center;
-      flex:0 0 clamp(120px,10vw,180px);
-      height:clamp(72px,6vw,110px);
+      flex:0 0 clamp(84px,7vw,126px);
+      height:clamp(50px,4.2vw,77px);
       perspective:550px;
       filter:drop-shadow(0 7px 15px rgba(0,0,0,.38));
     }
@@ -102,17 +102,17 @@
       #loginScreen .login-shell{padding:21px 19px}
       #loginScreen .login-brand{gap:12px}
       #loginScreen .login-brand-lockup{gap:9px}
-      #loginScreen .login-brand-lockup img{width:clamp(110px,24vw,175px)}
+      #loginScreen .login-brand-lockup img{width:clamp(88px,19.2vw,140px)}
       #loginScreen .login-brand-name strong{font-size:clamp(17px,3.2vw,24px)}
       #loginScreen .login-brand-name span{font-size:9px;letter-spacing:.5px}
-      #loginScreen .polish-flag{flex-basis:88px;height:55px}
+      #loginScreen .polish-flag{flex-basis:62px;height:39px}
     }
     @media(max-width:480px){
       #loginScreen .login-brand{gap:8px}
-      #loginScreen .login-brand-lockup img{width:clamp(83px,24vw,113px)}
+      #loginScreen .login-brand-lockup img{width:clamp(66px,19.2vw,90px)}
       #loginScreen .login-brand-name strong{font-size:17px;letter-spacing:.7px}
       #loginScreen .login-brand-name span{font-size:8px;letter-spacing:.1px}
-      #loginScreen .polish-flag{flex-basis:58px;height:37px}
+      #loginScreen .polish-flag{flex-basis:42px;height:26px}
     }
     @media(prefers-reduced-motion:reduce){
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
@@ -128,7 +128,7 @@
           <img src="/icons/gpbs-logo.svg" alt="GPBS">
           <div class="login-brand-name">
             <strong>STORAGE</strong>
-            <span>STORAGE MANAGEMENT / POLSKA</span>
+            <span>STORAGE OFFICE / POLSKA</span>
           </div>
         </div>
         <div class="polish-flag" role="img" aria-label="Flaga Polski">
@@ -154,7 +154,7 @@
   </section>
   <div id="app" class="app hidden">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="sidebar-logo" src="/icons/gpbs-logo.svg" alt="GPBS"><span class="sidebar-brand-name"><strong>STORAGE</strong><small>STORAGE MANAGEMENT</small></span></div>
+      <div class="brand"><img class="sidebar-logo" src="/icons/gpbs-logo.svg" alt="GPBS"><span class="sidebar-brand-name"><strong>STORAGE</strong><small>STORAGE OFFICE</small></span></div>
       <div class="nav-label">NAWIGACJA</div>
       <nav aria-label="Menu główne">
         <button id="warehouseToggle" class="nav-heading" type="button" aria-expanded="true">
