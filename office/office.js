@@ -432,7 +432,6 @@ async function openDocumentPrint(id,direction){
       printField('Magazyn',warehouse)+
       printField('Data operacji',dateText(documentRow.date))+
       printField('Tydzień',isoWeek(documentRow.date))+
-      printField('ID wizyty',documentRow.id)+
       printField(isReceipt?'Dostawca / ekipa':'Odbiorca',documentRow.counterparty)+
       printField(isReceipt?'Przyjmował':'Wydawał',documentRow.worker)+
     '</div>'+
