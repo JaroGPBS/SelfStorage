@@ -1977,3 +1977,31 @@
     letter-spacing:.11em;
   }
 }
+
+/* Footer greeting: visually spaced name and centered, larger second line. */
+#sidebar .office-welcome .welcome-line{
+  display:flex;
+  align-items:baseline;
+  justify-content:flex-start;
+  gap:14px;
+  white-space:nowrap;
+  overflow-wrap:normal;
+}
+#sidebar .office-welcome .welcome-line span,
+#sidebar .office-welcome .welcome-line strong{
+  display:inline-block;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+#sidebar .office-welcome .welcome-wish{
+  margin-top:5px;
+  text-align:center;
+  font-size:15px;
+  line-height:1.35;
+  font-weight:750;
+  color:#cbdde7;
+}
+@media(max-width:950px){
+  #sidebar .office-welcome .welcome-line{gap:8px;font-size:11px}
+  #sidebar .office-welcome .welcome-wish{font-size:14px}
+}
