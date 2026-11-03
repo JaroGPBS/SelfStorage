@@ -2,6 +2,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const DEMO_MEDUZA_PHOTO='/office/images/antena-meduza-demo.jpg';
 const DEMOS=[{id:'demo1',name:'Testowy 1',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Testowy 2',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Testowy 3',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
 const state={user:null,warehouses:[],warehouse:'',view:'stocks',search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
@@ -227,24 +228,63 @@ async function expandRow(id){
   if(state.expanded===id)filterCurrent();
 }
 async function openPart(id){
-  const modal=$('modal'),body=$('modalBody');modal.classList.remove('hidden');
+  const modal=$('modal'),body=$('modalBody');
+  modal.classList.remove('hidden');
+  modal.querySelector('.modal-card').classList.add('part-detail-card');
   body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><div class="loading">Wczytywanie...</div>';
   const demo=isDemo();
   try{
-    // In the demo, show real catalog information without treating the mock quantity as stock.
     const warehouse=demo?(state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0].id):state.warehouse;
     const payload=await api('part',{warehouse,part:id});
     if(modal.classList.contains('hidden'))return;
     const p=payload.part;
     const amount=demo?demoQuantity((await realParts()).findIndex(x=>x.id===id),DEMOS.findIndex(x=>x.id===state.warehouse)+1):p.quantity;
-    body.innerHTML='<div class="kicker">KARTA CZĘŚCI</div><h2 id="modalTitle">'+escapeHtml(p.name)+'</h2><p class="muted">Indeks SAP: '+escapeHtml(p.sap_number||'—')+'</p>'+
-    '<div class="detail-hero"><div class="photo-spot"><span style="font-size:30px">▧</span><span>Zdjęcie części</span></div><div><span class="muted">Aktualny stan</span><strong>'+quantity(amount)+' szt.</strong><p class="muted">Identyfikator: '+escapeHtml(p.part_number||'—')+'</p></div></div>'+
-    '<div class="detail-info"><div><small>Ostatnia dostawa</small><strong>'+(demo?'—':dateText(payload.delivery?.date))+'</strong><p class="muted">'+(!demo&&payload.delivery?'Przyjęto '+escapeHtml(payload.delivery.quantity)+' szt.':'Brak danych')+'</p></div><div><small>Ostatnia inwentaryzacja</small><strong>'+(demo?'—':dateText(payload.inventory?.date))+'</strong></div></div>'+
-    '<div class="modal-actions"><button type="button" class="btn outline" disabled title="Podgląd etykiety w kolejnym etapie">Wydruk etykiety · w przygotowaniu</button></div>';
-  }catch(ex){body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><p class="error">'+escapeHtml(ex.message)+'</p>';}
+    // Temporary illustrative photo, matched by exact part name; no write to D1.
+    const hasDemoPhoto=String(p.name||'').trim().toLocaleLowerCase('pl')==='antena meduza';
+    const photo=hasDemoPhoto
+      ? '<button type="button" class="part-photo-zoom" data-photo-open="1" aria-label="Powiększ zdjęcie części '+escapeHtml(p.name)+'">'+
+        '<img src="'+DEMO_MEDUZA_PHOTO+'" alt="'+escapeHtml(p.name)+' — zdjęcie części" loading="lazy">'+
+        '<span class="photo-zoom-label" aria-hidden="true">⤢ Powiększ zdjęcie</span></button>'
+      : '<div class="part-photo-empty" aria-label="Brak zdjęcia części"><span aria-hidden="true">▧</span><small>Zdjęcie części</small></div>';
+    const deliveryQuantity=!demo&&payload.delivery?'Przyjęto '+escapeHtml(payload.delivery.quantity)+' szt.':'Brak danych';
+    body.innerHTML=
+      '<div class="kicker">KARTA CZĘŚCI</div>'+
+      '<h2 id="modalTitle">'+escapeHtml(p.name)+'</h2>'+
+      '<p class="muted part-sap-line">Indeks SAP: '+escapeHtml(p.sap_number||'—')+'</p>'+
+      '<div class="part-detail-layout">'+
+        '<div class="part-photo-section">'+photo+'</div>'+
+        '<div class="part-detail-data">'+
+          '<div class="part-stock-block"><small>AKTUALNY STAN</small><strong>'+quantity(amount)+' <span>szt.</span></strong></div>'+
+          '<div class="part-meta-item"><small>Identyfikator magazynowy</small><strong>'+escapeHtml(p.part_number||'—')+'</strong></div>'+
+          '<div class="part-meta-item"><small>Ostatnia dostawa</small><strong>'+(demo?'—':dateText(payload.delivery?.date))+'</strong><p>'+deliveryQuantity+'</p></div>'+
+          '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>'+(demo?'—':dateText(payload.inventory?.date))+'</strong></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="modal-actions"><button type="button" class="btn outline" disabled title="Podgląd etykiety w kolejnym etapie">Wydruk etykiety · w przygotowaniu</button></div>';
+  }catch(ex){
+    body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><p class="error">'+escapeHtml(ex.message)+'</p>';
+  }
 }
-function closeModal(){$('modal').classList.add('hidden');$('modalBody').innerHTML='';}
+function openPhotoViewer(){
+  const viewer=$('photoViewer');
+  $('photoViewerImage').src=DEMO_MEDUZA_PHOTO;
+  viewer.classList.remove('hidden');
+  $('photoViewerClose').focus();
+}
+function closePhotoViewer(){
+  $('photoViewer').classList.add('hidden');
+  $('photoViewerImage').removeAttribute('src');
+  $('modalBody').querySelector('[data-photo-open]')?.focus();
+}
+function closeModal(){
+  if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
+  $('modal').classList.add('hidden');
+  $('modal').querySelector('.modal-card').classList.remove('part-detail-card');
+  $('modalBody').innerHTML='';
+}
 document.addEventListener('click',e=>{
+  if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
+  if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
   const w=e.target.closest('[data-warehouse]');if(w){selectView('stocks',w.dataset.warehouse);return;}
   const v=e.target.closest('[data-view]');if(v){selectView(v.dataset.view);return;}
   const part=e.target.closest('[data-part]');if(part){openPart(part.dataset.part);return;}
@@ -257,7 +297,11 @@ $('tableArea').addEventListener('change',e=>{
 });
 $('modalClose').addEventListener('click',closeModal);
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();return;}
+  if(e.key==='Escape'){
+    if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
+    else closeModal();
+    return;
+  }
   const row=e.target.closest('tr[data-part-row]');
   if(row&&e.target===row&&(e.key==='Enter'||e.key===' ')){
     e.preventDefault();openPart(row.dataset.partRow);

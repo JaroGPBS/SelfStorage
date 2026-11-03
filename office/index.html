@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Storage Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=8">
+  <link rel="stylesheet" href="./office.css?v=9">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
@@ -166,7 +166,7 @@
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
     }
   </style>
-  <script defer src="./office.js?v=4"></script>
+  <script defer src="./office.js?v=5"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -274,6 +274,11 @@
       <button type="button" id="modalClose" class="modal-close" aria-label="Zamknij">×</button>
       <div id="modalBody"></div>
     </div>
+  </div>
+  <div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-modal="true" aria-label="Powiększone zdjęcie części">
+    <div class="photo-viewer-backdrop" data-photo-close="1"></div>
+    <button type="button" class="photo-viewer-close" id="photoViewerClose" data-photo-close="1" aria-label="Zamknij zdjęcie">×</button>
+    <img id="photoViewerImage" alt="Antena meduza — powiększone zdjęcie">
   </div>
 </body>
 </html>

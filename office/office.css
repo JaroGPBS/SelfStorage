@@ -347,3 +347,104 @@
   .app.view-stocks .table th:nth-child(n+3),
   .app.view-stocks .table td:nth-child(n+3){padding-right:23px}
 }
+
+/* Enlarged part details and photo lightbox; office-only. */
+.modal-card.part-detail-card{
+  width:min(92vw,900px);
+  max-height:90dvh;
+  padding:30px 34px 24px;
+}
+.part-detail-card h2{font-size:26px;line-height:1.2;margin-bottom:7px}
+.part-sap-line{margin-bottom:22px!important}
+.part-detail-layout{
+  display:grid;grid-template-columns:minmax(0,1.13fr) minmax(230px,.87fr);
+  gap:24px;align-items:stretch;
+}
+.part-photo-section{
+  min-height:315px;border:1px solid #e6e8ec;border-radius:11px;
+  background:#f8f9fa;overflow:hidden;
+}
+.part-photo-zoom{
+  width:100%;height:100%;min-height:315px;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;
+  position:relative;border:0;padding:16px;background:#fff;
+  cursor:zoom-in;
+}
+.part-photo-zoom img{
+  display:block;width:100%;height:315px;max-height:50dvh;
+  object-fit:contain;
+}
+.photo-zoom-label{
+  position:absolute;right:13px;bottom:13px;
+  background:#222b36d9;color:#fff;font-size:11px;font-weight:650;
+  padding:7px 11px;border-radius:7px;
+}
+.part-photo-zoom:hover .photo-zoom-label{background:#c52e3a}
+.part-photo-empty{
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:8px;color:#98a2ad;
+  min-height:315px;width:100%;
+  background:linear-gradient(140deg,#fafbfc,#f0f2f5);
+}
+.part-photo-empty span{font-size:42px;line-height:1}
+.part-photo-empty small{font-size:12px}
+.part-detail-data{
+  display:flex;flex-direction:column;gap:12px;min-width:0;
+}
+.part-stock-block{
+  padding:20px;border:1px solid #e3e7ec;border-radius:10px;
+  background:#f8f9fb;
+}
+.part-stock-block small,.part-meta-item small{
+  display:block;font-size:10px;color:#76828f;
+  font-weight:750;letter-spacing:.07em;margin-bottom:8px;
+}
+.part-stock-block strong{
+  display:block;color:#252c35;font-size:32px;
+  line-height:1.13;font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+.part-stock-block strong span{font-size:16px;font-weight:550;color:#697584}
+.part-meta-item{
+  padding:11px 14px;border:1px solid #e7e9ed;border-radius:9px;
+}
+.part-meta-item small{letter-spacing:normal;margin-bottom:5px}
+.part-meta-item strong{
+  display:block;font-size:13px;font-weight:750;
+  overflow-wrap:anywhere;color:#303844;
+}
+.part-meta-item p{color:#7e8996;font-size:11px;margin-top:4px}
+.photo-viewer{
+  position:fixed;inset:0;z-index:210;
+  display:flex;justify-content:center;align-items:center;
+  padding:54px 30px 30px;
+}
+.photo-viewer-backdrop{
+  position:absolute;inset:0;background:rgba(9,13,19,.91);
+}
+.photo-viewer img{
+  position:relative;z-index:1;display:block;
+  max-width:min(96vw,1250px);max-height:calc(100dvh - 88px);
+  width:auto;height:auto;object-fit:contain;
+  border-radius:6px;background:#fff;
+  box-shadow:0 15px 65px rgba(0,0,0,.4);
+}
+.photo-viewer-close{
+  position:absolute;z-index:2;top:16px;right:23px;
+  border:1px solid #ffffff45;border-radius:8px;
+  background:#303b48;color:white;width:40px;height:40px;
+  font-size:27px;line-height:1;
+}
+@media(max-width:690px){
+  .modal-card.part-detail-card{width:min(97vw,900px);padding:22px 18px}
+  .part-detail-card h2{font-size:22px}
+  .part-detail-layout{grid-template-columns:1fr;gap:13px}
+  .part-photo-section,.part-photo-zoom,.part-photo-empty{min-height:220px}
+  .part-photo-zoom img{height:230px;max-height:38dvh}
+  .part-detail-data{gap:9px}
+  .part-stock-block{padding:14px}
+  .part-stock-block strong{font-size:28px}
+  .part-meta-item{padding:9px 12px}
+  .photo-viewer{padding:58px 12px 12px}
+  .photo-viewer img{max-width:98vw;max-height:calc(100dvh - 75px)}
+}
