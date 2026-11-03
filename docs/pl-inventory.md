@@ -191,3 +191,34 @@ wytypować po `pl_part_verifications` i sprawdzić zależności.
 Nie uruchamiaj ręcznego `DELETE FROM warehouse_stock` w produkcji
 bez tego procesu — jest ryzyko starych arkuszy i utraty śladu zmian.
 Na obecnym etapie resetu NIE implementujemy ani nie wykonujemy.
+
+
+## Do wdrożenia później — współbieżność i blokada operacji podczas inwentaryzacji
+
+**Ustalenie z 03.11.2026 — notatka projektowa, NIE jest jeszcze wdrożona.**
+
+W ramach pojedynczego magazynu **otwarta inwentaryzacja musi uniemożliwiać
+przyjęcia (PZ), wydania (WZ) i inne operacje zmieniające stany magazynowe**.
+Ma to zapobiec zmianie stanu w trakcie liczenia, np. gdy inny pracownik
+chce szybko wydać lub przyjąć części.
+
+Do późniejszej decyzji pozostają dwa warianty:
+
+1. **Inwentaryzacja wspólna:** pierwszy pracownik uruchamia arkusz
+   inwentaryzacji, a kolejne uprawnione osoby mogą do niego dołączyć
+   z własnych telefonów i wspólnie liczyć do jednego koszyka.
+   Każdy wpis powinien zachować informację, kto go zeskanował/policzył,
+   oraz być odporny na równoczesne aktualizacje.
+2. **Inwentaryzacja na jednym telefonie:** otwarcie inwentaryzacji
+   przez pierwszą osobę blokuje pozostałe urządzenia/logowania
+   w obrębie danego magazynu (do rozważenia także automatyczne
+   wylogowanie pozostałych sesji) aż do jej zakończenia.
+
+Niezależnie od wariantu, blokada PZ/WZ musi działać **po stronie API/D1**,
+a nie tylko przez ukrycie przycisków w aplikacji, i obejmować
+wszystkie kanały zapisu do danego magazynu. Należy zaplanować
+atomowe sprawdzanie aktywnej blokady, uprawnienia, bezpieczne odzyskiwanie
+porzuconej inwentaryzacji i jawne zakończenie sesji.
+
+Nie zmieniać teraz pracy magazynu, jego logowania, procesu
+inwentaryzacji ani widoku administracyjnego.

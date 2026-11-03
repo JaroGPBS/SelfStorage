@@ -1419,3 +1419,68 @@
     print-color-adjust:exact;
   }
 }
+
+/* Office inventory: keep the same expandable balance and filters, but
+   group the five columns in a compact, right-aligned card. */
+.app .table tr.inventory-summary-row:hover{background:transparent}
+.app .table td.inventory-summary-cell{
+  padding:8px 14px 14px!important;
+  background:#fbfcfd;
+  border-bottom:1px solid #e5e8ec;
+}
+.app .inventory-summary-anchor{
+  display:flex;
+  justify-content:flex-end;
+  padding-right:clamp(8px,6.5%,110px);
+}
+.app .inventory-summary-card{
+  width:min(100%,620px);
+  max-width:620px;
+  min-width:0;
+  padding:15px 16px;
+  background:#fff;
+  border:1px solid #dfe4e9;
+  border-radius:8px;
+  box-shadow:0 5px 18px rgba(29,40,51,.05);
+  overflow-x:auto;
+}
+.app .inventory-summary-card h3{
+  font-size:13px;
+  color:#414a56;
+  margin:0 0 11px;
+}
+.app .inventory-summary-card .section-controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 13px;
+  font-size:11px;
+  margin:0 0 12px;
+}
+.app .inventory-summary-card .table{
+  width:100%;
+  min-width:510px;
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+.app .inventory-summary-card .table th,
+.app .inventory-summary-card .table td{
+  padding:9px 8px;
+  line-height:1.35;
+  vertical-align:middle;
+}
+.app .inventory-summary-card .table th{font-size:9px}
+.app .inventory-summary-card .table th:nth-child(1){width:125px}
+.app .inventory-summary-card .table th:nth-child(3),
+.app .inventory-summary-card .table th:nth-child(4){width:60px}
+.app .inventory-summary-card .table th:nth-child(5){width:68px}
+.app .inventory-summary-card .table td:nth-child(2){overflow-wrap:anywhere}
+.app .inventory-summary-card .table th.num,
+.app .inventory-summary-card .table td.num{
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+@media(max-width:690px){
+  .app .table td.inventory-summary-cell{padding:7px!important}
+  .app .inventory-summary-anchor{padding-right:0}
+  .app .inventory-summary-card{width:100%;padding:11px}
+}

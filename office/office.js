@@ -470,7 +470,10 @@ function drawInventories(){
   const inventories=state.inventories;const q=state.search.toLocaleLowerCase('pl').trim();
   const visible=inventories.filter(x=>!q||[x.date,x.worker].some(s=>String(s||'').toLocaleLowerCase('pl').includes(q)));
   const rows=visible.map(inv=>'<tr><td>'+dateText(inv.date)+'</td><td>'+isoWeek(inv.date)+'</td><td>'+escapeHtml(inv.worker)+'</td><td class="num">'+escapeHtml(inv.positions)+'</td><td>'+cellButton('bilans',inv.id,state.expanded===inv.id)+'</td></tr>'+
-    (state.expanded===inv.id?'<tr><td colspan="5"><div class="expanded">'+drawInventoryLines(state.detailCache.get('inv:'+inv.id))+'</div></td></tr>':'')).join('');
+    (state.expanded===inv.id?'<tr class="inventory-summary-row"><td colspan="5" class="inventory-summary-cell">'+
+      '<div class="inventory-summary-anchor"><div class="expanded inventory-summary-card">'+
+      drawInventoryLines(state.detailCache.get('inv:'+inv.id))+
+      '</div></div></td></tr>':'')).join('');
   $('tableArea').innerHTML=wrapTable([{label:'Data'},{label:'Tydz.'},{label:'Liczył'},{label:'Pozycji',numeric:true},{label:''}],rows)||'<div class="empty">Brak inwentaryzacji.</div>';
   $('tableFooter').textContent=visible.length+' inwentaryzacji';noteSearch(visible.length,inventories.length,'inwentaryzacjach');
 }
