@@ -3,7 +3,7 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DEMOS=[{id:'demo1',name:'Testowy 1',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Testowy 2',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Testowy 3',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
-const state={user:null,warehouses:[],warehouse:'',view:'stocks',search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null};
+const state={user:null,warehouses:[],warehouse:'',view:'stocks',search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function demoQuantity(index,demoIndex){return ((index*17+demoIndex*11)%11===0)?0:((index*13+demoIndex*7)%29);}
@@ -177,6 +177,7 @@ async function render(){
       if(ticket!==state.requestId)return;drawInventories();
     }
     markSynced();
+    if(state.rememberWarning){errorBanner(state.rememberWarning);state.rememberWarning='';}
   }catch(ex){
     if(ticket!==state.requestId)return;
     errorBanner(ex.message||'Nie można pobrać danych.');$('tableArea').innerHTML='<div class="empty">Nie udało się wczytać danych.</div>';
@@ -242,7 +243,19 @@ $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('
 $('refresh').addEventListener('click',()=>{state.partsCache.clear();state.detailCache.clear();render();});
 $('warehouseToggle').addEventListener('click',()=>{const expanded=$('warehouseToggle').getAttribute('aria-expanded')==='true';$('warehouseToggle').setAttribute('aria-expanded',String(!expanded));$('warehouseMenu').classList.toggle('collapsed',expanded);});
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
-$('logout').addEventListener('click',async()=>{try{await fetch('/api/pl/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});}catch{}state.user=null;state.partsCache.clear();showLogin();});
+$('logout').addEventListener('click',async()=>{
+  try{
+    // Clear long-term office cookie first; failure must not silently report logout.
+    const remembered=await fetch('/api/office',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'forget'})});
+    if(!remembered.ok)throw Error('Nie udało się wylogować. Spróbuj ponownie.');
+    const worker=await fetch('/api/pl/auth',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
+    if(!worker.ok)throw Error('Nie udało się wylogować. Spróbuj ponownie.');
+    state.user=null;state.partsCache.clear();state.detailCache.clear();state.rememberWarning='';
+    $('rememberMe').checked=false;showLogin();
+  }catch(ex){errorBanner(ex.message||'Nie udało się wylogować.');}
+});
 $('loginForm').addEventListener('submit',async e=>{
   e.preventDefault();$('loginError').classList.add('hidden');const btn=$('loginButton');btn.disabled=true;
   try{
@@ -250,6 +263,20 @@ $('loginForm').addEventListener('submit',async e=>{
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||!payload.ok)throw Error(payload.error||'Nieprawidłowy PIN.');
     if(!['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER'].includes(payload.user?.role))throw Error('Brak dostępu do panelu biurowego.');
+    const rememberWanted=$('rememberMe').checked;
+    const rememberResponse=await fetch('/api/office',{
+      method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:rememberWanted?'remember':'forget'})
+    });
+    if(!rememberResponse.ok){
+      if(rememberWanted){
+        state.rememberWarning='Nie udało się włączyć zapamiętywania na 30 dni. Zalogowano standardowo.';
+      }else{
+        // Avoid leaving an old persistent cookie from a different office user.
+        throw Error('Nie udało się wyczyścić poprzedniego zapamiętanego logowania. Spróbuj ponownie.');
+      }
+    }else state.rememberWarning='';
     setLoggedIn(await api('warehouses'));
   }catch(ex){showLogin(ex.message||'Nie można się zalogować.');}finally{btn.disabled=false;}
 });
