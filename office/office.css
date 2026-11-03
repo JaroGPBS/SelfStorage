@@ -964,3 +964,75 @@
   .app.view-receipts .receipt-toolbar-actions{flex:1 1 auto;flex-wrap:wrap}
   .app.view-receipts .receipt-toolbar-actions .sync-label{margin-right:auto}
 }
+
+/* Compact right-aligned contents of a PZ delivery.
+   The card is directly underneath its "Pokaż części" row, leaving
+   the left-hand data columns free and without spreading numbers across the page. */
+.app.view-receipts .table tr.receipt-expansion-row:hover{background:transparent}
+.app.view-receipts .table td.receipt-expanded-cell{
+  padding:0 13px 13px!important;
+  border-bottom:1px solid #e5e8ec;
+  background:#fbfcfd;
+}
+.app.view-receipts .receipt-lines-anchor{
+  display:flex;
+  justify-content:flex-end;
+  padding-top:8px;
+  padding-right:clamp(10px,6.5%,110px);
+}
+.app.view-receipts .receipt-lines-card{
+  width:min(100%,540px);
+  min-width:0;
+  max-width:540px;
+  padding:13px 15px 14px;
+  border:1px solid #dfe4e9;
+  border-radius:8px;
+  box-shadow:0 5px 18px rgba(29,40,51,.05);
+  background:#fff;
+  overflow-x:auto;
+}
+.app.view-receipts .receipt-lines-card h3{
+  margin:0 0 9px;
+  font-size:12px;
+  font-weight:800;
+  color:#414a56;
+}
+.app.view-receipts .receipt-lines-card .table{
+  width:100%;
+  min-width:360px;
+  table-layout:fixed;
+  border-collapse:collapse;
+  border:1px solid #edf0f3;
+  background:#fff;
+}
+.app.view-receipts .receipt-lines-card .table th,
+.app.view-receipts .receipt-lines-card .table td{
+  padding:9px 10px;
+  border-bottom:1px solid #edf0f3;
+  overflow-wrap:anywhere;
+  vertical-align:middle;
+  line-height:1.35;
+}
+.app.view-receipts .receipt-lines-card .table th{
+  font-size:9px;
+  color:#77818c;
+  white-space:nowrap;
+}
+.app.view-receipts .receipt-lines-card .table th:nth-child(1){width:105px}
+.app.view-receipts .receipt-lines-card .table th:nth-child(3){width:67px}
+.app.view-receipts .receipt-lines-card .table th.num,
+.app.view-receipts .receipt-lines-card .table td.num{
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+  font-weight:750;
+}
+@media(max-width:690px){
+  .app.view-receipts .table td.receipt-expanded-cell{
+    padding:0 7px 10px!important;
+  }
+  .app.view-receipts .receipt-lines-anchor{padding-right:0}
+  .app.view-receipts .receipt-lines-card{
+    width:100%;
+    padding:10px;
+  }
+}

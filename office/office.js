@@ -335,8 +335,12 @@ async function drawDocs(){
   const visible=docs;
   const rows=visible.map(d=>{
     const over=Number(d.shortage||0)>0;const expanded=state.expanded===d.id;
+    const detail=drawDocLines(state.detailCache.get(direction+':'+d.id),direction);
+    const expandedContent=direction==='PZ'
+      ? '<div class="receipt-lines-anchor"><div class="receipt-lines-card">'+detail+'</div></div>'
+      : '<div class="expanded">'+detail+'</div>';
     return '<tr'+(over?' class="warning-row"':'')+'><td>'+dateText(d.date)+'</td><td>'+isoWeek(d.date)+'</td><td>'+escapeHtml(d.counterparty)+'</td><td>'+escapeHtml(d.worker)+'</td><td>'+cellButton('części',d.id,expanded)+'</td></tr>'+
-      (expanded?'<tr><td colspan="5" class="expanded-cell"><div class="expanded">'+drawDocLines(state.detailCache.get(direction+':'+d.id),direction)+'</div></td></tr>':'');
+      (expanded?'<tr'+(direction==='PZ'?' class="receipt-expansion-row"':'')+'><td colspan="5" class="'+(direction==='PZ'?'receipt-expanded-cell':'expanded-cell')+'">'+expandedContent+'</td></tr>':'');
   }).join('');
   $('tableArea').innerHTML=wrapTable([{label:'Data'},{label:'Tydz.'},{label:direction==='PZ'?'Dostawca / Ekipa':'Odbiorca'},{label:direction==='PZ'?'Przyjmował':'Wydawał'},{label:''}],rows)||'<div class="empty">Brak dokumentów.</div>';
   $('tableFooter').textContent=visible.length+' dokumentów'+(state.docsMatched>visible.length?' · pokazano pierwsze '+visible.length:'');
