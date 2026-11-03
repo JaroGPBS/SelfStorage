@@ -74,15 +74,38 @@ export async function onRequestGet({request,env}){
     if(view==='documents'){
       const direction=url.searchParams.get('direction')||'';
       if(!['PZ','WZ'].includes(direction))return error('Nieprawidłowy typ dokumentu.');
-      if(!await tableExists(env.DB,'pl_warehouse_sessions'))return workerJson({ok:true,documents:[]});
+      if(!await tableExists(env.DB,'pl_warehouse_sessions'))
+        return workerJson({ok:true,documents:[],total:0,matched:0});
+      const term=(url.searchParams.get('term')||'').trim().slice(0,100);
+      const join='FROM pl_warehouse_sessions s '+
+        'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
+        'LEFT JOIN users u ON u.id=s.actor_id ';
+      const matching="AND (?='' OR LOWER(s.counterparty) LIKE '%'||LOWER(?)||'%' "+
+        "OR LOWER(COALESCE(u.name,'')) LIKE '%'||LOWER(?)||'%' "+
+        "OR s.committed_at LIKE '%'||?||'%' "+
+        "OR EXISTS (SELECT 1 FROM pl_warehouse_session_lines x "+
+        "JOIN parts p ON p.id=x.part_id WHERE x.session_id=s.id AND x.direction=? "+
+        "AND (LOWER(p.name) LIKE '%'||LOWER(?)||'%' "+
+        "OR LOWER(COALESCE(p.sap_number,'')) LIKE '%'||LOWER(?)||'%' "+
+        "OR LOWER(COALESCE(p.part_number,'')) LIKE '%'||LOWER(?)||'%')))";
+      const params=[warehouseId,direction,term,term,term,term,direction,term,term,term];
+      const where='WHERE s.warehouse_id=? AND l.direction=? ';
+      const count=await env.DB.prepare(
+        'SELECT COUNT(DISTINCT s.id) AS n '+join+where
+      ).bind(warehouseId,direction).first();
+      const matches=await env.DB.prepare(
+        'SELECT COUNT(DISTINCT s.id) AS n '+join+where+matching
+      ).bind(...params).first();
       const docs=await selectRows(env.DB,
-        'SELECT s.id,s.committed_at AS date,s.counterparty,COALESCE(u.name,s.actor_id) AS worker,'+
-        'COUNT(l.part_id) AS positions,COALESCE(SUM(l.quantity),0) AS units '+
-        'FROM pl_warehouse_sessions s JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
-        'LEFT JOIN users u ON u.id=s.actor_id '+
-        'WHERE s.warehouse_id=? AND l.direction=? GROUP BY s.id '+
-        'ORDER BY s.committed_at DESC,s.id DESC LIMIT 200',[warehouseId,direction]);
-      return workerJson({ok:true,documents:docs});
+        'SELECT s.id,s.committed_at AS date,s.counterparty,'+
+        'COALESCE(u.name,s.actor_id) AS worker,COUNT(l.part_id) AS positions,'+
+        'COALESCE(SUM(l.quantity),0) AS units,'+
+        'COALESCE(SUM(l.shortage_quantity),0) AS shortage '+
+        join+where+matching+
+        ' GROUP BY s.id ORDER BY s.committed_at DESC,s.id DESC LIMIT 200',params);
+      return workerJson({
+        ok:true,documents:docs,total:Number(count?.n||0),matched:Number(matches?.n||0)
+      });
     }
     if(view==='document'){
       const id=url.searchParams.get('id')||'';
