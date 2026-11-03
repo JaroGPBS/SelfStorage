@@ -110,7 +110,8 @@ function drawStocks(parts,warehouseId){
     const amount=demoIndex<0?p.quantity:demoQuantity(originalIndex,demoIndex+1);
     const min=previewMinimum(p);
     const reorder=amount===null||amount===undefined?'—':Math.max(0,min-Number(amount));
-    return '<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td><button class="row-link" data-part="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
+    return '<tr data-part-row="'+escapeHtml(p.id)+'" tabindex="0" aria-label="Szczegóły części: '+escapeHtml(p.name)+'">'+
+      '<td>'+escapeHtml(p.sap_number||'—')+'</td><td><button class="row-link" data-part="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
       '<td class="num">'+quantity(amount)+'</td>'+
       '<td class="num stock-demo-order">'+(reorder==='—'?'—':reorder>0?'<strong>'+escapeHtml(reorder)+'</strong>':escapeHtml(reorder))+'</td>'+
       '<td class="num stock-demo-min">'+escapeHtml(min)+'</td></tr>';
@@ -247,6 +248,7 @@ document.addEventListener('click',e=>{
   const w=e.target.closest('[data-warehouse]');if(w){selectView('stocks',w.dataset.warehouse);return;}
   const v=e.target.closest('[data-view]');if(v){selectView(v.dataset.view);return;}
   const part=e.target.closest('[data-part]');if(part){openPart(part.dataset.part);return;}
+  const partRow=e.target.closest('tr[data-part-row]');if(partRow){openPart(partRow.dataset.partRow);return;}
   const exp=e.target.closest('[data-expand]');if(exp){expandRow(exp.dataset.expand);return;}
   if(e.target.closest('[data-close]'))closeModal();
 });
@@ -254,7 +256,13 @@ $('tableArea').addEventListener('change',e=>{
   if(e.target.dataset.diff){if(e.target.dataset.diff==='positive')state.positive=e.target.checked;else state.negative=e.target.checked;drawInventories();}
 });
 $('modalClose').addEventListener('click',closeModal);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeModal();return;}
+  const row=e.target.closest('tr[data-part-row]');
+  if(row&&e.target===row&&(e.key==='Enter'||e.key===' ')){
+    e.preventDefault();openPart(row.dataset.partRow);
+  }
+});
 let searchTimer=null;
 $('search').addEventListener('input',e=>{
   state.search=e.target.value;

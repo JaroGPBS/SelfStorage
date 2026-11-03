@@ -330,3 +330,20 @@
   .app.view-stocks .table-toolbar{padding:9px}
   .app.view-stocks .table-caption strong{font-size:12px}
 }
+
+/* Stock rows open part details from the whole row, not only the name.
+   Align all three quantity columns slightly further left. */
+.app.view-stocks .table tr[data-part-row]{cursor:pointer}
+.app.view-stocks .table tr[data-part-row]:focus-visible{
+  outline:2px solid #b53b45;
+  outline-offset:-2px;
+  background:#f9f5f6;
+}
+.app.view-stocks .table th:nth-child(n+3),
+.app.view-stocks .table td:nth-child(n+3){
+  padding-right:clamp(26px,2.8vw,44px);
+}
+@media(max-width:690px){
+  .app.view-stocks .table th:nth-child(n+3),
+  .app.view-stocks .table td:nth-child(n+3){padding-right:23px}
+}
