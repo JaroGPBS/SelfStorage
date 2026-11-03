@@ -3,8 +3,51 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DEMO_MEDUZA_PHOTO='/office/images/antena-meduza-demo.jpg';
+const DEMO_MODULES=[
+  {id:'MOD-DEMO-001',name:'Moduł sterowania FM',sap_number:null,part_number:'MOD-001',quantity:18},
+  {id:'MOD-DEMO-002',name:'Moduł zasilania',sap_number:null,part_number:'MOD-002',quantity:12},
+  {id:'MOD-DEMO-003',name:'Moduł komunikacyjny',sap_number:null,part_number:'MOD-003',quantity:24},
+  {id:'MOD-DEMO-004',name:'Moduł LED',sap_number:null,part_number:'MOD-004',quantity:7},
+  {id:'MOD-DEMO-005',name:'Moduł HICU',sap_number:null,part_number:'MOD-005',quantity:15},
+  {id:'MOD-DEMO-006',name:'Moduł czujników',sap_number:null,part_number:'MOD-006',quantity:9}
+];
+const DEMO_QR_ROWS=[
+  '000000000000000000000000000000000',
+  '000000000000000000000000000000000',
+  '000000000000000000000000000000000',
+  '000000000000000000000000000000000',
+  '000011111110110010011011111110000',
+  '000010000010001111101010000010000',
+  '000010111010110000111010111010000',
+  '000010111010010010100010111010000',
+  '000010111010011011110010111010000',
+  '000010000010101010010010000010000',
+  '000011111110101010101011111110000',
+  '000000000000011010111000000000000',
+  '000010100011001001100001001010000',
+  '000011001000101001100100001000000',
+  '000001000011110100010000101100000',
+  '000010101100011101000010000010000',
+  '000010010010111111011001100000000',
+  '000001001100101010001001101010000',
+  '000011001011001011101111010000000',
+  '000000101100110110111101100010000',
+  '000011000110001001101111111000000',
+  '000000000000110001111000100110000',
+  '000011111110111100011010111110000',
+  '000010000010010001001000100100000',
+  '000010111010011111011111111010000',
+  '000010111010010010010000000000000',
+  '000010111010100011111011111110000',
+  '000010000010000110100110000010000',
+  '000011111110100001100101100110000',
+  '000000000000000000000000000000000',
+  '000000000000000000000000000000000',
+  '000000000000000000000000000000000',
+  '000000000000000000000000000000000'
+];
 const DEMOS=[{id:'demo1',name:'Testowy 1',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Testowy 2',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Testowy 3',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
-const state={user:null,warehouses:[],warehouse:'',view:'stocks',search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function demoQuantity(index,demoIndex){return ((index*17+demoIndex*11)%11===0)?0:((index*13+demoIndex*7)%29);}
@@ -53,6 +96,8 @@ function setHead(title,kicker,desc){
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
   $('newPart').classList.toggle('hidden',state.view!=='stocks');
+  $('stockTabs').classList.toggle('hidden',state.view!=='stocks');
+  syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate','vehicles'].includes(state.view));
   $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
@@ -66,8 +111,24 @@ function setHead(title,kicker,desc){
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
 }
+function syncStockTabUI(){
+  const modules=state.stockTab==='modules';
+  for(const [id,active] of [['partsTab',!modules],['modulesTab',modules]]){
+    $(id).classList.toggle('active',active);
+    $(id).setAttribute('aria-selected',String(active));
+  }
+  $('newPart').textContent=modules?'+ Dodaj moduł':'+ Dodaj część';
+  $('tableCaption').querySelector('strong').textContent=modules?'Aktualne stany modułów w magazynie':'Aktualne stany części w magazynie';
+  $('search').placeholder=modules?'Szukaj modułu po nazwie lub indeksie':'Szukaj po SAP lub nazwie części';
+}
+function setStockTab(tab){
+  if(!['parts','modules'].includes(tab)||state.view!=='stocks'||state.stockTab===tab)return;
+  state.stockTab=tab;state.search='';state.expanded=null;
+  $('search').value='';
+  syncStockTabUI();render();
+}
 function selectView(view,warehouse){
-  state.view=view;state.search='';state.expanded=null;state.positive=false;state.negative=false;
+  state.view=view;state.stockTab='parts';state.search='';state.expanded=null;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe'};
@@ -123,6 +184,42 @@ function drawStocks(parts,warehouseId){
   ],rows)||'';
   $('tableFooter').textContent=filtered.length+' części';
   noteSearch(filtered.length,parts.length,'częściach');
+}
+function drawModules(){
+  const filtered=sortedFiltered(DEMO_MODULES);
+  const rows=filtered.map(p=>{
+    const min=previewMinimum(p);
+    const reorder=Math.max(0,min-Number(p.quantity));
+    return '<tr data-module-row="'+escapeHtml(p.id)+'" tabindex="0" aria-label="Szczegóły modułu: '+escapeHtml(p.name)+'">'+
+      '<td>'+escapeHtml(p.sap_number||'—')+'</td><td><button type="button" class="row-link" data-module="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
+      '<td class="num">'+quantity(p.quantity)+'</td><td class="num stock-demo-order">'+quantity(reorder)+'</td>'+
+      '<td class="num stock-demo-min">'+escapeHtml(min)+'</td></tr>';
+  }).join('');
+  $('tableArea').innerHTML=wrapTable([
+    {label:'Indeks SAP'},{label:'Nazwa modułu'},{label:'Stan',numeric:true},
+    {label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}
+  ],rows);
+  $('tableFooter').textContent=filtered.length+' modułów';
+  noteSearch(filtered.length,DEMO_MODULES.length,'modułach');
+}
+function openDemoModule(id){
+  const p=DEMO_MODULES.find(x=>x.id===id);
+  if(!p)return;
+  $('modal').classList.remove('hidden');
+  $('modal').querySelector('.modal-card').classList.add('part-detail-card');
+  $('modalBody').innerHTML=
+    '<div class="kicker">KARTA MODUŁU</div>'+
+    '<h2 id="modalTitle">'+escapeHtml(p.name)+'</h2>'+
+    '<p class="muted part-sap-line">Indeks SAP: —</p>'+
+    '<div class="part-detail-layout">'+
+      '<div class="part-photo-section"><div class="part-photo-empty" aria-label="Brak zdjęcia modułu"><span aria-hidden="true">▧</span><small>Zdjęcie modułu</small></div></div>'+
+      '<div class="part-detail-data">'+
+        '<div class="part-stock-block"><small>AKTUALNY STAN</small><strong>'+quantity(p.quantity)+' <span>szt.</span></strong></div>'+
+        '<div class="part-meta-item"><small>Identyfikator magazynowy</small><strong>'+escapeHtml(p.part_number)+'</strong></div>'+
+        '<div class="part-meta-item"><small>Ostatnia dostawa</small><strong>—</strong></div>'+
+        '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>—</strong></div>'+
+      '</div>'+
+    '</div>';
 }
 function drawAggregate(realSets){
   const base=realSets[0]?.parts||[];const filtered=sortedFiltered(base);
@@ -182,8 +279,13 @@ async function render(){
   const params={warehouse:state.warehouse};
   try{
     if(state.view==='stocks'){
+      if(state.stockTab==='modules'){
+        if(ticket!==state.requestId)return;
+        drawModules();
+      }else{
       const parts=isDemo()?await realParts():await loadStocks(state.warehouse);
       if(ticket!==state.requestId)return;drawStocks(parts,state.warehouse);
+      }
     }else if(state.view==='aggregate'){
       const realSets=await Promise.all(state.warehouses.map(async w=>({name:w.name,parts:await loadStocks(w.id)})));
       if(ticket!==state.requestId)return;drawAggregate(realSets);
@@ -210,7 +312,13 @@ async function render(){
   }
 }
 function filterCurrent(){
-  if(state.view==='stocks'){const parts=state.partsCache.get(state.warehouse)||state.partsCache.get(state.warehouses[0]?.id)||[];drawStocks(parts,state.warehouse);}
+  if(state.view==='stocks'){
+    if(state.stockTab==='modules')drawModules();
+    else{
+      const parts=state.partsCache.get(state.warehouse)||state.partsCache.get(state.warehouses[0]?.id)||[];
+      drawStocks(parts,state.warehouse);
+    }
+  }
   else if(state.view==='aggregate'||state.view==='vehicles'){render();}
   else if(state.view==='pz'||state.view==='wz')drawDocs();
   else if(state.view==='inventories')drawInventories();
@@ -238,6 +346,7 @@ async function openPart(id){
     const payload=await api('part',{warehouse,part:id});
     if(modal.classList.contains('hidden'))return;
     const p=payload.part;
+    state.labelPart=p;
     const amount=demo?demoQuantity((await realParts()).findIndex(x=>x.id===id),DEMOS.findIndex(x=>x.id===state.warehouse)+1):p.quantity;
     // Temporary illustrative photo, matched by exact part name; no write to D1.
     const hasDemoPhoto=String(p.name||'').trim().toLocaleLowerCase('pl')==='antena meduza';
@@ -260,10 +369,42 @@ async function openPart(id){
           '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>'+(demo?'—':dateText(payload.inventory?.date))+'</strong></div>'+
         '</div>'+
       '</div>'+
-      '<div class="modal-actions"><button type="button" class="btn outline" disabled title="Podgląd etykiety w kolejnym etapie">Wydruk etykiety · w przygotowaniu</button></div>';
+      '<div class="modal-actions">'+
+        (hasDemoPhoto&&p.part_number==='MG-FR-0013'
+          ? '<button type="button" class="btn dark" data-label-open="1">Wydruk etykiety</button>'
+          : '<button type="button" class="btn outline" disabled>Wydruk etykiety · w przygotowaniu</button>')+
+      '</div>';
   }catch(ex){
     body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><p class="error">'+escapeHtml(ex.message)+'</p>';
   }
+}
+function demoQrSvg(){
+  const rects=[];
+  for(let y=0;y<DEMO_QR_ROWS.length;y++)
+    for(let x=0;x<DEMO_QR_ROWS[y].length;x++)
+      if(DEMO_QR_ROWS[y][x]==='1')rects.push('M'+x+' '+y+'h1v1h-1z');
+  return '<svg class="label-qr" viewBox="0 0 33 33" xmlns="http://www.w3.org/2000/svg" aria-label="Kod QR MG-FR-0013">'+
+    '<rect width="33" height="33" fill="#fff"/><path fill="#000" d="'+rects.join('')+'"/></svg>';
+}
+function openLabelPreview(){
+  const p=state.labelPart;
+  if(!p||p.part_number!=='MG-FR-0013'||String(p.name||'').trim().toLocaleLowerCase('pl')!=='antena meduza')return;
+  $('labelPrintArea').innerHTML='<div class="printable-label">'+
+    '<div class="label-qr-zone">'+demoQrSvg()+'</div>'+
+    '<div class="label-text-zone">'+
+      '<strong class="label-part-name">'+escapeHtml(p.name)+'</strong>'+
+      '<div class="label-data"><small>INDEKS SAP</small><span>'+escapeHtml(p.sap_number||'—')+'</span></div>'+
+      '<div class="label-data"><small>ID MAGAZYNOWE</small><span>'+escapeHtml(p.part_number)+'</span></div>'+
+    '</div>'+
+    '<div class="label-photo-zone"><img src="'+DEMO_MEDUZA_PHOTO+'" alt="Antena meduza"></div>'+
+  '</div>';
+  $('labelModal').classList.remove('hidden');
+  $('labelPrintButton').focus();
+}
+function closeLabelPreview(){
+  $('labelModal').classList.add('hidden');
+  $('labelPrintArea').innerHTML='';
+  $('modalBody').querySelector('[data-label-open]')?.focus();
 }
 function openPhotoViewer(){
   const viewer=$('photoViewer');
@@ -277,12 +418,18 @@ function closePhotoViewer(){
   $('modalBody').querySelector('[data-photo-open]')?.focus();
 }
 function closeModal(){
+  if(!$('labelModal').classList.contains('hidden'))closeLabelPreview();
   if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
   $('modal').classList.add('hidden');
   $('modal').querySelector('.modal-card').classList.remove('part-detail-card');
   $('modalBody').innerHTML='';
 }
 document.addEventListener('click',e=>{
+  const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
+  if(e.target.closest('[data-label-close]')){closeLabelPreview();return;}
+  if(e.target.closest('[data-label-open]')){openLabelPreview();return;}
+  const moduleButton=e.target.closest('[data-module]');if(moduleButton){openDemoModule(moduleButton.dataset.module);return;}
+  const moduleRow=e.target.closest('[data-module-row]');if(moduleRow){openDemoModule(moduleRow.dataset.moduleRow);return;}
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
   const w=e.target.closest('[data-warehouse]');if(w){selectView('stocks',w.dataset.warehouse);return;}
@@ -296,15 +443,19 @@ $('tableArea').addEventListener('change',e=>{
   if(e.target.dataset.diff){if(e.target.dataset.diff==='positive')state.positive=e.target.checked;else state.negative=e.target.checked;drawInventories();}
 });
 $('modalClose').addEventListener('click',closeModal);
+$('labelPrintButton').addEventListener('click',()=>window.print());
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
+    if(!$('labelModal').classList.contains('hidden'))closeLabelPreview();
+    else if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
     else closeModal();
     return;
   }
-  const row=e.target.closest('tr[data-part-row]');
+  const row=e.target.closest('tr[data-part-row],tr[data-module-row]');
   if(row&&e.target===row&&(e.key==='Enter'||e.key===' ')){
-    e.preventDefault();openPart(row.dataset.partRow);
+    e.preventDefault();
+    if(row.dataset.moduleRow)openDemoModule(row.dataset.moduleRow);
+    else openPart(row.dataset.partRow);
   }
 });
 let searchTimer=null;
