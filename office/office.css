@@ -1037,44 +1037,340 @@
   }
 }
 
-/* Shared PZ/WZ actions and links between two operations of the same visit. */
-.app.view-receipts .table .doc-actions-cell{
-  min-width:204px;width:204px;
-  padding-left:12px;padding-right:17px;
+/* Printable PZ / WZ forms: compact document preview with handwritten signatures. */
+.doc-lines-actions{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:13px;
+  gap:9px;
 }
-.app.view-receipts .doc-row-actions{
-  display:flex;align-items:center;justify-content:flex-end;
-  gap:15px;white-space:nowrap;
+.doc-lines-actions .btn{
+  min-height:35px;
+  padding:7px 12px;
+  font-size:11px;
 }
-.app.view-receipts .doc-row-actions .detail-btn{margin-right:auto}
-.app.view-receipts .doc-print-btn{
-  border:1px solid #d8dce2;border-radius:6px;
-  padding:6px 11px;min-height:30px;
-  color:#7f8791;background:#f5f6f8;
-  font-size:11px;font-weight:700;
-  opacity:.72;cursor:not-allowed;
+.doc-print-modal{
+  position:fixed;
+  inset:0;
+  z-index:190;
+  display:grid;
+  place-items:center;
+  padding:16px;
 }
-.app.view-receipts .doc-related-link{
-  border-top:1px solid #e8ebef;
-  padding-top:12px;margin-top:12px;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
+.doc-print-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(16,23,32,.73);
+  backdrop-filter:blur(3px);
 }
-.app.view-receipts .doc-related-link span{
-  color:#77828e;font-size:11px;line-height:1.45;
+.doc-print-window{
+  position:relative;
+  width:min(96vw,910px);
+  max-height:96dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:12px;
+  background:#f1f3f5;
+  box-shadow:0 28px 80px rgba(0,0,0,.36);
 }
-.app.view-receipts .doc-related-link button{
-  color:#ad303c;background:#fff;border:1px solid #e3c6ca;
-  border-radius:6px;font-size:11px;font-weight:750;
-  padding:7px 11px;white-space:nowrap;
+.doc-print-heading{
+  background:white;
+  border-bottom:1px solid #e4e7eb;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:17px 22px;
+  gap:20px;
+  flex:none;
 }
-.app.view-receipts .doc-related-link button:hover{
-  background:#fff3f4;border-color:#d998a0;
+.doc-print-heading .kicker{margin-bottom:4px}
+.doc-print-heading h2{font-size:21px;color:#29323e}
+.doc-print-close{
+  flex:none;
+  width:34px;height:34px;
+  border:0;border-radius:7px;
+  background:#f0f2f4;color:#536071;
+  display:grid;place-items:center;padding:0;
 }
+.doc-print-close svg{display:block}
+.doc-print-scroll{
+  overflow:auto;
+  padding:21px;
+  background:#e5e8ec;
+  min-height:0;
+}
+.doc-print-sheet{
+  width:210mm;
+  min-height:297mm;
+  max-width:100%;
+  margin:0 auto;
+  padding:17mm 16mm 15mm;
+  background:#fff;
+  box-shadow:0 4px 20px rgba(23,33,45,.1);
+  color:#202832;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  font-size:11px;
+  line-height:1.45;
+}
+.doc-print-letterhead{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:15px;
+  border-bottom:2px solid #30343b;
+}
+.doc-print-brand{
+  display:flex;align-items:baseline;gap:8px;
+}
+.doc-print-brand strong{font-size:28px;line-height:1;font-weight:900;letter-spacing:-.07em}
+.doc-print-brand span{
+  letter-spacing:.16em;font-size:13px;
+  color:#b82c38;font-weight:800;
+}
+.doc-print-region{
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.09em;
+  color:#737b85;
+  text-align:right;
+}
+.doc-print-title-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:20px;
+  margin:23px 0 18px;
+}
+.doc-print-kicker{
+  display:block;
+  color:#bb3541;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.13em;
+  margin-bottom:5px;
+}
+.doc-print-title-row h2{
+  font-size:22px;
+  font-weight:800;
+  color:#242c36;
+  line-height:1.15;
+}
+.doc-print-type{
+  display:grid;
+  place-items:center;
+  flex:none;
+  width:58px;height:45px;
+  border:1px solid #dc9fa5;
+  border-radius:5px;
+  color:#b52b39;
+  font-size:20px;
+  letter-spacing:.04em;
+}
+.doc-print-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  border:1px solid #e2e6eb;
+  border-radius:5px;
+  overflow:hidden;
+  margin-bottom:27px;
+}
+.doc-print-field{
+  min-width:0;
+  min-height:59px;
+  padding:10px 12px;
+  border-bottom:1px solid #e8ebef;
+}
+.doc-print-field:nth-child(2n){border-left:1px solid #e8ebef}
+.doc-print-field:nth-last-child(-n+2){border-bottom:0}
+.doc-print-field span{
+  display:block;
+  font-size:9px;
+  color:#7b8592;
+  margin-bottom:5px;
+}
+.doc-print-field strong{
+  display:block;
+  font-size:11px;
+  font-weight:750;
+  color:#303b47;
+  overflow-wrap:anywhere;
+}
+.doc-print-section-title{
+  font-weight:800;
+  font-size:13px;
+  margin-bottom:10px;
+}
+.doc-print-parts{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  font-variant-numeric:tabular-nums;
+}
+.doc-print-parts th{
+  font-size:9px;
+  text-align:left;
+  background:#f0f2f5;
+  font-weight:800;
+  letter-spacing:.03em;
+  border:1px solid #dce1e6;
+  padding:9px;
+}
+.doc-print-parts td{
+  padding:9px;
+  font-size:11px;
+  border:1px solid #dce1e6;
+  vertical-align:top;
+  overflow-wrap:anywhere;
+}
+.doc-print-parts th:nth-child(1){width:8%}
+.doc-print-parts th:nth-child(2){width:23%}
+.doc-print-parts th:nth-child(3){width:54%}
+.doc-print-parts th:nth-child(4){width:15%;text-align:center}
+.doc-print-parts td.doc-print-qty,
+.doc-print-parts td.doc-print-number{
+  text-align:center;
+}
+.doc-print-parts thead{display:table-header-group}
+.doc-print-parts tr{break-inside:avoid;page-break-inside:avoid}
+.doc-print-totals{
+  display:flex;
+  justify-content:flex-end;
+  gap:23px;
+  font-size:11px;
+  padding:11px 3px;
+  color:#5e6873;
+}
+.doc-print-totals strong{color:#303843}
+.doc-print-warning{
+  border-left:3px solid #be3944;
+  background:#fdf1f2;
+  padding:9px 11px;
+  font-size:10px;
+}
+.doc-print-bottom{
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.doc-print-notes{
+  margin-top:38px;
+  font-size:11px;
+  color:#596573;
+}
+.doc-print-notes strong{display:block;margin-bottom:9px}
+.doc-print-notes div{
+  border-bottom:1px solid #d5dbe1;
+  height:24px;
+}
+.doc-print-signatures{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:36px;
+  margin-top:62px;
+}
+.doc-print-signature{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:4px;
+}
+.doc-print-sign-line{
+  width:100%;
+  border-top:1px solid #7b858e;
+  margin-bottom:7px;
+}
+.doc-print-signature strong{
+  font-weight:750;
+  font-size:11px;
+}
+.doc-print-signature span{
+  font-size:10px;
+  color:#777f89;
+  overflow-wrap:anywhere;
+}
+.doc-print-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:10px;
+  padding:13px 22px;
+  border-top:1px solid #dfe3e8;
+  background:#fff;
+  flex:none;
+}
+.doc-print-actions .btn{min-width:130px}
 @media(max-width:690px){
-  .app.view-receipts .table .doc-actions-cell{
-    min-width:162px;width:162px;padding:8px!important;
+  .doc-print-modal{padding:7px}
+  .doc-print-window{max-height:98dvh}
+  .doc-print-heading{padding:12px 14px}
+  .doc-print-heading h2{font-size:17px}
+  .doc-print-scroll{padding:10px}
+  .doc-print-sheet{min-width:210mm;max-width:none}
+  .doc-print-actions{padding:10px 13px}
+}
+/* A4 printing is enabled only when the document Print button is pressed.
+   Its @page rule is inserted temporarily in JS; label-print settings remain intact. */
+@media print{
+  body.printing-office-document{
+    margin:0!important;
+    padding:0!important;
+    width:210mm!important;
+    height:auto!important;
+    background:#fff!important;
+    overflow:visible!important;
   }
-  .app.view-receipts .doc-row-actions{gap:7px}
-  .app.view-receipts .doc-print-btn{padding:6px 8px}
-  .app.view-receipts .doc-related-link{flex-wrap:wrap}
+  body.printing-office-document > :not(#docPrintModal){
+    display:none!important;
+  }
+  body.printing-office-document .doc-print-modal,
+  body.printing-office-document .doc-print-modal *{
+    visibility:visible!important;
+  }
+  body.printing-office-document #docPrintModal{
+    display:block!important;
+    position:static!important;
+    inset:auto!important;
+    width:210mm!important;
+    min-height:297mm!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+  }
+  body.printing-office-document .doc-print-backdrop,
+  body.printing-office-document .doc-print-heading,
+  body.printing-office-document .doc-print-actions{
+    display:none!important;
+  }
+  body.printing-office-document .doc-print-window{
+    display:block!important;
+    position:static!important;
+    width:210mm!important;
+    max-width:none!important;
+    max-height:none!important;
+    height:auto!important;
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+    overflow:visible!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  body.printing-office-document .doc-print-scroll{
+    display:block!important;
+    overflow:visible!important;
+    padding:0!important;
+    margin:0!important;
+    background:#fff!important;
+  }
+  body.printing-office-document .doc-print-sheet{
+    width:210mm!important;
+    max-width:none!important;
+    min-height:297mm!important;
+    padding:17mm 16mm 15mm!important;
+    margin:0!important;
+    border:0!important;
+    box-shadow:none!important;
+    background:#fff!important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
 }
