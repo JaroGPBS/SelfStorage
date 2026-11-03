@@ -161,8 +161,21 @@
       color: var(--muted);
       font-size: 11px;
     }
+    /* Both markets share this document; PL is shown only after D1 login. */
+    body.gpbs-market-pl > .app-shell,
+    body.gpbs-market-pl > #scannerModal,
+    body.gpbs-market-pl > #demoPartModal,
+    body.gpbs-market-pl > #vehicleChangeModal,
+    body.gpbs-market-pl > #quantityModal,
+    body.gpbs-market-pl > #reviewModal,
+    body.gpbs-market-pl > #finishModal,
+    body.gpbs-market-pl > #instructionModal,
+    body.gpbs-market-pl > #loading,
+    body.gpbs-market-pl > #toast,
+    body.gpbs-market-pl > #appVersion { display: none !important; }
+    #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=34"></script>
+  <script type="module" src="./js/app.js?v=35"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -443,6 +456,8 @@
       <img src="./icons/jaro-signature.svg" alt="Created by Jaro">
     </div>
   </div>
+
+  <div id="gpbsPolandWorkspace" hidden aria-label="Magazyn Polska"></div>
 
   <div id="scannerModal" class="modal" aria-hidden="true" style="align-items:flex-start;padding-top:max(16px, env(safe-area-inset-top));">
     <div class="modal-card">
