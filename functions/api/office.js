@@ -1,6 +1,7 @@
 // GPBS Storage - independent, read-only office API (Poland).
 // Existing /panel/ admin API and /pl/ warehouse operations are untouched.
 import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worker-auth.js';
+import {createRememberToken,verifyRememberSession,officeRememberCookie} from '../../lib/pl-office-remember.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
 const WAREHOUSE=/^[A-Z0-9-]{2,50}$/;
@@ -18,10 +19,40 @@ async function tableExists(db,name){
   const row=await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
   return Boolean(row);
 }
+// The long-lived cookie is issued only after a successful normal PIN login.
+// A different cookie name and audience keep it unusable in the warehouse app.
+export async function onRequestPost({request,env}){
+  if(!workerAuthReady(env))return error('Panel biurowy nie jest skonfigurowany.',503);
+  const url=new URL(request.url);
+  if(request.headers.get('Origin')!==url.origin)return error('Niedozwolona domena.',403);
+  if(!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
+    return error('Wymagany format JSON.',415);
+  let body;
+  try{
+    const raw=await request.text();
+    if(raw.length>200)return error('Zbyt duże żądanie.',413);
+    body=JSON.parse(raw);
+  }catch{return error('Nieprawidłowe dane.',400);}
+  if(body?.action==='forget'){
+    return workerJson({ok:true},200,{'Set-Cookie':officeRememberCookie('',0)});
+  }
+  if(body?.action!=='remember')return error('Nieznana akcja.',400);
+  try{
+    const user=await verifyWorkerSession(request,env);
+    if(!user||!ALLOWED.has(user.role))return error('Zaloguj się ponownie.',401);
+    const token=await createRememberToken(env,user.id);
+    return workerJson({ok:true,rememberedForDays:30},200,
+      {'Set-Cookie':officeRememberCookie(token)});
+  }catch(err){
+    console.error('Office remember login error',err?.name||'Error');
+    return error('Nie udało się zapamiętać logowania.',503);
+  }
+}
+
 export async function onRequestGet({request,env}){
   if(!workerAuthReady(env))return error('Panel biurowy nie jest skonfigurowany.',503);
   let user;
-  try{user=await verifyWorkerSession(request,env);}
+  try{user=await verifyWorkerSession(request,env) || await verifyRememberSession(request,env);}
   catch{return error('Nie można potwierdzić sesji.',503);}
   if(!user)return error('Zaloguj się do panelu.',401);
   if(!ALLOWED.has(user.role))return error('Brak dostępu do panelu biurowego.',403);
