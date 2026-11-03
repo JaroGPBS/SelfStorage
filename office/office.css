@@ -119,3 +119,123 @@
   .login-card input{height:70px;min-height:70px}
   .login-brand-name strong{font-size:21px}
 }
+
+/* Login v3 — full-width GPBS identity and understated Polish fabric flag. */
+.login-shell{
+  width:100%;
+  max-width:none;
+  padding:clamp(24px,3vw,42px) clamp(22px,4.5vw,82px) 22px;
+}
+.login-brand{
+  width:100%;
+  justify-content:space-between;
+  align-items:center;
+  gap:clamp(18px,3.5vw,55px);
+  padding-bottom:15px;
+  border-bottom:1px solid rgba(255,255,255,.11);
+}
+.login-brand-lockup{
+  display:flex;
+  align-items:center;
+  flex:0 1 auto;
+  min-width:0;
+  gap:clamp(12px,1.8vw,26px);
+}
+.login-brand-lockup img{
+  flex:0 0 auto;
+  width:clamp(170px,15vw,255px);
+  height:auto;
+  max-height:112px;
+  object-fit:contain;
+}
+.login-brand-name{
+  flex:0 1 auto;
+  gap:4px;
+  min-width:0;
+}
+.login-brand-name strong{
+  font-size:clamp(21px,2vw,29px);
+  letter-spacing:2.1px;
+  font-weight:850;
+}
+.login-brand-name span{
+  font-size:clamp(9px,.77vw,11px);
+  letter-spacing:1.5px;
+  color:#c7cfd9;
+  white-space:normal;
+}
+.polish-flag{
+  perspective:520px;
+  flex:0 0 clamp(112px,11.5vw,175px);
+  height:clamp(65px,7vw,104px);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  filter:drop-shadow(0 7px 14px rgba(0,0,0,.30));
+}
+.flag-cloth{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  border-radius:3px 7px 8px 3px;
+  transform-origin:15% 50%;
+  transform:rotateY(-5deg) skewY(.6deg);
+  box-shadow:inset 2px 0 4px #0002;
+  animation:gpbs-flag-wave 6s ease-in-out infinite;
+}
+.flag-white,.flag-red{display:block;height:50%;width:100%;flex:1}
+.flag-white{background:#fff}
+.flag-red{background:#d91f34}
+.flag-cloth:after{
+  content:'';
+  pointer-events:none;
+  position:absolute;inset:0;
+  background:linear-gradient(105deg,
+    rgba(8,13,20,.14) 0%,
+    rgba(255,255,255,.03) 20%,
+    rgba(0,0,0,.16) 37%,
+    rgba(255,255,255,.21) 51%,
+    rgba(0,0,0,.12) 68%,
+    rgba(255,255,255,.16) 83%,
+    rgba(13,16,18,.20) 100%);
+  background-size:180% 100%;
+  background-position:50% 0;
+  mix-blend-mode:multiply;
+  animation:gpbs-flag-light 6s ease-in-out infinite;
+}
+@keyframes gpbs-flag-wave{
+  0%,100%{transform:perspective(520px) rotateY(-6deg) skewY(.5deg) scaleX(.984);border-radius:2px 8px 9px 3px}
+  50%{transform:perspective(520px) rotateY(5deg) skewY(-.7deg) scaleX(.994);border-radius:2px 9px 5px 2px}
+}
+@keyframes gpbs-flag-light{
+  0%,100%{background-position:18% 0}
+  50%{background-position:82% 0}
+}
+.login-card{
+  flex:0 0 auto;
+  width:min(100%,440px);
+  margin:clamp(63px,10dvh,115px) auto 36px;
+}
+@media(max-width:720px){
+  .login-brand-lockup img{width:clamp(110px,25vw,170px);max-height:85px}
+  .login-brand-name strong{font-size:clamp(17px,3.4vw,23px)}
+  .login-brand-name span{font-size:9px;letter-spacing:.8px}
+  .polish-flag{flex-basis:90px;height:57px}
+  .login-card{margin-top:clamp(55px,10dvh,80px)}
+}
+@media(max-width:460px){
+  .login-shell{padding:20px 15px}
+  .login-brand{gap:8px}
+  .login-brand-lockup{gap:8px}
+  .login-brand-lockup img{width:clamp(98px,27vw,122px);max-height:65px}
+  .login-brand-name strong{font-size:17px;letter-spacing:1.1px}
+  .login-brand-name span{font-size:8px;letter-spacing:.3px;line-height:1.35}
+  .polish-flag{flex-basis:62px;height:41px}
+  .login-card{margin-top:clamp(60px,12dvh,100px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .flag-cloth,.flag-cloth:after{animation:none!important}
+}
