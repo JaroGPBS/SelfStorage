@@ -1037,6 +1037,51 @@
   }
 }
 
+/* Shared PZ/WZ actions and links between two operations of the same visit. */
+.app.view-receipts .table .doc-actions-cell{
+  min-width:260px;width:260px;
+  padding-left:12px;padding-right:17px;
+}
+.app.view-receipts .doc-row-actions{
+  display:flex;align-items:center;justify-content:flex-end;
+  gap:10px;white-space:nowrap;
+}
+.app.view-receipts .doc-row-actions .detail-btn{margin-right:auto}
+.app.view-receipts .doc-print-btn{
+  border:1px solid #d8dce2;border-radius:6px;
+  padding:6px 11px;min-height:30px;
+  color:#3c4551;background:#fff;
+  font-size:11px;font-weight:750;
+  opacity:1;cursor:pointer;
+}
+.app.view-receipts .doc-print-btn:hover{
+  border-color:#ba5862;color:#b03440;background:#fff6f7;
+}
+.app.view-receipts .doc-related-link{
+  border-top:1px solid #e8ebef;
+  padding-top:12px;margin-top:12px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.app.view-receipts .doc-related-link span{
+  color:#77828e;font-size:11px;line-height:1.45;
+}
+.app.view-receipts .doc-related-link button{
+  color:#ad303c;background:#fff;border:1px solid #e3c6ca;
+  border-radius:6px;font-size:11px;font-weight:750;
+  padding:7px 11px;white-space:nowrap;
+}
+.app.view-receipts .doc-related-link button:hover{
+  background:#fff3f4;border-color:#d998a0;
+}
+@media(max-width:690px){
+  .app.view-receipts .table .doc-actions-cell{
+    min-width:220px;width:220px;padding:8px!important;
+  }
+  .app.view-receipts .doc-row-actions{gap:7px}
+  .app.view-receipts .doc-print-btn{padding:6px 8px}
+  .app.view-receipts .doc-related-link{flex-wrap:wrap}
+}
+
 /* Printable PZ / WZ forms: compact document preview with handwritten signatures. */
 .doc-lines-actions{
   display:flex;
