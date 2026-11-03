@@ -107,11 +107,21 @@ function showLogin(message=''){
   $('loginError').textContent=message;$('loginError').classList.toggle('hidden',!message);
   $('pin').value='';if(!message)$('pin').focus();
 }
+function greetingName(user){
+  // The PL login currently returns the user's name or crew symbol as nickname.
+  // Use the first name if a full name was entered; preserve team labels and
+  // short symbols (e.g. MT) without exposing the full personal record.
+  const raw=String(user?.nickname||'').trim().replace(/\s+/g,' ');
+  if(!raw)return '';
+  if(/^(ekipa|zespół|team|grupa)\s+/i.test(raw))return raw;
+  return raw.split(' ')[0];
+}
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
-  $('username').textContent=state.user.nickname||'Pracownik';
+  const name=greetingName(state.user);
+  $('username').textContent=name?name+'!':'!';
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
   renderMenu();selectView('stocks',state.warehouse);

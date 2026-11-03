@@ -1900,3 +1900,73 @@
   .app.view-aggregate .breadcrumbs strong{font-size:18px}
   .app.view-aggregate .receipt-toolbar-info strong{font-size:16px}
 }
+
+/* Office sidebar: GPBS logo only, STORAGE OFFICE below; welcoming footer. */
+#sidebar .office-side-brand{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:5px;
+  padding:2px 5px 22px;
+  margin:0 0 11px;
+  border-bottom:0;
+  text-align:center;
+}
+#sidebar .office-side-brand .sidebar-logo{
+  width:100%;
+  max-width:190px;
+  height:auto;
+  max-height:93px;
+  flex:none;
+  object-fit:contain;
+}
+#sidebar .office-side-brand .sidebar-brand-name{
+  display:block;
+  color:#b6c0cc;
+  font-size:14px;
+  font-weight:750;
+  line-height:1.35;
+  letter-spacing:.19em;
+  white-space:nowrap;
+}
+#sidebar .office-side-footer{
+  display:flex;
+  gap:9px;
+  align-items:center;
+  padding:13px 0 0;
+  margin-top:auto;
+}
+#sidebar .office-welcome{
+  flex:1 1 auto;
+  min-width:0;
+  text-align:left;
+}
+#sidebar .office-welcome p{
+  margin:0;
+  font-size:12px;
+  font-weight:500;
+  line-height:1.3;
+  color:#f0f2f5;
+  overflow-wrap:anywhere;
+}
+#sidebar .office-welcome strong{
+  font-weight:800;
+  color:#fff;
+}
+#sidebar .office-welcome small{
+  display:block;
+  margin-top:8px;
+  color:#aeb8c5;
+  text-align:center;
+  font-size:10px;
+}
+#sidebar .office-side-footer #logout{
+  flex:0 0 35px;
+}
+@media(max-width:950px){
+  #sidebar .office-side-brand .sidebar-brand-name{
+    font-size:12px;
+    letter-spacing:.15em;
+  }
+}
