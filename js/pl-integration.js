@@ -8,7 +8,7 @@ const POLISH_SCRIPTS = [
   '/pl/inventory-scanner.js?v=2',
   '/pl/inventory-flow.js?v=4',
   '/pl/warehouse-operations.js?v=5',
-  '/pl/pl.js?v=10'
+  '/pl/pl.js?v=11'
 ];
 
 let workspacePromise = null;
