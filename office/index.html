@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Storage Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=10">
+  <link rel="stylesheet" href="./office.css?v=11">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
@@ -166,7 +166,7 @@
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
     }
   </style>
-  <script defer src="./office.js?v=6"></script>
+  <script defer src="./office.js?v=7"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -256,6 +256,13 @@
         <div id="testBanner" class="test-banner hidden"></div>
         <section class="table-card" aria-label="Dane">
           <div class="table-toolbar">
+            <div id="moduleCategories" class="module-categories hidden" role="group" aria-label="Grupa modułów">
+              <button type="button" class="module-category active" data-module-category="all" aria-pressed="true">SUMA</button>
+              <button type="button" class="module-category" data-module-category="outdoor" aria-pressed="false">OUTDOOR</button>
+              <button type="button" class="module-category" data-module-category="indoor" aria-pressed="false">INDOOR</button>
+              <button type="button" class="module-category" data-module-category="bq" aria-pressed="false">BQ</button>
+              <button type="button" class="module-category" data-module-category="newgen" aria-pressed="false">NEW GEN</button>
+            </div>
             <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" aria-label="Szukaj" placeholder="Szukaj po SAP lub nazwie części"></div>
             <div id="tableCaption" class="table-caption hidden">
               <strong>Aktualne stany części w magazynie</strong>

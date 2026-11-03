@@ -640,3 +640,163 @@
   .label-photo-zone{padding:4mm 4mm 4mm 0!important}
   .label-photo-zone img{width:100%!important;height:100%!important;object-fit:contain!important}
 }
+
+/* Module machine registry presentation. Kept separate from the real parts table. */
+.app.view-stocks.view-modules .table-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:11px 18px;padding:10px 15px;
+}
+.app.view-stocks.view-modules .module-categories{
+  display:flex;align-items:center;gap:6px;
+  flex:0 1 auto;min-width:0;
+  order:0;
+}
+.app.view-stocks.view-modules .module-category{
+  border:1px solid #d6dce3;border-radius:7px;
+  padding:9px 13px;min-height:37px;
+  background:#fff;color:#414b57;
+  font-size:11px;font-weight:750;letter-spacing:.025em;
+  white-space:nowrap;cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.app.view-stocks.view-modules .module-category:hover{
+  border-color:#99a1aa;background:#f5f6f8;
+}
+.app.view-stocks.view-modules .module-category.active,
+.app.view-stocks.view-modules .module-category[aria-pressed="true"]{
+  border-color:#30343b;background:#30343b;color:#fff;
+  box-shadow:0 2px 7px #2128321a;
+}
+.app.view-stocks.view-modules .table-caption{
+  order:1;flex:1 1 165px;min-width:135px;
+  align-items:center;text-align:center;
+}
+.app.view-stocks.view-modules .table-caption strong{
+  color:#68727f;font-size:12px;line-height:1.25;
+}
+.app.view-stocks.view-modules .search-wrap{
+  order:2;flex:1 1 235px;max-width:360px;width:auto;
+  min-width:185px;height:38px;margin-left:auto;
+}
+.app.view-stocks.view-modules .tools-right{
+  order:3;flex:0 0 auto;
+}
+.app.view-stocks.view-modules .table{
+  width:100%;font-size:12px;border-collapse:collapse;
+}
+.app.view-stocks.view-modules .table th,
+.app.view-stocks.view-modules .table td{
+  padding:12px 15px;
+}
+.app.view-stocks.view-modules .table th:nth-child(n+3),
+.app.view-stocks.view-modules .table td:nth-child(n+3){
+  padding-right:15px;
+}
+.app.view-stocks.view-modules .module-summary-table{min-width:660px}
+.app.view-stocks.view-modules .module-summary-table thead th{
+  background:#f3f5f7;color:#687380;
+  font-size:11px;letter-spacing:.065em;
+}
+.app.view-stocks.view-modules .module-summary-table th:nth-child(1){
+  width:46%;text-align:left;
+}
+.app.view-stocks.view-modules .module-summary-table th:nth-child(2),
+.app.view-stocks.view-modules .module-summary-table th:nth-child(3),
+.app.view-stocks.view-modules .module-summary-table th:nth-child(4){
+  width:18%;
+}
+.app.view-stocks.view-modules .module-summary-table .module-group-row th{
+  border-bottom:1px solid #e7ebef;border-top:1px solid #e2e5e9;
+  background:#eff1f4;color:#505a67;text-align:left;
+  padding:10px 15px;font-size:11px;letter-spacing:.11em;
+}
+.app.view-stocks.view-modules .module-type{
+  font-weight:750;color:#303842;
+}
+.app.view-stocks.view-modules .module-count-ok{
+  color:#277654;font-weight:750;
+}
+.app.view-stocks.view-modules .module-count-nok{
+  color:#c13f49;font-weight:750;
+}
+.app.view-stocks.view-modules .module-count-total{
+  font-weight:800;color:#2c3540;
+}
+.app.view-stocks.view-modules .module-summary-table .module-grand-total td{
+  background:#f3f4f6;
+  border-top:2px solid #dadee3;color:#29313c;font-weight:850;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-stocks.view-modules .module-no-results{
+  padding:28px!important;text-align:center;color:#89939e;
+}
+.app.view-stocks.view-modules .module-serial-table{
+  min-width:var(--module-width,990px);
+  table-layout:fixed;
+}
+.app.view-stocks.view-modules .module-serial-table th{
+  width:auto!important;
+  min-width:160px;
+  text-align:left;
+  padding:14px 13px;
+  background:#f3f5f7;
+}
+.app.view-stocks.view-modules .module-serial-table td{
+  width:auto!important;
+  padding:8px 13px;
+  height:43px;
+}
+.app.view-stocks.view-modules .module-column-heading{
+  display:flex;align-items:center;gap:8px;
+  color:#28313b;font-size:12px;letter-spacing:0;
+  font-weight:800;
+}
+.app.view-stocks.view-modules .module-column-quantity{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:#e2e6ea;color:#626d78;
+  border-radius:5px;min-width:23px;
+  padding:2px 5px;font-size:10px;font-weight:700;
+}
+.app.view-stocks.view-modules .module-serial-cell{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;white-space:nowrap;
+}
+.app.view-stocks.view-modules .module-serial{
+  font-weight:650;color:#38424e;font-size:11px;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-stocks.view-modules .module-status{
+  font-weight:800;font-size:9px;
+  border-radius:4px;padding:3px 5px;line-height:1;
+}
+.app.view-stocks.view-modules .module-status.module-ok{
+  color:#26764e;background:#eaf5ef;
+}
+.app.view-stocks.view-modules .module-status.module-nok{
+  color:#bf3b46;background:#fff0f1;
+}
+.app.view-stocks.view-modules .module-empty{
+  color:#bdc3ca!important;
+}
+@media(max-width:1250px){
+  .app.view-stocks.view-modules .module-categories{flex-wrap:wrap}
+  .app.view-stocks.view-modules .table-caption{
+    flex:1 1 170px;align-items:flex-start;text-align:left;
+  }
+  .app.view-stocks.view-modules .search-wrap{max-width:none}
+}
+@media(max-width:760px){
+  .app.view-stocks.view-modules .table-toolbar{gap:9px}
+  .app.view-stocks.view-modules .module-categories{
+    order:0;flex-wrap:nowrap;overflow-x:auto;
+    width:100%;padding-bottom:3px;
+  }
+  .app.view-stocks.view-modules .module-category{flex:none}
+  .app.view-stocks.view-modules .table-caption{
+    order:1;flex:1 1 100%;
+  }
+  .app.view-stocks.view-modules .search-wrap{
+    order:2;flex:1 1 180px;min-width:140px;margin:0;
+  }
+  .app.view-stocks.view-modules .tools-right{order:3}
+}

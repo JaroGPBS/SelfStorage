@@ -3,14 +3,32 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DEMO_MEDUZA_PHOTO='/office/images/antena-meduza-demo.jpg';
-const DEMO_MODULES=[
-  {id:'MOD-DEMO-001',name:'Moduł sterowania FM',sap_number:null,part_number:'MOD-001',quantity:18},
-  {id:'MOD-DEMO-002',name:'Moduł zasilania',sap_number:null,part_number:'MOD-002',quantity:12},
-  {id:'MOD-DEMO-003',name:'Moduł komunikacyjny',sap_number:null,part_number:'MOD-003',quantity:24},
-  {id:'MOD-DEMO-004',name:'Moduł LED',sap_number:null,part_number:'MOD-004',quantity:7},
-  {id:'MOD-DEMO-005',name:'Moduł HICU',sap_number:null,part_number:'MOD-005',quantity:15},
-  {id:'MOD-DEMO-006',name:'Moduł czujników',sap_number:null,part_number:'MOD-006',quantity:9}
+// Self-contained presentation-only module registry; no connection to D1.
+const MODULE_GROUPS=[
+  {id:'outdoor',name:'OUTDOOR',types:['FM','LQ','RQ','XS','ODL','ODR']},
+  {id:'indoor',name:'INDOOR',types:['CU','DUO','HICU','HIDUO','CU RJ','HICU RJ','HIDUO RJ']},
+  {id:'bq',name:'BQ',types:['CU','DUO','CU OUT','DUO OUT']},
+  {id:'newgen',name:'NEW GEN',types:['CU IN','DUO L','DUO R']}
 ];
+const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.id,name:g.name}))];
+const DEMO_MODULE_RECORDS=(()=>{
+  const items=[];
+  let sequence=0;
+  MODULE_GROUPS.forEach((group,g)=>{
+    group.types.forEach((type,t)=>{
+      const count=8+((g*4+t*3)%9);
+      for(let n=0;n<count;n++){
+        const number=900000000+(sequence++*13);
+        items.push({
+          group:group.id,type,
+          serial:(n%5===0?'25':'26')+'/CQU'+String(number).padStart(9,'0'),
+          status:((n+t*3+g)%6===0||(n+t)%11===0)?'NOK':'OK'
+        });
+      }
+    });
+  });
+  return items;
+})();
 const DEMO_QR_ROWS=[
   '000000000000000000000000000000000',
   '000000000000000000000000000000000',
@@ -47,7 +65,7 @@ const DEMO_QR_ROWS=[
   '000000000000000000000000000000000'
 ];
 const DEMOS=[{id:'demo1',name:'Testowy 1',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Testowy 2',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Testowy 3',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
-const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function demoQuantity(index,demoIndex){return ((index*17+demoIndex*11)%11===0)?0:((index*13+demoIndex*7)%29);}
@@ -112,23 +130,40 @@ function setHead(title,kicker,desc){
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
 }
 function syncStockTabUI(){
-  const modules=state.stockTab==='modules';
+  const modules=state.view==='stocks'&&state.stockTab==='modules';
+  $('app').classList.toggle('view-modules',modules);
+  $('moduleCategories').classList.toggle('hidden',!modules);
   for(const [id,active] of [['partsTab',!modules],['modulesTab',modules]]){
     $(id).classList.toggle('active',active);
     $(id).setAttribute('aria-selected',String(active));
   }
   $('newPart').textContent=modules?'+ Dodaj moduł':'+ Dodaj część';
-  $('tableCaption').querySelector('strong').textContent=modules?'Aktualne stany modułów w magazynie':'Aktualne stany części w magazynie';
-  $('search').placeholder=modules?'Szukaj modułu po nazwie lub indeksie':'Szukaj po SAP lub nazwie części';
+  $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':'Aktualne stany części w magazynie';
+  $('search').placeholder=modules?'Wyszukaj po numerze seryjnym':'Szukaj po SAP lub nazwie części';
+  $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
+  document.querySelectorAll('[data-module-category]').forEach(btn=>{
+    const selected=btn.dataset.moduleCategory===state.moduleCategory;
+    btn.classList.toggle('active',selected);
+    btn.setAttribute('aria-pressed',String(selected));
+  });
 }
 function setStockTab(tab){
   if(!['parts','modules'].includes(tab)||state.view!=='stocks'||state.stockTab===tab)return;
-  state.stockTab=tab;state.search='';state.expanded=null;
+  state.stockTab=tab;state.moduleCategory='all';state.search='';state.expanded=null;
   $('search').value='';
   syncStockTabUI();render();
 }
+function setModuleCategory(category){
+  if(state.view!=='stocks'||state.stockTab!=='modules')return;
+  if(!MODULE_CATEGORIES.some(c=>c.id===category)||state.moduleCategory===category)return;
+  state.moduleCategory=category;
+  state.search='';
+  $('search').value='';
+  syncStockTabUI();
+  drawModules();
+}
 function selectView(view,warehouse){
-  state.view=view;state.stockTab='parts';state.search='';state.expanded=null;state.positive=false;state.negative=false;
+  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=null;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe'};
@@ -185,41 +220,73 @@ function drawStocks(parts,warehouseId){
   $('tableFooter').textContent=filtered.length+' części';
   noteSearch(filtered.length,parts.length,'częściach');
 }
-function drawModules(){
-  const filtered=sortedFiltered(DEMO_MODULES);
-  const rows=filtered.map(p=>{
-    const min=previewMinimum(p);
-    const reorder=Math.max(0,min-Number(p.quantity));
-    return '<tr data-module-row="'+escapeHtml(p.id)+'" tabindex="0" aria-label="Szczegóły modułu: '+escapeHtml(p.name)+'">'+
-      '<td>'+escapeHtml(p.sap_number||'—')+'</td><td><button type="button" class="row-link" data-module="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
-      '<td class="num">'+quantity(p.quantity)+'</td><td class="num stock-demo-order">'+quantity(reorder)+'</td>'+
-      '<td class="num stock-demo-min">'+escapeHtml(min)+'</td></tr>';
-  }).join('');
-  $('tableArea').innerHTML=wrapTable([
-    {label:'Indeks SAP'},{label:'Nazwa modułu'},{label:'Stan',numeric:true},
-    {label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}
-  ],rows);
-  $('tableFooter').textContent=filtered.length+' modułów';
-  noteSearch(filtered.length,DEMO_MODULES.length,'modułach');
+function demoModuleMatches(record,query){
+  return !query||[record.serial,record.type].some(x=>
+    String(x).toLocaleLowerCase('pl').includes(query));
 }
-function openDemoModule(id){
-  const p=DEMO_MODULES.find(x=>x.id===id);
-  if(!p)return;
-  $('modal').classList.remove('hidden');
-  $('modal').querySelector('.modal-card').classList.add('part-detail-card');
-  $('modalBody').innerHTML=
-    '<div class="kicker">KARTA MODUŁU</div>'+
-    '<h2 id="modalTitle">'+escapeHtml(p.name)+'</h2>'+
-    '<p class="muted part-sap-line">Indeks SAP: —</p>'+
-    '<div class="part-detail-layout">'+
-      '<div class="part-photo-section"><div class="part-photo-empty" aria-label="Brak zdjęcia modułu"><span aria-hidden="true">▧</span><small>Zdjęcie modułu</small></div></div>'+
-      '<div class="part-detail-data">'+
-        '<div class="part-stock-block"><small>AKTUALNY STAN</small><strong>'+quantity(p.quantity)+' <span>szt.</span></strong></div>'+
-        '<div class="part-meta-item"><small>Identyfikator magazynowy</small><strong>'+escapeHtml(p.part_number)+'</strong></div>'+
-        '<div class="part-meta-item"><small>Ostatnia dostawa</small><strong>—</strong></div>'+
-        '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>—</strong></div>'+
-      '</div>'+
-    '</div>';
+function drawModules(){
+  const query=state.search.trim().toLocaleLowerCase('pl');
+  const selected=state.moduleCategory;
+  if(selected==='all'){
+    let visible=0,okTotal=0,nokTotal=0;
+    let body='';
+    for(const group of MODULE_GROUPS){
+      let groupRows='';
+      const types=state.sortReverse?[...group.types].sort((a,b)=>b.localeCompare(a,'pl',{sensitivity:'base'})):[...group.types];
+      for(const type of types){
+        const matches=DEMO_MODULE_RECORDS.filter(r=>
+          r.group===group.id&&r.type===type&&demoModuleMatches(r,query));
+        if(!matches.length)continue;
+        const ok=matches.filter(r=>r.status==='OK').length;
+        const nok=matches.length-ok;
+        visible+=matches.length;okTotal+=ok;nokTotal+=nok;
+        groupRows+='<tr class="module-summary-row">'+
+          '<td class="module-type">'+escapeHtml(type)+'</td>'+
+          '<td class="num module-count-ok">'+ok+'</td>'+
+          '<td class="num module-count-nok">'+nok+'</td>'+
+          '<td class="num module-count-total">'+matches.length+'</td></tr>';
+      }
+      if(groupRows)body+='<tr class="module-group-row"><th colspan="4" scope="rowgroup">'+escapeHtml(group.name)+'</th></tr>'+groupRows;
+    }
+    if(!body)body='<tr><td colspan="4" class="module-no-results">Nie znaleziono maszyn.</td></tr>';
+    body+='<tr class="module-grand-total"><td>ŁĄCZNIE</td><td class="num">'+okTotal+
+      '</td><td class="num">'+nokTotal+'</td><td class="num">'+visible+'</td></tr>';
+    $('tableArea').innerHTML='<table class="table module-summary-table">'+
+      '<thead><tr><th>Typ maszyny</th><th class="num">Maszyny OK</th>'+
+      '<th class="num">Maszyny NOK</th><th class="num">Suma</th></tr></thead>'+
+      '<tbody>'+body+'</tbody></table>';
+    $('tableFooter').textContent=visible+' maszyn';
+    noteSearch(visible,DEMO_MODULE_RECORDS.length,'maszynach');
+    return;
+  }
+  const group=MODULE_GROUPS.find(g=>g.id===selected);
+  if(!group)return;
+  const types=state.sortReverse?[...group.types].sort((a,b)=>b.localeCompare(a,'pl',{sensitivity:'base'})):[...group.types];
+  const columns=types.map(type=>{
+    const all=DEMO_MODULE_RECORDS.filter(r=>r.group===selected&&r.type===type);
+    return {type,items:all.filter(r=>demoModuleMatches(r,query))};
+  });
+  const height=Math.max(0,...columns.map(c=>c.items.length));
+  const count=columns.reduce((sum,c)=>sum+c.items.length,0);
+  const fullCount=DEMO_MODULE_RECORDS.filter(r=>r.group===selected).length;
+  const head='<thead><tr>'+columns.map(c=>
+    '<th><div class="module-column-heading">'+escapeHtml(c.type)+
+    '<span class="module-column-quantity">'+c.items.length+'</span></div></th>').join('')+'</tr></thead>';
+  let rows='';
+  for(let n=0;n<height;n++){
+    rows+='<tr>'+columns.map(c=>{
+      const item=c.items[n];
+      if(!item)return '<td class="module-empty">—</td>';
+      return '<td><div class="module-serial-cell">'+
+        '<span class="module-serial">'+escapeHtml(item.serial)+'</span>'+
+        '<span class="module-status '+(item.status==='OK'?'module-ok':'module-nok')+'">'+item.status+'</span>'+
+        '</div></td>';
+    }).join('')+'</tr>';
+  }
+  if(!rows)rows='<tr><td colspan="'+columns.length+'" class="module-no-results">Nie znaleziono numerów seryjnych.</td></tr>';
+  $('tableArea').innerHTML='<table class="table module-serial-table" style="--module-width:'+columns.length*184+'px">'+head+'<tbody>'+rows+'</tbody></table>';
+  $('tableFooter').textContent=count+' maszyn';
+  noteSearch(count,fullCount,'maszynach');
 }
 function drawAggregate(realSets){
   const base=realSets[0]?.parts||[];const filtered=sortedFiltered(base);
@@ -428,8 +495,7 @@ document.addEventListener('click',e=>{
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
   if(e.target.closest('[data-label-close]')){closeLabelPreview();return;}
   if(e.target.closest('[data-label-open]')){openLabelPreview();return;}
-  const moduleButton=e.target.closest('[data-module]');if(moduleButton){openDemoModule(moduleButton.dataset.module);return;}
-  const moduleRow=e.target.closest('[data-module-row]');if(moduleRow){openDemoModule(moduleRow.dataset.moduleRow);return;}
+  const moduleCategory=e.target.closest('[data-module-category]');if(moduleCategory){setModuleCategory(moduleCategory.dataset.moduleCategory);return;}
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
   const w=e.target.closest('[data-warehouse]');if(w){selectView('stocks',w.dataset.warehouse);return;}
@@ -451,11 +517,9 @@ document.addEventListener('keydown',e=>{
     else closeModal();
     return;
   }
-  const row=e.target.closest('tr[data-part-row],tr[data-module-row]');
+  const row=e.target.closest('tr[data-part-row]');
   if(row&&e.target===row&&(e.key==='Enter'||e.key===' ')){
-    e.preventDefault();
-    if(row.dataset.moduleRow)openDemoModule(row.dataset.moduleRow);
-    else openPart(row.dataset.partRow);
+    e.preventDefault();openPart(row.dataset.partRow);
   }
 });
 let searchTimer=null;
