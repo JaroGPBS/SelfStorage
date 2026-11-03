@@ -827,3 +827,37 @@
   }
   .app.view-stocks.view-modules .tools-right{order:3}
 }
+
+/* Office aggregate: match centered quantity values to headers and visually separate warehouses. */
+.app .table.aggregate-table{
+  table-layout:fixed;
+  min-width:940px;
+  border-collapse:collapse;
+}
+.app .table.aggregate-table th:nth-child(1){width:12%}
+.app .table.aggregate-table th:nth-child(2){width:28%}
+.app .table.aggregate-table th:nth-child(n+3),
+.app .table.aggregate-table td:nth-child(n+3){
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+  padding-left:12px;
+  padding-right:12px;
+  border-left:1px solid #e1e5ea;
+}
+.app .table.aggregate-table th:last-child,
+.app .table.aggregate-table td:last-child{
+  background:#f5f7fa;
+  font-weight:800;
+  color:#303944;
+  border-left:2px solid #c9d0d9;
+}
+.app .table.aggregate-table th:last-child{
+  color:#b93542;
+}
+@media(max-width:690px){
+  .app .table.aggregate-table{min-width:850px}
+  .app .table.aggregate-table th:nth-child(n+3),
+  .app .table.aggregate-table td:nth-child(n+3){
+    padding-left:9px;padding-right:9px;
+  }
+}

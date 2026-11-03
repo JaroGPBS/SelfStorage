@@ -64,7 +64,7 @@ const DEMO_QR_ROWS=[
   '000000000000000000000000000000000',
   '000000000000000000000000000000000'
 ];
-const DEMOS=[{id:'demo1',name:'Testowy 1',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Testowy 2',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Testowy 3',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
+const DEMOS=[{id:'demo1',name:'Magazyn 2',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Magazyn 3',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Magazyn 4',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
 const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
@@ -104,7 +104,7 @@ function setLoggedIn(payload){
 }
 function renderMenu(){
   $('warehouseMenu').innerHTML=state.warehouses.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+escapeHtml(w.name)+'</button>').join('')+
-    DEMOS.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+w.id+'">'+w.name+' <small>TEST</small></button>').join('')+
+    DEMOS.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+w.id+'">'+escapeHtml(w.name)+'</button>').join('')+
     '<button type="button" class="subnav-btn" data-view="aggregate">Zestawienie zbiorcze</button>';
   document.querySelectorAll('[data-view],[data-warehouse]').forEach(el=>{
     el.classList.toggle('active',el.dataset.view===state.view||(state.view==='stocks'&&el.dataset.warehouse===state.warehouse));
@@ -120,7 +120,7 @@ function setHead(title,kicker,desc){
   $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
-  $('testBanner').classList.toggle('hidden',!(isDemo()||state.view==='aggregate'||state.view==='vehicles'));
+  $('testBanner').classList.toggle('hidden',!(isDemo()||state.view==='vehicles'));
   $('testBanner').textContent=state.view==='aggregate'?'Zestawienie zawiera magazyny oznaczone TEST. Ich ilości są wyłącznie przykładowe i nie są zapisane w D1.':state.view==='vehicles'?'Widok prezentacyjny. Ekipy, pojazdy i ilości są przykładowe; rzeczywiste stany samochodowe podłączymy później.':'Magazyn prezentacyjny — ilości są przykładowe i nie są zapisane w D1.';
   const stockView=state.view==='stocks';
   $('app').classList.toggle('view-stocks',stockView);
@@ -186,9 +186,9 @@ function sortedFiltered(rows){
   return result.sort((a,b)=>(state.sortReverse?-1:1)*String(a.name||'').localeCompare(String(b.name||''),'pl',{sensitivity:'base'}));
 }
 function quantity(value){return value===null||value===undefined?'<span class="stock-unknown">—</span>':Number(value)===0?'<span class="stock-zero">0</span>':escapeHtml(value);}
-function wrapTable(headers,rows){
+function wrapTable(headers,rows,extraClass=''){
   const cols=headers.map(h=>'<th'+(h.numeric?' class="num"':'')+'>'+escapeHtml(h.label)+'</th>').join('');
-  return '<table class="table"><thead><tr>'+cols+'</tr></thead><tbody>'+rows+'</tbody></table>';
+  return '<table class="table'+(extraClass?' '+escapeHtml(extraClass):'')+'"><thead><tr>'+cols+'</tr></thead><tbody>'+rows+'</tbody></table>';
 }
 function noteSearch(count,total,noun){
   $('searchNote').classList.toggle('hidden',!state.search.trim());
@@ -289,12 +289,35 @@ function drawModules(){
   noteSearch(count,fullCount,'maszynach');
 }
 function drawAggregate(realSets){
-  const base=realSets[0]?.parts||[];const filtered=sortedFiltered(base);
-  const headers=[{label:'Indeks SAP'},{label:'Nazwa części'},...realSets.map(p=>({label:p.name})),...DEMOS.map(p=>({label:p.name+' TEST'}))];
-  const rows=filtered.map(p=>'<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td>'+escapeHtml(p.name)+'</td>'+
-    realSets.map(s=>{const a=s.parts.find(x=>x.id===p.id);return '<td class="num">'+quantity(a?.quantity)+'</td>';}).join('')+
-    DEMOS.map((d,i)=>'<td class="num">'+quantity(demoQuantity(base.indexOf(p),i+1))+'</td>').join('')+'</tr>').join('');
-  $('tableArea').innerHTML=wrapTable(headers,rows);$('tableFooter').textContent=filtered.length+' części';noteSearch(filtered.length,base.length,'częściach');
+  const base=realSets[0]?.parts||[];
+  const filtered=sortedFiltered(base);
+  const warehouseStock=realSets.map(s=>new Map(s.parts.map(part=>[part.id,part.quantity])));
+  const originalIndices=new Map(base.map((p,i)=>[p.id,i]));
+  const headers=[
+    {label:'Indeks SAP'},{label:'Nazwa części'},
+    ...realSets.map(p=>({label:p.name,numeric:true})),
+    ...DEMOS.map(p=>({label:p.name,numeric:true})),
+    {label:'SUMA',numeric:true}
+  ];
+  const rows=filtered.map(p=>{
+    let total=0;
+    const knownValues=warehouseStock.map(stock=>stock.get(p.id));
+    const realCells=knownValues.map(value=>{
+      if(value!==null&&value!==undefined&&Number.isFinite(Number(value)))total+=Number(value);
+      return '<td class="num">'+quantity(value)+'</td>';
+    }).join('');
+    const demoCells=DEMOS.map((d,i)=>{
+      const value=demoQuantity(originalIndices.get(p.id),i+1);
+      total+=value;
+      return '<td class="num">'+quantity(value)+'</td>';
+    }).join('');
+    return '<tr><td>'+escapeHtml(p.sap_number||'—')+'</td>'+
+      '<td>'+escapeHtml(p.name)+'</td>'+realCells+demoCells+
+      '<td class="num aggregate-total">'+escapeHtml(total)+'</td></tr>';
+  }).join('');
+  $('tableArea').innerHTML=wrapTable(headers,rows,'aggregate-table');
+  $('tableFooter').textContent=filtered.length+' części';
+  noteSearch(filtered.length,base.length,'częściach');
 }
 function cellButton(label,id,expanded){return '<button class="detail-btn" data-expand="'+escapeHtml(id)+'">'+(expanded?'Ukryj':'Pokaż '+label)+' <span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>';}
 async function drawDocs(){
