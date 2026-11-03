@@ -284,7 +284,7 @@ function drawModules(){
     }).join('')+'</tr>';
   }
   if(!rows)rows='<tr><td colspan="'+columns.length+'" class="module-no-results">Nie znaleziono numerów seryjnych.</td></tr>';
-  $('tableArea').innerHTML='<table class="table module-serial-table" style="--module-width:'+columns.length*184+'px">'+head+'<tbody>'+rows+'</tbody></table>';
+  $('tableArea').innerHTML='<table class="table module-serial-table" style="--module-width:'+columns.length*228+'px">'+head+'<tbody>'+rows+'</tbody></table>';
   $('tableFooter').textContent=count+' maszyn';
   noteSearch(count,fullCount,'maszynach');
 }
