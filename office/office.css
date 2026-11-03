@@ -1709,3 +1709,82 @@
   line-height:1.6;
   text-align:center;
 }
+
+/* Fleet viewport: one vertical scrollbar inside the rows, one horizontal
+   scrollbar above the crew headers, no document-level or bottom scrolling. */
+.app.view-vehicles{
+  height:100dvh;
+  min-height:0;
+  overflow:hidden;
+}
+.app.view-vehicles .main{
+  height:100dvh;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.app.view-vehicles .topbar{
+  flex:0 0 62px;
+}
+.app.view-vehicles .content{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:10px 20px 12px;
+}
+.app.view-vehicles .page-head{display:none}
+.app.view-vehicles .table-card{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.app.view-vehicles .table-toolbar,
+.app.view-vehicles .search-note,
+.app.view-vehicles .table-footer{
+  flex:0 0 auto;
+}
+.app.view-vehicles .vehicle-top-scroll{
+  flex:0 0 20px;
+  height:20px;
+  width:calc(100% - 450px);
+  max-width:calc(100% - 450px);
+  margin-left:450px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  border-left:1px solid #dfe4e9;
+  border-right:0;
+  border-top:0;
+  scrollbar-width:auto;
+}
+.app.view-vehicles #tableArea{
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+  width:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.app.view-vehicles .table.vehicle-stock-table thead th{
+  position:sticky;
+  top:0;
+}
+@media(max-width:690px){
+  .app.view-vehicles .topbar{flex-basis:58px}
+  .app.view-vehicles .content{padding:9px 11px 10px}
+  .app.view-vehicles .vehicle-top-scroll{
+    width:100%;
+    max-width:100%;
+    margin-left:0;
+    border-left:0;
+  }
+  .app.view-vehicles #tableArea{
+    height:auto;
+    min-height:0;
+  }
+}

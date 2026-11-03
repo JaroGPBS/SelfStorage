@@ -511,7 +511,11 @@ function syncVehicleTopScroll(){
   if(state.view!=='vehicles')return;
   const content=$('tableArea').querySelector('.vehicle-stock-table');
   if(!content)return;
-  $('vehicleScrollWidth').style.width=content.scrollWidth+'px';
+  // The top scrollbar starts at the first crew, not at the frozen SAP/name
+  // columns. Match its scroll range to the inner table's horizontal range.
+  const narrow=window.matchMedia('(max-width:690px)').matches;
+  const width=narrow?content.scrollWidth:Math.max(0,content.scrollWidth-450);
+  $('vehicleScrollWidth').style.width=width+'px';
   $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
 }
 function drawVehicles(parts){
