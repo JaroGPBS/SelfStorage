@@ -11,8 +11,8 @@ function dateText(raw){if(!raw)return '—';const dt=new Date(String(raw).replac
 function isoWeek(raw){
   const date=new Date(String(raw||'').replace(' ','T').replace(/Z?$/,'Z'));
   if(isNaN(date.getTime()))return '—';
-  const ymd=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
-  const [y,m,d]=ymd.split('-').map(Number);
+  const values=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(p=>[p.type,p.value]));
+  const y=Number(values.year),m=Number(values.month),d=Number(values.day);
   const utc=new Date(Date.UTC(y,m-1,d));utc.setUTCDate(utc.getUTCDate()+4-(utc.getUTCDay()||7));
   const yearStart=new Date(Date.UTC(utc.getUTCFullYear(),0,1));
   return Math.ceil((((utc-yearStart)/86400000)+1)/7);
