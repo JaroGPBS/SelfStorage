@@ -13,7 +13,7 @@
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
     #loginScreen.login-screen {
-      background-position:center center, center 80%;
+      background-position:center center, center 82%;
       background-size:cover,cover;
     }
     #loginScreen .login-shell {
@@ -49,9 +49,12 @@
       letter-spacing:1.8px;color:#cbd2dc;
       white-space:normal;
     }
-    #loginScreen .login-brand-name .polish-flag{
-      margin-top:7px;
-      align-self:flex-start;
+    #loginScreen .login-brand-country{
+      display:flex;align-items:center;gap:clamp(12px,1.2vw,20px);
+      width:max-content;max-width:100%;
+    }
+    #loginScreen .login-brand-country .polish-flag{
+      margin:0;align-self:center;
     }
     #loginScreen .login-brand-right{
       display:flex;flex-direction:column;align-items:flex-end;
@@ -67,8 +70,8 @@
     }
     #loginScreen .polish-flag{
       display:flex;align-items:center;justify-content:center;
-      flex:none;width:clamp(17px,1.4vw,25.5px);
-      height:clamp(10px,.84vw,15.5px);
+      flex:none;width:clamp(21.25px,1.75vw,31.875px);
+      height:clamp(12.5px,1.05vw,19.375px);
       perspective:550px;
       filter:drop-shadow(0 7px 15px rgba(0,0,0,.38));
     }
@@ -128,7 +131,7 @@
       #loginScreen .login-brand-name span{font-size:9px;letter-spacing:.5px}
       #loginScreen .office-heading{font-size:clamp(12px,1.85vw,18px);white-space:normal;max-width:240px}
       #loginScreen .login-brand-right{gap:8px}
-      #loginScreen .polish-flag{width:12.5px;height:8px}
+      #loginScreen .polish-flag{width:15.625px;height:10px}
     }
     @media(max-width:480px){
       #loginScreen .login-brand{gap:8px}
@@ -136,7 +139,7 @@
       #loginScreen .login-brand-name strong{font-size:15px;letter-spacing:.7px}
       #loginScreen .login-brand-name span{font-size:8px;letter-spacing:.1px}
       #loginScreen .office-heading{font-size:11px;max-width:130px;letter-spacing:.45px}
-      #loginScreen .polish-flag{width:10px;height:6.5px}
+      #loginScreen .polish-flag{width:12.5px;height:8.125px}
     }
     #loginScreen .remember-option{
       display:flex;align-items:center;justify-content:center;gap:10px;
@@ -173,11 +176,13 @@
           <img src="./gpbs-logo-sharp.svg?v=1" alt="GPBS">
           <div class="login-brand-name">
             <strong>STORAGE</strong>
-            <span>POLSKA</span>
-            <div class="polish-flag" role="img" aria-label="Flaga Polski">
-              <div class="flag-cloth" aria-hidden="true">
-                <span class="flag-white"></span>
-                <span class="flag-red"></span>
+            <div class="login-brand-country">
+              <span>POLSKA</span>
+              <div class="polish-flag" role="img" aria-label="Flaga Polski">
+                <div class="flag-cloth" aria-hidden="true">
+                  <span class="flag-white"></span>
+                  <span class="flag-red"></span>
+                </div>
               </div>
             </div>
           </div>
