@@ -65,7 +65,7 @@ const DEMO_QR_ROWS=[
   '000000000000000000000000000000000'
 ];
 const DEMOS=[{id:'demo1',name:'Magazyn 2',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Magazyn 3',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Magazyn 4',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
-const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function demoQuantity(index,demoIndex){return ((index*17+demoIndex*11)%11===0)?0:((index*13+demoIndex*7)%29);}
@@ -121,14 +121,18 @@ function setHead(title,kicker,desc){
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
-  const receiptsView=state.view==='pz';
+  const documentsView=state.view==='pz'||state.view==='wz';
   $('app').classList.toggle('view-stocks',stockView);
-  $('app').classList.toggle('view-receipts',receiptsView);
-  $('receiptToolbarInfo').classList.toggle('hidden',!receiptsView);
-  $('receiptToolbarActions').classList.toggle('hidden',!receiptsView);
-  // Relocate the existing synchronization controls. They remain the same
-  // elements with the same click handler, so other screens are unaffected.
-  if(receiptsView){
+  $('app').classList.toggle('view-receipts',documentsView);
+  $('receiptToolbarInfo').classList.toggle('hidden',!documentsView);
+  $('receiptToolbarActions').classList.toggle('hidden',!documentsView);
+  if(documentsView){
+    $('receiptToolbarInfo').querySelector('strong').textContent=state.view==='pz'?'Przyjęcia':'Wydania';
+    $('receiptToolbarInfo').querySelector('span').textContent=state.view==='pz'
+      ?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
+  }
+  // Keep the existing refresh button and its handler when moving it.
+  if(documentsView){
     $('receiptToolbarActions').append($('syncTime'),$('refresh'));
   }else{
     $('pageActions').insertBefore($('syncTime'),$('newPart'));
@@ -172,8 +176,8 @@ function setModuleCategory(category){
   syncStockTabUI();
   drawModules();
 }
-function selectView(view,warehouse){
-  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=null;state.positive=false;state.negative=false;
+function selectView(view,warehouse,focusDocument=null){
+  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe'};
@@ -329,23 +333,46 @@ function drawAggregate(realSets){
   $('tableFooter').textContent=filtered.length+' części';
   noteSearch(filtered.length,base.length,'częściach');
 }
-function cellButton(label,id,expanded){return '<button class="detail-btn" data-expand="'+escapeHtml(id)+'">'+(expanded?'Ukryj':'Pokaż '+label)+' <span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>';}
-async function drawDocs(){
-  const direction=state.view==='pz'?'PZ':'WZ';const docs=state.docs;
-  const visible=docs;
-  const rows=visible.map(d=>{
-    const over=Number(d.shortage||0)>0;const expanded=state.expanded===d.id;
-    const detail=drawDocLines(state.detailCache.get(direction+':'+d.id),direction);
-    const expandedContent=direction==='PZ'
-      ? '<div class="receipt-lines-anchor"><div class="receipt-lines-card">'+detail+'</div></div>'
-      : '<div class="expanded">'+detail+'</div>';
-    return '<tr'+(over?' class="warning-row"':'')+'><td>'+dateText(d.date)+'</td><td>'+isoWeek(d.date)+'</td><td>'+escapeHtml(d.counterparty)+'</td><td>'+escapeHtml(d.worker)+'</td><td>'+cellButton('części',d.id,expanded)+'</td></tr>'+
-      (expanded?'<tr'+(direction==='PZ'?' class="receipt-expansion-row"':'')+'><td colspan="5" class="'+(direction==='PZ'?'receipt-expanded-cell':'expanded-cell')+'">'+expandedContent+'</td></tr>':'');
+function cellButton(label,id,expanded){
+  return '<button type="button" class="detail-btn" data-expand="'+escapeHtml(id)+'">'+
+    (expanded?'Ukryj':'Pokaż '+label)+' <span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>';
+}
+function drawDocs(){
+  const direction=state.view==='pz'?'PZ':'WZ';
+  const opposite=direction==='PZ'?'WZ':'PZ';
+  const docs=state.docs;
+  const rows=docs.map(d=>{
+    const over=Number(d.shortage||0)>0;
+    const expanded=state.expanded===d.id;
+    const related=Number(d.has_related||0)>0;
+    const actions='<div class="doc-row-actions">'+cellButton('części',d.id,expanded)+
+      '<button type="button" class="doc-print-btn" disabled title="Drukowanie dokumentów zostanie uruchomione później">Drukuj</button>'+
+      '</div>';
+    let expandedHtml='';
+    if(expanded){
+      const details=drawDocLines(state.detailCache.get(direction+':'+d.id),direction);
+      const link=related?'<div class="doc-related-link"><span>W tej samej wizycie wykonano również '+
+        (direction==='PZ'?'wydanie.':'przyjęcie.')+'</span>'+
+        '<button type="button" data-related-direction="'+opposite+'" data-related-session="'+escapeHtml(d.id)+'">Zobacz '+opposite+' →</button></div>':'';
+      expandedHtml='<tr class="receipt-expansion-row"><td colspan="5" class="receipt-expanded-cell">'+
+        '<div class="receipt-lines-anchor"><div class="receipt-lines-card">'+details+link+'</div></div></td></tr>';
+    }
+    return '<tr data-doc-id="'+escapeHtml(d.id)+'"'+(over?' class="warning-row"':'')+'>'+
+      '<td>'+dateText(d.date)+'</td><td>'+isoWeek(d.date)+'</td>'+
+      '<td>'+escapeHtml(d.counterparty)+'</td><td>'+escapeHtml(d.worker)+'</td>'+
+      '<td class="doc-actions-cell">'+actions+'</td></tr>'+expandedHtml;
   }).join('');
-  $('tableArea').innerHTML=wrapTable([{label:'Data'},{label:'Tydz.'},{label:direction==='PZ'?'Dostawca / Ekipa':'Odbiorca'},{label:direction==='PZ'?'Przyjmował':'Wydawał'},{label:''}],rows)||'<div class="empty">Brak dokumentów.</div>';
-  $('tableFooter').textContent=visible.length+' dokumentów'+(state.docsMatched>visible.length?' · pokazano pierwsze '+visible.length:'');
+  $('tableArea').innerHTML=wrapTable([
+    {label:'Data'},{label:'Tydz.'},
+    {label:direction==='PZ'?'Dostawca / Ekipa':'Odbiorca'},
+    {label:direction==='PZ'?'Przyjmował':'Wydawał'},
+    {label:''}
+  ],rows)||'<div class="empty">Brak dokumentów.</div>';
+  $('tableFooter').textContent=docs.length+' dokumentów'+
+    (state.docsMatched>docs.length?' · pokazano pierwsze '+docs.length:'');
   $('searchNote').classList.toggle('hidden',!state.search.trim());
-  $('searchNote').textContent=state.search.trim()?'Znaleziono w '+state.docsMatched+' '+(direction==='PZ'?'dostawach':'wydaniach')+' z '+state.docsTotal+'.':'';
+  $('searchNote').textContent=state.search.trim()?
+    'Znaleziono w '+state.docsMatched+' '+(direction==='PZ'?'dostawach':'wydaniach')+' z '+state.docsTotal+'.':'';
 }
 function drawDocLines(parts,direction){
   if(!parts)return '<div class="loading">Wczytywanie pozycji...</div>';
@@ -399,10 +426,32 @@ async function render(){
       $('tableArea').innerHTML='<div class="empty">Historia magazynów prezentacyjnych nie jest zapisana w D1.</div>';
     }else if(state.view==='pz'||state.view==='wz'){
       const direction=state.view==='pz'?'PZ':'WZ';
-      const payload=await api('documents',{...params,direction,term:state.search});
+      const focus=state.focusDocument;
+      const payload=await api('documents',{...params,direction,term:state.search,...(focus?{focus}:{})});
       if(ticket!==state.requestId)return;
       state.docs=payload.documents;state.docsTotal=payload.total;state.docsMatched=payload.matched;
       drawDocs();
+      if(focus){
+        if(state.docs.some(d=>d.id===focus)){
+          state.expanded=focus;
+          const key=direction+':'+focus;
+          if(!state.detailCache.has(key)){
+            try{
+              const details=await api('document',{...params,direction,id:focus});
+              if(ticket!==state.requestId)return;
+              state.detailCache.set(key,details.lines);
+            }catch(ex){
+              if(ticket!==state.requestId)return;
+              errorBanner(ex.message||'Nie można pobrać powiązanego dokumentu.');
+            }
+          }
+          drawDocs();
+          const row=Array.from($('tableArea').querySelectorAll('tr[data-doc-id]'))
+            .find(el=>el.dataset.docId===focus);
+          row?.scrollIntoView({block:'center',behavior:'smooth'});
+        }else errorBanner('Nie znaleziono powiązanego dokumentu.');
+        if(state.focusDocument===focus)state.focusDocument=null;
+      }
     }else if(state.view==='inventories'){
       state.inventories=(await api('inventories',params)).inventories;
       if(ticket!==state.requestId)return;drawInventories();
@@ -529,6 +578,15 @@ function closeModal(){
   $('modalBody').innerHTML='';
 }
 document.addEventListener('click',e=>{
+  const related=e.target.closest('[data-related-session]');
+  if(related){
+    const direction=related.dataset.relatedDirection;
+    const session=related.dataset.relatedSession;
+    if((direction==='PZ'||direction==='WZ')&&/^PL-SES-[a-f0-9-]{36}$/.test(session)){
+      selectView(direction==='PZ'?'pz':'wz',state.warehouse,session);
+    }
+    return;
+  }
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
   if(e.target.closest('[data-label-close]')){closeLabelPreview();return;}
   if(e.target.closest('[data-label-open]')){openLabelPreview();return;}

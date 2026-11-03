@@ -108,6 +108,9 @@ export async function onRequestGet({request,env}){
       if(!await tableExists(env.DB,'pl_warehouse_sessions'))
         return workerJson({ok:true,documents:[],total:0,matched:0});
       const term=(url.searchParams.get('term')||'').trim().slice(0,100);
+      const focus=(url.searchParams.get('focus')||'').trim();
+      if(focus&&!SESSION.test(focus))return error('Nieprawidłowy identyfikator dokumentu.');
+      const relatedDirection=direction==='PZ'?'WZ':'PZ';
       const join='FROM pl_warehouse_sessions s '+
         'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
         'LEFT JOIN users u ON u.id=s.actor_id ';
@@ -127,13 +130,20 @@ export async function onRequestGet({request,env}){
       const matches=await env.DB.prepare(
         'SELECT COUNT(DISTINCT s.id) AS n '+join+where+matching
       ).bind(...params).first();
-      const docs=await selectRows(env.DB,
-        'SELECT s.id,s.committed_at AS date,s.counterparty,'+
+      const fields='SELECT s.id,s.committed_at AS date,s.counterparty,'+
         'COALESCE(u.name,s.actor_id) AS worker,COUNT(l.part_id) AS positions,'+
         'COALESCE(SUM(l.quantity),0) AS units,'+
-        'COALESCE(SUM(l.shortage_quantity),0) AS shortage '+
-        join+where+matching+
+        'COALESCE(SUM(l.shortage_quantity),0) AS shortage,'+
+        'EXISTS (SELECT 1 FROM pl_warehouse_session_lines related '+
+        "WHERE related.session_id=s.id AND related.direction='"+relatedDirection+"') AS has_related ";
+      const docs=await selectRows(env.DB,fields+join+where+matching+
         ' GROUP BY s.id ORDER BY s.committed_at DESC,s.id DESC LIMIT 200',params);
+      // Fetch a linked session even if it falls outside the 200 newest documents.
+      if(focus&&!docs.some(doc=>doc.id===focus)){
+        const focused=await selectRows(env.DB,fields+join+where+
+          'AND s.id=? GROUP BY s.id LIMIT 1',[warehouseId,direction,focus]);
+        if(focused.length)docs.unshift(focused[0]);
+      }
       return workerJson({
         ok:true,documents:docs,total:Number(count?.n||0),matched:Number(matches?.n||0)
       });
