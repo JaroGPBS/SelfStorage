@@ -810,6 +810,61 @@ $('loginForm').addEventListener('submit',async e=>{
     setLoggedIn(await api('warehouses'));
   }catch(ex){showLogin(ex.message||'Nie można się zalogować.');}finally{btn.disabled=false;}
 });
+// Office PWA install is separate from the warehouse/mobile application.
+let officeInstallPrompt=null;
+function officeStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+}
+function updateOfficeInstallUI(){
+  $('officeInstall').classList.toggle('hidden',officeStandalone());
+}
+function showOfficeInstallHelp(message){
+  $('installOfficeHelp').textContent=message;
+  $('installOfficeHelp').classList.remove('hidden');
+}
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  officeInstallPrompt=event;
+  updateOfficeInstallUI();
+});
+window.addEventListener('appinstalled',()=>{
+  officeInstallPrompt=null;
+  $('officeInstall').classList.add('hidden');
+  $('installOfficeHelp').classList.add('hidden');
+});
+$('installOffice').addEventListener('click',async()=>{
+  if(officeStandalone()){
+    updateOfficeInstallUI();
+    return;
+  }
+  if(officeInstallPrompt){
+    const prompt=officeInstallPrompt;
+    officeInstallPrompt=null;
+    try{
+      await prompt.prompt();
+      const choice=await prompt.userChoice;
+      if(choice?.outcome==='accepted'){
+        $('installOfficeHelp').classList.add('hidden');
+        return;
+      }
+      showOfficeInstallHelp('Instalacja została anulowana. Możesz spróbować ponownie z menu przeglądarki.');
+    }catch{
+      showOfficeInstallHelp('Przeglądarka nie uruchomiła instalacji. Spróbuj z jej menu aplikacji.');
+    }
+    return;
+  }
+  const ua=navigator.userAgent;
+  if(/Edg\//.test(ua)){
+    showOfficeInstallHelp('W Microsoft Edge otwórz menu ⋯ → Więcej narzędzi → Aplikacje → Zainstaluj tę witrynę jako aplikację. Jeśli opcji nie ma, może być zablokowana przez firmę.');
+  }else if(/Firefox\//.test(ua)){
+    showOfficeInstallHelp('W Firefoksie na Windowsie kliknij ikonę aplikacji przy pasku adresu, aby przypiąć stronę jako aplikację. Utworzy się też skrót w menu Start.');
+  }else if(/Chrome\//.test(ua)||/Chromium\//.test(ua)){
+    showOfficeInstallHelp('W Chrome otwórz menu ⋮ i wybierz „Zainstaluj stronę jako aplikację” (nazwa opcji może się różnić).');
+  }else{
+    showOfficeInstallHelp('W menu przeglądarki wybierz instalację strony jako aplikacji lub dodanie skrótu. Opcja zależy od przeglądarki.');
+  }
+});
+updateOfficeInstallUI();
 (async()=>{try{setLoggedIn(await api('warehouses'));}catch{showLogin();}})();
 setInterval(()=>{if(state.user&&document.visibilityState==='visible'){state.partsCache.clear();render();}},15*60*1000);
 })();

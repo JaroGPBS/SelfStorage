@@ -1673,3 +1673,39 @@
     min-height:240px;
   }
 }
+
+/* Subtle standalone application install action on the office login screen only. */
+#loginScreen .office-install{
+  width:100%;
+  margin:20px auto 0;
+  text-align:center;
+}
+#loginScreen .office-install-button{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  width:min(100%,340px);
+  min-height:42px;
+  padding:9px 16px;
+  color:#e6edf3;
+  background:rgba(27,36,47,.73);
+  border:1px solid rgba(210,222,236,.38);
+  border-radius:7px;
+  font-size:12px;
+  font-weight:750;
+  letter-spacing:.01em;
+}
+#loginScreen .office-install-button:hover{
+  background:rgba(44,57,72,.9);
+  border-color:rgba(237,242,247,.7);
+}
+#loginScreen .office-install-button svg{flex:none}
+#loginScreen .office-install-help{
+  width:min(100%,420px);
+  margin:11px auto 0;
+  font-size:11px;
+  color:#d6e1ed;
+  line-height:1.6;
+  text-align:center;
+}
