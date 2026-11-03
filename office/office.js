@@ -58,7 +58,12 @@ function setHead(title,kicker,desc){
   const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
   $('testBanner').classList.toggle('hidden',!(isDemo()||state.view==='aggregate'||state.view==='vehicles'));
   $('testBanner').textContent=state.view==='aggregate'?'Zestawienie zawiera magazyny oznaczone TEST. Ich ilości są wyłącznie przykładowe i nie są zapisane w D1.':state.view==='vehicles'?'Widok prezentacyjny. Ekipy, pojazdy i ilości są przykładowe; rzeczywiste stany samochodowe podłączymy później.':'Magazyn prezentacyjny — ilości są przykładowe i nie są zapisane w D1.';
-  if(state.view==='stocks'){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
+  const stockView=state.view==='stocks';
+  $('app').classList.toggle('view-stocks',stockView);
+  $('warehouseCrumb').classList.toggle('hidden',!stockView);
+  $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
+  $('tableCaption').classList.toggle('hidden',!stockView);
+  if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
 }
 function selectView(view,warehouse){
   state.view=view;state.search='';state.expanded=null;state.positive=false;state.negative=false;
@@ -92,12 +97,30 @@ function noteSearch(count,total,noun){
   $('searchNote').classList.toggle('hidden',!state.search.trim());
   $('searchNote').textContent=state.search.trim()?'Znaleziono w '+count+' '+noun+' z '+total+'.':'';
 }
+// Presentation-only figures; deterministic across search/sort and never stored in D1.
+function previewMinimum(part){
+  let hash=0;
+  for(const ch of String(part.id||part.name||''))hash=(Math.imul(hash,31)+ch.charCodeAt(0))|0;
+  return [5,10,15,20,25,30,35,40][(hash>>>0)%8];
+}
 function drawStocks(parts,warehouseId){
   const filtered=sortedFiltered(parts);const demoIndex=DEMOS.findIndex(w=>w.id===warehouseId);
-  const rows=filtered.map((p,i)=>{const originalIndex=parts.indexOf(p);const amount=demoIndex<0?p.quantity:demoQuantity(originalIndex,demoIndex+1);
-    return '<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td><button class="row-link" data-part="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td><td class="num">'+quantity(amount)+'</td></tr>';}).join('');
-  $('tableArea').innerHTML=wrapTable([{label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true}],rows)||'';
-  $('tableFooter').textContent=filtered.length+' części';noteSearch(filtered.length,parts.length,'częściach');
+  const rows=filtered.map(p=>{
+    const originalIndex=parts.indexOf(p);
+    const amount=demoIndex<0?p.quantity:demoQuantity(originalIndex,demoIndex+1);
+    const min=previewMinimum(p);
+    const reorder=amount===null||amount===undefined?'—':Math.max(0,min-Number(amount));
+    return '<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td><button class="row-link" data-part="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
+      '<td class="num">'+quantity(amount)+'</td>'+
+      '<td class="num stock-demo-order">'+(reorder==='—'?'—':reorder>0?'<strong>'+escapeHtml(reorder)+'</strong>':escapeHtml(reorder))+'</td>'+
+      '<td class="num stock-demo-min">'+escapeHtml(min)+'</td></tr>';
+  }).join('');
+  $('tableArea').innerHTML=wrapTable([
+    {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true},
+    {label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}
+  ],rows)||'';
+  $('tableFooter').textContent=filtered.length+' części · Kolumny „Zamówić” i „Stan min.”: dane prezentacyjne';
+  noteSearch(filtered.length,parts.length,'częściach');
 }
 function drawAggregate(realSets){
   const base=realSets[0]?.parts||[];const filtered=sortedFiltered(base);

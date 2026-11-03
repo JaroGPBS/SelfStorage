@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Storage Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=6">
+  <link rel="stylesheet" href="./office.css?v=7">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
@@ -166,7 +166,7 @@
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
     }
   </style>
-  <script defer src="./office.js?v=2"></script>
+  <script defer src="./office.js?v=3"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -232,7 +232,7 @@
     <div class="main">
       <header class="topbar">
         <button class="icon-btn mobile-menu" id="mobileMenu" aria-label="Pokaż menu">☰</button>
-        <div class="breadcrumbs">GPBS Storage <span>/</span> <strong id="crumb">Stany magazynowe</strong></div>
+        <div class="breadcrumbs">GPBS Storage <span>/</span> <strong id="crumb">Stany magazynowe</strong><span id="warehouseCrumb" class="warehouse-crumb hidden">TYCHY</span></div>
         <div class="top-status"><span class="status-dot"></span><span>D1</span></div>
       </header>
       <div class="content">
@@ -253,6 +253,10 @@
         <section class="table-card" aria-label="Dane">
           <div class="table-toolbar">
             <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" aria-label="Szukaj" placeholder="Szukaj po SAP lub nazwie części"></div>
+            <div id="tableCaption" class="table-caption hidden">
+              <strong>Aktualne stany części w magazynie</strong>
+              <small>„Zamówić” i „Stan min.” — wartości przykładowe do prezentacji</small>
+            </div>
             <div class="tools-right">
               <button class="btn subtle" id="sort" type="button">Nazwa A–Z</button>
               <button class="btn subtle" id="export" type="button" disabled title="Eksport Excel przygotujemy w kolejnym etapie">⇩ Eksport</button>
