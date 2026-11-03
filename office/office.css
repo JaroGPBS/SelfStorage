@@ -1788,3 +1788,115 @@
     min-height:0;
   }
 }
+
+/* Warehouse header: clean typographic name without a shaded tile. */
+.app.view-stocks .warehouse-crumb{
+  display:inline;
+  margin-left:16px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+  color:#c72e3e;
+  font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  font-size:24px;
+  font-weight:850;
+  line-height:1.15;
+  letter-spacing:.085em;
+}
+@media(max-width:690px){
+  .app.view-stocks .warehouse-crumb{
+    margin-left:9px;padding:0;font-size:17px;letter-spacing:.05em;
+  }
+}
+/* Single warehouse: names a touch farther right, stock quantity much closer. */
+.app.view-stocks:not(.view-modules) .table.part-stock-table{
+  table-layout:fixed;
+}
+.app.view-stocks:not(.view-modules) .table.part-stock-table th:nth-child(1){width:20%}
+.app.view-stocks:not(.view-modules) .table.part-stock-table th:nth-child(2){width:24%}
+.app.view-stocks:not(.view-modules) .table.part-stock-table th:nth-child(3){width:12%}
+.app.view-stocks:not(.view-modules) .table.part-stock-table th:nth-child(4){width:22%}
+.app.view-stocks:not(.view-modules) .table.part-stock-table th:nth-child(5){width:22%}
+
+/* Collective stock comparison: compact toolbar, no blank heading above table,
+   sticky warehouse labels within a height-constrained, scrollable list. */
+.app.view-aggregate{
+  height:100dvh;
+  min-height:0;
+  overflow:hidden;
+}
+.app.view-aggregate .main{
+  display:flex;
+  flex-direction:column;
+  height:100dvh;
+  min-height:0;
+  overflow:hidden;
+}
+.app.view-aggregate .topbar{
+  flex:0 0 62px;
+}
+.app.view-aggregate .breadcrumbs strong{
+  font-size:24px;
+  font-weight:850;
+  color:#26313e;
+}
+.app.view-aggregate .content{
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  min-height:0;
+  overflow:hidden;
+  padding:10px 20px 12px;
+}
+.app.view-aggregate .page-head{display:none}
+.app.view-aggregate .table-card{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.app.view-aggregate .table-toolbar,
+.app.view-aggregate .search-note,
+.app.view-aggregate .table-footer{
+  flex:0 0 auto;
+}
+.app.view-aggregate #tableArea{
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+  width:100%;
+  overflow-y:auto;
+  overflow-x:auto;
+  overscroll-behavior:contain;
+}
+.app.view-aggregate .table.aggregate-table{
+  border-collapse:separate;
+  border-spacing:0;
+}
+.app.view-aggregate .table.aggregate-table thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#f4f6f8;
+  box-shadow:0 1px 0 #dfe4e9;
+}
+.app.view-aggregate .receipt-toolbar-info{
+  flex:1 1 360px;
+  gap:14px;
+}
+.app.view-aggregate .receipt-toolbar-info strong{
+  font-size:17px;
+  white-space:nowrap;
+}
+.app.view-aggregate .receipt-toolbar-info span{
+  font-size:11px;
+}
+@media(max-width:690px){
+  .app.view-aggregate .topbar{flex-basis:58px}
+  .app.view-aggregate .content{padding:9px 11px 10px}
+  .app.view-aggregate .breadcrumbs strong{font-size:18px}
+  .app.view-aggregate .receipt-toolbar-info strong{font-size:16px}
+}

@@ -137,17 +137,20 @@ function setHead(title,kicker,desc){
   const stockView=state.view==='stocks';
   const documentsView=state.view==='pz'||state.view==='wz';
   const vehicleView=state.view==='vehicles';
-  const compactView=documentsView||vehicleView;
+  const aggregateView=state.view==='aggregate';
+  const compactView=documentsView||vehicleView||aggregateView;
   $('app').classList.toggle('view-stocks',stockView);
   $('app').classList.toggle('view-receipts',compactView);
   $('app').classList.toggle('view-vehicles',vehicleView);
+  $('app').classList.toggle('view-aggregate',aggregateView);
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView);
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
   $('vehicleTopScroll').classList.toggle('hidden',!vehicleView);
   if(compactView){
-    $('receiptToolbarInfo').querySelector('strong').textContent=vehicleView?'Stany samochodowe':state.view==='pz'?'Przyjęcia':'Wydania';
-    $('receiptToolbarInfo').querySelector('span').textContent=vehicleView
-      ?'Ewidencja części na samochodach serwisowych.'
+    $('receiptToolbarInfo').querySelector('strong').textContent=aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':state.view==='pz'?'Przyjęcia':'Wydania';
+    $('receiptToolbarInfo').querySelector('span').textContent=aggregateView
+      ?'Porównanie stanów części pomiędzy magazynami.'
+      :vehicleView?'Ewidencja części na samochodach serwisowych.'
       :state.view==='pz'?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
   }
   // Reuse the existing synchronization control in the compact toolbar.
@@ -249,7 +252,7 @@ function drawStocks(parts,warehouseId){
   $('tableArea').innerHTML=wrapTable([
     {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true},
     {label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}
-  ],rows)||'';
+  ],rows,'part-stock-table')||'';
   $('tableFooter').textContent=filtered.length+' części';
   noteSearch(filtered.length,parts.length,'częściach');
 }
