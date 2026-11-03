@@ -65,6 +65,20 @@ const DEMO_QR_ROWS=[
   '000000000000000000000000000000000'
 ];
 const DEMOS=[{id:'demo1',name:'Magazyn 2',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Magazyn 3',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Magazyn 4',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
+// Client-only presentation vehicles. Kept separate from the demo warehouse list.
+const VEHICLES=[
+  ...DEMOS.map(d=>({team:d.team,reg:d.reg,date:d.date})),
+  {team:'Ekipa D',reg:'SK 4578D',date:'27.10.2026'},
+  {team:'Ekipa E',reg:'ST 6214E',date:'29.10.2026'},
+  {team:'Ekipa F',reg:'SO 3187F',date:'31.10.2026'},
+  {team:'Ekipa G',reg:'KR 5468G',date:'26.10.2026'},
+  {team:'Ekipa H',reg:'DW 7621H',date:'01.11.2026'},
+  {team:'Ekipa I',reg:'PO 1834I',date:'02.11.2026'},
+  {team:'Ekipa J',reg:'WZ 9052J',date:'28.10.2026'},
+  {team:'Ekipa K',reg:'GD 2648K',date:'30.10.2026'},
+  {team:'Ekipa L',reg:'LU 7319L',date:'31.10.2026'},
+  {team:'Ekipa M',reg:'SZ 4926M',date:'02.11.2026'}
+];
 const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
@@ -490,10 +504,22 @@ function drawInventoryLines(lines){
 }
 function drawVehicles(parts){
   const filtered=sortedFiltered(parts);
-  const headers=[{label:'Indeks SAP'},{label:'Nazwa części'},...DEMOS.map(d=>({label:d.team+' · '+d.reg}))];
-  let html='<table class="table"><thead><tr><th>Indeks SAP</th><th>Nazwa części</th>'+DEMOS.map(d=>'<th class="car-head"><strong>'+escapeHtml(d.team)+'</strong><small>'+escapeHtml(d.reg)+'</small><i>Inwent.: '+escapeHtml(d.date)+'</i></th>').join('')+'</tr></thead><tbody>';
-  for(const p of filtered)html+='<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td>'+escapeHtml(p.name)+'</td>'+DEMOS.map((d,i)=>'<td class="num">'+demoQuantity(parts.indexOf(p),i+1)%7+'</td>').join('')+'</tr>';
-  $('tableArea').innerHTML=html+'</tbody></table>';$('tableFooter').textContent=filtered.length+' części · 3 pojazdy (przykładowe)';noteSearch(filtered.length,parts.length,'częściach');
+  const originalIndices=new Map(parts.map((p,i)=>[p.id,i]));
+  let html='<table class="table vehicle-stock-table" style="--vehicle-columns:'+VEHICLES.length+'"><thead><tr>'+
+    '<th>Indeks SAP</th><th>Nazwa części</th>'+
+    VEHICLES.map(d=>'<th class="car-head"><strong>'+escapeHtml(d.team)+'</strong>'+
+      '<small>'+escapeHtml(d.reg)+'</small>'+
+      '<span class="car-inventory-label">INWENT.</span>'+
+      '<time>'+escapeHtml(d.date)+'</time></th>').join('')+
+    '</tr></thead><tbody>';
+  for(const p of filtered){
+    const index=originalIndices.get(p.id)??parts.indexOf(p);
+    html+='<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td>'+escapeHtml(p.name)+'</td>'+
+      VEHICLES.map((d,i)=>'<td class="num">'+demoQuantity(index,i+1)%7+'</td>').join('')+'</tr>';
+  }
+  $('tableArea').innerHTML=html+'</tbody></table>';
+  $('tableFooter').textContent=filtered.length+' części · '+VEHICLES.length+' pojazdów (przykładowe)';
+  noteSearch(filtered.length,parts.length,'częściach');
 }
 async function render(){
   const ticket=++state.requestId;setLoading();
