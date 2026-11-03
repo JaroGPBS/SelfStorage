@@ -692,18 +692,34 @@
 .app.view-stocks.view-modules .table td:nth-child(n+3){
   padding-right:15px;
 }
-.app.view-stocks.view-modules .module-summary-table{min-width:660px}
+.app.view-stocks.view-modules .module-summary-table{
+  width:450px;
+  min-width:450px;
+  max-width:450px;
+  table-layout:fixed;
+  margin:0;
+}
 .app.view-stocks.view-modules .module-summary-table thead th{
   background:#f3f5f7;color:#687380;
-  font-size:11px;letter-spacing:.065em;
+  font-size:10px;letter-spacing:.025em;
+  white-space:nowrap;
 }
-.app.view-stocks.view-modules .module-summary-table th:nth-child(1){
-  width:46%;text-align:left;
+.app.view-stocks.view-modules .module-summary-table th,
+.app.view-stocks.view-modules .module-summary-table td{
+  padding-left:10px;
+  padding-right:10px;
 }
-.app.view-stocks.view-modules .module-summary-table th:nth-child(2),
-.app.view-stocks.view-modules .module-summary-table th:nth-child(3),
-.app.view-stocks.view-modules .module-summary-table th:nth-child(4){
-  width:18%;
+.app.view-stocks.view-modules .module-summary-table thead th:nth-child(1){
+  width:120px;text-align:left;
+}
+.app.view-stocks.view-modules .module-summary-table thead th:nth-child(2),
+.app.view-stocks.view-modules .module-summary-table thead th:nth-child(3),
+.app.view-stocks.view-modules .module-summary-table thead th:nth-child(4){
+  width:110px;
+}
+.app.view-stocks.view-modules .module-summary-table thead th.num,
+.app.view-stocks.view-modules .module-summary-table td.num{
+  text-align:center;
 }
 .app.view-stocks.view-modules .module-summary-table .module-group-row th{
   border-bottom:1px solid #e7ebef;border-top:1px solid #e2e5e9;
