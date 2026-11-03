@@ -120,8 +120,6 @@ function setHead(title,kicker,desc){
   $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
-  $('testBanner').classList.toggle('hidden',!(isDemo()||state.view==='vehicles'));
-  $('testBanner').textContent=state.view==='aggregate'?'Zestawienie zawiera magazyny oznaczone TEST. Ich ilości są wyłącznie przykładowe i nie są zapisane w D1.':state.view==='vehicles'?'Widok prezentacyjny. Ekipy, pojazdy i ilości są przykładowe; rzeczywiste stany samochodowe podłączymy później.':'Magazyn prezentacyjny — ilości są przykładowe i nie są zapisane w D1.';
   const stockView=state.view==='stocks';
   $('app').classList.toggle('view-stocks',stockView);
   $('warehouseCrumb').classList.toggle('hidden',!stockView);
