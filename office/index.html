@@ -8,12 +8,12 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Storage Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=5">
+  <link rel="stylesheet" href="./office.css?v=6">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     #loginScreen .login-shell {
       width:100%;max-width:none;min-height:100dvh;
-      margin:0;padding:28px clamp(24px,4.2vw,80px) 22px;
+      margin:0;padding:28px clamp(42px,5.5vw,110px) 22px;
       display:flex;flex-direction:column;
     }
     #loginScreen .login-brand{
@@ -28,7 +28,7 @@
     }
     #loginScreen .login-brand-lockup img{
       display:block;flex:none;
-      width:clamp(164px,14.4vw,264px);
+      width:clamp(148px,13vw,238px);
       height:auto;max-height:none;object-fit:contain;
     }
     #loginScreen .login-brand-name{
@@ -40,14 +40,26 @@
       font-weight:850;letter-spacing:2px;color:#fff;
     }
     #loginScreen .login-brand-name span{
-      font-size:clamp(10px,.9vw,13px);font-weight:750;
-      letter-spacing:1.4px;color:#cbd2dc;
+      font-size:clamp(11px,.92vw,14px);font-weight:750;
+      letter-spacing:1.8px;color:#cbd2dc;
       white-space:normal;
+    }
+    #loginScreen .login-brand-right{
+      display:flex;flex-direction:column;align-items:flex-end;
+      justify-content:center;gap:15px;flex:0 1 auto;min-width:0;
+    }
+    #loginScreen .office-heading{
+      display:block;color:#f4f6f8;
+      font-size:clamp(19px,1.65vw,27px);
+      line-height:1.18;font-weight:800;
+      letter-spacing:1.35px;text-align:right;
+      white-space:nowrap;
+      text-shadow:0 3px 15px rgba(0,0,0,.35);
     }
     #loginScreen .polish-flag{
       display:flex;align-items:center;justify-content:center;
-      flex:0 0 clamp(84px,7vw,126px);
-      height:clamp(50px,4.2vw,77px);
+      flex:none;width:clamp(67px,5.6vw,101px);
+      height:clamp(40px,3.35vw,62px);
       perspective:550px;
       filter:drop-shadow(0 7px 15px rgba(0,0,0,.38));
     }
@@ -99,20 +111,23 @@
       -webkit-text-fill-color:#f4f7fa !important;
     }
     @media(max-width:760px){
-      #loginScreen .login-shell{padding:21px 19px}
+      #loginScreen .login-shell{padding:21px 25px}
       #loginScreen .login-brand{gap:12px}
       #loginScreen .login-brand-lockup{gap:9px}
-      #loginScreen .login-brand-lockup img{width:clamp(88px,19.2vw,140px)}
+      #loginScreen .login-brand-lockup img{width:clamp(84px,17vw,125px)}
       #loginScreen .login-brand-name strong{font-size:clamp(17px,3.2vw,24px)}
       #loginScreen .login-brand-name span{font-size:9px;letter-spacing:.5px}
-      #loginScreen .polish-flag{flex-basis:62px;height:39px}
+      #loginScreen .office-heading{font-size:clamp(12px,1.85vw,18px);white-space:normal;max-width:240px}
+      #loginScreen .login-brand-right{gap:8px}
+      #loginScreen .polish-flag{width:50px;height:31px}
     }
     @media(max-width:480px){
       #loginScreen .login-brand{gap:8px}
-      #loginScreen .login-brand-lockup img{width:clamp(66px,19.2vw,90px)}
+      #loginScreen .login-brand-lockup img{width:clamp(70px,17vw,85px)}
       #loginScreen .login-brand-name strong{font-size:17px;letter-spacing:.7px}
       #loginScreen .login-brand-name span{font-size:8px;letter-spacing:.1px}
-      #loginScreen .polish-flag{flex-basis:42px;height:26px}
+      #loginScreen .office-heading{font-size:11px;max-width:130px;letter-spacing:.45px}
+      #loginScreen .polish-flag{width:40px;height:25px}
     }
     @media(prefers-reduced-motion:reduce){
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
@@ -125,16 +140,19 @@
     <div class="login-shell">
       <header class="login-brand">
         <div class="login-brand-lockup">
-          <img src="/icons/gpbs-logo.svg" alt="GPBS">
+          <img src="./gpbs-logo-sharp.svg?v=1" alt="GPBS">
           <div class="login-brand-name">
             <strong>STORAGE</strong>
-            <span>STORAGE OFFICE / POLSKA</span>
+            <span>POLSKA</span>
           </div>
         </div>
-        <div class="polish-flag" role="img" aria-label="Flaga Polski">
-          <div class="flag-cloth" aria-hidden="true">
-            <span class="flag-white"></span>
-            <span class="flag-red"></span>
+        <div class="login-brand-right">
+          <strong class="office-heading">STORAGE OFFICE POLSKA</strong>
+          <div class="polish-flag" role="img" aria-label="Flaga Polski">
+            <div class="flag-cloth" aria-hidden="true">
+              <span class="flag-white"></span>
+              <span class="flag-red"></span>
+            </div>
           </div>
         </div>
       </header>
@@ -154,7 +172,7 @@
   </section>
   <div id="app" class="app hidden">
     <aside class="sidebar" id="sidebar">
-      <div class="brand"><img class="sidebar-logo" src="/icons/gpbs-logo.svg" alt="GPBS"><span class="sidebar-brand-name"><strong>STORAGE</strong><small>STORAGE OFFICE</small></span></div>
+      <div class="brand"><img class="sidebar-logo" src="./gpbs-logo-sharp.svg?v=1" alt="GPBS"><span class="sidebar-brand-name"><strong>STORAGE</strong><small>STORAGE OFFICE</small></span></div>
       <div class="nav-label">NAWIGACJA</div>
       <nav aria-label="Menu główne">
         <button id="warehouseToggle" class="nav-heading" type="button" aria-expanded="true">
