@@ -13,7 +13,7 @@
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
     #loginScreen.login-screen {
-      background-position:center center, center 80%;
+      background-position:center center, center 77.5%;
       background-size:cover,cover;
     }
     #loginScreen .login-shell {
@@ -48,6 +48,10 @@
       font-size:clamp(10px,.80vw,12px);font-weight:750;
       letter-spacing:1.8px;color:#cbd2dc;
       white-space:normal;
+    }
+    #loginScreen .login-brand-name .polish-flag{
+      margin-top:7px;
+      align-self:flex-start;
     }
     #loginScreen .login-brand-right{
       display:flex;flex-direction:column;align-items:flex-end;
@@ -170,16 +174,16 @@
           <div class="login-brand-name">
             <strong>STORAGE</strong>
             <span>POLSKA</span>
+            <div class="polish-flag" role="img" aria-label="Flaga Polski">
+              <div class="flag-cloth" aria-hidden="true">
+                <span class="flag-white"></span>
+                <span class="flag-red"></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="login-brand-right">
           <strong class="office-heading">STORAGE OFFICE POLSKA</strong>
-          <div class="polish-flag" role="img" aria-label="Flaga Polski">
-            <div class="flag-cloth" aria-hidden="true">
-              <span class="flag-white"></span>
-              <span class="flag-red"></span>
-            </div>
-          </div>
         </div>
       </header>
       <div class="login-card">
