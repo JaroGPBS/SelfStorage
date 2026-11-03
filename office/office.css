@@ -1799,15 +1799,15 @@
   background:none;
   box-shadow:none;
   color:#c72e3e;
-  font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  font-family:"Segoe UI Black","Segoe UI",Arial,sans-serif;
   font-size:24px;
-  font-weight:850;
-  line-height:1.15;
-  letter-spacing:.085em;
+  font-weight:900;
+  line-height:1.1;
+  letter-spacing:-.025em;
 }
 @media(max-width:690px){
   .app.view-stocks .warehouse-crumb{
-    margin-left:9px;padding:0;font-size:17px;letter-spacing:.05em;
+    margin-left:9px;padding:0;font-size:17px;letter-spacing:-.025em;
   }
 }
 /* Single warehouse: names a touch farther right, stock quantity much closer. */
