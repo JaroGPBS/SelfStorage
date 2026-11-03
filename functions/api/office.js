@@ -59,7 +59,20 @@ export async function onRequestGet({request,env}){
   const url=new URL(request.url);
   const view=url.searchParams.get('view')||'warehouses';
   if(view==='warehouses'){
-    return workerJson({ok:true,user,warehouses:user.warehouses});
+    // Only this authenticated employee's given name is needed for the greeting.
+    // No surname, phone, or other private profile data leaves the server.
+    let firstName='';
+    try{
+      if(await tableExists(env.DB,'user_private_profiles')){
+        const profile=await env.DB.prepare(
+          'SELECT first_name FROM user_private_profiles WHERE user_id=? LIMIT 1'
+        ).bind(user.id).first();
+        firstName=String(profile?.first_name||'').trim().slice(0,60);
+      }
+    }catch(err){
+      console.error('Office greeting name unavailable',err?.name||'Error');
+    }
+    return workerJson({ok:true,user:{...user,firstName},warehouses:user.warehouses});
   }
   const warehouseId=url.searchParams.get('warehouse')||'';
   if(!WAREHOUSE.test(warehouseId))return error('Nieprawidłowy magazyn.');

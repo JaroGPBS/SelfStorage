@@ -1915,19 +1915,19 @@
 }
 #sidebar .office-side-brand .sidebar-logo{
   width:100%;
-  max-width:190px;
+  max-width:143px;
   height:auto;
-  max-height:93px;
+  max-height:70px;
   flex:none;
   object-fit:contain;
 }
 #sidebar .office-side-brand .sidebar-brand-name{
   display:block;
   color:#b6c0cc;
-  font-size:14px;
+  font-size:17px;
   font-weight:750;
   line-height:1.35;
-  letter-spacing:.19em;
+  letter-spacing:.14em;
   white-space:nowrap;
 }
 #sidebar .office-side-footer{
@@ -1954,6 +1954,13 @@
   font-weight:800;
   color:#fff;
 }
+#sidebar .office-welcome p:first-child{
+  color:#f2afb6;
+}
+#sidebar .office-welcome p:nth-child(2){
+  color:#cbdde7;
+  font-weight:650;
+}
 #sidebar .office-welcome small{
   display:block;
   margin-top:8px;
@@ -1966,7 +1973,7 @@
 }
 @media(max-width:950px){
   #sidebar .office-side-brand .sidebar-brand-name{
-    font-size:12px;
-    letter-spacing:.15em;
+    font-size:14px;
+    letter-spacing:.11em;
   }
 }

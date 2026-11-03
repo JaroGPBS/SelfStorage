@@ -108,9 +108,10 @@ function showLogin(message=''){
   $('pin').value='';if(!message)$('pin').focus();
 }
 function greetingName(user){
-  // The PL login currently returns the user's name or crew symbol as nickname.
-  // Use the first name if a full name was entered; preserve team labels and
-  // short symbols (e.g. MT) without exposing the full personal record.
+  // Private profile given name takes precedence over the account's short code.
+  // With no given name keep the public symbol or label (e.g. JJ, MT, Ekipa A).
+  const first=String(user?.firstName||'').trim().replace(/\s+/g,' ');
+  if(first)return first.split(' ')[0];
   const raw=String(user?.nickname||'').trim().replace(/\s+/g,' ');
   if(!raw)return '';
   if(/^(ekipa|zespół|team|grupa)\s+/i.test(raw))return raw;
