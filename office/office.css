@@ -861,3 +861,106 @@
     padding-left:9px;padding-right:9px;
   }
 }
+
+/* Receipts / PZ only: compact layout, no redundant page heading.
+   Original search and sync elements remain unchanged in functionality. */
+.app.view-receipts .topbar{
+  height:62px;
+  padding:0 22px;
+}
+.app.view-receipts .breadcrumbs{
+  display:flex;align-items:center;
+  font-size:13px;
+}
+.app.view-receipts .breadcrumbs strong{
+  font-size:21px;
+  line-height:1.2;
+  font-weight:800;
+  color:#273240;
+}
+.app.view-receipts .content{
+  max-width:none;
+  margin:0;
+  padding:10px 20px 34px;
+}
+.app.view-receipts .page-head{
+  display:none;
+}
+.app.view-receipts .table-card{
+  border-radius:11px;
+}
+.app.view-receipts .table-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 16px;
+}
+.app.view-receipts .search-wrap{
+  flex:1 1 350px;
+  width:auto;
+  min-width:210px;
+  max-width:450px;
+  height:38px;
+}
+.app.view-receipts .receipt-toolbar-info{
+  display:flex;
+  flex:1 1 330px;
+  min-width:210px;
+  gap:clamp(12px,1.5vw,24px);
+  align-items:center;
+  white-space:nowrap;
+}
+.app.view-receipts .receipt-toolbar-info strong{
+  color:#283341;
+  font-size:19px;
+  line-height:1.2;
+  font-weight:800;
+  flex:none;
+}
+.app.view-receipts .receipt-toolbar-info span{
+  color:#7c8796;
+  font-size:11px;
+  white-space:normal;
+  line-height:1.4;
+}
+.app.view-receipts .receipt-toolbar-actions{
+  display:flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  margin-left:auto;
+}
+.app.view-receipts .receipt-toolbar-actions .sync-label{
+  color:#87919c;
+  font-size:11px;
+  white-space:nowrap;
+  margin:0;
+}
+.app.view-receipts .receipt-toolbar-actions .btn{
+  min-height:37px;
+  padding:8px 11px;
+}
+.app.view-receipts .tools-right{
+  flex:0 0 auto;
+  width:auto;
+  justify-content:flex-end;
+}
+@media(max-width:1220px){
+  .app.view-receipts .table-toolbar{flex-wrap:wrap;row-gap:10px}
+  .app.view-receipts .search-wrap{flex:1 1 280px}
+  .app.view-receipts .receipt-toolbar-info{flex:1 1 300px}
+  .app.view-receipts .receipt-toolbar-actions{margin-left:0}
+  .app.view-receipts .tools-right{margin-left:auto}
+}
+@media(max-width:690px){
+  .app.view-receipts .topbar{height:58px;padding:0 12px}
+  .app.view-receipts .breadcrumbs strong{font-size:17px}
+  .app.view-receipts .content{padding:9px 11px 28px}
+  .app.view-receipts .table-toolbar{padding:10px}
+  .app.view-receipts .receipt-toolbar-info{flex:1 1 100%;gap:12px}
+  .app.view-receipts .receipt-toolbar-info strong{font-size:17px}
+  .app.view-receipts .receipt-toolbar-actions{flex:1 1 auto;flex-wrap:wrap}
+  .app.view-receipts .receipt-toolbar-actions .sync-label{margin-right:auto}
+}

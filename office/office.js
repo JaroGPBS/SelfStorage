@@ -121,7 +121,19 @@ function setHead(title,kicker,desc){
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
+  const receiptsView=state.view==='pz';
   $('app').classList.toggle('view-stocks',stockView);
+  $('app').classList.toggle('view-receipts',receiptsView);
+  $('receiptToolbarInfo').classList.toggle('hidden',!receiptsView);
+  $('receiptToolbarActions').classList.toggle('hidden',!receiptsView);
+  // Relocate the existing synchronization controls. They remain the same
+  // elements with the same click handler, so other screens are unaffected.
+  if(receiptsView){
+    $('receiptToolbarActions').append($('syncTime'),$('refresh'));
+  }else{
+    $('pageActions').insertBefore($('syncTime'),$('newPart'));
+    $('pageActions').insertBefore($('refresh'),$('newPart'));
+  }
   $('warehouseCrumb').classList.toggle('hidden',!stockView);
   $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
   $('tableCaption').classList.toggle('hidden',!stockView);

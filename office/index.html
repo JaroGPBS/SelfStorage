@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Storage Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=15">
+  <link rel="stylesheet" href="./office.css?v=16">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
@@ -166,7 +166,7 @@
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
     }
   </style>
-  <script defer src="./office.js?v=10"></script>
+  <script defer src="./office.js?v=11"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -246,7 +246,7 @@
             <button type="button" id="partsTab" role="tab" aria-selected="true" class="stock-tab active" data-stock-tab="parts">CZĘŚCI</button>
             <button type="button" id="modulesTab" role="tab" aria-selected="false" class="stock-tab" data-stock-tab="modules">MODUŁY</button>
           </div>
-          <div class="page-actions">
+          <div class="page-actions" id="pageActions">
             <span class="sync-label" id="syncTime"></span>
             <button type="button" class="btn outline" id="refresh" title="Odśwież dane">↻ <span>Synchronizuj</span></button>
             <button type="button" class="btn dark" id="newPart" disabled title="Dostępne w kolejnym etapie">+ Dodaj część</button>
@@ -263,9 +263,14 @@
               <button type="button" class="module-category" data-module-category="newgen" aria-pressed="false">NEW GEN</button>
             </div>
             <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" aria-label="Szukaj" placeholder="Szukaj po SAP lub nazwie części"></div>
+            <div id="receiptToolbarInfo" class="receipt-toolbar-info hidden">
+              <strong>Przyjęcia</strong>
+              <span>Historia przyjęć i dostaw magazynowych.</span>
+            </div>
             <div id="tableCaption" class="table-caption hidden">
               <strong>Aktualne stany części w magazynie</strong>
             </div>
+            <div id="receiptToolbarActions" class="receipt-toolbar-actions hidden"></div>
             <div class="tools-right">
               <button class="btn subtle" id="sort" type="button">Nazwa A–Z</button>
               <button class="btn subtle" id="export" type="button" disabled title="Eksport Excel przygotujemy w kolejnym etapie">⇩ Eksport</button>
