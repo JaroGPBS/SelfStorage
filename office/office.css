@@ -7,3 +7,115 @@
 .modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px}.modal-backdrop{position:absolute;inset:0;background:#1d2532a3;backdrop-filter:blur(3px)}.modal-card{width:min(100%,620px);max-height:85dvh;overflow:auto;position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:29px;box-shadow:0 28px 100px #15203455;animation:appear .2s ease-out}.modal-close{position:absolute;top:14px;right:14px;border:0;background:#f3f4f6;color:#56606b;font-size:24px;height:32px;width:32px;border-radius:6px}.modal-card h2{font-size:23px;margin:0 40px 5px 0}.modal-card .muted{color:#89939f;font-size:12px}.photo-spot{width:146px;min-height:146px;background:linear-gradient(135deg,#f5f6f7,#edeff2);border:1px dashed #d7dce2;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#9aa3ae;flex-direction:column;gap:7px}.detail-hero{display:flex;gap:21px;align-items:center;margin:23px 0}.detail-hero strong{font-size:23px;display:block}.detail-info{display:grid;grid-template-columns:1fr 1fr;gap:12px}.detail-info>div{border:1px solid var(--line);padding:15px;border-radius:8px}.detail-info small{color:#8c96a1;display:block;margin-bottom:6px;font-size:11px}.detail-info strong{font-size:13px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:23px}@keyframes appear{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:950px){.sidebar{flex-basis:205px;width:205px}.topbar{padding:0 22px}.content{padding:27px 22px}.page-head{align-items:flex-start;flex-direction:column}.page-actions{justify-content:flex-start}}@media(max-width:690px){.sidebar{position:fixed;transform:translateX(-100%);transition:transform .22s;width:245px}.sidebar.open{transform:translateX(0);box-shadow:0 0 0 999px #151b2499}.mobile-menu{display:inline-grid;place-items:center;margin-right:12px}.topbar{justify-content:flex-start}.top-status{margin-left:auto}.content{padding:22px 13px}.table-toolbar{flex-wrap:wrap}.search-wrap{max-width:none}.tools-right{width:100%;justify-content:flex-end}.page-head h1{font-size:23px}.table th,.table td{padding:13px 11px}.detail-info{grid-template-columns:1fr}.detail-hero{flex-direction:column;align-items:flex-start}.modal-card{padding:23px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
+
+
+/* GPBS visual identity: adapted from /pl/ and the original warehouse app.
+   Keep office work surfaces light, as agreed; use the app's dark/red language
+   in the login, navigation and interactive controls. */
+:root{--red:#e63f44;--graphite:#30343b;--graphite2:#262b32}
+.login-screen{
+  display:block;position:relative;isolation:isolate;min-height:100dvh;
+  padding:0;color:#f0f4f8;
+  background:
+    linear-gradient(180deg,rgba(7,9,11,.29),rgba(7,9,11,.66)),
+    url('/images/warehouse-background.jpg?v=2') center/cover no-repeat,
+    #0e1116;
+}
+.login-screen:before{
+  content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse 66% 50% at 50% 20%,rgba(188,32,40,.16),transparent 82%);
+}
+.login-shell{
+  position:relative;width:min(100%,520px);margin:auto;
+  min-height:100dvh;display:flex;flex-direction:column;
+  padding:clamp(27px,4vw,35px) 22px 22px;
+}
+.login-brand{
+  display:flex;align-items:center;gap:12px;padding:0 0 22px;
+  border-bottom:1px solid rgba(255,255,255,.18);
+}
+.login-brand img{width:56px;height:56px;object-fit:contain}
+.login-brand-name{display:flex;flex:1;flex-direction:column;gap:2px}
+.login-brand-name strong{font-size:23px;line-height:1.1;letter-spacing:2.3px;font-weight:850;color:#f7f8fa}
+.login-brand-name span{font-size:10px;letter-spacing:1.55px;font-weight:750;color:#b5c0cd}
+.login-market{
+  color:#ff9194;border:1px solid rgba(239,97,101,.55);
+  border-radius:8px;padding:7px 9px;font-size:12px;font-weight:850;
+}
+.login-card{
+  width:100%;margin:clamp(70px,12dvh,130px) 0 36px;
+  padding:0;border:0;border-radius:0;
+  background:transparent;box-shadow:none;
+}
+.login-card .kicker{
+  color:#ff8387;font-size:13px;letter-spacing:1.8px;
+  font-weight:850;margin-bottom:14px;
+}
+.login-card h1{
+  color:#fafbfc;font-size:clamp(32px,5vw,43px);
+  font-weight:850;line-height:1.12;letter-spacing:-1.2px;margin:0 0 13px;
+  text-shadow:0 5px 20px rgba(0,0,0,.35);
+}
+.login-card>p:not(.error){color:#c0cad5;font-size:15px;line-height:1.6;margin:0 0 32px}
+.login-card label{
+  color:#ecf1f5;font-size:13px;font-weight:750;margin:0 0 11px;display:block;
+}
+.login-card input{
+  width:100%;height:78px;min-height:78px;padding:15px 20px;
+  background:linear-gradient(160deg,rgba(29,36,44,.97),rgba(14,19,25,.98));
+  color:#f6f7f9;border:1px solid rgba(165,179,192,.48);
+  border-radius:13px;box-shadow:inset 0 2px 10px rgba(0,0,0,.23),
+    0 14px 35px rgba(0,0,0,.18);
+  font-size:30px;line-height:1.35;font-weight:750;
+  text-align:center;letter-spacing:15px;caret-color:#ff777a;
+  backdrop-filter:blur(8px);
+}
+.login-card input::placeholder{color:#768696;letter-spacing:15px;opacity:1}
+.login-card input:focus{
+  outline:none;border-color:#ff5c60;
+  box-shadow:0 0 0 4px rgba(230,63,68,.16),0 12px 35px rgba(0,0,0,.20);
+}
+.login-card .primary{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;height:60px;min-height:60px;margin-top:20px;padding:0 19px;
+  border:1px solid #e63f44;border-radius:12px;
+  background:linear-gradient(160deg,#30363e,#1b2027);color:white;
+  font-size:16px;font-weight:850;
+  box-shadow:0 0 23px rgba(230,63,68,.20),inset 0 1px 0 rgba(255,255,255,.07);
+  transition:background .18s,transform .15s,box-shadow .18s;
+}
+.login-card .primary span{font-size:24px;font-weight:500;line-height:1}
+.login-card .primary:hover:not(:disabled){
+  background:linear-gradient(160deg,#3d454f,#212730);
+  transform:translateY(-1px);
+  box-shadow:0 0 28px rgba(230,63,68,.32),0 9px 22px rgba(0,0,0,.16);
+}
+.login-foot{
+  margin-top:auto;display:flex;align-items:center;justify-content:center;gap:9px;
+  border:0;padding:14px 0 3px;font-size:10px;
+  color:#98a6b4;font-weight:750;letter-spacing:1.2px;text-align:center;
+}
+.login-foot span{color:#c66b70}
+.login-card .error{color:#ffc2c5!important;background:rgba(145,24,33,.32);border:1px solid rgba(242,94,104,.34);border-radius:9px;padding:10px 12px}
+.sidebar .brand{gap:10px;padding:5px 8px 23px;margin-bottom:6px}
+.sidebar-logo{width:55px;height:45px;object-fit:contain;flex:0 0 55px}
+.sidebar-brand-name{display:flex;flex-direction:column;gap:1px}
+.sidebar-brand-name strong{font-size:20px;letter-spacing:1.8px;font-weight:850;color:#f7f8f9}
+.sidebar-brand-name small{font-size:9px;letter-spacing:1.25px;color:#abb6c2;font-weight:700}
+.nav-item.active,.subnav-btn.active{background:rgba(230,63,68,.13);box-shadow:inset 3px 0 #e63f44}
+.nav-item:hover,.subnav-btn:hover,.nav-heading:hover{background:rgba(255,255,255,.09)}
+.btn.dark{
+  border:1px solid #e63f44;background:linear-gradient(160deg,#373e47,#232930);
+  color:#f8f9fa;box-shadow:0 4px 15px rgba(230,63,68,.11);
+}
+.btn.dark:hover:not(:disabled){background:linear-gradient(160deg,#444b54,#292f38)}
+.btn{border-radius:9px;font-weight:750}
+.table-card{border-radius:13px;box-shadow:0 15px 46px rgba(40,47,59,.065),0 2px 8px rgba(40,47,59,.025)}
+.table tbody tr:hover{background:#f9f5f6}
+.modal-card{border-radius:17px}
+@media(max-width:690px){
+  .login-shell{padding:25px 20px 20px}
+  .login-card{margin-top:clamp(53px,11dvh,85px)}
+  .login-card input{height:70px;min-height:70px}
+  .login-brand-name strong{font-size:21px}
+}
