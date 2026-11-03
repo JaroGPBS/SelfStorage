@@ -119,7 +119,7 @@ function drawStocks(parts,warehouseId){
     {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true},
     {label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}
   ],rows)||'';
-  $('tableFooter').textContent=filtered.length+' części · Kolumny „Zamówić” i „Stan min.”: dane prezentacyjne';
+  $('tableFooter').textContent=filtered.length+' części';
   noteSearch(filtered.length,parts.length,'częściach');
 }
 function drawAggregate(realSets){
