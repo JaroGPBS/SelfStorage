@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage — Storage Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
-  <link rel="stylesheet" href="./office.css?v=22">
+  <link rel="stylesheet" href="./office.css?v=23">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
@@ -166,7 +166,7 @@
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
     }
   </style>
-  <script defer src="./office.js?v=17"></script>
+  <script defer src="./office.js?v=18"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -277,6 +277,9 @@
             </div>
           </div>
           <div id="searchNote" class="search-note hidden"></div>
+          <div id="vehicleTopScroll" class="vehicle-top-scroll hidden" role="scrollbar" aria-label="Przewijanie poziome kolumn ekip" tabindex="0">
+            <div id="vehicleScrollWidth" class="vehicle-top-scroll-inner"></div>
+          </div>
           <div class="table-scroll" id="tableArea"><div class="loading">Wczytywanie danych...</div></div>
           <div id="tableFooter" class="table-footer"></div>
         </section>

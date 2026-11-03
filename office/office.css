@@ -1591,3 +1591,85 @@
     padding-bottom:9px;
   }
 }
+
+/* Fleet: compact heading as PZ/WZ, visible scroll control above the table,
+   sticky team headers, sticky SAP/name, and a dedicated vertical table viewport. */
+.app.view-vehicles .breadcrumbs strong{
+  font-size:24px;
+  font-weight:850;
+}
+.app.view-vehicles .receipt-toolbar-info{
+  gap:13px;
+}
+.app.view-vehicles .receipt-toolbar-info strong{
+  white-space:nowrap;
+}
+.app.view-vehicles .receipt-toolbar-info span{
+  min-width:0;
+}
+.app.view-vehicles .vehicle-top-scroll{
+  display:block;
+  height:20px;
+  width:100%;
+  overflow-x:scroll;
+  overflow-y:hidden;
+  border-top:1px solid #e5e9ed;
+  border-bottom:1px solid #e0e5ea;
+  background:#f5f7f9;
+  scrollbar-width:auto;
+  scrollbar-color:#a6afb9 #e9edf1;
+}
+.app.view-vehicles .vehicle-top-scroll-inner{
+  height:1px;
+}
+.app.view-vehicles #tableArea{
+  height:calc(100dvh - 207px);
+  min-height:240px;
+  width:100%;
+  overflow-x:auto;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.app.view-vehicles .table.vehicle-stock-table{
+  width:calc(450px + var(--vehicle-columns) * 122px);
+  min-width:calc(450px + var(--vehicle-columns) * 122px);
+  max-width:calc(450px + var(--vehicle-columns) * 122px);
+}
+.app.view-vehicles .table.vehicle-stock-table th:first-child,
+.app.view-vehicles .table.vehicle-stock-table td:first-child{
+  width:110px;
+  min-width:110px;
+  left:0;
+}
+.app.view-vehicles .table.vehicle-stock-table th:nth-child(2),
+.app.view-vehicles .table.vehicle-stock-table td:nth-child(2){
+  width:340px;
+  min-width:340px;
+  max-width:340px;
+  left:110px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.app.view-vehicles .table.vehicle-stock-table thead th{
+  position:sticky;
+  top:0;
+  z-index:4;
+  background:#f6f8fa;
+  box-shadow:0 1px 0 #dfe4e9;
+}
+.app.view-vehicles .table.vehicle-stock-table thead th:first-child,
+.app.view-vehicles .table.vehicle-stock-table thead th:nth-child(2){
+  z-index:6;
+}
+.app.view-vehicles .table.vehicle-stock-table tbody tr:hover td:first-child,
+.app.view-vehicles .table.vehicle-stock-table tbody tr:hover td:nth-child(2){
+  background:#fafbfc;
+}
+@media(max-width:690px){
+  .app.view-vehicles .breadcrumbs strong{font-size:18px}
+  .app.view-vehicles #tableArea{
+    height:calc(100dvh - 259px);
+    min-height:240px;
+  }
+}

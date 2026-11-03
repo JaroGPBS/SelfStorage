@@ -136,17 +136,22 @@ function setHead(title,kicker,desc){
   const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
   const documentsView=state.view==='pz'||state.view==='wz';
+  const vehicleView=state.view==='vehicles';
+  const compactView=documentsView||vehicleView;
   $('app').classList.toggle('view-stocks',stockView);
-  $('app').classList.toggle('view-receipts',documentsView);
-  $('receiptToolbarInfo').classList.toggle('hidden',!documentsView);
-  $('receiptToolbarActions').classList.toggle('hidden',!documentsView);
-  if(documentsView){
-    $('receiptToolbarInfo').querySelector('strong').textContent=state.view==='pz'?'Przyjęcia':'Wydania';
-    $('receiptToolbarInfo').querySelector('span').textContent=state.view==='pz'
-      ?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
+  $('app').classList.toggle('view-receipts',compactView);
+  $('app').classList.toggle('view-vehicles',vehicleView);
+  $('receiptToolbarInfo').classList.toggle('hidden',!compactView);
+  $('receiptToolbarActions').classList.toggle('hidden',!compactView);
+  $('vehicleTopScroll').classList.toggle('hidden',!vehicleView);
+  if(compactView){
+    $('receiptToolbarInfo').querySelector('strong').textContent=vehicleView?'Stany samochodowe':state.view==='pz'?'Przyjęcia':'Wydania';
+    $('receiptToolbarInfo').querySelector('span').textContent=vehicleView
+      ?'Ewidencja części na samochodach serwisowych.'
+      :state.view==='pz'?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
   }
-  // Keep the existing refresh button and its handler when moving it.
-  if(documentsView){
+  // Reuse the existing synchronization control in the compact toolbar.
+  if(compactView){
     $('receiptToolbarActions').append($('syncTime'),$('refresh'));
   }else{
     $('pageActions').insertBefore($('syncTime'),$('newPart'));
@@ -502,6 +507,13 @@ function drawInventoryLines(lines){
     wrapTable([{label:'Indeks SAP'},{label:'Nazwa części'},{label:'Przed',numeric:true},{label:'Po',numeric:true},{label:'Różnica',numeric:true}],rows)+
     '<p class="placeholder-note" style="margin-top:12px">Pozycji: '+filtered.length+' z '+lines.length+'. Nieustalony wcześniejszy stan oznaczono „—”.</p>';
 }
+function syncVehicleTopScroll(){
+  if(state.view!=='vehicles')return;
+  const content=$('tableArea').querySelector('.vehicle-stock-table');
+  if(!content)return;
+  $('vehicleScrollWidth').style.width=content.scrollWidth+'px';
+  $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
+}
 function drawVehicles(parts){
   const filtered=sortedFiltered(parts);
   const originalIndices=new Map(parts.map((p,i)=>[p.id,i]));
@@ -514,10 +526,12 @@ function drawVehicles(parts){
     '</tr></thead><tbody>';
   for(const p of filtered){
     const index=originalIndices.get(p.id)??parts.indexOf(p);
-    html+='<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td>'+escapeHtml(p.name)+'</td>'+
+    html+='<tr><td>'+escapeHtml(p.sap_number||'—')+'</td>'+
+      '<td title="'+escapeHtml(p.name)+'">'+escapeHtml(p.name)+'</td>'+
       VEHICLES.map((d,i)=>'<td class="num">'+demoQuantity(index,i+1)%7+'</td>').join('')+'</tr>';
   }
   $('tableArea').innerHTML=html+'</tbody></table>';
+  syncVehicleTopScroll();
   $('tableFooter').textContent=filtered.length+' części · '+VEHICLES.length+' pojazdów (przykładowe)';
   noteSearch(filtered.length,parts.length,'częściach');
 }
@@ -719,6 +733,15 @@ document.addEventListener('click',e=>{
   const exp=e.target.closest('[data-expand]');if(exp){expandRow(exp.dataset.expand);return;}
   if(e.target.closest('[data-close]'))closeModal();
 });
+$('vehicleTopScroll').addEventListener('scroll',()=>{
+  if(state.view==='vehicles'&&$('tableArea').scrollLeft!==$('vehicleTopScroll').scrollLeft)
+    $('tableArea').scrollLeft=$('vehicleTopScroll').scrollLeft;
+});
+$('tableArea').addEventListener('scroll',()=>{
+  if(state.view==='vehicles'&&$('vehicleTopScroll').scrollLeft!==$('tableArea').scrollLeft)
+    $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
+});
+window.addEventListener('resize',syncVehicleTopScroll);
 $('tableArea').addEventListener('change',e=>{
   if(e.target.dataset.diff){if(e.target.dataset.diff==='positive')state.positive=e.target.checked;else state.negative=e.target.checked;drawInventories();}
 });
