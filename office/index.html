@@ -129,11 +129,32 @@
       #loginScreen .office-heading{font-size:11px;max-width:130px;letter-spacing:.45px}
       #loginScreen .polish-flag{width:40px;height:25px}
     }
+    #loginScreen .remember-option{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      width:fit-content;max-width:100%;margin:18px auto 0;
+      cursor:pointer;color:#e2e7ec;font-size:13px;
+      font-weight:600;user-select:none;
+    }
+    #loginScreen .remember-option small{
+      color:#aab5c2;font-size:11px;font-weight:500;
+    }
+    #loginScreen .login-card input[type="checkbox"]{
+      appearance:auto !important;
+      width:17px !important;height:17px !important;
+      min-width:17px !important;min-height:17px !important;
+      flex:0 0 17px;padding:0 !important;margin:0 !important;
+      border:1px solid #aab5c2 !important;border-radius:4px !important;
+      accent-color:#e63f44 !important;
+      background:initial !important;background-color:initial !important;
+      box-shadow:none !important;
+      -webkit-text-fill-color:initial !important;
+      letter-spacing:normal;
+    }
     @media(prefers-reduced-motion:reduce){
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
     }
   </style>
-  <script defer src="./office.js?v=1"></script>
+  <script defer src="./office.js?v=2"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -164,6 +185,10 @@
           <label for="pin">PIN użytkownika</label>
           <input id="pin" type="password" inputmode="numeric" maxlength="4" minlength="4" pattern="[0-9]{4}" autocomplete="off" required placeholder="••••">
           <button class="primary" id="loginButton" type="submit">Zaloguj <span aria-hidden="true">→</span></button>
+          <label class="remember-option" for="rememberMe">
+            <input id="rememberMe" type="checkbox" name="remember" value="yes">
+            <span>Zapamiętaj mnie <small>na 30 dni</small></span>
+          </label>
         </form>
         <p id="loginError" class="error hidden" role="alert"></p>
       </div>
