@@ -3,7 +3,7 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DEMOS=[{id:'demo1',name:'Testowy 1',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Testowy 2',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Testowy 3',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
-const state={user:null,warehouses:[],warehouse:'',view:'stocks',search:'',sortReverse:false,partsCache:new Map(),docs:[],inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null};
+const state={user:null,warehouses:[],warehouse:'',view:'stocks',search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,positive:false,negative:false,requestId:0,lastSync:null};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function demoQuantity(index,demoIndex){return ((index*17+demoIndex*11)%11===0)?0:((index*13+demoIndex*7)%29);}
@@ -110,16 +110,16 @@ function drawAggregate(realSets){
 function cellButton(label,id,expanded){return '<button class="detail-btn" data-expand="'+escapeHtml(id)+'">'+(expanded?'Ukryj':'Pokaż '+label)+' <span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>';}
 async function drawDocs(){
   const direction=state.view==='pz'?'PZ':'WZ';const docs=state.docs;
-  const query=state.search.trim().toLocaleLowerCase('pl');
-  const visible=docs.filter(d=>!query||[d.date,d.counterparty,d.worker,...(state.detailCache.get(direction+':'+d.id)||[]).flatMap(x=>[x.sap_number,x.name])].some(s=>String(s||'').toLocaleLowerCase('pl').includes(query)));
+  const visible=docs;
   const rows=visible.map(d=>{
     const over=Number(d.shortage||0)>0;const expanded=state.expanded===d.id;
     return '<tr'+(over?' class="warning-row"':'')+'><td>'+dateText(d.date)+'</td><td>'+isoWeek(d.date)+'</td><td>'+escapeHtml(d.counterparty)+'</td><td>'+escapeHtml(d.worker)+'</td><td>'+cellButton('części',d.id,expanded)+'</td></tr>'+
       (expanded?'<tr><td colspan="5" class="expanded-cell"><div class="expanded">'+drawDocLines(state.detailCache.get(direction+':'+d.id),direction)+'</div></td></tr>':'');
   }).join('');
   $('tableArea').innerHTML=wrapTable([{label:'Data'},{label:'Tydz.'},{label:direction==='PZ'?'Dostawca / Ekipa':'Odbiorca'},{label:direction==='PZ'?'Przyjmował':'Wydawał'},{label:''}],rows)||'<div class="empty">Brak dokumentów.</div>';
-  $('tableFooter').textContent=visible.length+' dokumentów';
-  noteSearch(visible.length,docs.length,direction==='PZ'?'dostawach':'wydaniach');
+  $('tableFooter').textContent=visible.length+' dokumentów'+(state.docsMatched>visible.length?' · pokazano pierwsze '+visible.length:'');
+  $('searchNote').classList.toggle('hidden',!state.search.trim());
+  $('searchNote').textContent=state.search.trim()?'Znaleziono w '+state.docsMatched+' '+(direction==='PZ'?'dostawach':'wydaniach')+' z '+state.docsTotal+'.':'';
 }
 function drawDocLines(parts,direction){
   if(!parts)return '<div class="loading">Wczytywanie pozycji...</div>';
@@ -168,8 +168,10 @@ async function render(){
       $('tableArea').innerHTML='<div class="empty">Historia magazynów prezentacyjnych nie jest zapisana w D1.</div>';
     }else if(state.view==='pz'||state.view==='wz'){
       const direction=state.view==='pz'?'PZ':'WZ';
-      state.docs=(await api('documents',{...params,direction})).documents;
-      if(ticket!==state.requestId)return;drawDocs();
+      const payload=await api('documents',{...params,direction,term:state.search});
+      if(ticket!==state.requestId)return;
+      state.docs=payload.documents;state.docsTotal=payload.total;state.docsMatched=payload.matched;
+      drawDocs();
     }else if(state.view==='inventories'){
       state.inventories=(await api('inventories',params)).inventories;
       if(ticket!==state.requestId)return;drawInventories();
@@ -229,7 +231,13 @@ $('tableArea').addEventListener('change',e=>{
 });
 $('modalClose').addEventListener('click',closeModal);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
-$('search').addEventListener('input',e=>{state.search=e.target.value;filterCurrent();});
+let searchTimer=null;
+$('search').addEventListener('input',e=>{
+  state.search=e.target.value;
+  if(state.view==='pz'||state.view==='wz'){
+    clearTimeout(searchTimer);searchTimer=setTimeout(()=>render(),280);
+  }else filterCurrent();
+});
 $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';filterCurrent();});
 $('refresh').addEventListener('click',()=>{state.partsCache.clear();state.detailCache.clear();render();});
 $('warehouseToggle').addEventListener('click',()=>{const expanded=$('warehouseToggle').getAttribute('aria-expanded')==='true';$('warehouseToggle').setAttribute('aria-expanded',String(!expanded));$('warehouseMenu').classList.toggle('collapsed',expanded);});
