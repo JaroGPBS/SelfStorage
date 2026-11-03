@@ -2,8 +2,9 @@ import { api } from './api.js?v=2';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
+import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=1';
 
-const APP_VERSION = '0.49';
+const APP_VERSION = '0.50';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -114,6 +115,9 @@ async function closeTopOverlayForSystemBack() {
 }
 
 async function handleSystemBack() {
+  const polishBack = handlePolishSystemBack();
+  if (polishBack !== null) return polishBack;
+
   if (await closeTopOverlayForSystemBack()) {
     return false;
   }
@@ -1878,7 +1882,21 @@ async function login() {
   setLoading(true, 'Logowanie…');
 
   try {
-    const loginResult = await api.login(pin);
+    // Preserve the established French login. Only when it does not
+    // authenticate do we try an existing Polish D1 account.
+    let loginResult;
+    try {
+      loginResult = await api.login(pin);
+    } catch (frenchLoginError) {
+      if (await tryPolishLogin(pin)) {
+        // No French visit/session must remain active on this shared device.
+        resetState();
+        $('pinInput').value = '';
+        $('loginBtn').disabled = true;
+        return;
+      }
+      throw frenchLoginError;
+    }
     const team = loginResult.ekipa;
     const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
 
@@ -2819,6 +2837,18 @@ async function init() {
   updateDemoUi();
   updateNetworkUi();
   registerServiceWorker();
+
+  // Only devices which previously used PL query D1 during startup.
+  // Existing French devices enter their original flow without a new dependency.
+  try {
+    if (await resumePolishSession()) {
+      armSystemBackGuard();
+      return;
+    }
+  } catch (error) {
+    console.warn('Nie udało się przywrócić polskiej sesji.', error);
+    showToast('Nie można przywrócić polskiego magazynu. Zaloguj się ponownie.', true);
+  }
 
   if (state.team && state.visit?.idWizyty) {
     renderVisit();
