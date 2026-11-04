@@ -173,6 +173,24 @@
     body.gpbs-market-pl > #loading,
     body.gpbs-market-pl > #toast,
     body.gpbs-market-pl > #appVersion { display: none !important; }
+    /* The existing French background is a positioned z-index:0 layer.
+       Give the embedded PL workspace the same foreground stacking level as
+       the hidden French .app-shell, otherwise only the backdrop is visible. */
+    body.gpbs-market-pl > #gpbsPolandWorkspace {
+      position: relative;
+      z-index: 1;
+      display: block;
+      min-height: 100dvh;
+    }
+    /* The French login screen remains in the hidden DOM. Its :has() styles
+       must not lock scrolling or clip the Polish inventory/operation screens. */
+    body.gpbs-market-pl {
+      height: auto !important;
+      max-height: none !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      overscroll-behavior-y: auto;
+    }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
   <script type="module" src="./js/app.js?v=38"></script>
