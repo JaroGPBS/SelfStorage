@@ -50,15 +50,32 @@ function normalizeLines(value,description){
   });
 }
 
+function legacyCounterparty(input){
+  return input.registrationPlate
+    ?input.counterparty+' | REJ: '+input.registrationPlate
+    :input.counterparty;
+}
+
+async function hasRegistrationColumn(db){
+  const columns=await db.prepare('PRAGMA table_info(pl_warehouse_sessions)').all();
+  return (columns.results||[]).some(row=>row.name==='registration_plate');
+}
+
 function normalize(body){
   if(!body||typeof body!=='object'||Array.isArray(body))throw Error('Nieprawidłowa sesja.');
   const id=String(body.id||'');
   const warehouseId=String(body.warehouseId||'');
-  const counterparty=String(body.counterparty||'').trim().replace(/\s+/g,' ');
+  const counterparty=String(body.counterparty||'').trim().replace(/\s+/g,' ').toLocaleUpperCase('pl-PL');
+  // Optional only for retries from older clients; the new PL screen requires it.
+  const registrationPlate=String(body.registrationPlate||'').trim()
+    .replace(/\s+/g,' ').toUpperCase();
   if(!ID.test(id)||!WH.test(warehouseId))throw Error('Nieprawidłowy identyfikator sesji.');
   if(counterparty.length<2||counterparty.length>120||
     /[\u0000-\u001f\u007f]/.test(counterparty))
     throw Error('Podaj ekipę, dostawcę lub odbiorcę (2–120 znaków).');
+  if(registrationPlate&&(!/^[A-Z0-9][A-Z0-9 -]{1,19}$/.test(registrationPlate)||
+    !/[A-Z0-9]$/.test(registrationPlate)))
+    throw Error('Nieprawidłowy numer rejestracyjny.');
   const pz=normalizeLines(body.pz,'PZ');
   const wz=normalizeLines(body.wz,'WZ');
   if(pz.length+wz.length<1||pz.length+wz.length>MAX_LINES)
@@ -78,14 +95,15 @@ function normalize(body){
       ids.add(row.partId);
     }
   }
-  return {id,warehouseId,counterparty,pz,wz,action,
+  return {id,warehouseId,counterparty,registrationPlate,pz,wz,action,
     stockSnapshot,confirmedOverissue:body.confirmedOverissue===true};
 }
 
-async function duplicate(db,input,actorId){
+async function duplicate(db,input,actorId,hasPlate){
   const existing=await db.prepare(
-    'SELECT id,warehouse_id,actor_id,counterparty,committed_at '+
-    'FROM pl_warehouse_sessions WHERE id=?'
+    'SELECT id,warehouse_id,actor_id,counterparty,committed_at'+
+    (hasPlate?',registration_plate':'')+
+    ' FROM pl_warehouse_sessions WHERE id=?'
   ).bind(input.id).first();
   if(!existing)return null;
   const saved=await db.prepare(
@@ -97,8 +115,13 @@ async function duplicate(db,input,actorId){
       expected.set(direction.toUpperCase()+':'+line.partId,line.quantity);
   }
   const rows=saved.results||[];
+  const name=String(existing.counterparty||'').toLocaleUpperCase('pl-PL');
+  const plate=String(existing.registration_plate||'');
+  // Also recognize visits stored in legacy combined form before the migration.
+  const sameIdentity=(name===input.counterparty&&(!hasPlate||plate===input.registrationPlate))||
+    (name===legacyCounterparty(input)&&(!hasPlate||!plate));
   const same=existing.warehouse_id===input.warehouseId&&
-    existing.actor_id===actorId&&existing.counterparty===input.counterparty&&
+    existing.actor_id===actorId&&sameIdentity&&
     rows.length===expected.size&&rows.every(row=>
       expected.get(row.direction+':'+row.part_id)===Number(row.quantity));
   if(!same)return fail('Identyfikator sesji został już użyty dla innych danych.',409);
@@ -142,7 +165,11 @@ async function preview(db,input){
 }
 
 async function commit(db,input,actorId){
-  const prior=await duplicate(db,input,actorId);
+  const hasPlate=await hasRegistrationColumn(db);
+  const storedCounterparty=hasPlate?input.counterparty:legacyCounterparty(input);
+  if(storedCounterparty.length>120)
+    return fail('Nazwa ekipy wraz z rejestracją jest za długa (maks. 120 znaków).',400);
+  const prior=await duplicate(db,input,actorId,hasPlate);
   if(prior)return prior;
 
   const combined=new Map();
@@ -173,7 +200,8 @@ async function commit(db,input,actorId){
     "COALESCE(s.quantity,0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)))";
   const guardSql=
     'INSERT INTO pl_warehouse_sessions '+
-    '(id,warehouse_id,actor_id,counterparty,commit_guard) VALUES (?,?,?,?, '+
+    '(id,warehouse_id,actor_id,counterparty,'+(hasPlate?'registration_plate,':'')+
+    'commit_guard) VALUES ('+(hasPlate?'?,?,?,?,?, ':'?,?,?,?, ')+
     'CASE WHEN EXISTS(SELECT 1 FROM users u LEFT JOIN user_archives a ON a.user_id=u.id '+
     "WHERE u.id=? AND u.active=1 AND a.user_id IS NULL AND "+
     "u.role_code IN ('ADMIN','KIEROWNIK','MAGAZYNIER')) "+
@@ -181,7 +209,8 @@ async function commit(db,input,actorId){
     "ON w.id=g.warehouse_id WHERE g.user_id=? AND g.warehouse_id=? "+
     "AND w.active=1 AND w.country_code='PL') AND "+
     partGuards+' THEN 1 ELSE 0 END)';
-  const guardArgs=[input.id,input.warehouseId,actorId,input.counterparty,
+  const guardArgs=[input.id,input.warehouseId,actorId,storedCounterparty,
+    ...(hasPlate?[input.registrationPlate||null]:[]),
     actorId,actorId,input.warehouseId,
     snapshotJson,input.warehouseId,input.confirmedOverissue?1:0];
   const statements=[db.prepare(guardSql).bind(...guardArgs)];
@@ -244,7 +273,7 @@ async function commit(db,input,actorId){
       pzItems:input.pz.length,wzItems:input.wz.length});
   }catch(error){
     // A lost HTTP response MUST NOT create another document on retry.
-    const saved=await duplicate(db,input,actorId).catch(()=>null);
+    const saved=await duplicate(db,input,actorId,hasPlate).catch(()=>null);
     if(saved)return saved;
     if(/constraint|foreign key|unique/i.test(String(error?.message||'')))
       return fail('Stan części lub uprawnienia zmieniły się. Nie zapisano sesji. '+
@@ -265,8 +294,11 @@ export async function onRequestGet({request,env}){
     if(view==='status')return workerJson({ok:true,ready,warehouse:auth.warehouse});
     if(view!=='recent')return fail('Nieprawidłowy widok.',400);
     if(!ready)return workerJson({ok:true,ready,history:[]});
+    const hasPlate=await hasRegistrationColumn(env.DB);
     const rows=await env.DB.prepare(
-      'SELECT s.id,s.counterparty,s.committed_at,s.actor_id,u.name AS operator_name,'+
+      'SELECT s.id,s.counterparty,'+
+      (hasPlate?'s.registration_plate,':'NULL AS registration_plate,')+
+      's.committed_at,s.actor_id,u.name AS operator_name,'+
       "SUM(CASE WHEN l.direction='PZ' THEN 1 ELSE 0 END) AS pz_items,"+
       "SUM(CASE WHEN l.direction='WZ' THEN 1 ELSE 0 END) AS wz_items "+
       'FROM pl_warehouse_sessions s LEFT JOIN pl_warehouse_session_lines l '+
@@ -293,12 +325,16 @@ export async function onRequestGet({request,env}){
         before:line.quantity_before===null?null:Number(line.quantity_before),
         after:Number(line.quantity_after),shortage:Number(line.shortage_quantity||0)
       });
-    return workerJson({ok:true,ready,history:sessions.map(r=>({
-      id:r.id,counterparty:r.counterparty,committedAt:r.committed_at,
-      operator:r.operator_name||r.actor_id,
-      pzItems:Number(r.pz_items||0),wzItems:Number(r.wz_items||0),
-      lines:bySession.get(r.id)||[]
-    }))});
+    return workerJson({ok:true,ready,history:sessions.map(r=>{
+      const combined=/^(.*) \| REJ: ([A-Z0-9][A-Z0-9 -]{1,19})$/.exec(r.counterparty||'');
+      return {
+        id:r.id,counterparty:combined?combined[1]:r.counterparty,
+        registrationPlate:r.registration_plate||combined?.[2]||null,
+        committedAt:r.committed_at,operator:r.operator_name||r.actor_id,
+        pzItems:Number(r.pz_items||0),wzItems:Number(r.wz_items||0),
+        lines:bySession.get(r.id)||[]
+      };
+    })});
   }catch(error){
     console.error('PL session GET failed',error?.name||'Error');
     return fail('Nie można pobrać danych sesji.',503);
