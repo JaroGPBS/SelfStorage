@@ -146,6 +146,7 @@
     el('operationDirectionPanel').hidden=!['PZ','WZ'].includes(state.stage);
     el('operationVisitCounterparty').textContent=upperName(el('operationCounterparty').value)||'—';
     el('operationVisitPlate').textContent=upperPlate(el('operationPlate').value)||'—';
+    el('operationVisitorLine').hidden=details||!state.ready;
     el('operationEditVisit').hidden=!!state.pending;
     el('backFromOperationButton').textContent='← Cofnij';
     disableDuringPending();
