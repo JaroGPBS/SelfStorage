@@ -5,6 +5,57 @@
   'use strict';
 
   const byId = id => document.getElementById(id);
+
+  // Kept in the main PL script so logout and visit actions never depend on
+  // a separately deployed confirmation script. Older cached HTML falls back
+  // to the browser's native confirmation rather than leaving buttons inert.
+  window.GPBSPlConfirm = (() => {
+    const dialog = byId('plActionConfirmDialog');
+    const cancel = byId('plActionConfirmCancel');
+    const approve = byId('plActionConfirmApprove');
+    const heading = byId('plActionConfirmTitle');
+    const messageNode = byId('plActionConfirmMessage');
+    let pending = null;
+
+    function settle(accepted) {
+      if (!pending) return;
+      const resolve = pending;
+      pending = null;
+      if (dialog?.open) dialog.close();
+      resolve(accepted);
+    }
+    cancel?.addEventListener('click', () => settle(false));
+    approve?.addEventListener('click', () => settle(true));
+    dialog?.addEventListener('cancel', event => {
+      event.preventDefault();
+      settle(false);
+    });
+    dialog?.addEventListener('close', () => settle(false));
+
+    function ask({title = 'Czy na pewno?', message = '',
+                  approveLabel = 'Potwierdź'} = {}) {
+      if (pending) return Promise.resolve(false);
+      const question = String(title) + (message ? '\\n\\n' + message : '');
+      if (!dialog || !cancel || !approve || !heading || !messageNode ||
+          typeof dialog.showModal !== 'function') {
+        return Promise.resolve(window.confirm(question));
+      }
+      heading.textContent = String(title);
+      messageNode.textContent = String(message);
+      approve.textContent = String(approveLabel);
+      return new Promise(resolve => {
+        pending = resolve;
+        try {
+          dialog.showModal();
+          cancel.focus({preventScroll: true});
+        } catch {
+          pending = null;
+          resolve(window.confirm(question));
+        }
+      });
+    }
+    return {ask};
+  })();
   const pinInput = byId('workerPin');
   const subscreens = ['warehouseSelection','warehouseHome','stockScreen','operationScreen','inventoryScreen','crewHome','officeHome'];
   const warehouseRoles = new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
