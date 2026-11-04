@@ -9,10 +9,10 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=24">
+  <link rel="stylesheet" href="./pl.css?v=25">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
-  <script src="./warehouse-operations.js?v=6" defer></script>
+  <script src="./warehouse-operations.js?v=7" defer></script>
   <script src="./pl.js?v=12" defer></script>
 </head>
 <body>
@@ -115,19 +115,18 @@
 
 
       <div id="operationScreen" hidden>
-        <button id="backFromOperationButton" class="text-button back-button" type="button">← Wróć do magazynu</button>
-        <h2 class="section-title operation-main-title">Wizyta magazynowa</h2>
-        <p id="operationWarehouseCaption" class="section-info operation-warehouse-caption"></p>
+        <button id="backFromOperationButton" class="text-button back-button" type="button">← Cofnij</button>
+        <p id="operationWarehouseCaption" class="session-internal" hidden aria-hidden="true"></p>
         <p id="operationReadyNotice" class="inventory-notice" role="status" hidden></p>
 
         <div id="operationForm" hidden>
           <p id="operationStatus" class="operation-status" role="status" aria-live="polite" hidden></p>
 
           <form id="operationVisitForm" class="operation-visit-form" autocomplete="off">
-            <label for="operationCounterparty" class="input-label">Ekipa / dostawca / odbiorca</label>
+            <label for="operationCounterparty" class="input-label">Ekipa lub dostawca</label>
             <input id="operationCounterparty" class="operation-counterparty" type="text"
               minlength="2" maxlength="90" autocapitalize="characters" spellcheck="false"
-              autocomplete="off" required placeholder="NP. EKIPA MT">
+              autocomplete="off" required placeholder="Wpisz symbol ekipy lub nazwę dostawcy">
             <label for="operationPlate" class="input-label">Numer rejestracyjny samochodu</label>
             <input id="operationPlate" class="operation-counterparty operation-plate" type="text"
               minlength="2" maxlength="20" autocapitalize="characters" spellcheck="false"
