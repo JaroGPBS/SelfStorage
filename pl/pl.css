@@ -814,3 +814,192 @@ body:has(#sessionScreen:not([hidden])) .brand {
   font-size:12px;
   line-height:1.3;
 }
+
+
+/* PZ/WZ: osobne pełnoekranowe ekrany bez logo i elementów sesji.
+   TODO: dodatkowe informacje/notatki do PZ i WZ w późniejszym etapie. */
+body.operation-task-open {overflow:hidden}
+#operationDirectionPanel.operation-task-screen {
+  position:fixed;
+  z-index:900;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  height:100dvh;
+  min-height:100vh;
+  background:#0e1116;
+  color:#f0f4f8;
+  overflow:hidden;
+}
+#operationDirectionPanel.operation-task-screen[hidden] {display:none!important}
+#operationDirectionPanel .operation-task-header {
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:64px;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  border-bottom:1px solid #333c48;
+  background:#151b23;
+}
+#operationDirectionPanel .operation-task-back {
+  flex:0 0 auto;
+  min-height:42px;
+  padding:9px 12px;
+  border:1px solid #ad5259;
+  border-radius:9px;
+  background:#2b252b;
+  color:#fff;
+  font-size:14px;
+  font-weight:800;
+}
+#operationDirectionPanel .operation-task-title {
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  text-align:right;
+  color:#92dfb1;
+  font-size:17px;
+  font-weight:850;
+  letter-spacing:.45px;
+}
+#operationDirectionPanel.task-wz .operation-task-title {color:#f8c58f}
+#operationDirectionPanel .operation-task-body {
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:15px 16px;
+}
+#operationDirectionPanel .operation-task-lines {
+  display:grid;
+  gap:8px;
+}
+#operationDirectionPanel .operation-task-lines[hidden] {display:none!important}
+#operationDirectionPanel .operation-empty {
+  padding:15px 0;
+  text-align:center;
+  font-size:13px;
+  color:#8594a6;
+}
+#operationDirectionPanel .operation-task-results {
+  margin:12px 0;
+}
+#operationDirectionPanel .operation-task-results:empty {display:none}
+#operationDirectionPanel .operation-task-bottom {
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:12px 16px calc(16px + env(safe-area-inset-bottom));
+  border-top:1px solid #37414e;
+  background:#171f29;
+  box-shadow:0 -9px 30px #070b1070;
+}
+#operationDirectionPanel .operation-task-search {
+  display:flex;
+  min-width:0;
+  gap:8px;
+  margin:0;
+}
+#operationDirectionPanel .operation-task-search input {
+  flex:1 1 auto;
+  min-width:0;
+  min-height:47px;
+  padding:10px 12px;
+  border:1px solid #5a6677;
+  border-radius:9px;
+  background:#0f1620;
+  color:#fff;
+  font-size:14px;
+}
+#operationDirectionPanel .operation-task-search button {
+  flex:0 0 auto;
+  min-height:47px;
+  padding:9px 12px;
+  border:1px solid #627185;
+  border-radius:9px;
+  background:#293545;
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+}
+#operationDirectionPanel .operation-task-scan {
+  width:100%;
+  min-height:60px;
+  margin:0;
+  border-radius:10px;
+  font-size:18px;
+  letter-spacing:.25px;
+}
+#operationDirectionPanel.task-wz .operation-task-scan {
+  background:#a96624;
+  border-color:#d49146;
+}
+#operationDirectionPanel .operation-task-scan[hidden] {display:none!important}
+#operationDirectionPanel .operation-task-body #operationMore {
+  margin:8px 0 0;
+}
+.operation-scan-dialog {
+  width:min(calc(100% - 20px),480px);
+  background:#0d141b;
+  overflow:hidden;
+}
+.operation-scan-dialog .inventory-scanner-panel {
+  margin:0;
+  border:0;
+  border-radius:0;
+}
+.operation-scan-dialog .inventory-reader {min-height:240px}
+.operation-scan-dialog .scanner-message {margin-bottom:15px}
+.operation-quantity-dialog {
+  width:min(calc(100% - 24px),430px);
+}
+.operation-quantity-dialog .operation-quantity-modal {
+  padding:22px 20px;
+}
+.operation-quantity-dialog h2 {
+  margin:0 0 11px;
+  text-align:center;
+  font-size:21px;
+}
+.operation-quantity-dialog .operation-quantity-part {
+  display:block;
+  min-height:20px;
+  margin:8px 0 12px;
+  overflow-wrap:anywhere;
+  text-align:center;
+  font-size:14px;
+  line-height:1.4;
+}
+#operationQuantity {
+  width:100%;
+  min-height:64px;
+  border:2px solid #be5d67;
+  border-radius:10px;
+  background:#0d151e;
+  color:#fff;
+  text-align:center;
+  font-size:30px;
+  font-weight:800;
+  letter-spacing:2px;
+  font-variant-numeric:tabular-nums;
+}
+#operationQuantity:focus {outline:2px solid #e997a0;outline-offset:1px}
+.operation-quantity-dialog #operationQuantityError {
+  margin:7px 0 0;
+  font-size:12px;
+}
+.operation-quantity-dialog .inventory-keypad {margin-top:13px}
+.operation-quantity-dialog .inventory-dialog-actions {margin-top:14px}
+@media(max-width:360px) {
+  #operationDirectionPanel .operation-task-header {padding-right:12px;padding-left:12px}
+  #operationDirectionPanel .operation-task-title {font-size:15px}
+  #operationDirectionPanel .operation-task-body {padding:11px 12px}
+  #operationDirectionPanel .operation-task-bottom {padding-right:12px;padding-left:12px}
+  #operationDirectionPanel .operation-task-search input {font-size:12px}
+  .operation-quantity-dialog .operation-quantity-modal {padding:18px 14px}
+}
