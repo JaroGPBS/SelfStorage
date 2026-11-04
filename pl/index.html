@@ -9,10 +9,10 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=27">
+  <link rel="stylesheet" href="./pl.css?v=28">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
-  <script src="./warehouse-operations.js?v=8" defer></script>
+  <script src="./warehouse-operations.js?v=9" defer></script>
   <script src="./pl.js?v=12" defer></script>
 </head>
 <body>
@@ -147,8 +147,14 @@
           <div id="operationWorkspace" hidden>
 
             <div class="operation-tabs" role="group" aria-label="Rodzaj operacji">
-              <button id="operationTabPZ" type="button" aria-pressed="false">Przyjęcie (PZ)</button>
-              <button id="operationTabWZ" type="button" aria-pressed="false">Wydanie (WZ)</button>
+              <button id="operationTabPZ" type="button" aria-pressed="false">
+                <strong>Przyjęcie (PZ)</strong>
+                <span id="operationPZCount">0 pozycji</span>
+              </button>
+              <button id="operationTabWZ" type="button" aria-pressed="false">
+                <strong>Wydanie (WZ)</strong>
+                <span id="operationWZCount">0 pozycji</span>
+              </button>
             </div>
 
             <div id="operationDirectionPanel" hidden>
@@ -182,19 +188,11 @@
                   <button id="operationAddButton" class="btn btn-primary" type="submit">Dodaj</button>
                 </div>
               </form>
+              <div class="operation-lines-panel">
+                <div id="operationPZList" class="operation-lines" hidden></div>
+                <div id="operationWZList" class="operation-lines" hidden></div>
+              </div>
             </div>
-
-            <section class="operation-summary">
-              <div class="operation-section">
-                <div class="operation-section-heading"><strong>Przyjęcie (PZ)</strong><span id="operationPZCount">0 poz.</span></div>
-                <div id="operationPZList" class="operation-lines"></div>
-              </div>
-              <div class="operation-section">
-                <div class="operation-section-heading"><strong>Wydanie (WZ)</strong><span id="operationWZCount">0 poz.</span></div>
-                <div id="operationWZList" class="operation-lines"></div>
-              </div>
-            </section>
-            <p class="field-hint">Wszystkie przyjęcia i wydania zapiszą się razem. Wydanie ponad stan wymaga dodatkowego potwierdzenia.</p>
             <button id="operationSave" class="btn btn-primary operation-finish" type="button" disabled>Zakończ wizytę</button>
             <button id="operationCancelSession" class="text-button operation-discard" type="button">Anuluj wizytę</button>
           </div>
