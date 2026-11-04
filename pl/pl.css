@@ -395,10 +395,12 @@ body:has(#sessionScreen:not([hidden])) .brand {
   margin:0 0 16px;
 }
 #sessionScreen .session-compact-info {
-  display:flex;
-  flex-direction:column;
-  gap:5px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  align-items:center;
+  gap:12px;
   min-width:0;
+  width:100%;
 }
 #sessionScreen .session-compact-user {
   font-size:13px;
@@ -422,12 +424,20 @@ body:has(#sessionScreen:not([hidden])) .brand {
   font-weight:800;
   color:#f0f4f8;
 }
-#sessionScreen .session-compact-status {
-  display:inline-flex!important;
-  margin:0;
+/* Status jest widoczny obok PL wyłącznie po zalogowaniu. */
+.brand-active-status {
+  display:none;
+  margin-left:0;
   flex-shrink:0;
-  font-size:11px;
-  padding:5px 9px;
+  font-size:10px;
+  padding:6px 8px;
+  gap:5px;
+}
+body:has(#sessionScreen:not([hidden])) .brand-active-status {
+  display:inline-flex;
+}
+body:has(#sessionScreen:not([hidden])) .brand {
+  gap:8px;
 }
 #warehouseHome .compact-switch-warehouse {
   margin:0 0 9px;
@@ -448,7 +458,11 @@ body:has(#sessionScreen:not([hidden])) .brand {
   #sessionScreen .session-compact-user strong {font-size:12px}
   #sessionScreen .session-compact-warehouse,
   #sessionScreen .session-compact-warehouse strong {font-size:11px}
-  #sessionScreen .session-compact-status {font-size:10px;padding:5px 7px}
+  body:has(#sessionScreen:not([hidden])) .brand {gap:6px}
+  .brand-active-status {font-size:9px;padding:5px 6px}
+  body:has(#sessionScreen:not([hidden])) .market-badge {font-size:11px;padding:6px 7px}
+  body:has(#sessionScreen:not([hidden])) .brand-name strong {font-size:18px;letter-spacing:1.5px}
+  body:has(#sessionScreen:not([hidden])) .brand-name span {font-size:9px;letter-spacing:1px}
 }
 
 /* Wyloguj: o 20% węższy i niższy niż pozostałe przyciski. */
@@ -479,3 +493,7 @@ body:has(#sessionScreen:not([hidden])) .brand {
   user-select:none;
   pointer-events:none;
 }
+
+/* Zalogowany po lewej, magazyn po prawej — jeden rząd. */
+#sessionScreen .session-compact-user {white-space:normal;overflow-wrap:anywhere}
+#sessionScreen .session-compact-warehouse {text-align:right;overflow-wrap:anywhere}
