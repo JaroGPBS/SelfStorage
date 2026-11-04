@@ -631,3 +631,18 @@ body:has(#sessionScreen:not([hidden])) .brand {
   #operationScreen .operation-tabs {gap:8px}
   #operationScreen .operation-tabs button {min-height:68px;font-size:13px}
 }
+
+/* Kompaktowy ekran wizyty: wyraźny Cofnij i czytelna podpowiedź w polu. */
+#operationScreen #backFromOperationButton {
+  font-size:16px;
+  font-weight:800;
+  margin:0 0 20px;
+  padding:8px 0;
+}
+#operationScreen #operationCounterparty::placeholder {
+  text-transform:none;
+  letter-spacing:0;
+  font-size:12px;
+  font-weight:400;
+  color:#a7b3c1;
+}
