@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=1';
 
-const APP_VERSION = '0.50';
+const APP_VERSION = '0.51';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -1895,7 +1895,13 @@ async function login() {
         $('loginBtn').disabled = true;
         return;
       }
-      throw frenchLoginError;
+      // Both independent PIN services returned a negative result.
+      // Never display only the legacy French error to a Polish worker:
+      // it incorrectly suggests that we did not check the D1 account.
+      throw new Error(
+        'Nie udało się zalogować. Żaden system nie potwierdził tego PIN-u i aktywnego dostępu. ' +
+        'Sprawdź przypisanie magazynu i aktywność konta w panelu Użytkownicy.'
+      );
     }
     const team = loginResult.ekipa;
     const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
