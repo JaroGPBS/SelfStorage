@@ -85,8 +85,8 @@
       'operationTabPZ','operationTabWZ','operationCancelSession','operationClearSearch']){
       el(id).disabled=lock;
     }
-    el('operationSave').disabled=state.busy||!state.ready||
-      (!state.pending&&!lines('PZ').length&&!lines('WZ').length);
+    // A click must always produce clear feedback, even when no parts were added.
+    el('operationSave').disabled=state.busy||!state.ready;
     el('operationSave').textContent=state.pending?'Ponów zapis tej samej wizyty':'Zakończ wizytę';
   }
 
@@ -377,6 +377,14 @@
         approveLabel:'Tak, ponów zapis'
       });
       if(approved)submit();
+      return;
+    }
+    if(!lines('PZ').length&&!lines('WZ').length){
+      await window.GPBSPlConfirm.ask({
+        title:'Brak pozycji do zapisania',
+        message:'Nie dodano jeszcze żadnej części. Dodaj pozycję w Przyjęciu lub Wydaniu albo wybierz Anuluj wizytę.',
+        approveLabel:'Rozumiem'
+      });
       return;
     }
     const input=payloadForCommit();
