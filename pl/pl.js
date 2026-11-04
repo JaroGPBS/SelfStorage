@@ -318,7 +318,7 @@
           window.GPBSPlInventory?.open(selected);
           loadInventory();
         } else if(firstLoad && destination==='operationScreen') {
-          window.GPBSPlOperations?.open(selected,user.id,'PZ');
+          window.GPBSPlOperations?.open(selected,user.id);
         }
       } else {
         showWarehousePicker();
@@ -784,15 +784,15 @@
   byId('logoutButton').addEventListener('click',logout);
   byId('switchWarehouseButton').addEventListener('click',showWarehousePicker);
   byId('openInventoryButton').addEventListener('click',openInventory);
-  function openOperation(direction) {
+  function openOperation() {
     if(!state.warehouse||!state.user||!warehouseRoles.has(state.user.role))return;
     window.GPBSPlInventory?.close();
     subview('operationScreen');
-    window.GPBSPlOperations?.open(state.warehouse,state.user.id,direction);
+    window.GPBSPlOperations?.open(state.warehouse,state.user.id);
   }
-  byId('openReceiptButton').addEventListener('click',()=>openOperation('PZ'));
-  byId('openIssueButton').addEventListener('click',()=>openOperation('WZ'));
+  byId('openReceiptButton').addEventListener('click',openOperation);
   byId('backFromOperationButton').addEventListener('click',()=>{
+    if(window.GPBSPlOperations?.backToMenu())return;
     window.GPBSPlOperations?.close();
     subview('warehouseHome');
     loadInventoryNotice();
