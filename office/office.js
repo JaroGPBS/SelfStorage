@@ -366,6 +366,24 @@ function drawAggregate(realSets){
   $('tableFooter').textContent=filtered.length+' części';
   noteSearch(filtered.length,base.length,'częściach');
 }
+// PZ/WZ: show the team or supplier first and the registration below it.
+ // Older sessions kept both in the single counterparty field ("HH | REJ: SK 12345");
+ // newer sessions can have the registration in a separate D1 column.
+function partyParts(value,registrationPlate=''){
+  const raw=String(value??'').trim();
+  const match=raw.match(/^([\s\S]*?)\s*(?:\|\s*|\r?\n\s*)REJ\s*:\s*([\s\S]+)$/i);
+  return {
+    name:(match?match[1]:raw).trim(),
+    plate:String(registrationPlate||match?.[2]||'').trim()
+  };
+}
+function partyHtml(value,registrationPlate=''){
+  const {name,plate}=partyParts(value,registrationPlate);
+  return '<span class="doc-party-lines"><span class="doc-party-name">'+
+    escapeHtml(name||'—')+'</span>'+
+    (plate?'<span class="doc-party-plate">'+escapeHtml(plate)+'</span>':'')+
+    '</span>';
+}
 function cellButton(label,id,expanded){
   return '<button type="button" class="detail-btn" data-expand="'+escapeHtml(id)+'">'+
     (expanded?'Ukryj':'Pokaż '+label)+' <span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>';
@@ -392,7 +410,7 @@ function drawDocs(){
     }
     return '<tr data-doc-id="'+escapeHtml(d.id)+'"'+(over?' class="warning-row"':'')+'>'+
       '<td>'+dateText(d.date)+'</td><td>'+isoWeek(d.date)+'</td>'+
-      '<td>'+escapeHtml(d.counterparty)+'</td><td>'+escapeHtml(d.worker)+'</td>'+
+      '<td>'+partyHtml(d.counterparty,d.registration_plate)+'</td><td>'+escapeHtml(d.worker)+'</td>'+
       '<td class="doc-actions-cell">'+actions+'</td></tr>'+expandedHtml;
   }).join('');
   $('tableArea').innerHTML=wrapTable([
@@ -412,8 +430,9 @@ function drawDocLines(parts,direction){
   const rows=parts.map(p=>'<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td>'+escapeHtml(p.name)+'</td><td class="num">'+quantity(p.quantity)+'</td></tr>').join('');
   return '<h3>'+ (direction==='PZ'?'Zawartość dostawy':'Wydane części')+'</h3>'+wrapTable([{label:'Indeks SAP'},{label:'Nazwa części'},{label:'Ilość',numeric:true}],rows);
 }
-function printField(label,value){
-  return '<div class="doc-print-field"><span>'+escapeHtml(label)+'</span><strong>'+escapeHtml(value||'—')+'</strong></div>';
+function printField(label,value,registrationPlate=null){
+  const content=registrationPlate===null?escapeHtml(value||'—'):partyHtml(value,registrationPlate);
+  return '<div class="doc-print-field"><span>'+escapeHtml(label)+'</span><strong>'+content+'</strong></div>';
 }
 async function openDocumentPrint(id,direction){
   if(direction!=='PZ'&&direction!=='WZ')return;
@@ -449,10 +468,10 @@ async function openDocumentPrint(id,direction){
   const rightName=isReceipt?'Przyjmujący / pracownik magazynu':'Odbierający / ekipa';
   const leftPerson=isReceipt?documentRow.counterparty:documentRow.worker;
   const rightPerson=isReceipt?documentRow.worker:documentRow.counterparty;
-  const signature=(label,person)=>'<div class="doc-print-signature">'+
+  const signature=(label,person,registrationPlate=null)=>'<div class="doc-print-signature">'+
     '<div class="doc-print-sign-line"></div>'+
     '<strong>'+escapeHtml(label)+'</strong>'+
-    '<span>'+escapeHtml(person||'—')+'</span></div>';
+    '<span>'+(registrationPlate===null?escapeHtml(person||'—'):partyHtml(person,registrationPlate))+'</span></div>';
   $('docPrintTitle').textContent='Podgląd '+direction;
   $('docPrintSheet').innerHTML=
     '<div class="doc-print-letterhead">'+
@@ -465,7 +484,7 @@ async function openDocumentPrint(id,direction){
       printField('Magazyn',warehouse)+
       printField('Data operacji',dateText(documentRow.date))+
       printField('Tydzień',isoWeek(documentRow.date))+
-      printField(isReceipt?'Dostawca / ekipa':'Odbiorca',documentRow.counterparty)+
+      printField(isReceipt?'Dostawca / ekipa':'Odbiorca',documentRow.counterparty,documentRow.registration_plate||'')+
       printField(isReceipt?'Przyjmował':'Wydawał',documentRow.worker)+
     '</div>'+
     '<div class="doc-print-section-title">Lista części</div>'+
@@ -475,7 +494,9 @@ async function openDocumentPrint(id,direction){
       '<span>Łącznie sztuk: <strong>'+total+'</strong></span></div>'+
     (warn?'<p class="doc-print-warning">Uwaga: wydanie obejmuje pozycje przekraczające stan ewidencyjny.</p>':'')+
     '<div class="doc-print-bottom"><div class="doc-print-notes"><strong>Uwagi:</strong><div></div><div></div></div>'+
-    '<div class="doc-print-signatures">'+signature(leftName,leftPerson)+signature(rightName,rightPerson)+'</div></div>';
+    '<div class="doc-print-signatures">'+
+      signature(leftName,leftPerson,isReceipt?(documentRow.registration_plate||''):null)+
+      signature(rightName,rightPerson,!isReceipt?(documentRow.registration_plate||''):null)+'</div></div>';
   $('docPrintModal').classList.remove('hidden');
   $('docPrintClose').focus();
 }
