@@ -9,7 +9,7 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=13">
+  <link rel="stylesheet" href="./pl.css?v=14">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
   <script src="./warehouse-operations.js?v=5" defer></script>
@@ -51,16 +51,19 @@
     </section>
 
     <section id="sessionScreen" class="panel signed-in" aria-labelledby="sessionTitle" hidden>
-      <div class="session-header">
-        <div class="session-avatar" id="workerBadge" aria-hidden="true">—</div>
-        <div class="session-identity">
-          <div class="panel-kicker">ZALOGOWANY UŻYTKOWNIK</div>
-          <h1 id="sessionTitle">—</h1>
-          <p class="role-subtitle" id="workerRole"></p>
+      <div class="session-compact-bar">
+        <div class="session-compact-info">
+          <div class="session-compact-user">Zalogowany: <strong id="sessionTitle">—</strong></div>
+          <div class="session-compact-warehouse">Magazyn: <strong id="warehouseName">—</strong></div>
         </div>
-        <span class="status-pill"><span class="status-dot"></span> Aktywny</span>
+        <span class="status-pill session-compact-status"><span class="status-dot"></span> Aktywny</span>
       </div>
-      <div class="session-divider"></div>
+      <!-- Zachowane dla aktualnej logiki JavaScript, niewidoczne w interfejsie. -->
+      <div class="session-internal" hidden aria-hidden="true">
+        <span id="workerBadge">—</span>
+        <span id="workerRole"></span>
+        <span id="warehouseCode">—</span>
+      </div>
 
       <div id="warehouseSelection" hidden>
         <h2 class="section-title">Wybierz magazyn</h2>
@@ -69,25 +72,16 @@
       </div>
 
       <div id="warehouseHome" hidden>
-        <div class="current-warehouse">
-          <span class="current-warehouse-icon" aria-hidden="true">▣</span>
-          <div>
-            <span class="caption-uppercase">TWÓJ MAGAZYN</span>
-            <h2 id="warehouseName">—</h2>
-            <span id="warehouseCode" class="warehouse-code">—</span>
-          </div>
-        </div>
-        <button id="switchWarehouseButton" class="text-button" type="button" hidden>Zmień magazyn</button>
-
-        <div id="homeInventoryNotice" class="inventory-notice" role="status" hidden>
-          <span class="inventory-notice-icon" aria-hidden="true">!</span>
-          <div>
+        <button id="switchWarehouseButton" class="text-button compact-switch-warehouse" type="button" hidden>Zmień magazyn</button>
+        <!-- Stan inwentaryzacji pozostaje w aplikacji, lecz bez kafelka na stronie głównej. -->
+        <div class="session-internal" hidden aria-hidden="true">
+          <div id="homeInventoryNotice" hidden>
             <strong id="homeInventoryTitle">Wymagana inwentaryzacja</strong>
             <p id="homeInventoryDetail">Stany magazynowe nie zostały jeszcze ustalone.</p>
           </div>
         </div>
 
-        <h2 class="section-title section-spaced">Operacje magazynowe</h2>
+        <h2 class="section-title compact-section-title">Operacje magazynowe</h2>
         <div class="action-grid">
           <button id="openReceiptButton" class="action-tile action-available" type="button">
             <span class="action-icon" aria-hidden="true">＋</span>
