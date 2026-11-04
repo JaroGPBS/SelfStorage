@@ -119,8 +119,11 @@
       const list=el('operation'+side+'List');
       list.replaceChildren();
       const entries=lines(side);
-      const quantity=entries.reduce((sum,line)=>sum+line.quantity,0);
-      el('operation'+side+'Count').textContent=entries.length+' poz. · '+quantity+' szt.';
+      const count=entries.length;
+      el('operation'+side+'Count').textContent=count+' '+
+        (count===1?'pozycja':(count%10>=2&&count%10<=4&&!(count%100>=12&&count%100<=14)
+          ?'pozycje':'pozycji'));
+      list.hidden=state.stage!==side;
       if(!entries.length){
         const empty=document.createElement('p');
         empty.className='operation-empty';
