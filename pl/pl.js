@@ -156,6 +156,10 @@
         state.warehouse?.id!==warehouseId)return;
       if(error.status===401) {
         clearSession();
+        if(window.GPBS_POLISH_EMBEDDED) {
+          window.dispatchEvent(new Event('gpbs:polish-logout'));
+          return;
+        }
         view('login');
         errorText(byId('loginError'),'Sesja wygasła. Zaloguj się ponownie.');
       } else {
@@ -375,6 +379,10 @@
       if(sequence!==state.stockSequence) return;
       if(error.status===401) {
         clearSession();
+        if(window.GPBS_POLISH_EMBEDDED) {
+          window.dispatchEvent(new Event('gpbs:polish-logout'));
+          return;
+        }
         view('login');
         errorText(byId('loginError'),'Sesja wygasła. Zaloguj się ponownie.');
       } else {
@@ -714,6 +722,10 @@
     }catch(error) {
       if(error.status===401 || !state.user) {
         clearSession();
+        if(window.GPBS_POLISH_EMBEDDED && error.status===401) {
+          window.dispatchEvent(new Event('gpbs:polish-logout'));
+          return;
+        }
         view('login');
         errorText(byId('loginError'),error.status===401?'':(
           error.status?error.message:'Brak połączenia. Logowanie wymaga internetu.'));
@@ -756,7 +768,11 @@
       await request('POST','/api/pl/auth',{action:'logout'});
       clearSession();
       errorText(byId('loginError'),'');
-      view('login');
+      if(window.GPBS_POLISH_EMBEDDED) {
+        window.dispatchEvent(new Event('gpbs:polish-logout'));
+      } else {
+        view('login');
+      }
     }catch(error) {
       errorText(byId('sessionError'),'Nie udało się wylogować: '+error.message);
     }finally{
