@@ -377,7 +377,11 @@ body:has(#sessionScreen:not([hidden])) .brand {
   margin-bottom:14px;
 }
 #sessionScreen.signed-in {
-  padding:16px 20px 20px;
+  padding:0;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
 }
 #sessionScreen .session-internal {
   display:none!important;
@@ -438,7 +442,7 @@ body:has(#sessionScreen:not([hidden])) .brand {
   margin-top:0;
 }
 @media(max-width:360px){
-  #sessionScreen.signed-in {padding:14px 13px 18px}
+  #sessionScreen.signed-in {padding:0}
   #sessionScreen .session-compact-bar {gap:7px}
   #sessionScreen .session-compact-user {font-size:11px}
   #sessionScreen .session-compact-user strong {font-size:12px}
