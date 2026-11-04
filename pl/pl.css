@@ -465,12 +465,12 @@ body:has(#sessionScreen:not([hidden])) .brand {
   body:has(#sessionScreen:not([hidden])) .brand-name span {font-size:9px;letter-spacing:1px}
 }
 
-/* Wyloguj: o 20% węższy i niższy niż pozostałe przyciski. */
+/* Wyloguj: jeszcze mniejszy niż dotychczas. */
 #sessionScreen #logoutButton {
-  width:80%;
-  min-height:42px;
-  padding:10px 13px;
-  font-size:12px;
+  width:65%;
+  min-height:36px;
+  padding:7px 10px;
+  font-size:11px;
   margin-left:auto;
   margin-right:auto;
 }
@@ -618,11 +618,21 @@ body:has(#sessionScreen:not([hidden])) .brand {
   font-size:17px;
   box-shadow:0 12px 25px rgba(201,63,70,.19);
 }
-#operationScreen .operation-discard {
-  display:block;
+/* Anuluj wizytę: rozmiar poprzedniego Wyloguj (80% / 42px). */
+#sessionScreen #operationCancelSession.operation-discard {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:80%;
+  min-height:42px;
   margin:12px auto 0;
-  padding:9px 4px;
+  padding:10px 13px;
   font-size:12px;
+  font-weight:800;
+  border:1px solid #8b5257;
+  border-radius:12px;
+  color:#ffcbcd;
+  background:linear-gradient(180deg,#29272c,#191b20);
 }
 #operationScreen .operation-status {
   margin:0 0 14px;
