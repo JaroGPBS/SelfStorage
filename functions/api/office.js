@@ -124,10 +124,17 @@ export async function onRequestGet({request,env}){
       const focus=(url.searchParams.get('focus')||'').trim();
       if(focus&&!SESSION.test(focus))return error('Nieprawidłowy identyfikator dokumentu.');
       const relatedDirection=direction==='PZ'?'WZ':'PZ';
+      // Read both legacy "NAZWA | REJ: TABLICA" rows and newer sessions
+      // with a dedicated registration_plate column, without modifying D1.
+      const columns=await env.DB.prepare('PRAGMA table_info(pl_warehouse_sessions)').all();
+      const hasRegistrationPlate=(columns.results||[]).some(col=>col.name==='registration_plate');
       const join='FROM pl_warehouse_sessions s '+
         'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
         'LEFT JOIN users u ON u.id=s.actor_id ';
       const matching="AND (?='' OR LOWER(s.counterparty) LIKE '%'||LOWER(?)||'%' "+
+        (hasRegistrationPlate
+          ?"OR LOWER(COALESCE(s.registration_plate,'')) LIKE '%'||LOWER(?)||'%' "
+          :'')+
         "OR LOWER(COALESCE(u.name,'')) LIKE '%'||LOWER(?)||'%' "+
         "OR s.committed_at LIKE '%'||?||'%' "+
         "OR EXISTS (SELECT 1 FROM pl_warehouse_session_lines x "+
@@ -135,7 +142,9 @@ export async function onRequestGet({request,env}){
         "AND (LOWER(p.name) LIKE '%'||LOWER(?)||'%' "+
         "OR LOWER(COALESCE(p.sap_number,'')) LIKE '%'||LOWER(?)||'%' "+
         "OR LOWER(COALESCE(p.part_number,'')) LIKE '%'||LOWER(?)||'%')))";
-      const params=[warehouseId,direction,term,term,term,term,direction,term,term,term];
+      const params=[warehouseId,direction,term,term,
+        ...(hasRegistrationPlate?[term]:[]),
+        term,term,direction,term,term,term];
       const where='WHERE s.warehouse_id=? AND l.direction=? ';
       const count=await env.DB.prepare(
         'SELECT COUNT(DISTINCT s.id) AS n '+join+where
@@ -144,6 +153,7 @@ export async function onRequestGet({request,env}){
         'SELECT COUNT(DISTINCT s.id) AS n '+join+where+matching
       ).bind(...params).first();
       const fields='SELECT s.id,s.committed_at AS date,s.counterparty,'+
+        (hasRegistrationPlate?'s.registration_plate,':'NULL AS registration_plate,')+
         'COALESCE(u.name,s.actor_id) AS worker,COUNT(l.part_id) AS positions,'+
         'COALESCE(SUM(l.quantity),0) AS units,'+
         'COALESCE(SUM(l.shortage_quantity),0) AS shortage,'+
