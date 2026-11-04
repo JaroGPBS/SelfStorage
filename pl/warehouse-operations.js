@@ -631,7 +631,7 @@
     const digit=button.dataset.digit;
     if(digit==='clear')input.value='';
     else if(digit==='backspace')input.value=input.value.slice(0,-1);
-    else if(/^\\d$/.test(digit)&&input.value.length<6)input.value+=digit;
+    else if(/^[0-9]$/.test(digit)&&input.value.length<6)input.value+=digit;
     quantityError();
   });
   el('operationScanDialog').addEventListener('cancel',event=>{
