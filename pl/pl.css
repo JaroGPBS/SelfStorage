@@ -24,7 +24,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--red-bright);out
   20px max(22px,env(safe-area-inset-bottom));
   display:flex;flex-direction:column}
 .brand{display:flex;align-items:center;gap:12px;margin:6px 0 38px}
-.brand img{width:54.45px;height:54.45px;object-fit:contain}
+.brand img{width:80px;height:auto;flex:0 0 auto;object-fit:contain}
 .brand-name{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
 .brand-name strong{font-size:21px;letter-spacing:2.3px;font-weight:850;line-height:1.15}
 .brand-name span{font-size:10px;color:var(--muted);letter-spacing:1.8px;font-weight:700}
@@ -497,3 +497,6 @@ body:has(#sessionScreen:not([hidden])) .brand {
 /* Zalogowany po lewej, magazyn po prawej — jeden rząd. */
 #sessionScreen .session-compact-user {white-space:normal;overflow-wrap:anywhere}
 #sessionScreen .session-compact-warehouse {text-align:right;overflow-wrap:anywhere}
+
+/* Wąskie ekrany: proporcjonalnie mniejsze logo, bez ściskania pozostałych elementów nagłówka. */
+@media(max-width:360px){.brand img{width:70px;height:auto}}
