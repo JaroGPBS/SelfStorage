@@ -4,10 +4,14 @@
   'use strict';
   const el=id=>document.getElementById(id);
   const camera=()=>window.GPBSInventoryCamera;
-  const state={warehouse:null,userId:'',direction:'PZ',pz:new Map(),wz:new Map(),
+  const state={warehouse:null,userId:'',direction:'PZ',stage:'details',pz:new Map(),wz:new Map(),
     ready:false,part:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
     scanning:false,stopPromise:null,searchPage:0,hasMore:false};
   const MAX_QUANTITY=100000;
+  const upperName=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleUpperCase('pl-PL');
+  const upperPlate=value=>String(value||'').trim().replace(/\s+/g,' ').toUpperCase();
+  const validPlate=value=>/^[A-Z0-9][A-Z0-9 -]{1,19}$/.test(value) && /[A-Z0-9]$/.test(value);
+
 
   function key(){
     return 'gpbs_pl_session_draft_v1_'+state.userId+'_'+state.warehouse?.id;
@@ -19,18 +23,25 @@
     if(!state.warehouse||!state.userId)return;
     try{
       sessionStorage.setItem(key(),JSON.stringify({
-        counterparty:el('operationCounterparty').value,
+        counterparty:upperName(el('operationCounterparty').value),
+        registrationPlate:upperPlate(el('operationPlate').value),
+        stage:state.stage,
         pz:lines('PZ'),wz:lines('WZ'),pending:state.pending
       }));
     }catch{}
   }
   function restoreDraft(){
-    state.pz.clear();state.wz.clear();state.pending=null;
+    state.pz.clear();state.wz.clear();state.pending=null;state.stage='details';
     el('operationCounterparty').value='';
+    el('operationPlate').value='';
     try{
       const data=JSON.parse(sessionStorage.getItem(key())||'null');
       if(!data)return;
-      el('operationCounterparty').value=String(data.counterparty||'').slice(0,120);
+      el('operationCounterparty').value=upperName(data.counterparty).slice(0,90);
+      el('operationPlate').value=upperPlate(data.registrationPlate).slice(0,20);
+      if(['menu','PZ','WZ'].includes(data.stage)&&
+        el('operationCounterparty').value.length>=2&&validPlate(el('operationPlate').value))
+        state.stage=data.stage;
       for(const side of ['pz','wz']){
         const target=side==='pz'?state.pz:state.wz;
         if(!Array.isArray(data[side]))continue;
@@ -46,6 +57,7 @@
         data.pending.warehouseId===state.warehouse.id&&
         Array.isArray(data.pending.pz)&&Array.isArray(data.pending.wz))
         state.pending=data.pending;
+      if(state.pending)state.stage='menu';
     }catch{}
   }
   async function api(path,options={}){
@@ -67,14 +79,15 @@
   }
   function disableDuringPending(){
     const lock=!!state.pending||state.busy;
-    for(const id of ['operationCounterparty','operationSearchQuery','operationSearchButton',
+    for(const id of ['operationCounterparty','operationPlate','operationVisitContinue',
+      'operationEditVisit','operationBackToMenu','operationSearchQuery','operationSearchButton',
       'operationStartScan','operationAddButton','operationQuantity',
       'operationTabPZ','operationTabWZ','operationCancelSession','operationClearSearch']){
       el(id).disabled=lock;
     }
     el('operationSave').disabled=state.busy||!state.ready||
       (!state.pending&&!lines('PZ').length&&!lines('WZ').length);
-    el('operationSave').textContent=state.pending?'Ponów zapis tej samej sesji':'Zakończ i zapisz sesję';
+    el('operationSave').textContent=state.pending?'Ponów zapis tej samej wizyty':'Zakończ wizytę';
   }
 
   function makeLine(row,side){
@@ -119,7 +132,7 @@
     }
     for(const side of ['PZ','WZ']){
       const tab=el('operationTab'+side);
-      const active=state.direction===side;
+      const active=state.stage===side;
       tab.setAttribute('aria-pressed',String(active));
       tab.classList.toggle('selected',active);
     }
@@ -127,18 +140,70 @@
       ?'Dodaj część przyjmowaną do magazynu.'
       :'Dodaj część wydawaną z magazynu.';
     el('operationQuantityForm').hidden=!state.part;
+    const details=state.stage==='details'&&!state.pending;
+    el('operationVisitForm').hidden=!details;
+    el('operationWorkspace').hidden=details;
+    el('operationDirectionPanel').hidden=!['PZ','WZ'].includes(state.stage);
+    el('operationVisitCounterparty').textContent=upperName(el('operationCounterparty').value)||'—';
+    el('operationVisitPlate').textContent=upperPlate(el('operationPlate').value)||'—';
+    el('operationEditVisit').hidden=!!state.pending;
+    el('backFromOperationButton').textContent=['PZ','WZ'].includes(state.stage)
+      ?'← Wróć do wyboru operacji':'← Wróć do magazynu';
     disableDuringPending();
+  }
+
+  function beginVisit(event){
+    event.preventDefault();
+    if(!state.ready||state.busy||state.pending)return;
+    const counterparty=upperName(el('operationCounterparty').value);
+    const registrationPlate=upperPlate(el('operationPlate').value);
+    if(counterparty.length<2||counterparty.length>90){
+      status('Wpisz nazwę ekipy lub dostawcy (2–90 znaków).',true);
+      el('operationCounterparty').focus();
+      return;
+    }
+    if(!validPlate(registrationPlate)){
+      status('Wpisz numer rejestracyjny (2–20 znaków: litery, cyfry, spacje lub myślnik).',true);
+      el('operationPlate').focus();
+      return;
+    }
+    el('operationCounterparty').value=counterparty;
+    el('operationPlate').value=registrationPlate;
+    state.stage='menu';
+    status('');
+    saveDraft();
+    render();
+  }
+
+  function editVisit(){
+    if(state.pending||state.busy)return;
+    state.stage='details';
+    state.part=null;
+    stopScanner();
+    saveDraft();render();
+  }
+
+  function backToMenu(){
+    if(!['PZ','WZ'].includes(state.stage))return false;
+    state.stage='menu';
+    state.part=null;
+    el('operationSearchResults').replaceChildren();
+    el('operationSearchQuery').value='';
+    stopScanner();
+    saveDraft();render();
+    return true;
   }
 
   function changeDirection(side){
     if(state.pending||state.busy)return;
     state.direction=side;
+    state.stage=side;
     state.part=null;
     el('operationSearchResults').replaceChildren();
     el('operationSearchQuery').value='';
     el('operationQuantityForm').hidden=true;
     stopScanner();
-    render();
+    saveDraft();render();
   }
 
   function selectPart(part){
@@ -279,17 +344,25 @@
   }
 
   function payloadForCommit(){
-    const counterparty=el('operationCounterparty').value.trim().replace(/\s+/g,' ');
-    if(counterparty.length<2||counterparty.length>120){
-      status('Wpisz ekipę, dostawcę lub odbiorcę (2–120 znaków).',true);
+    const counterparty=upperName(el('operationCounterparty').value);
+    const registrationPlate=upperPlate(el('operationPlate').value);
+    if(counterparty.length<2||counterparty.length>90){
+      status('Wpisz ekipę lub dostawcę (2–90 znaków).',true);
       el('operationCounterparty').focus();
       return null;
     }
+    if(!validPlate(registrationPlate)){
+      status('Wpisz poprawny numer rejestracyjny.',true);
+      el('operationPlate').focus();
+      return null;
+    }
+    el('operationCounterparty').value=counterparty;
+    el('operationPlate').value=registrationPlate;
     const pz=lines('PZ').map(row=>({partId:row.id,quantity:row.quantity}));
     const wz=lines('WZ').map(row=>({partId:row.id,quantity:row.quantity}));
     if(!pz.length&&!wz.length){status('Dodaj co najmniej jedną część.',true);return null;}
     return {id:'PL-SES-'+crypto.randomUUID(),warehouseId:state.warehouse.id,
-      counterparty,pz,wz};
+      counterparty,registrationPlate,pz,wz};
   }
 
   async function review(){
@@ -313,6 +386,7 @@
       const amount=side=>input[side].reduce((n,l)=>n+l.quantity,0);
       el('operationConfirmText').textContent=
         'Ekipa / dostawca / odbiorca: '+input.counterparty+
+        '\nNumer rejestracyjny: '+input.registrationPlate+
         '\nPrzyjęcie PZ: '+input.pz.length+' pozycji · '+amount('pz')+' szt.'+
         '\nWydanie WZ: '+input.wz.length+' pozycji · '+amount('wz')+' szt.'+
         '\nZapisze oba dokumenty razem i zaktualizuje stany magazynu.';
@@ -361,7 +435,9 @@
       if(state.warehouse?.id!==payload.warehouseId)return;
       // The same ID is never sent again once server acknowledges the commit.
       state.pending=null;state.pz.clear();state.wz.clear();state.part=null;
+      state.stage='details';
       el('operationCounterparty').value='';
+      el('operationPlate').value='';
       el('operationSearchResults').replaceChildren();
       el('operationQuantityForm').hidden=true;
       saveDraft();
@@ -392,14 +468,15 @@
   function discard(){
     if(state.pending)return;
     if((state.pz.size||state.wz.size)&&!confirm('Usunąć niezapisane PZ i WZ z tej sesji?'))return;
-    state.pz.clear();state.wz.clear();state.part=null;
+    state.pz.clear();state.wz.clear();state.part=null;state.stage='details';
     el('operationCounterparty').value='';
+    el('operationPlate').value='';
     el('operationSearchResults').replaceChildren();
-    status('Wyczyszczono bieżący szkic sesji.');
+    status('Anulowano niezapisaną wizytę.');
     saveDraft();render();
   }
 
-  function open(warehouse,userId,direction='PZ'){
+  function open(warehouse,userId){
     if(!warehouse?.id||!userId)return;
     const same=state.warehouse?.id===warehouse.id&&state.userId===userId;
     if(!same){
@@ -408,7 +485,7 @@
       state.ready=false;
       restoreDraft();
     }
-    state.direction=direction==='WZ'?'WZ':'PZ';
+    state.direction=['PZ','WZ'].includes(state.stage)?state.stage:'PZ';
     state.part=null;
     el('operationWarehouseCaption').textContent=warehouse.name+' · '+warehouse.id;
     el('operationSearchResults').replaceChildren();
@@ -430,7 +507,23 @@
     try{sessionStorage.removeItem('gpbs_pl_session_draft_v1_'+userId+'_'+warehouseId);}catch{}
   }
 
-  el('operationCounterparty').addEventListener('input',saveDraft);
+  function uppercaseInput(id,formatter){
+    const input=el(id);
+    input.addEventListener('input',()=>{
+      const next=formatter(input.value);
+      if(next!==input.value){
+        const start=input.selectionStart,end=input.selectionEnd;
+        input.value=next;
+        try{input.setSelectionRange(start,end);}catch{}
+      }
+      saveDraft();
+    });
+  }
+  uppercaseInput('operationCounterparty',v=>v.toLocaleUpperCase('pl-PL'));
+  uppercaseInput('operationPlate',v=>v.toUpperCase());
+  el('operationVisitForm').addEventListener('submit',beginVisit);
+  el('operationEditVisit').addEventListener('click',editVisit);
+  el('operationBackToMenu').addEventListener('click',backToMenu);
   el('operationTabPZ').addEventListener('click',()=>changeDirection('PZ'));
   el('operationTabWZ').addEventListener('click',()=>changeDirection('WZ'));
   el('operationSearchForm').addEventListener('submit',event=>{
@@ -461,5 +554,5 @@
     if(document.hidden&&state.scanning)stopScanner();
   });
 
-  window.GPBSPlOperations={open,close,clearSaved};
+  window.GPBSPlOperations={open,close,clearSaved,backToMenu};
 })();
