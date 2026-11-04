@@ -2005,3 +2005,43 @@
   #sidebar .office-welcome .welcome-line{gap:8px;font-size:11px}
   #sidebar .office-welcome .welcome-wish{font-size:14px}
 }
+
+
+/* PZ/WZ: nazwa ekipy/dostawcy w pierwszej linii, sama rejestracja pod spodem. */
+.app.view-receipts .table td .doc-party-lines,
+.doc-print-sheet .doc-party-lines {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:3px;
+  min-width:0;
+}
+.app.view-receipts .table td .doc-party-name {
+  color:#303b47;
+  font-weight:700;
+  overflow-wrap:anywhere;
+}
+.app.view-receipts .table td .doc-party-plate {
+  color:#697685;
+  font-size:11px;
+  font-weight:600;
+  overflow-wrap:anywhere;
+}
+.doc-print-sheet .doc-print-field .doc-party-name {
+  color:#303b47;
+  font-size:11px;
+  font-weight:750;
+}
+.doc-print-sheet .doc-print-field .doc-party-plate {
+  color:#65717e;
+  font-size:10px;
+  font-weight:650;
+  margin:0;
+}
+.doc-print-sheet .doc-print-signature .doc-party-lines {
+  align-items:center;
+}
+.doc-print-sheet .doc-print-signature .doc-party-plate {
+  font-size:10px;
+  color:#777f89;
+}
