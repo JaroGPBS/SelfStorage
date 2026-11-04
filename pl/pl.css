@@ -460,3 +460,22 @@ body:has(#sessionScreen:not([hidden])) .brand {
   margin-left:auto;
   margin-right:auto;
 }
+
+
+/* Oryginalna sygnatura „Created by Jaro” jak w aplikacji głównej. */
+.page-footer-signature {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px 0 max(5px,env(safe-area-inset-bottom));
+  letter-spacing:normal;
+}
+.page-footer-signature img {
+  display:block;
+  width:80px;
+  height:auto;
+  max-width:100%;
+  opacity:.60;
+  user-select:none;
+  pointer-events:none;
+}
