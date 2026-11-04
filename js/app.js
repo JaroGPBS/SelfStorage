@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=1';
 
-const APP_VERSION = '0.52';
+const APP_VERSION = '0.53';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -1885,7 +1885,8 @@ async function login() {
     let polishError = null;
     try {
       if (await tryPolishLogin(pin)) {
-        resetState();
+        // Never erase pending French visit or offline drafts when a PL worker
+        // signs in on a device that previously ran the French application.
         $('pinInput').value = '';
         $('loginBtn').disabled = true;
         return;
