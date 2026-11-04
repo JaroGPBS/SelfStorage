@@ -323,3 +323,51 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
   font-weight:800;
   overflow-wrap:anywhere;
 }
+
+
+/* GPBS Storage — przyciski jak w aplikacji głównej.
+   Wyłącznie wygląd: istniejące ID, zdarzenia i przepływy pozostają bez zmian. */
+:root { --gpbs-button-border:#ff3131; }
+#loginButton,
+#sessionScreen .btn,
+#sessionScreen .action-tile,
+#sessionScreen .warehouse-option {
+  color:#f7f7f7;
+  background:linear-gradient(180deg,rgba(39,43,48,.97),rgba(18,21,25,.99));
+  border:1px solid var(--gpbs-button-border);
+  border-radius:18px;
+  box-shadow:0 0 0 1px rgba(255,0,0,.23),
+             0 0 28px rgba(255,32,32,.32),
+             inset 0 0 20px rgba(255,24,24,.05);
+  font-weight:800;
+  transition:transform .08s ease,background .16s ease,box-shadow .16s ease;
+}
+#loginButton {min-height:clamp(62px,8dvh,72px);font-size:16px}
+#sessionScreen .action-grid {grid-template-columns:minmax(0,1fr);gap:14px}
+#sessionScreen .action-tile {
+  width:100%;min-height:clamp(62px,8dvh,72px);
+  padding:14px 18px;align-items:center;justify-content:center;
+  text-align:center;gap:0;
+}
+#sessionScreen .action-tile strong {font-size:17px;line-height:1.3}
+#sessionScreen .action-tile .action-icon,
+#sessionScreen .action-tile .action-caption {display:none}
+#sessionScreen .warehouse-option {min-height:72px}
+#loginButton:active:not(:disabled),
+#sessionScreen .btn:active:not(:disabled),
+#sessionScreen .action-tile:active:not(:disabled),
+#sessionScreen .warehouse-option:active:not(:disabled) {
+  transform:scale(.995);
+  background:linear-gradient(180deg,#2b292c,#1b1719);
+}
+#loginButton:focus-visible,
+#sessionScreen .btn:focus-visible,
+#sessionScreen .action-tile:focus-visible,
+#sessionScreen .warehouse-option:focus-visible {
+  outline:2px solid #ff6969;outline-offset:3px;
+}
+#sessionScreen .action-tile:disabled,
+#sessionScreen .btn:disabled {opacity:.62}
+@media(max-height:700px) {
+  #loginButton,#sessionScreen .action-tile {min-height:56px}
+}
