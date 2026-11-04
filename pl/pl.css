@@ -717,10 +717,10 @@ body:has(#sessionScreen:not([hidden])) .brand {
   white-space:nowrap;
 }
 #operationScreen .operation-topbar .operation-visitor-details strong {
-  font-size:12px;
+  font-size:13px;
 }
 #operationScreen .operation-topbar .operation-visitor-details span {
-  font-size:11px;
+  font-size:12px;
 }
 #operationScreen .operation-topbar .operation-edit-visit {
   padding:6px 1px;
