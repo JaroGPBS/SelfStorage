@@ -72,10 +72,24 @@
     return data;
   }
   function status(text='',error=false){
-    const node=el('operationStatus');
-    node.textContent=text;
-    node.hidden=!text;
-    node.classList.toggle('error',error);
+    for(const id of ['operationStatus','operationTaskStatus']){
+      const node=el(id);
+      node.textContent=text;
+      node.hidden=!text;
+      node.classList.toggle('error',error);
+    }
+  }
+  function quantityError(message=''){
+    const node=el('operationQuantityError');
+    node.textContent=message;
+    node.hidden=!message;
+  }
+  function closeQuantity(){
+    if(el('operationQuantityDialog').open)el('operationQuantityDialog').close();
+    state.part=null;
+    el('operationQuantity').value='';
+    quantityError();
+    el('operationQuantityForm').hidden=true;
   }
   function disableDuringPending(){
     const lock=!!state.pending||state.busy;
@@ -146,9 +160,13 @@
       :'Dodaj część wydawaną z magazynu.';
     el('operationQuantityForm').hidden=!state.part;
     const details=state.stage==='details'&&!state.pending;
+    const taskOpen=state.ready&&['PZ','WZ'].includes(state.stage);
     el('operationVisitForm').hidden=!details;
     el('operationWorkspace').hidden=details;
-    el('operationDirectionPanel').hidden=!['PZ','WZ'].includes(state.stage);
+    el('operationDirectionPanel').hidden=!taskOpen;
+    el('operationTaskTitle').textContent=state.stage==='WZ'?'WYDANIE (WZ)':'PRZYJĘCIE (PZ)';
+    el('operationDirectionPanel').classList.toggle('task-wz',state.stage==='WZ');
+    document.body.classList.toggle('operation-task-open',taskOpen);
     el('operationVisitCounterparty').textContent=upperName(el('operationCounterparty').value)||'—';
     el('operationVisitPlate').textContent=upperPlate(el('operationPlate').value)||'—';
     el('operationVisitorLine').hidden=details||!state.ready;
@@ -183,7 +201,7 @@
   function editVisit(){
     if(state.pending||state.busy)return;
     state.stage='details';
-    state.part=null;
+    closeQuantity();
     stopScanner();
     saveDraft();render();
   }
@@ -191,32 +209,39 @@
   function backToMenu(){
     if(!['PZ','WZ'].includes(state.stage))return false;
     state.stage='menu';
-    state.part=null;
+    state.searchSeq++;
+    closeQuantity();
     el('operationSearchResults').replaceChildren();
     el('operationSearchQuery').value='';
     stopScanner();
+    status('');
     saveDraft();render();
     return true;
   }
 
   function changeDirection(side){
     if(state.pending||state.busy)return;
+    if(!['PZ','WZ'].includes(side))return;
     state.direction=side;
     state.stage=side;
-    state.part=null;
+    state.searchSeq++;
+    closeQuantity();
     el('operationSearchResults').replaceChildren();
     el('operationSearchQuery').value='';
-    el('operationQuantityForm').hidden=true;
     stopScanner();
+    status('');
     saveDraft();render();
   }
 
   function selectPart(part){
-    if(state.pending||state.busy)return;
+    if(state.pending||state.busy||!['PZ','WZ'].includes(state.stage))return;
     state.part=part;
     el('operationPartName').textContent=part.name+' · '+part.number;
     el('operationQuantity').value='';
+    quantityError();
     el('operationQuantityForm').hidden=false;
+    const dlg=el('operationQuantityDialog');
+    if(!dlg.open)dlg.showModal();
     el('operationQuantity').focus({preventScroll:true});
   }
 
@@ -227,18 +252,18 @@
     const quantity=Number(raw);
     if(!/^[1-9]\d{0,5}$/.test(raw)||!Number.isSafeInteger(quantity)||
       quantity<1||quantity>MAX_QUANTITY){
-      status('Wpisz ilość od 1 do 100000 sztuk.',true);return;
+      quantityError('Wpisz ilość od 1 do 100000 sztuk.');return;
     }
     const target=state.direction==='PZ'?state.pz:state.wz;
     const old=target.get(state.part.id);
     if((old?.quantity||0)+quantity>MAX_QUANTITY){
-      status('Na jednej pozycji można zapisać maksymalnie 100000 sztuk.',true);return;
+      quantityError('Na jednej pozycji można zapisać maksymalnie 100000 sztuk.');return;
     }
     target.set(state.part.id,{
       id:state.part.id,name:state.part.name,number:state.part.number,
       quantity:(old?.quantity||0)+quantity
     });
-    state.part=null;
+    closeQuantity();
     saveDraft();
     status('Dodano '+quantity+' szt. do '+state.direction+'.');
     render();
@@ -250,13 +275,33 @@
     const warehouseId=state.warehouse.id;
     const page=append?state.searchPage+1:0;
     const query=el('operationSearchQuery').value.trim();
+    if(!query){
+      status('Wpisz indeks lub numer SAP części.',true);
+      return;
+    }
     if(!append)el('operationSearchResults').replaceChildren();
     el('operationMore').hidden=true;
     try{
+      // An exact manually typed index opens quantity directly; partial entries
+      // still use the existing catalogue search to choose the correct part.
+      if(!append){
+        try{
+          const exact=await api('/api/pl/warehouse?view=resolve&warehouse='+
+            encodeURIComponent(warehouseId)+'&code='+encodeURIComponent(query));
+          if(seq!==state.searchSeq||state.warehouse?.id!==warehouseId||
+             !['PZ','WZ'].includes(state.stage))return;
+          el('operationSearchQuery').value='';
+          selectPart({id:exact.part.id,name:exact.part.name,number:exact.part.number});
+          return;
+        }catch(error){
+          if(error.status!==404&&error.status!==400)throw error;
+        }
+      }
       const data=await api('/api/pl/warehouse?warehouse='+
         encodeURIComponent(warehouseId)+'&q='+encodeURIComponent(query)+
         '&page='+page);
-      if(seq!==state.searchSeq||state.warehouse?.id!==warehouseId)return;
+      if(seq!==state.searchSeq||state.warehouse?.id!==warehouseId||
+         !['PZ','WZ'].includes(state.stage))return;
       state.searchPage=page;
       state.hasMore=Boolean(data.stock?.hasMore);
       const results=el('operationSearchResults');
@@ -287,19 +332,23 @@
     state.scanning=false;
     el('operationScanPanel').hidden=true;
     el('operationStartScan').hidden=false;
+    if(el('operationScanDialog').open)el('operationScanDialog').close();
     const stop=Promise.resolve(camera()?.stop()).catch(()=>{});
     state.stopPromise=stop;
     await stop;
     if(state.stopPromise===stop)state.stopPromise=null;
   }
   async function startScanner(){
-    if(state.scanning||state.pending||state.busy||!state.warehouse)return;
+    if(state.scanning||state.pending||state.busy||!state.warehouse||
+       !['PZ','WZ'].includes(state.stage))return;
     const warehouseId=state.warehouse.id;
+    const direction=state.direction;
     const seq=++state.scanSeq;
     if(state.stopPromise)await state.stopPromise;
     if(seq!==state.scanSeq)return;
     el('operationScanPanel').hidden=false;
     el('operationStartScan').hidden=true;
+    if(!el('operationScanDialog').open)el('operationScanDialog').showModal();
     el('operationScannerStatus').textContent='Uruchamianie aparatu…';
     state.scanning=true;
     try{
@@ -310,7 +359,7 @@
         try{
           const data=await api('/api/pl/warehouse?view=resolve&warehouse='+
             encodeURIComponent(warehouseId)+'&code='+encodeURIComponent(code));
-          if(state.warehouse?.id!==warehouseId)return;
+          if(state.warehouse?.id!==warehouseId||state.stage!==direction)return;
           selectPart({id:data.part.id,name:data.part.name,number:data.part.number});
           status('Kod odczytany. Wpisz ilość.');
         }catch(error){
@@ -454,7 +503,8 @@
       });
       if(state.warehouse?.id!==payload.warehouseId)return;
       // The same ID is never sent again once server acknowledges the commit.
-      state.pending=null;state.pz.clear();state.wz.clear();state.part=null;
+      state.pending=null;state.pz.clear();state.wz.clear();
+      closeQuantity();
       state.stage='details';
       el('operationCounterparty').value='';
       el('operationPlate').value='';
@@ -501,7 +551,7 @@
       approveLabel:'Tak, anuluj wizytę'
     });
     if(!approved||state.pending||state.busy||!state.warehouse)return;
-    state.pz.clear();state.wz.clear();state.part=null;state.stage='details';
+    state.pz.clear();state.wz.clear();closeQuantity();state.stage='details';
     el('operationCounterparty').value='';
     el('operationPlate').value='';
     el('operationSearchResults').replaceChildren();
@@ -532,6 +582,9 @@
   }
   function close(){
     stopScanner();
+    closeQuantity();
+    el('operationDirectionPanel').hidden=true;
+    document.body.classList.remove('operation-task-open');
     state.searchSeq++;
     state.warehouse=null;state.userId='';
     state.part=null;state.ready=false;
@@ -565,7 +618,25 @@
   el('operationMore').addEventListener('click',()=>search(true));
   el('operationQuantityForm').addEventListener('submit',addPart);
   el('operationCancelPart').addEventListener('click',()=>{
-    state.part=null;render();
+    closeQuantity();render();
+  });
+  el('operationQuantityDialog').addEventListener('cancel',event=>{
+    event.preventDefault();
+    closeQuantity();render();
+  });
+  el('operationKeypad').addEventListener('click',event=>{
+    const button=event.target.closest('button[data-digit]');
+    if(!button||!state.part||state.pending||state.busy)return;
+    const input=el('operationQuantity');
+    const digit=button.dataset.digit;
+    if(digit==='clear')input.value='';
+    else if(digit==='backspace')input.value=input.value.slice(0,-1);
+    else if(/^\\d$/.test(digit)&&input.value.length<6)input.value+=digit;
+    quantityError();
+  });
+  el('operationScanDialog').addEventListener('cancel',event=>{
+    event.preventDefault();
+    stopScanner();
   });
   el('operationCancelSession').addEventListener('click',discard);
   el('operationStartScan').addEventListener('click',startScanner);
