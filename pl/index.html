@@ -9,7 +9,7 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=19">
+  <link rel="stylesheet" href="./pl.css?v=20">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
   <script src="./warehouse-operations.js?v=5" defer></script>
@@ -24,6 +24,7 @@
         <span>MAGAZYN / POLSKA</span>
       </div>
       <span class="market-badge">PL</span>
+      <span class="status-pill brand-active-status"><span class="status-dot"></span> Aktywny</span>
     </header>
 
     <div id="loadingScreen" class="panel loading" role="status" aria-live="polite">
@@ -56,7 +57,6 @@
           <div class="session-compact-user">Zalogowany: <strong id="sessionTitle">—</strong></div>
           <div class="session-compact-warehouse">Magazyn: <strong id="warehouseName">—</strong></div>
         </div>
-        <span class="status-pill session-compact-status"><span class="status-dot"></span> Aktywny</span>
       </div>
       <!-- Zachowane dla aktualnej logiki JavaScript, niewidoczne w interfejsie. -->
       <div class="session-internal" hidden aria-hidden="true">
