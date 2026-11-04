@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=1';
 
-const APP_VERSION = '0.51';
+const APP_VERSION = '0.52';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -1869,11 +1869,8 @@ async function login() {
     return;
   }
 
-  if (pin === DEMO_PIN) {
-    startDemoSession();
-    return;
-  }
-
+  // Login always authenticates a real worker. Demo PIN must never
+  // shadow a legitimate PIN issued to a Polish D1 user.
   if (!navigator.onLine) {
     showToast('Pierwsze logowanie wymaga połączenia z internetem.', true);
     return;
@@ -1882,26 +1879,29 @@ async function login() {
   setLoading(true, 'Logowanie…');
 
   try {
-    // Preserve the established French login. Only when it does not
-    // authenticate do we try an existing Polish D1 account.
-    let loginResult;
+    // D1 Poland is checked first. The Polish user should never depend on
+    // a failed French Apps Script request to reach their assigned warehouse.
+    // French users still use the unchanged legacy API when D1 has no match.
+    let polishError = null;
     try {
-      loginResult = await api.login(pin);
-    } catch (frenchLoginError) {
       if (await tryPolishLogin(pin)) {
-        // No French visit/session must remain active on this shared device.
         resetState();
         $('pinInput').value = '';
         $('loginBtn').disabled = true;
         return;
       }
-      // Both independent PIN services returned a negative result.
-      // Never display only the legacy French error to a Polish worker:
-      // it incorrectly suggests that we did not check the D1 account.
-      throw new Error(
-        'Nie udało się zalogować. Żaden system nie potwierdził tego PIN-u i aktywnego dostępu. ' +
-        'Sprawdź przypisanie magazynu i aktywność konta w panelu Użytkownicy.'
-      );
+    } catch (error) {
+      polishError = error;
+    }
+
+    let loginResult;
+    try {
+      loginResult = await api.login(pin);
+    } catch (frenchLoginError) {
+      // If D1 was unavailable or couldn't load the PL workspace, tell the
+      // worker what actually failed instead of reporting a bad French PIN.
+      if (polishError) throw polishError;
+      throw frenchLoginError;
     }
     const team = loginResult.ekipa;
     const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
