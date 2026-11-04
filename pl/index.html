@@ -9,10 +9,10 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>GPBS Storage — Magazyn Polska</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./pl.css?v=31">
+  <link rel="stylesheet" href="./pl.css?v=32">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
-  <script src="./warehouse-operations.js?v=12" defer></script>
+  <script src="./warehouse-operations.js?v=13" defer></script>
   <script src="./pl.js?v=14" defer></script>
 </head>
 <body>
@@ -157,42 +157,6 @@
               </button>
             </div>
 
-            <div id="operationDirectionPanel" hidden>
-              <button id="operationBackToMenu" class="text-button operation-back-to-menu" type="button">← Wróć do wyboru operacji</button>
-              <p id="operationSearchCaption" class="section-info">Dodaj część przyjmowaną do magazynu.</p>
-              <div id="operationScanPanel" class="inventory-scanner-panel" hidden>
-                <div class="inventory-scanner-top">
-                  <strong>Skanowanie QR / Code128</strong>
-                  <button id="operationStopScan" class="scanner-close-button" type="button" aria-label="Zamknij skaner">✕</button>
-                </div>
-                <div id="operationReader" class="inventory-reader"></div>
-                <p id="operationScannerStatus" class="scanner-message">Skieruj aparat na kod części.</p>
-              </div>
-              <button id="operationStartScan" class="btn btn-outline" type="button">Skanuj część</button>
-              <form id="operationSearchForm" class="search-row" role="search">
-                <label for="operationSearchQuery" class="visually-hidden">Wyszukaj część</label>
-                <input id="operationSearchQuery" type="search" maxlength="80"
-                  placeholder="Nazwa, indeks lub SAP" autocomplete="off">
-                <button id="operationSearchButton" class="btn btn-search" type="submit">Szukaj</button>
-              </form>
-              <button id="operationClearSearch" class="text-button" type="button">Wyczyść wyszukiwanie</button>
-              <div id="operationSearchResults" class="operation-search-results"></div>
-              <button id="operationMore" class="btn btn-outline stock-more" type="button" hidden>Wczytaj więcej części</button>
-              <form id="operationQuantityForm" class="operation-quantity-panel" hidden>
-                <strong id="operationPartName"></strong>
-                <label class="input-label" for="operationQuantity">Dodaj ilość</label>
-                <input id="operationQuantity" type="number" min="1" max="100000" step="1"
-                  inputmode="numeric" autocomplete="off" required placeholder="Liczba sztuk">
-                <div class="operation-quantity-actions">
-                  <button id="operationCancelPart" class="btn btn-outline" type="button">Anuluj</button>
-                  <button id="operationAddButton" class="btn btn-primary" type="submit">Dodaj</button>
-                </div>
-              </form>
-              <div class="operation-lines-panel">
-                <div id="operationPZList" class="operation-lines" hidden></div>
-                <div id="operationWZList" class="operation-lines" hidden></div>
-              </div>
-            </div>
             <button id="operationSave" class="btn btn-primary operation-finish" type="button" disabled>Zakończ wizytę</button>
             <button id="operationCancelSession" class="text-button operation-discard" type="button">Anuluj wizytę</button>
           </div>
@@ -289,6 +253,77 @@
 
     <footer class="page-footer page-footer-signature"><img src="/icons/jaro-signature.svg" alt="Created by Jaro" width="80" height="29"></footer>
   </main>
+
+
+  <!-- Oddzielne pełnoekranowe okno PZ/WZ: bez logo, bez nagłówka magazynu.
+       TODO (późniejszy etap): notatki/informacje dodatkowe do PZ i WZ. -->
+  <section id="operationDirectionPanel" class="operation-task-screen" role="region"
+    aria-labelledby="operationTaskTitle" hidden>
+    <header class="operation-task-header">
+      <button id="operationBackToMenu" class="operation-task-back" type="button">← Cofnij</button>
+      <strong id="operationTaskTitle" class="operation-task-title">PRZYJĘCIE (PZ)</strong>
+    </header>
+    <p id="operationSearchCaption" hidden></p>
+    <main class="operation-task-body">
+      <p id="operationTaskStatus" class="operation-status" role="status" aria-live="polite" hidden></p>
+      <div id="operationPZList" class="operation-lines operation-task-lines" hidden></div>
+      <div id="operationWZList" class="operation-lines operation-task-lines" hidden></div>
+      <div id="operationSearchResults" class="operation-search-results operation-task-results"></div>
+      <button id="operationMore" class="btn btn-outline" type="button" hidden>Wczytaj więcej</button>
+    </main>
+    <div class="operation-task-bottom">
+      <form id="operationSearchForm" class="operation-task-search" role="search" autocomplete="off">
+        <label for="operationSearchQuery" class="visually-hidden">Indeks lub numer SAP części</label>
+        <input id="operationSearchQuery" type="search" maxlength="80"
+          placeholder="Wpisz indeks części / SAP" autocapitalize="characters" spellcheck="false">
+        <button id="operationSearchButton" type="submit">Znajdź</button>
+      </form>
+      <button id="operationClearSearch" type="button" hidden>Wyczyść wyszukiwanie</button>
+      <button id="operationStartScan" class="btn btn-primary operation-task-scan" type="button">Skanuj QR</button>
+    </div>
+  </section>
+
+  <dialog id="operationScanDialog" class="inventory-dialog operation-scan-dialog"
+    aria-label="Skanowanie kodu części">
+    <div id="operationScanPanel" class="inventory-scanner-panel" hidden>
+      <div class="inventory-scanner-top">
+        <strong>Skanuj QR lub kod kreskowy</strong>
+        <button id="operationStopScan" class="scanner-close-button" type="button" aria-label="Zamknij skaner">✕</button>
+      </div>
+      <div id="operationReader" class="inventory-reader"></div>
+      <p id="operationScannerStatus" class="scanner-message" role="status">Skieruj aparat na kod części.</p>
+    </div>
+  </dialog>
+
+  <dialog id="operationQuantityDialog" class="inventory-dialog operation-quantity-dialog"
+    aria-labelledby="operationQuantityTitle">
+    <form id="operationQuantityForm" class="inventory-dialog-inner operation-quantity-modal" hidden>
+      <h2 id="operationQuantityTitle">Wpisz ilość</h2>
+      <strong id="operationPartName" class="operation-quantity-part"></strong>
+      <label for="operationQuantity" class="visually-hidden">Liczba sztuk</label>
+      <input id="operationQuantity" type="text" inputmode="none" readonly
+        autocomplete="off" maxlength="6" pattern="[0-9]{1,6}" aria-label="Ilość sztuk">
+      <p id="operationQuantityError" class="error" role="alert" hidden></p>
+      <div id="operationKeypad" class="inventory-keypad" role="group" aria-label="Klawiatura numeryczna">
+        <button type="button" data-digit="1">1</button>
+        <button type="button" data-digit="2">2</button>
+        <button type="button" data-digit="3">3</button>
+        <button type="button" data-digit="4">4</button>
+        <button type="button" data-digit="5">5</button>
+        <button type="button" data-digit="6">6</button>
+        <button type="button" data-digit="7">7</button>
+        <button type="button" data-digit="8">8</button>
+        <button type="button" data-digit="9">9</button>
+        <button type="button" data-digit="clear" class="inventory-keypad-action" aria-label="Wyczyść">C</button>
+        <button type="button" data-digit="0">0</button>
+        <button type="button" data-digit="backspace" class="inventory-keypad-action" aria-label="Usuń cyfrę">⌫</button>
+      </div>
+      <div class="inventory-dialog-actions">
+        <button id="operationCancelPart" class="btn btn-outline" type="button">Anuluj</button>
+        <button id="operationAddButton" class="btn btn-primary" type="submit">Dodaj</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="plActionConfirmDialog" class="inventory-dialog pl-action-confirm-dialog"
     aria-labelledby="plActionConfirmTitle" aria-describedby="plActionConfirmMessage">
