@@ -1006,3 +1006,94 @@ body.operation-task-open {overflow:hidden}
   #operationDirectionPanel .operation-task-search input {font-size:12px}
   .operation-quantity-dialog .operation-quantity-modal {padding:18px 14px}
 }
+
+
+/* Inwentaryzacja PL: zwarta górna belka i czysty ekran skanowania. */
+#inventoryScreen .inventory-topbar {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  margin:0 0 17px;
+}
+#inventoryScreen .inventory-topbar #backFromInventoryButton {
+  display:inline-flex;
+  align-items:center;
+  flex:0 0 auto;
+  min-height:45px;
+  margin:0;
+  padding:9px 12px;
+  border:1px solid #a9525b;
+  border-radius:9px;
+  background:linear-gradient(180deg,#292b30,#15191d);
+  font-weight:800;
+  font-size:15px;
+  color:#fff;
+  text-decoration:none;
+}
+#inventoryScreen .inventory-topbar .section-title {
+  min-width:0;
+  margin:0;
+  font-size:17px;
+  line-height:1.25;
+  font-weight:850;
+  color:#f0f4f8;
+  text-align:right;
+}
+#inventoryScreen #inventoryWarehouseCaption[hidden],
+#inventoryScreen #inventoryScannerIdleMessage[hidden] {
+  display:none!important;
+}
+#inventoryScreen .scanner-closed {
+  margin:0;
+  padding:0;
+  background:transparent;
+  border:0;
+  border-radius:0;
+}
+#inventoryScreen .scanner-closed #inventoryStartScanner {
+  min-height:62px;
+  margin:0;
+  border:1px solid #e64f58;
+  border-radius:12px;
+  font-size:19px;
+  box-shadow:0 0 14px rgba(226,48,56,.15);
+  background:linear-gradient(180deg,#343238,#191c23);
+}
+#inventoryScreen .scanner-closed .inventory-manual-shortcut {
+  display:block;
+  width:100%;
+  margin:8px 0 0;
+  padding:9px 4px;
+  text-align:center;
+  font-size:12px;
+}
+#inventoryScreen .inventory-draft {
+  margin-top:17px;
+  padding-top:18px;
+}
+#inventoryScreen .inventory-section-heading {
+  margin-bottom:10px;
+  gap:8px;
+}
+#inventoryScreen .inventory-section-heading h3 {
+  font-size:16px;
+}
+#inventoryScreen .inventory-draft > .section-info {
+  margin-bottom:10px;
+  font-size:12px;
+}
+#inventoryScreen .inventory-commit {
+  min-height:60px;
+  margin-top:18px;
+}
+#inventoryScreen .inventory-catalog {
+  margin-top:16px;
+  padding-top:18px;
+}
+@media(max-width:360px){
+  #inventoryScreen .inventory-topbar {gap:8px}
+  #inventoryScreen .inventory-topbar #backFromInventoryButton {padding:8px 9px;font-size:13px}
+  #inventoryScreen .inventory-topbar .section-title {font-size:15px}
+}
