@@ -646,3 +646,8 @@ body:has(#sessionScreen:not([hidden])) .brand {
   font-weight:400;
   color:#a7b3c1;
 }
+
+/* Dane zalogowanego i magazynu tylko na głównym ekranie magazynu. */
+#sessionScreen:not(:has(#warehouseHome:not([hidden]))) .session-compact-bar {
+  display:none;
+}
