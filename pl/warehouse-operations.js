@@ -147,8 +147,7 @@
     el('operationVisitCounterparty').textContent=upperName(el('operationCounterparty').value)||'—';
     el('operationVisitPlate').textContent=upperPlate(el('operationPlate').value)||'—';
     el('operationEditVisit').hidden=!!state.pending;
-    el('backFromOperationButton').textContent=['PZ','WZ'].includes(state.stage)
-      ?'← Wróć do wyboru operacji':'← Wróć do magazynu';
+    el('backFromOperationButton').textContent='← Cofnij';
     disableDuringPending();
   }
 
