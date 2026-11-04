@@ -780,3 +780,37 @@ body:has(#sessionScreen:not([hidden])) .brand {
   #operationScreen .operation-tabs {gap:10px}
   #operationScreen .operation-tabs button {min-height:68px;padding:10px 13px}
 }
+
+
+/* Wspólne okno potwierdzenia: wyloguj i anuluj wizytę. */
+.pl-action-confirm-dialog {
+  width:min(calc(100% - 32px),390px);
+  border:1px solid #a34d55;
+  border-radius:14px;
+  background:linear-gradient(165deg,#202831,#161c23);
+}
+.pl-action-confirm-dialog .inventory-dialog-inner {
+  padding:25px 20px;
+}
+.pl-action-confirm-dialog h2 {
+  margin:0 0 12px;
+  font-size:19px;
+  line-height:1.35;
+  text-align:center;
+}
+.pl-action-confirm-dialog p {
+  margin:0;
+  font-size:13px;
+  line-height:1.55;
+  text-align:center;
+  color:#bfcbd7;
+}
+.pl-action-confirm-dialog .inventory-dialog-actions {
+  margin-top:22px;
+}
+.pl-action-confirm-dialog .inventory-dialog-actions .btn {
+  min-height:48px;
+  border-radius:10px;
+  font-size:12px;
+  line-height:1.3;
+}
