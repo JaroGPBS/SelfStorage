@@ -762,6 +762,12 @@
 
   async function logout() {
     if(state.busy)return;
+    const approved=await window.GPBSPlConfirm.ask({
+      title:'Czy na pewno chcesz się wylogować?',
+      message:'Po potwierdzeniu wrócisz do ekranu logowania.',
+      approveLabel:'Tak, wyloguj'
+    });
+    if(!approved||state.busy||!state.user)return;
     setWorking(true,byId('logoutButton'));
     errorText(byId('sessionError'),'');
     try {
