@@ -82,9 +82,11 @@
     for(const id of ['operationCounterparty','operationPlate','operationVisitContinue',
       'operationEditVisit','operationBackToMenu','operationSearchQuery','operationSearchButton',
       'operationStartScan','operationAddButton','operationQuantity',
-      'operationTabPZ','operationTabWZ','operationCancelSession','operationClearSearch']){
+      'operationTabPZ','operationTabWZ','operationClearSearch']){
       el(id).disabled=lock;
     }
+    // Pending commits cannot be discarded, but the user should be told why.
+    el('operationCancelSession').disabled=state.busy;
     // A click must always produce clear feedback, even when no parts were added.
     el('operationSave').disabled=state.busy||!state.ready;
     el('operationSave').textContent=state.pending?'Ponów zapis tej samej wizyty':'Zakończ wizytę';
@@ -484,7 +486,15 @@
   }
 
   async function discard(){
-    if(state.pending||state.busy)return;
+    if(state.busy)return;
+    if(state.pending){
+      await window.GPBSPlConfirm.ask({
+        title:'Nie można anulować wizyty',
+        message:'Zapis tej wizyty mógł już dotrzeć do D1. Wybierz „Ponów zapis tej samej wizyty”, aby bezpiecznie sprawdzić wynik bez podwójnego naliczania części.',
+        approveLabel:'Rozumiem'
+      });
+      return;
+    }
     const approved=await window.GPBSPlConfirm.ask({
       title:'Czy na pewno chcesz anulować wizytę?',
       message:'Wszystkie niezapisane przyjęcia i wydania z tej wizyty zostaną usunięte.',
