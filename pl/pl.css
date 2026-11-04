@@ -651,3 +651,74 @@ body:has(#sessionScreen:not([hidden])) .brand {
 #sessionScreen:not(:has(#warehouseHome:not([hidden]))) .session-compact-bar {
   display:none;
 }
+
+
+/* Aktywna wizyta: Cofnij i dane ekipy w jednym kompaktowym rzędzie. */
+#operationScreen .operation-topbar {
+  display:flex;
+  align-items:stretch;
+  gap:8px;
+  margin:0 0 12px;
+  min-width:0;
+}
+#operationScreen #backFromOperationButton {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  align-self:flex-start;
+  min-height:52px;
+  min-width:98px;
+  margin:0;
+  padding:10px 12px;
+  border:1px solid #e54b50;
+  border-radius:12px;
+  background:linear-gradient(180deg,#292b30,#15191d);
+  color:#fff;
+  box-shadow:0 0 12px rgba(226,48,56,.20);
+  text-decoration:none;
+  font-size:16px;
+  line-height:1.1;
+}
+#operationScreen #backFromOperationButton:active {
+  transform:scale(.98);
+}
+#operationScreen .operation-topbar .operation-visitor-line {
+  flex:1 1 0;
+  min-width:0;
+  min-height:52px;
+  margin:0;
+  padding:7px 9px;
+  gap:6px;
+  border-color:#56616d;
+  background:linear-gradient(180deg,#202832,#131a22);
+}
+#operationScreen .operation-topbar .operation-visitor-details {
+  flex:1 1 0;
+  min-width:0;
+  overflow:hidden;
+  gap:3px;
+}
+#operationScreen .operation-topbar .operation-visitor-details strong,
+#operationScreen .operation-topbar .operation-visitor-details span {
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#operationScreen .operation-topbar .operation-visitor-details strong {
+  font-size:12px;
+}
+#operationScreen .operation-topbar .operation-visitor-details span {
+  font-size:11px;
+}
+#operationScreen .operation-topbar .operation-edit-visit {
+  padding:6px 1px;
+  font-size:10px;
+  flex:0 0 auto;
+}
+@media(max-width:360px) {
+  #operationScreen .operation-topbar {gap:6px}
+  #operationScreen #backFromOperationButton {min-width:82px;padding:8px 9px;font-size:14px}
+  #operationScreen .operation-topbar .operation-visitor-line {padding:6px 7px;gap:4px}
+}
