@@ -24,11 +24,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--red-bright);out
   20px max(22px,env(safe-area-inset-bottom));
   display:flex;flex-direction:column}
 .brand{display:flex;align-items:center;gap:12px;margin:6px 0 38px}
-.brand img{width:49.5px;height:49.5px;object-fit:contain}
+.brand img{width:54.45px;height:54.45px;object-fit:contain}
 .brand-name{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
 .brand-name strong{font-size:21px;letter-spacing:2.3px;font-weight:850;line-height:1.15}
 .brand-name span{font-size:10px;color:var(--muted);letter-spacing:1.8px;font-weight:700}
-.market-badge{padding:7.7px 9.9px;border:1px solid #9c4148;border-radius:8px;color:#ff8a8d;font-size:13.2px;font-weight:800;letter-spacing:.66px}
+.market-badge{padding:7px 9px;border:1px solid #9c4148;border-radius:8px;color:#ff8a8d;font-size:12px;font-weight:800;letter-spacing:.6px}
 .panel{width:100%;border:1px solid var(--border);background:linear-gradient(165deg,#1c242c,#141a21);box-shadow:0 25px 65px #00000045;border-radius:20px;padding:29px 26px}
 .panel-kicker{font-weight:800;font-size:11px;letter-spacing:1.7px;color:#ff7678}
 h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:10px 0 12px;font-weight:850}
@@ -460,7 +460,7 @@ body:has(#sessionScreen:not([hidden])) .brand {
   #sessionScreen .session-compact-warehouse strong {font-size:11px}
   body:has(#sessionScreen:not([hidden])) .brand {gap:6px}
   .brand-active-status {font-size:9px;padding:5px 6px}
-  body:has(#sessionScreen:not([hidden])) .market-badge {font-size:12.1px;padding:6.6px 7.7px}
+  body:has(#sessionScreen:not([hidden])) .market-badge {font-size:11px;padding:6px 7px}
   body:has(#sessionScreen:not([hidden])) .brand-name strong {font-size:18px;letter-spacing:1.5px}
   body:has(#sessionScreen:not([hidden])) .brand-name span {font-size:9px;letter-spacing:1px}
 }
