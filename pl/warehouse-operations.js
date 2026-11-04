@@ -370,7 +370,15 @@
 
   async function review(){
     if(!state.ready||state.busy||!state.warehouse)return;
-    if(state.pending){submit();return;}
+    if(state.pending){
+      const approved=await window.GPBSPlConfirm.ask({
+        title:'Czy na pewno chcesz zakończyć wizytę?',
+        message:'Ponowić zapis tej samej wizyty? Jej numer nie zostanie zmieniony, więc części nie zostaną naliczone drugi raz.',
+        approveLabel:'Tak, ponów zapis'
+      });
+      if(approved)submit();
+      return;
+    }
     const input=payloadForCommit();
     if(!input)return;
     state.reviewPayload=null;
@@ -405,10 +413,9 @@
             ' szt., wydajesz '+row.issued+
             ' szt. — różnica '+row.shortfall+' szt.').join('\n')
         :'';
-      el('operationConfirmTitle').textContent=warnings.length
-        ?'Potwierdź wydanie ponad stan':'Zatwierdzić całą sesję?';
+      el('operationConfirmTitle').textContent='Czy na pewno chcesz zakończyć wizytę?';
       el('operationConfirmApprove').textContent=warnings.length
-        ?'Tak, ilości się zgadzają':'Zapisz PZ / WZ';
+        ?'Potwierdź wydanie i zakończ':'Tak, zakończ i zapisz';
       status('');
       el('operationConfirmDialog').showModal();
     }catch(error){
@@ -468,9 +475,14 @@
     }
   }
 
-  function discard(){
-    if(state.pending)return;
-    if((state.pz.size||state.wz.size)&&!confirm('Usunąć niezapisane PZ i WZ z tej sesji?'))return;
+  async function discard(){
+    if(state.pending||state.busy)return;
+    const approved=await window.GPBSPlConfirm.ask({
+      title:'Czy na pewno chcesz anulować wizytę?',
+      message:'Wszystkie niezapisane przyjęcia i wydania z tej wizyty zostaną usunięte.',
+      approveLabel:'Tak, anuluj wizytę'
+    });
+    if(!approved||state.pending||state.busy||!state.warehouse)return;
     state.pz.clear();state.wz.clear();state.part=null;state.stage='details';
     el('operationCounterparty').value='';
     el('operationPlate').value='';
