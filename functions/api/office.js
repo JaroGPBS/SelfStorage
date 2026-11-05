@@ -242,11 +242,15 @@ export async function onRequestGet({request,env}){
       const id=url.searchParams.get('id')||'';
       const direction=url.searchParams.get('direction')||'';
       if(!SESSION.test(id)||!['PZ','WZ'].includes(direction))return error('Nieprawidłowy dokument.');
+      const indexed=await tableExists(env.DB,'pl_part_index_migrations');
       const rows=await selectRows(env.DB,
-        'SELECT p.sap_number,p.part_number,p.name,l.quantity,'+
+        'SELECT p.sap_number,'+
+        (indexed?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
+        ' AS part_number,p.name,l.quantity,'+
         'COALESCE(l.shortage_quantity,0) AS shortage_quantity '+
         'FROM pl_warehouse_sessions s JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
         'JOIN parts p ON p.id=l.part_id '+
+        (indexed?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
         'WHERE s.id=? AND s.warehouse_id=? AND l.direction=? '+
         'ORDER BY p.name COLLATE NOCASE',[id,warehouseId,direction]);
       return workerJson({ok:true,lines:rows});
@@ -265,10 +269,14 @@ export async function onRequestGet({request,env}){
     if(view==='inventory'){
       const id=url.searchParams.get('id')||'';
       if(!INVENTORY.test(id))return error('Nieprawidłowa inwentaryzacja.');
+      const indexed=await tableExists(env.DB,'pl_part_index_migrations');
       const rows=await selectRows(env.DB,
-        'SELECT p.sap_number,p.part_number,p.name,c.quantity_before,c.quantity_after '+
+        'SELECT p.sap_number,'+
+        (indexed?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
+        ' AS part_number,p.name,c.quantity_before,c.quantity_after '+
         'FROM pl_warehouse_inventory_changes c JOIN parts p ON p.id=c.part_id '+
         'JOIN pl_warehouse_inventories i ON i.id=c.inventory_id '+
+        (indexed?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
         "WHERE c.inventory_id=? AND c.warehouse_id=? AND i.status='COMMITTED' "+
         'ORDER BY p.name COLLATE NOCASE',[id,warehouseId]);
       return workerJson({ok:true,lines:rows});
