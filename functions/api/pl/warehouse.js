@@ -3,6 +3,7 @@
 // Every request verifies the signed session, live role, active account and
 // warehouse grants in D1. The legacy French /api gateway is not involved.
 import { verifyWorkerSession, workerJson, workerAuthReady } from '../../../lib/pl-worker-auth.js';
+import {ensurePartIndexes} from '../../../lib/pl-part-indexes.js';
 
 const STOCK_ROLES = new Set(['ADMIN', 'KIEROWNIK', 'MAGAZYNIER']);
 const PAGE_SIZE = 60;
@@ -68,6 +69,13 @@ export async function onRequestGet({request,env}) {
     const verifiedTable=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
     ).first();
+    let hasIndices=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_index_migrations'"
+    ).first();
+    if(!hasIndices){
+      await ensurePartIndexes(env.DB);
+      hasIndices=true;
+    }
     if(view==='resolve') {
       if(!verifiedTable)
         return failure('Najpierw wykonaj migrację db/09-pl-inventory-scanning.sql.',503);
@@ -79,12 +87,15 @@ export async function onRequestGet({request,env}) {
       const candidates=[...codes].filter(Boolean).slice(0,12);
       const placeholders=candidates.map(()=>'?').join(',');
       const match=await env.DB.prepare(
-        'SELECT p.id,p.part_number,p.name,p.sap_number,v.status AS review_status '+
+        'SELECT p.id,COALESCE(ix.new_index,p.part_number) AS part_number,p.name,p.sap_number,v.status AS review_status '+
         'FROM parts p LEFT JOIN pl_part_verifications v ON v.part_id=p.id '+
+        'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id '+
         'WHERE p.active=1 AND (UPPER(p.part_number) IN ('+placeholders+') '+
         'OR UPPER(p.sap_number) IN ('+placeholders+') OR UPPER(p.id) IN ('+placeholders+') '+
-        'OR UPPER(v.raw_code) IN ('+placeholders+')) LIMIT 3'
-      ).bind(...candidates,...candidates,...candidates,...candidates).all();
+        'OR UPPER(v.raw_code) IN ('+placeholders+') '+
+        'OR UPPER(ix.new_index) IN ('+placeholders+') '+
+        'OR (ix.old_active=1 AND UPPER(ix.old_index) IN ('+placeholders+'))) LIMIT 3'
+      ).bind(...candidates,...candidates,...candidates,...candidates,...candidates,...candidates).all();
       const matches=match.results||[];
       if(matches.length===0)return failure('Nie znaleziono części o zeskanowanym kodzie.',404);
       if(matches.length>1)return failure('Kod pasuje do kilku części. Wyszukaj ręcznie.',409);
@@ -97,14 +108,17 @@ export async function onRequestGet({request,env}) {
     const params=[warehouseId];
     if(query) {
       filters.push("(p.part_number LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\' "+
-        "OR p.sap_number LIKE ? ESCAPE '\\')");
+        "OR p.sap_number LIKE ? ESCAPE '\\' "+
+        "OR ix.new_index LIKE ? ESCAPE '\\' "+
+        "OR (ix.old_active=1 AND ix.old_index LIKE ? ESCAPE '\\'))");
       const q='%'+query.replace(/[\\%_]/g,'\\$&')+'%';
-      params.push(q,q,q);
+      params.push(q,q,q,q,q);
     }
-    const sql='SELECT p.id,p.part_number,p.name,p.sap_number,s.quantity '+
+    const sql='SELECT p.id,COALESCE(ix.new_index,p.part_number) AS part_number,p.name,p.sap_number,s.quantity '+
       (verifiedTable?' ,v.status AS review_status ':' ,NULL AS review_status ')+
       'FROM parts p LEFT JOIN warehouse_stock s '+
       'ON s.part_id=p.id AND s.warehouse_id=? '+
+      'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id '+
       (verifiedTable?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
       'WHERE '+filters.join(' AND ')+' '+
       'ORDER BY p.name COLLATE NOCASE,p.id LIMIT ? OFFSET ?';
