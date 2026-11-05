@@ -180,6 +180,11 @@
     byId('inventoryMoreButton').hidden=true;
   }
 
+  function closeInventoryManualSearch() {
+    clearInventorySearchResults();
+    byId('inventoryManual').hidden=true;
+  }
+
   function setInventoryNotice(knownItems, catalogItems) {
     const known=Number(knownItems);
     const total=Number(catalogItems);
@@ -668,9 +673,8 @@
       renderInventoryDraft(data.draft);
       inv.selectedPart=null;
       byId('inventoryQuantityForm').hidden=true;
-      // Keep the current inventory rows; discard old manual results.
-      // Another explicit search is required to display a new result list.
-      clearInventorySearchResults();
+      // Return to the counted-parts screen after a successful manual save.
+      closeInventoryManualSearch();
     }catch(error){
       inventoryError(error.message);
     }finally{
@@ -890,10 +894,13 @@
   byId('backFromInventoryButton').addEventListener('click',()=>{
     window.GPBSPlInventory?.close();
     state.inventory.loadSequence++;
-    stopInventorySearch();
+    closeInventoryManualSearch();
     state.inventory.selectedPart=null;
     byId('inventoryQuantityForm').hidden=true;
     subview('warehouseHome');
+  });
+  byId('inventorySearchBack').addEventListener('click',()=>{
+    closeInventoryManualSearch();
   });
   byId('inventorySearchForm').addEventListener('submit',event=>{
     event.preventDefault();
@@ -917,9 +924,10 @@
     if(!draft||state.subview!=='inventoryScreen')return;
     renderInventoryDraft(draft);
     // No extra "Dodano X szt." summary: the counted row is the confirmation.
+    // Both scanned and manually selected parts return to the main count list.
     inventoryFeedback('');
     inventoryError('');
-    clearInventorySearchResults();
+    closeInventoryManualSearch();
   });
 
   byId('backFromStockButton').addEventListener('click',()=>{
