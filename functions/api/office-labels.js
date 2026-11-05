@@ -96,10 +96,16 @@ export async function onRequestPost({request,env}){
   try{
     if(!await verifyWarehouse(env.DB,auth.user,warehouseId))
       return fail('Nie masz dostępu do tego magazynu.',403);
-    const rows=await env.DB.prepare(
-      'SELECT id FROM parts WHERE active=1 AND id IN ('+ids.map(()=>'?').join(',')+')'
-    ).bind(...ids).all();
-    if((rows.results||[]).length!==ids.length)
+    // D1 accepts at most 100 bound values in a single SQL statement.
+    const verified=new Set();
+    for(let i=0;i<ids.length;i+=50){
+      const chunk=ids.slice(i,i+50);
+      const rows=await env.DB.prepare(
+        'SELECT id FROM parts WHERE active=1 AND id IN ('+chunk.map(()=>'?').join(',')+')'
+      ).bind(...chunk).all();
+      for(const row of rows.results||[])verified.add(row.id);
+    }
+    if(verified.size!==ids.length)
       return fail('Niektóre części nie są już dostępne.',409);
     await ensurePrintTable(env.DB);
     const statements=ids.map(id=>env.DB.prepare(
