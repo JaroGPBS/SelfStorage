@@ -992,7 +992,11 @@ async function route(request,env) {
   if(body?.action==='markIndexMigration') {
     if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
     const id=String(body.partId||'');
-    const field={Belleville:'belleville_done',Toulouse:'toulouse_done',Paris:'paris_done'}[body.warehouse];
+    const field=new Map([
+      ['Belleville','belleville_done'],
+      ['Toulouse','toulouse_done'],
+      ['Paris','paris_done']
+    ]).get(String(body.warehouse||''));
     if(!/^[A-Za-z0-9_-]{1,100}$/.test(id)||!field||typeof body.done!=='boolean')
       return fail('Nieprawidłowy indeks lub magazyn.',400);
     try{
