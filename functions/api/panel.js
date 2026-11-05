@@ -194,10 +194,16 @@ async function queryPanel(env,view,url) {
         overissuedLines=Number(overissued?.n||0);
       }
     }
+    const reviewTable=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
+    ).first();
+    const waiting=reviewTable?await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM pl_part_verifications WHERE status='PENDING'"
+    ).first():null;
     return {warehouses:warehouses?.n||0,
       operations:Number(operations?.n||0)+recentDocuments,
       parts:parts?.n||0,users:users?.n||0,
-      overissuedLines};
+      overissuedLines,pendingParts:Number(waiting?.n||0)};
   }
   if(view==='warehouses') {
     const rows=await env.DB.prepare(
@@ -224,14 +230,41 @@ async function queryPanel(env,view,url) {
     const verification=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
     ).first();
+    const hasPhotos=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
+    ).first();
     const rows=await env.DB.prepare(
       'SELECT p.id,p.part_number,p.name,p.sap_number,s.quantity '+
       (verification?' ,v.status AS verification_status ':' ,NULL AS verification_status ')+
+      (hasPhotos?' ,EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id) AS has_photo ':
+        ' ,0 AS has_photo ')+
       'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
       (verification?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
       'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE LIMIT 1000'
     ).bind(warehouse).all();
     return {warehouse,parts:rows.results||[]};
+  }
+  if(view==='newParts') {
+    const ready=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
+    ).first();
+    if(!ready)return {parts:[]};
+    const hasPhotos=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
+    ).first();
+    const rows=await env.DB.prepare(
+      'SELECT p.id,p.part_number,p.name,p.sap_number,'+
+      'v.status AS verification_status,v.created_at AS added_at,'+
+      'w.name AS warehouse_name,v.warehouse_id,COALESCE(u.name,v.created_by) AS added_by,'+
+      (hasPhotos?'EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id) AS has_photo ':
+        '0 AS has_photo ')+
+      'FROM pl_part_verifications v JOIN parts p ON p.id=v.part_id '+
+      'JOIN warehouses w ON w.id=v.warehouse_id '+
+      'LEFT JOIN users u ON u.id=v.created_by '+
+      "WHERE v.status='PENDING' AND w.country_code='PL' "+
+      'ORDER BY v.created_at DESC,v.part_id DESC LIMIT 1000'
+    ).all();
+    return {parts:rows.results||[]};
   }
   if(view==='movements') {
     // Historical operations and NEW mixed PZ/WZ sessions use separate tables.
@@ -691,7 +724,33 @@ async function route(request,env) {
     const session=await readSession(request,env.PANEL_SESSION_SECRET);
     if(!session) return fail('Zaloguj się do panelu.',401);
     const view=url.searchParams.get('view')||'summary';
-    if(view==='users' && session.role!=='ADMIN') return fail('Brak uprawnień.',403);
+    if((view==='users'||view==='newParts') && session.role!=='ADMIN')
+      return fail('Brak uprawnień.',403);
+    if(view==='partPhoto') {
+      const partId=url.searchParams.get('part')||'';
+      if(!/^[A-Za-z0-9_-]{1,100}$/.test(partId))return fail('Nieprawidłowa część.',400);
+      try {
+        const exists=await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
+        ).first();
+        if(!exists)return fail('Brak zdjęcia części.',404);
+        const item=await env.DB.prepare(
+          'SELECT mime_type,photo_base64 FROM pl_part_photos WHERE part_id=?'
+        ).bind(partId).first();
+        if(!item)return fail('Brak zdjęcia części.',404);
+        const decoded=atob(item.photo_base64);
+        const image=Uint8Array.from(decoded,c=>c.charCodeAt(0));
+        return new Response(image,{status:200,headers:{
+          'Content-Type':item.mime_type,
+          'Cache-Control':'private, no-store',
+          'X-Content-Type-Options':'nosniff',
+          'Content-Security-Policy':"default-src 'none'; sandbox"
+        }});
+      }catch(ex) {
+        console.error('panel part photo failed',ex?.name||'Error');
+        return fail('Nie można otworzyć zdjęcia części.',503);
+      }
+    }
     try {
       return respond({ok:true,view,data:await queryPanel(env,view,url),user:{role:'ADMIN'}});
     } catch(e) {
