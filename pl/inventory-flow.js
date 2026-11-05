@@ -139,10 +139,16 @@
       await stop(false);
       idleMessage('Nie udało się uruchomić aparatu: '+error.message+
         ' Możesz spróbować ponownie przyciskiem „Skanuj”.');
-      el('inventoryManual').hidden=false;
+      openManualSearch();
     }finally{
       if(epoch===state.epoch)state.opening=false;
     }
+  }
+
+  function openManualSearch() {
+    if(!state.warehouse||state.busy)return;
+    el('inventoryManual').hidden=false;
+    el('inventoryQuery').focus({preventScroll:true});
   }
 
   async function stop(manual=false,exit=false) {
@@ -152,10 +158,7 @@
     el('inventoryScannerPanel').hidden=true;
     el('inventoryScannerClosed').hidden=exit;
     if(!exit)idleMessage('Aparat jest wyłączony. Naciśnij „Skanuj”, aby odczytać następną część.');
-    if(manual) {
-      el('inventoryManual').hidden=false;
-      el('inventoryManual').scrollIntoView({behavior:'smooth',block:'start'});
-    }
+    if(manual)openManualSearch();
     const stopping=Promise.resolve(camera()?.stop()).catch(()=>{});
     state.stopPromise=stopping;
     await stopping;
@@ -173,6 +176,7 @@
   }
   function close(){
     stop(false,true);
+    el('inventoryManual').hidden=true;
     state.warehouse=null;
     state.part=null;
     state.pendingId=null;
@@ -253,10 +257,7 @@
   el('inventoryCloseScanner').addEventListener('click',()=>stop(true));
   el('inventoryScannerManual').addEventListener('click',()=>stop(true));
   el('inventoryStartScanner').addEventListener('click',start);
-  el('inventoryShowManual').addEventListener('click',()=>{
-    el('inventoryManual').hidden=false;
-    el('inventoryManual').scrollIntoView({behavior:'smooth',block:'start'});
-  });
+  el('inventoryShowManual').addEventListener('click',openManualSearch);
   el('inventoryCountForm').addEventListener('submit',addQuantity);
   el('inventoryKeypad').addEventListener('click',event=>{
     const button=event.target.closest('button[data-digit]');
