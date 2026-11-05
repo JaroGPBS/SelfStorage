@@ -7,7 +7,7 @@ const WORKSPACE_ID = 'gpbsPolandWorkspace';
 const POLISH_SCRIPTS = [
   '/pl/inventory-scanner.js?v=2',
   '/pl/inventory-flow.js?v=6',
-  '/pl/warehouse-operations.js?v=14',
+  '/pl/warehouse-operations.js?v=15',
   '/pl/pl.js?v=23'
 ];
 
