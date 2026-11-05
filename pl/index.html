@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="./pl.css?v=42">
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=6" defer></script>
-  <script src="./warehouse-operations.js?v=13" defer></script>
+  <script src="./warehouse-operations.js?v=14" defer></script>
   <script src="./pl.js?v=23" defer></script>
 </head>
 <body>
@@ -266,6 +266,7 @@
     aria-labelledby="operationTaskTitle" hidden>
     <header class="operation-task-header">
       <button id="operationBackToMenu" class="operation-task-back" type="button">← Cofnij</button>
+      <button id="operationNewPartOpen" class="operation-new-part-trigger" type="button">+ Nowa część</button>
       <strong id="operationTaskTitle" class="operation-task-title">PRZYJĘCIE (PZ)</strong>
     </header>
     <p id="operationSearchCaption" hidden></p>
@@ -298,6 +299,33 @@
       <div id="operationReader" class="inventory-reader"></div>
       <p id="operationScannerStatus" class="scanner-message" role="status">Skieruj aparat na kod części.</p>
     </div>
+  </dialog>
+
+  <dialog id="operationNewPartDialog" class="inventory-dialog operation-new-part-dialog"
+    aria-labelledby="operationNewPartTitle">
+    <form id="operationNewPartForm" class="inventory-dialog-inner">
+      <h2 id="operationNewPartTitle">Dodaj nową część</h2>
+      <p class="operation-new-part-warning">Upewnij się, że tej części nie ma już w bazie danych.</p>
+      <label for="operationNewPartName">Nazwa części <span aria-hidden="true">*</span></label>
+      <input id="operationNewPartName" type="text" minlength="2" maxlength="120"
+        autocomplete="off" required placeholder="Nazwa części">
+      <p class="operation-new-part-hint">Najlepiej wpisz oryginalną nazwę InPost.</p>
+      <label for="operationNewPartSap">Indeks SAP (opcjonalnie)</label>
+      <input id="operationNewPartSap" type="text" maxlength="100" autocomplete="off"
+        autocapitalize="characters" placeholder="Możesz uzupełnić później">
+      <label for="operationNewPartPhoto">Zdjęcie części (opcjonalnie, jedno)</label>
+      <p class="operation-new-part-hint">Pokaż cechy rozpoznawcze, np. końcówki przewodu i rodzaj wtyczek.</p>
+      <input id="operationNewPartPhoto" type="file" accept="image/*"
+        capture="environment" aria-describedby="operationNewPartPhotoHelp">
+      <p id="operationNewPartPhotoHelp" class="operation-new-part-hint">Zrób zdjęcie lub wybierz z telefonu.</p>
+      <img id="operationNewPartPreview" class="operation-new-part-preview"
+        alt="Podgląd zdjęcia nowej części" hidden>
+      <p id="operationNewPartError" class="error" role="alert" hidden></p>
+      <div class="inventory-dialog-actions">
+        <button id="operationNewPartCancel" class="btn btn-outline" type="button">Anuluj</button>
+        <button id="operationNewPartSave" class="btn btn-primary" type="submit">Zapisz część</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="operationQuantityDialog" class="inventory-dialog operation-quantity-dialog"
