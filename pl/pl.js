@@ -633,9 +633,7 @@
       inv.summary=response.summary||null;
       inv.publishingEnabled=Boolean(response.publishingEnabled);
       renderInventoryDraft(response.draft);
-      inv.searchPage=0;
-      inv.searchQuery='';
-      clearInventorySearchResults();
+      if(byId('inventoryManual').hidden)clearInventorySearchResults();
     }catch(error) {
       if(sequence!==inv.loadSequence)return;
       inv.draft=null;
@@ -898,6 +896,12 @@
     state.inventory.selectedPart=null;
     byId('inventoryQuantityForm').hidden=true;
     subview('warehouseHome');
+  });
+  document.addEventListener('gpbs-pl-inventory-manual-open',()=>{
+    if(state.subview!=='inventoryScreen'||!state.warehouse||
+       byId('inventoryManual').hidden)return;
+    clearInventorySearchResults();
+    fetchInventoryParts(); // empty search = full active parts catalogue, page 1
   });
   byId('inventorySearchBack').addEventListener('click',()=>{
     closeInventoryManualSearch();
