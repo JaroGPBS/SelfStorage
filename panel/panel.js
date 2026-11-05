@@ -383,6 +383,7 @@
   }
 
   function openPartEditor(part) {
+    $('partEditReplacementPhoto').value='';
     $('partEditId').value=part.id;
     $('partEditName').value=part.name||'';
     $('partEditNumber').value=part.part_number||'';
@@ -405,6 +406,40 @@
     $('partEditError').classList.add('hidden');
     $('partEditError').textContent='';
     $('partEditDialog').showModal();
+  }
+
+  async function replacePartEditorPhoto(){
+    const file=$('partEditReplacementPhoto').files?.[0];
+    if(!file){
+      $('partEditError').textContent='Najpierw wybierz poprawione zdjęcie.';
+      $('partEditError').classList.remove('hidden');
+      return;
+    }
+    const button=$('partEditReplacePhoto');
+    button.disabled=true;
+    $('partEditError').classList.add('hidden');
+    try{
+      const form=new FormData();
+      const partId=$('partEditId').value;
+      form.set('partId',partId);
+      form.set('photo',file,file.name);
+      const response=await fetch('/api/panel',{
+        method:'POST',credentials:'same-origin',cache:'no-store',body:form
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.ok)throw Error(data.error||'Nie udało się zastąpić zdjęcia.');
+      const src='/api/panel?view=partPhoto&part='+encodeURIComponent(partId)+'&v='+Date.now();
+      $('partEditPhotoBox').hidden=false;
+      $('partEditPhoto').src=src;
+      $('partEditPhotoLink').href=src;
+      $('partEditReplacementPhoto').value='';
+      const row=state.records.find(part=>part.id===partId);
+      if(row)row.has_photo=1;
+      message('Nowe zdjęcie zapisane w R2.','success');
+    }catch(error){
+      $('partEditError').textContent=error.message;
+      $('partEditError').classList.remove('hidden');
+    }finally{button.disabled=false;}
   }
 
   async function savePartEditor(event) {
@@ -835,6 +870,7 @@
     $('cancelUser').addEventListener('click',()=>$('userDialog').close());
     $('createUserForm').addEventListener('submit',saveUser);
     $('partEditForm').addEventListener('submit',savePartEditor);
+    $('partEditReplacePhoto').addEventListener('click',replacePartEditorPhoto);
     $('partEditCancel').addEventListener('click',()=>$('partEditDialog').close());
     try {
       await api('summary');
