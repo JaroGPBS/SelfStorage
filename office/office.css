@@ -2045,3 +2045,115 @@
   font-size:10px;
   color:#777f89;
 }
+
+
+/* Office: create a catalogue part. Identical fields to the PL warehouse
+   form, but only a file from disk can be attached (no camera control). */
+.office-new-part-dialog {
+  width:min(calc(100% - 30px),460px);
+  max-width:460px;
+  max-height:90dvh;
+  padding:0;
+  border:1px solid #e1e4e9;
+  border-radius:16px;
+  background:#fff;
+  color:#252b33;
+  overflow:auto;
+  box-shadow:0 26px 90px #14202f60;
+}
+.office-new-part-dialog::backdrop {
+  background:#17202a99;
+  backdrop-filter:blur(3px);
+}
+.office-new-part-form {padding:25px;display:flex;flex-direction:column;gap:0}
+.office-new-part-form h2 {font-size:23px;margin:0 0 5px}
+.office-new-part-warehouse {color:#6d7884;font-size:12px;margin-bottom:15px}
+.office-new-part-warning {
+  margin:0 0 14px;
+  padding:10px 12px;
+  border:1px solid #eabbbd;
+  border-radius:9px;
+  background:#fff3f4;
+  color:#8f2a32;
+  line-height:1.45;
+  font-weight:650;
+  font-size:12px;
+}
+.office-new-part-form label {
+  display:block;
+  margin:10px 0 5px;
+  font-weight:700;
+  font-size:13px;
+}
+.office-new-part-form input[type="text"],
+.office-new-part-form input[type="file"] {
+  display:block;
+  width:100%;
+  min-width:0;
+  min-height:43px;
+  border:1px solid #d2d8df;
+  border-radius:9px;
+  background:#fff;
+  color:#252b33;
+  padding:9px 11px;
+  font-size:13px;
+}
+.office-new-part-form input[type="file"] {
+  background:#f7f8fa;
+  padding:9px;
+}
+.office-new-part-form input[type="file"]::file-selector-button {
+  margin-right:10px;
+  background:#30343b;
+  border:0;
+  border-radius:7px;
+  padding:7px 11px;
+  color:#fff;
+  cursor:pointer;
+}
+.office-new-part-hint {
+  color:#7a8590;
+  font-size:11px;
+  line-height:1.4;
+  margin:5px 0 8px;
+}
+.office-new-part-preview:not([hidden]) {
+  display:block;
+  max-width:100%;
+  max-height:180px;
+  object-fit:contain;
+  margin:10px auto 0;
+  border:1px solid #e1e4e9;
+  border-radius:9px;
+}
+.office-new-part-error:not([hidden]) {
+  display:block;
+  padding:9px 11px;
+  margin-top:12px;
+  background:#fff0f1;
+  color:#a52831;
+  border:1px solid #e9adb2;
+  border-radius:8px;
+  font-size:12px;
+}
+.office-new-part-actions {
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  margin-top:19px;
+}
+.office-new-part-actions .btn {min-height:42px}
+.office-new-part-notice {
+  margin:0 0 15px;
+  padding:12px 15px;
+  border:1px solid #bcddc8;
+  border-radius:9px;
+  background:#f0fbf3;
+  color:#236139;
+  font-size:13px;
+  font-weight:650;
+}
+@media(max-width:480px) {
+  .office-new-part-form {padding:19px}
+  .office-new-part-actions .btn {flex:1}
+}
