@@ -791,16 +791,20 @@ async function replacePartPhoto(request,env){
       'DELETE FROM pl_part_photos WHERE part_id=?').bind(id));
     await env.DB.batch(statements);
     committed=true;
+    let oldRemoved=true;
     if(prev?.object_key){
       try{
         await env.PART_PHOTOS.delete(prev.object_key);
         await releasePhotoBytes(env.DB,Number(prev.size_bytes));
       }catch(error){
-        // If old object cleanup fails, count its bytes; avoid undeclared usage.
+        oldRemoved=false;
+        // If cleanup fails, keep the old bytes charged to our local quota.
         console.error('Admin old R2 photo cleanup unavailable',error?.name||'Error');
       }
     }
-    return respond({ok:true,message:'Zastąpiono zdjęcie. Poprzedni oryginał usunięto.'});
+    return respond({ok:true,message:oldRemoved
+      ?'Zastąpiono zdjęcie. Poprzedni oryginał usunięto.'
+      :'Nowe zdjęcie zapisano, ale usunięcie poprzedniego pliku wymaga sprawdzenia.'});
   }catch(error){
     if(!committed){
       if(uploaded){
