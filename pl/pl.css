@@ -1105,3 +1105,88 @@ body.operation-task-open {overflow:hidden}
   #inventoryScreen .inventory-topbar #backFromInventoryButton {padding:8px 9px;font-size:13px}
   #inventoryScreen .inventory-topbar .section-title {font-size:15px}
 }
+
+
+/* Inventory layout: finish above the list, single unique-part counter
+   inside its left side, and thumb-reachable Scan below the list. */
+#inventoryScreen .inventory-draft {
+  margin:0;
+  padding:0;
+  border:0;
+}
+#inventoryScreen #inventoryCommitButton.inventory-commit {
+  width:100%;
+  min-height:45px; /* 25% lower than the previous 60px button */
+  margin:0 0 10px;
+  padding:7px 11px;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1.65fr);
+  align-items:center;
+  gap:7px;
+  font-size:13px;
+  line-height:1.15;
+}
+#inventoryScreen #inventoryCommitButton .inventory-finish-count {
+  display:block;
+  min-width:0;
+  text-align:left;
+  font-size:10px;
+  line-height:1.2;
+  font-weight:650;
+  color:#ffe2e2;
+  white-space:nowrap;
+  letter-spacing:0;
+}
+#inventoryScreen #inventoryCommitButton .inventory-finish-label {
+  min-width:0;
+  display:block;
+  text-align:right;
+  font-size:13px;
+  line-height:1.2;
+  font-weight:850;
+}
+#inventoryScreen #inventoryDraftInfo[hidden],
+#inventoryScreen #inventoryPublishInfo[hidden] {
+  display:none!important;
+}
+#inventoryScreen #inventoryFeedback:not([hidden]) {
+  margin:3px 0 8px;
+  padding:7px 10px;
+  font-size:12px;
+}
+#inventoryScreen #inventoryDraftLines {
+  margin:0;
+}
+#inventoryScreen #inventoryScannerClosed.scanner-closed {
+  position:sticky;
+  bottom:0;
+  z-index:15;
+  margin:10px 0 0;
+  padding:9px 0 max(10px, env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,#151d26fa,#111820);
+  box-shadow:0 -8px 18px #060a1090;
+}
+#inventoryScreen #inventoryScannerClosed.scanner-closed[hidden] {
+  display:none!important;
+}
+#inventoryScreen #inventoryScannerClosed .inventory-manual-shortcut {
+  margin:0 0 5px;
+  padding:5px 4px;
+  font-size:11px;
+}
+#inventoryScreen #inventoryScannerClosed #inventoryStartScanner {
+  min-height:62px;
+  margin:0;
+}
+#inventoryScreen:has(#inventoryManual:not([hidden])) #inventoryScannerClosed.scanner-closed {
+  position:static;
+}
+@media(max-width:360px){
+  #inventoryScreen #inventoryCommitButton.inventory-commit {
+    grid-template-columns:minmax(0,1fr) minmax(0,1.55fr);
+    gap:4px;
+    padding:7px 8px;
+  }
+  #inventoryScreen #inventoryCommitButton .inventory-finish-count {font-size:9px}
+  #inventoryScreen #inventoryCommitButton .inventory-finish-label {font-size:12px}
+}
