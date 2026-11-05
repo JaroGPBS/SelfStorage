@@ -167,6 +167,19 @@
     byId('inventorySearchButton').disabled=false;
   }
 
+  // After a successful count, never leave the previous manual search results
+  // on screen. Invalidate in-flight catalogue requests so they cannot reappear.
+  function clearInventorySearchResults() {
+    stopInventorySearch();
+    state.inventory.searchQuery='';
+    state.inventory.searchPage=0;
+    state.inventory.searchMore=false;
+    byId('inventoryQuery').value='';
+    byId('inventoryResults').replaceChildren();
+    byId('inventorySearchStatus').textContent='';
+    byId('inventoryMoreButton').hidden=true;
+  }
+
   function setInventoryNotice(knownItems, catalogItems) {
     const known=Number(knownItems);
     const total=Number(catalogItems);
@@ -550,8 +563,7 @@
     text.append(name,sub);
     const badge=document.createElement('span');
     badge.className='inventory-search-badge';
-    const saved=state.inventory.draft?.lines?.find(x=>x.partId===part.id);
-    badge.textContent=saved?'Policzono: '+saved.quantity:'Dodaj →';
+    badge.textContent='Dodaj →';
     button.append(text,badge);
     button.addEventListener('click',()=>chooseInventoryPart(part));
     return button;
@@ -618,8 +630,7 @@
       renderInventoryDraft(response.draft);
       inv.searchPage=0;
       inv.searchQuery='';
-      byId('inventoryQuery').value='';
-      if(state.subview==='inventoryScreen')fetchInventoryParts();
+      clearInventorySearchResults();
     }catch(error) {
       if(sequence!==inv.loadSequence)return;
       inv.draft=null;
@@ -657,10 +668,9 @@
       renderInventoryDraft(data.draft);
       inv.selectedPart=null;
       byId('inventoryQuantityForm').hidden=true;
-      inventoryFeedback(action==='save'?'Pozycja zapisana w arkuszu.':'Pozycja usunięta z arkusza.');
-      // Refresh part badges when the draft changes.
-      inv.searchQuery=byId('inventoryQuery').value.trim();
-      fetchInventoryParts();
+      // Keep the current inventory rows; discard old manual results.
+      // Another explicit search is required to display a new result list.
+      clearInventorySearchResults();
     }catch(error){
       inventoryError(error.message);
     }finally{
@@ -906,17 +916,10 @@
     const draft=event.detail?.draft;
     if(!draft||state.subview!=='inventoryScreen')return;
     renderInventoryDraft(draft);
-    const count=Number(event.detail?.added||0);
-    const partId=event.detail?.partId;
-    const line=draft.lines?.find(x=>x.partId===partId);
-    inventoryFeedback(event.detail?.mode==='set'
-      ?'Poprawiono łączną ilość części.'
-      :'Dodano '+count+' szt. Łącznie policzono: '+(line?.quantity??'—')+' szt.');
+    // No extra "Dodano X szt." summary: the counted row is the confirmation.
+    inventoryFeedback('');
     inventoryError('');
-    if(!byId('inventoryManual').hidden){
-      state.inventory.searchQuery=byId('inventoryQuery').value.trim();
-      fetchInventoryParts();
-    }
+    clearInventorySearchResults();
   });
 
   byId('backFromStockButton').addEventListener('click',()=>{
