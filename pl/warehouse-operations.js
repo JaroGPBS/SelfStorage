@@ -6,7 +6,7 @@
   const camera=()=>window.GPBSInventoryCamera;
   const state={warehouse:null,userId:'',direction:'PZ',stage:'details',pz:new Map(),wz:new Map(),
     ready:false,part:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
-    scanning:false,stopPromise:null,searchPage:0,hasMore:false};
+    scanning:false,stopPromise:null,searchPage:0,hasMore:false,photoPreviewUrl:null};
   const MAX_QUANTITY=100000;
   const upperName=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleUpperCase('pl-PL');
   const upperPlate=value=>String(value||'').trim().replace(/\s+/g,' ').toUpperCase();
@@ -95,7 +95,7 @@
     const lock=!!state.pending||state.busy;
     for(const id of ['operationCounterparty','operationPlate','operationVisitContinue',
       'operationEditVisit','operationBackToMenu','operationSearchQuery','operationSearchButton',
-      'operationStartScan','operationAddButton','operationQuantity',
+      'operationStartScan','operationNewPartOpen','operationAddButton','operationQuantity',
       'operationTabPZ','operationTabWZ','operationClearSearch']){
       el(id).disabled=lock;
     }
@@ -231,6 +231,101 @@
     stopScanner();
     status('');
     saveDraft();render();
+  }
+
+  function newPartError(message='') {
+    const node=el('operationNewPartError');
+    node.textContent=message;
+    node.hidden=!message;
+  }
+  function releaseNewPartPreview() {
+    if(state.photoPreviewUrl)URL.revokeObjectURL(state.photoPreviewUrl);
+    state.photoPreviewUrl=null;
+    el('operationNewPartPreview').removeAttribute('src');
+    el('operationNewPartPreview').hidden=true;
+  }
+  function openNewPart() {
+    if(state.pending||state.busy||!state.warehouse||
+       !['PZ','WZ'].includes(state.stage))return;
+    el('operationNewPartForm').reset();
+    releaseNewPartPreview();
+    newPartError('');
+    el('operationNewPartDialog').showModal();
+  }
+  function closeNewPart() {
+    if(state.busy)return;
+    if(el('operationNewPartDialog').open)el('operationNewPartDialog').close();
+    releaseNewPartPreview();
+    newPartError('');
+  }
+  async function photoForNewPart(file) {
+    if(!file)return '';
+    if(!file.type.startsWith('image/')||file.size>20*1024*1024)
+      throw Error('Wybierz jedno zdjęcie części (maksymalnie 20 MB przed kompresją).');
+    const objectUrl=URL.createObjectURL(file);
+    const img=new Image();
+    try {
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;
+        img.onerror=()=>reject(Error('Nie można otworzyć zdjęcia. Wybierz plik JPG lub zrób nowe zdjęcie.'));
+        img.src=objectUrl;
+      });
+      if(!img.naturalWidth||!img.naturalHeight)throw Error('Nie można odczytać zdjęcia.');
+      for(const maxSide of [1050,900,750,600]) {
+        const ratio=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));
+        canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));
+        const ctx=canvas.getContext('2d');
+        if(!ctx)throw Error('Przeglądarka nie może przygotować zdjęcia.');
+        ctx.fillStyle='#ffffff';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        for(const quality of [.78,.67,.55]) {
+          const encoded=canvas.toDataURL('image/jpeg',quality);
+          if(encoded.startsWith('data:image/jpeg;base64,')&&encoded.length<=195000)
+            return encoded;
+        }
+      }
+      throw Error('Zdjęcie jest zbyt szczegółowe, aby je zapisać. Spróbuj zrobić je bliżej i w lepszym świetle.');
+    }finally{URL.revokeObjectURL(objectUrl);}
+  }
+  async function saveNewPart(event) {
+    event.preventDefault();
+    if(state.busy||state.pending||!state.warehouse||
+       !['PZ','WZ'].includes(state.stage))return;
+    const name=el('operationNewPartName').value.trim().replace(/\s+/g,' ');
+    const sap=el('operationNewPartSap').value.trim().toUpperCase();
+    if(name.length<2){newPartError('Wpisz nazwę nowej części.');return;}
+    const warehouseId=state.warehouse.id;
+    state.busy=true;
+    el('operationNewPartSave').disabled=true;
+    disableDuringPending();
+    newPartError('');
+    try{
+      const file=el('operationNewPartPhoto').files?.[0]||null;
+      const photo=await photoForNewPart(file);
+      if(state.warehouse?.id!==warehouseId)return;
+      const response=await api('/api/pl/inventory',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'newPart',warehouseId,name,sap,photo})
+      });
+      if(state.warehouse?.id!==warehouseId)return;
+      el('operationNewPartDialog').close();
+      releaseNewPartPreview();
+      el('operationNewPartForm').reset();
+      state.busy=false;
+      disableDuringPending();
+      // Reuse the existing PZ/WZ keypad to count the new catalogue part.
+      selectPart({id:response.part.id,name:response.part.name,number:response.part.number});
+    }catch(error){
+      newPartError(error.message||'Nie udało się dodać części.');
+    }finally{
+      state.busy=false;
+      el('operationNewPartSave').disabled=false;
+      disableDuringPending();
+    }
   }
 
   function selectPart(part){
@@ -582,6 +677,7 @@
   }
   function close(){
     stopScanner();
+    if(el('operationNewPartDialog').open&&!state.busy)closeNewPart();
     closeQuantity();
     el('operationDirectionPanel').hidden=true;
     document.body.classList.remove('operation-task-open');
@@ -607,6 +703,26 @@
   }
   uppercaseInput('operationCounterparty',v=>v.toLocaleUpperCase('pl-PL'));
   uppercaseInput('operationPlate',v=>v.toUpperCase());
+  el('operationNewPartOpen').addEventListener('click',openNewPart);
+  el('operationNewPartForm').addEventListener('submit',saveNewPart);
+  el('operationNewPartCancel').addEventListener('click',closeNewPart);
+  el('operationNewPartDialog').addEventListener('cancel',event=>{
+    if(state.busy){event.preventDefault();return;}
+    releaseNewPartPreview();
+  });
+  el('operationNewPartDialog').addEventListener('close',releaseNewPartPreview);
+  el('operationNewPartPhoto').addEventListener('change',()=>{
+    releaseNewPartPreview();
+    const file=el('operationNewPartPhoto').files?.[0];
+    if(!file)return;
+    if(!file.type.startsWith('image/')){
+      newPartError('Wybierz plik ze zdjęciem części.');return;
+    }
+    state.photoPreviewUrl=URL.createObjectURL(file);
+    el('operationNewPartPreview').src=state.photoPreviewUrl;
+    el('operationNewPartPreview').hidden=false;
+    newPartError('');
+  });
   el('operationVisitForm').addEventListener('submit',beginVisit);
   el('operationEditVisit').addEventListener('click',editVisit);
   el('operationBackToMenu').addEventListener('click',backToMenu);
