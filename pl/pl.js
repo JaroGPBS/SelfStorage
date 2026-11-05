@@ -472,11 +472,12 @@
     return String(line.name||line.number||line.partId||'Część');
   }
 
-  function inventoryDraftLineButton(label,handler) {
+  function inventoryDraftLineButton(label,handler,{className='',ariaLabel=''}={}) {
     const button=document.createElement('button');
     button.type='button';
-    button.className='inventory-inline-button';
+    button.className='inventory-inline-button'+(className?' '+className:'');
     button.textContent=label;
+    if(ariaLabel)button.setAttribute('aria-label',ariaLabel);
     button.addEventListener('click',handler);
     return button;
   }
@@ -495,33 +496,35 @@
     for(const line of lines) {
       const row=document.createElement('div');
       row.className='inventory-draft-row';
+      // Single compact row: name and index on the left, quantity and controls
+      // on the right. The index stays visible to distinguish similar parts.
+      const desc=document.createElement('div');
+      desc.className='inventory-draft-desc';
       const name=document.createElement('strong');
       name.className='inventory-draft-name';
       name.textContent=inventoryPartLabel(line);
-
-      // Compact second line: index on the left, quantity and actions on the right.
-      const bottom=document.createElement('div');
-      bottom.className='inventory-draft-bottom';
+      name.title=name.textContent;
       const nr=document.createElement('small');
       nr.className='inventory-draft-index';
       nr.textContent=String(line.number||line.partId);
       nr.title=nr.textContent;
+      desc.append(name,nr);
+
       const controls=document.createElement('div');
       controls.className='inventory-draft-controls';
       const quantity=document.createElement('strong');
       quantity.className='inventory-draft-qty';
       quantity.textContent=String(line.quantity)+' szt.';
-      const actions=document.createElement('div');
-      actions.className='inventory-draft-actions';
-      actions.append(
-        inventoryDraftLineButton('Popraw',()=>window.GPBSPlInventory?.showCount({
-          id:line.partId,name:line.name,number:line.number,sap:line.sap
-        },'set')),
-        inventoryDraftLineButton('Usuń',()=>removeInventoryLine(line.partId))
-      );
-      controls.append(quantity,actions);
-      bottom.append(nr,controls);
-      row.append(name,bottom);
+      const edit=inventoryDraftLineButton('Edytuj',()=>window.GPBSPlInventory?.showCount({
+        id:line.partId,name:line.name,number:line.number,sap:line.sap
+      },'set'));
+      const remove=inventoryDraftLineButton('×',()=>confirmRemoveInventoryLine(line),{
+        className:'inventory-delete-button',
+        ariaLabel:'Usuń całkowicie z listy: '+inventoryPartLabel(line)
+      });
+      remove.title='Usuń pozycję';
+      controls.append(quantity,edit,remove);
+      row.append(desc,controls);
       list.append(row);
     }
     window.GPBSPlInventory?.setDraft(inv.draft);
@@ -682,6 +685,23 @@
       return;
     }
     inventoryMutation('save',inv.selectedPart.id,Number(value));
+  }
+
+  async function confirmRemoveInventoryLine(line) {
+    const inv=state.inventory;
+    if(inv.mutationBusy||state.subview!=='inventoryScreen'||!state.warehouse)return;
+    const warehouseId=state.warehouse.id;
+    const draftId=inv.draft?.id;
+    const accepted=await window.GPBSPlConfirm.ask({
+      title:'Usunąć część z listy?',
+      message:'Czy na pewno chcesz całkowicie usunąć „'+
+        inventoryPartLabel(line)+'” z bieżącej inwentaryzacji?',
+      approveLabel:'Tak, usuń'
+    });
+    if(!accepted||inv.mutationBusy||state.subview!=='inventoryScreen'||
+       state.warehouse?.id!==warehouseId||inv.draft?.id!==draftId||
+       !inv.draft?.lines?.some(item=>item.partId===line.partId))return;
+    removeInventoryLine(line.partId);
   }
 
   function removeInventoryLine(partId) {
