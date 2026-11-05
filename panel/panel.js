@@ -8,6 +8,7 @@
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
     parts:['Katalog części','Pełny katalog i stany części w wybranym magazynie.'],
+    newParts:['Nowe części','Nowe części zgłoszone przez magazynierów — do weryfikacji.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.']
@@ -178,6 +179,13 @@
     );
   }
 
+  function setNewPartsBadge(count) {
+    const n=Number(count||0);
+    const badge=$('newPartsBadge');
+    badge.textContent=String(n);
+    badge.hidden=n===0;
+  }
+
   function renderSummary(summary,warehouses) {
     const stats=[
       ['Aktywne magazyny',summary.warehouses,'POLSKA'],
@@ -193,6 +201,12 @@
       card.append(a,b,c);return card;
     }));
     displayWarehouses(warehouses,'dashboardWarehouses');
+    const pending=Number(summary.pendingParts||0);
+    setNewPartsBadge(pending);
+    const review=$('newPartsAlert');
+    review.hidden=pending===0;
+    review.textContent=pending?
+      'Nowe części do weryfikacji: '+pending+'. Kliknij, aby sprawdzić magazyn i dane.':'';
     const alert=$('overissueAlert');
     const count=Number(summary.overissuedLines||0);
     alert.hidden=count===0;
@@ -203,6 +217,7 @@
 
   function colsFor(view,items) {
     if(view==='warehouses')return [ ['MAGAZYN','ID','STATUS','POZYCJE','ŁĄCZNY STAN'],warehouseRows(items) ];
+    if(view==='newParts')return [[],[]];
     if(view==='parts')return [
       ['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ILOŚĆ'],
       items.map(p=>[p.name,p.part_number||'—',p.sap_number||'—',
@@ -322,11 +337,14 @@
 
   // Newly created warehouse parts stay visible in red until the admin
   // has verified the name, index and optional SAP.
-  function renderPartsTable(items) {
+  function renderPartsTable(items,newOnly=false) {
     const table=document.createElement('table');
     table.className='parts-review-table';
     const header=table.createTHead().insertRow();
-    for(const label of ['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ILOŚĆ','WERYFIKACJA','']) {
+    const titles=newOnly
+      ?['MAGAZYN','DODANO / PRACOWNIK','NAZWA CZĘŚCI','INDEKS GPBS','SAP','ZDJĘCIE','WERYFIKACJA','']
+      :['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ILOŚĆ','WERYFIKACJA',''];
+    for(const label of titles) {
       const cell=document.createElement('th');
       cell.textContent=label;
       header.append(cell);
@@ -336,10 +354,15 @@
       const row=body.insertRow();
       const pending=part.verification_status==='PENDING';
       if(pending)row.classList.add('part-pending-verification');
+      if(newOnly) {
+        row.append(td(part.warehouse_name||part.warehouse_id||'—'));
+        row.append(td(formatTimestampPL(part.added_at)+' · '+(part.added_by||'—')));
+      }
       row.append(td(part.name||'—'));
       row.append(td(part.part_number||'—'));
       row.append(td(part.sap_number||'—'));
-      row.append(td(part.quantity===null||part.quantity===undefined
+      if(newOnly)row.append(td(Number(part.has_photo)?'Jest zdjęcie':'Brak zdjęcia'));
+      else row.append(td(part.quantity===null||part.quantity===undefined
         ?'Nieustalony':formatNum(part.quantity)+' szt.'));
       const status=td('');
       status.textContent=pending?'DO WERYFIKACJI':'—';
@@ -367,6 +390,16 @@
       ?'Nowa część. Sprawdź nazwę, indeks i SAP przed oznaczeniem jako zweryfikowana.'
       :'Możesz skorygować dane tej części.';
     $('partEditVerify').parentElement.hidden=part.verification_status!=='PENDING';
+    const hasPhoto=Boolean(Number(part.has_photo));
+    $('partEditPhotoBox').hidden=!hasPhoto;
+    if(hasPhoto) {
+      const src='/api/panel?view=partPhoto&part='+encodeURIComponent(part.id);
+      $('partEditPhoto').src=src;
+      $('partEditPhotoLink').href=src;
+    }else{
+      $('partEditPhoto').removeAttribute('src');
+      $('partEditPhotoLink').removeAttribute('href');
+    }
     $('partEditError').classList.add('hidden');
     $('partEditError').textContent='';
     $('partEditDialog').showModal();
@@ -388,9 +421,17 @@
       });
       $('partEditDialog').close();
       message(result.message||'Zapisano dane części.','success');
-      const response=await api('parts');
-      state.records=response.parts||[];
-      if(state.view==='parts')renderList();
+      const current=state.view;
+      if(current==='parts'||current==='newParts') {
+        const response=await api(current);
+        state.records=response.parts||[];
+        renderList();
+        if(current==='newParts')setNewPartsBadge(state.records.length);
+      }
+      if(result.message?.includes('zatwierdzono')) {
+        const summary=await api('summary');
+        setNewPartsBadge(summary.pendingParts);
+      }
     }catch(error) {
       $('partEditError').textContent=error.message;
       $('partEditError').classList.remove('hidden');
@@ -409,7 +450,8 @@
       empty.textContent=state.records.length?'Nie znaleziono pasujących pozycji.':'Brak danych do wyświetlenia.';
       $('tableResults').append(empty);
     }else $('tableResults').append(state.view==='users'?renderUsersTable(matching)
-      :state.view==='parts'?renderPartsTable(matching):buildTable(columns,rows,
+      :state.view==='parts'||state.view==='newParts'
+        ?renderPartsTable(matching,state.view==='newParts'):buildTable(columns,rows,
         state.view==='movements'?matching.map(m=>overissueAmount(m)>0):[]));
     $('tableFooter').textContent='Wyświetlono '+matching.length+' z '+state.records.length+' pozycji';
   }
@@ -469,7 +511,8 @@
           $('generateMissingPins').textContent=state.pinReady?'Generuj brakujące PIN-y':'Skonfiguruj generator PIN-ów';
         } else {
           const response=await api(view);
-          state.records=view==='parts'?response.parts:response;
+          state.records=(view==='parts'||view==='newParts')?response.parts:response;
+          if(view==='newParts')setNewPartsBadge(state.records.length);
         }
         if(state.view===view)renderList();
       }
@@ -751,6 +794,7 @@
   async function init() {
     $('loginForm').addEventListener('submit',performLogin);
     $('logoutBtn').addEventListener('click',performLogout);
+    $('newPartsAlert').addEventListener('click',()=>navigate('newParts'));
     $('mainNav').addEventListener('click',event=>{
       const item=event.target.closest('[data-view]');if(item)navigate(item.dataset.view);
     });
