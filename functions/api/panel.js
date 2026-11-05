@@ -200,10 +200,16 @@ async function queryPanel(env,view,url) {
     const waiting=reviewTable?await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM pl_part_verifications WHERE status='PENDING'"
     ).first():null;
+    const pendingWarehouses=reviewTable?(await env.DB.prepare(
+      'SELECT w.name AS name,COUNT(*) AS count FROM pl_part_verifications v '+
+      'JOIN warehouses w ON w.id=v.warehouse_id '+
+      "WHERE v.status='PENDING' AND w.country_code='PL' "+
+      'GROUP BY w.id,w.name ORDER BY count DESC,w.name LIMIT 12'
+    ).all()).results||[]:[];
     return {warehouses:warehouses?.n||0,
       operations:Number(operations?.n||0)+recentDocuments,
       parts:parts?.n||0,users:users?.n||0,
-      overissuedLines,pendingParts:Number(waiting?.n||0)};
+      overissuedLines,pendingParts:Number(waiting?.n||0),pendingWarehouses};
   }
   if(view==='warehouses') {
     const rows=await env.DB.prepare(
