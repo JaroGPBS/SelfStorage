@@ -323,3 +323,23 @@ tr:hover td{background:#ffffff04}
 .part-edit-photo span{display:block;margin:0 0 6px;font-weight:750;font-size:12px}
 .part-edit-photo a{display:inline-block;border:1px solid #5c6a78;border-radius:9px;overflow:hidden}
 .part-edit-photo img{display:block;max-width:min(100%,290px);max-height:220px;object-fit:contain}
+
+
+/* Permanent old/new label migration overview. */
+.index-migration-info{margin:0;padding:14px 22px;color:#b8c7d7;font-size:13px;
+  border-bottom:1px solid var(--edge);background:#182530}
+.index-migration-info strong{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#fff}
+.index-migration-table{min-width:930px;width:100%;border-collapse:collapse}
+.index-migration-table th{white-space:nowrap;font-size:11px}
+.index-migration-table td{vertical-align:middle;font-size:12px}
+.index-migration-table .index-new-code{font-weight:800;color:#a5dfc0;white-space:nowrap}
+.index-migration-table .mono{white-space:nowrap}
+.index-status-cell{text-align:center;min-width:110px}
+.index-check{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+  cursor:pointer;font-size:11px;color:#b5c0cd}
+.index-check input{margin:0;width:17px;height:17px;accent-color:#55bd82;cursor:pointer}
+.index-check input:checked+span{color:#70d19c}
+.index-check input:disabled{cursor:default;opacity:.65}
+.index-retired{opacity:.69}
+.index-retired-label{color:#8eddb5;font-size:11px;font-weight:700}
+.index-migration-table button:disabled{opacity:.38;cursor:not-allowed}
