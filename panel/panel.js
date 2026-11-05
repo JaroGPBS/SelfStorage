@@ -496,7 +496,7 @@
       const table=document.createElement('table');
       table.className='index-migration-table';
       const header=table.createTHead().insertRow();
-      for(const name of ['CZĘŚĆ','STARY INDEKS','NOWY INDEKS','BELLEVILLE','TULUZA','PARYŻ','STARY KOD']){
+      for(const name of ['CZĘŚĆ','STARY INDEKS','NOWY INDEKS','TULUZA','PARYŻ','STARY KOD']){
         const th=document.createElement('th');th.textContent=name;header.append(th);
       }
       const body=table.createTBody();
@@ -507,7 +507,7 @@
         const old=row.insertCell();old.className='mono';old.textContent=item.old_index;
         const current=row.insertCell();current.className='mono index-new-code';current.textContent=item.new_index;
         for(const [field,location] of [
-          ['belleville_done','Belleville'],['toulouse_done','Toulouse'],['paris_done','Paris']
+          ['toulouse_done','Toulouse'],['paris_done','Paris']
         ]){
           const cell=row.insertCell();cell.className='index-status-cell';
           const label=document.createElement('label');
@@ -535,7 +535,7 @@
           });
         }
         const actions=row.insertCell();
-        const complete=['belleville_done','toulouse_done','paris_done']
+        const complete=['toulouse_done','paris_done']
           .every(field=>Number(item[field])===1);
         if(!Number(item.old_active)){
           actions.textContent='Wyłączony';
@@ -577,7 +577,6 @@
     const retired=all.filter(p=>!Number(p.old_active)).length;
     $('indexMigrationFooter').textContent=
       'Wyświetlono '+shown.length+' z '+all.length+' części · '+
-      'Belleville: '+replaced('belleville_done')+'/'+all.length+' · '+
       'Tuluza: '+replaced('toulouse_done')+'/'+all.length+' · '+
       'Paryż: '+replaced('paris_done')+'/'+all.length+' · '+
       'Wyłączone stare indeksy: '+retired;
