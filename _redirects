@@ -1,0 +1,4 @@
+# Redirect the old standalone PL entry to the main app
+/pl / 302
+/pl/ / 302
+/pl/index.html / 302
