@@ -79,6 +79,22 @@ export async function onRequestGet({request,env}){
   if(!user.warehouses.some(w=>w.id===warehouseId))
     return error('Brak uprawnień do tego magazynu.',403);
   try{
+    if(view==='partPhoto') {
+      const partId=url.searchParams.get('part')||'';
+      if(!PART.test(partId))return error('Nieprawidłowa część.',400);
+      if(!await tableExists(env.DB,'pl_part_photos'))return error('Brak zdjęcia.',404);
+      const photo=await env.DB.prepare(
+        'SELECT ph.mime_type,ph.photo_base64 FROM pl_part_photos ph '+
+        'JOIN parts p ON p.id=ph.part_id AND p.active=1 WHERE ph.part_id=?'
+      ).bind(partId).first();
+      if(!photo)return error('Brak zdjęcia.',404);
+      const image=Uint8Array.from(atob(photo.photo_base64),c=>c.charCodeAt(0));
+      return new Response(image,{status:200,headers:{
+        'Content-Type':photo.mime_type,
+        'Cache-Control':'private, no-store',
+        'X-Content-Type-Options':'nosniff'
+      }});
+    }
     if(view==='stocks'){
       const parts=await selectRows(env.DB,
         'SELECT p.id,p.part_number,p.name,p.sap_number,s.quantity '+
@@ -90,8 +106,11 @@ export async function onRequestGet({request,env}){
     if(view==='part'){
       const partId=url.searchParams.get('part')||'';
       if(!PART.test(partId))return error('Nieprawidłowa część.');
+      const hasPhotos=await tableExists(env.DB,'pl_part_photos');
       const part=await env.DB.prepare(
         'SELECT p.id,p.name,p.sap_number,p.part_number,s.quantity '+
+        (hasPhotos?' ,EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id) AS has_photo ':
+          ' ,0 AS has_photo ')+
         'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
         'WHERE p.id=? AND p.active=1'
       ).bind(warehouseId,partId).first();
