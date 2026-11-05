@@ -20,3 +20,23 @@ W panelu **administracyjnym** GPBS Storage dodać widok wykorzystania limitów u
 - W przypadku liczników własnych określić ich zakres i ograniczenia, aby nie przedstawiać ich jako oficjalnych danych rozliczeniowych.
 
 **Ważne:** To jest zapisany punkt prac na później; nie zmienia bieżących limitów, konfiguracji Cloudflare ani kodu panelu.
+
+## R2 — zabezpieczenie kosztów i automatyczne blokady (ustalenie z 05.11.2026)
+
+**Priorytet:** obowiązkowe przed udostępnieniem produkcyjnego przesyłania zdjęć do R2, ale realizować przy pracach nad panelem administracyjnym. **Nie wdrażać teraz.**
+
+**Powód:** R2 jest aktywowane z **prywatną kartą płatniczą** właściciela projektu. Sam darmowy limit nie jest twardym ograniczeniem opłat. Nie można polegać jedynie na powiadomieniach o rachunku.
+
+**Ustalony zakres:**
+- W **Storage Admin** dodać sekcję R2: wykorzystana przestrzeń, liczba operacji zapisu/odczytu, limity, dostępne zasoby, daty okresu i czas ostatniej aktualizacji.
+- Dla klasy Standard: **ostrzeżenie przy 8 GB**, **automatyczna blokada dodawania zdjęć przy 9 GB**; progi trzymać w konfiguracji, aby dało się je później zmienić.
+- Monitorować również **miesięczne operacje klasy A i B**; ustalić bezpieczne progi ostrzegania i blokady z zapasem poniżej limitu, sprawdzając przy wdrożeniu obowiązujące limity R2.
+- Blokada ma obejmować nowe wysyłanie i zastępowanie zdjęć, **nie może blokować** pracy magazynu: PZ, WZ, inwentaryzacji, wyszukiwania części ani odczytu wcześniej zapisanych zdjęć (o ile osobny limit odczytów nie wymaga ograniczenia).
+- W przypadku błędu odczytu metryk / niemożliwości potwierdzenia dostępnego limitu nowe operacje mogące powiększyć zużycie mają zostać wstrzymane (**fail closed**), z jasnym komunikatem dla administratora.
+- Dodatkowo ograniczyć maksymalny rozmiar pojedynczego pliku i tempo przesyłania; dostęp do R2 wyłącznie przez autoryzowany backend, bez publicznych zapisów i bez kluczy w przeglądarce.
+- Po jednorazowej obróbce zdjęcia zastępować oryginał wersją lekką i **usuwać oryginał**; nie przechowywać dwóch trwałych kopii.
+- Rozważyć alerty Cloudflare Billing jako **dodatkowe** ostrzeżenie, niezależne od blokady w aplikacji.
+
+**Ważne ograniczenie:** Blokady po stronie GPBS Storage mogą skutecznie ograniczać własne żądania aplikacji, ale **nie gwarantują zerowych opłat** za wszelkie operacje na koncie Cloudflare (np. ręczne operacje lub inne usługi). Oficjalne statystyki mogą aktualizować się z opóźnieniem; własne liczniki i margines bezpieczeństwa trzeba zaprojektować ostrożnie. Nie przedstawiać rozwiązania jako twardego limitu rozliczeniowego Cloudflare.
+
+**Kolejność:** najpierw bieżące uruchomienie magazynu Polska; następnie w ramach rozbudowy Storage Admin wdrożyć kontrolę R2 **przed udostępnieniem produkcyjnego uploadu zdjęć**.
