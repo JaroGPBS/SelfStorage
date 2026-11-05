@@ -1109,7 +1109,13 @@ body.operation-task-open {overflow:hidden}
 
 /* Inventory layout: finish above the list, single unique-part counter
    inside its left side, and thumb-reachable Scan below the list. */
+#inventoryScreen {
+  display:flex;
+  flex-direction:column;
+  min-height:max(350px, calc(100dvh - 230px));
+}
 #inventoryScreen .inventory-draft {
+  flex:1 0 auto;
   margin:0;
   padding:0;
   border:0;
