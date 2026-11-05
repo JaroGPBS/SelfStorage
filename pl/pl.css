@@ -1353,3 +1353,95 @@ body.operation-task-open {overflow:hidden}
   #inventoryScreen #inventorySearchBack {font-size:13px;padding:8px 10px}
   #inventoryScreen .inventory-search-header h2 {font-size:15px}
 }
+
+
+/* Minimal new-part action for both PZ and WZ. All existing controls remain. */
+#operationDirectionPanel .operation-new-part-trigger {
+  flex:none;
+  min-height:42px;
+  padding:8px 10px;
+  border:1px solid #ad5259;
+  border-radius:9px;
+  background:#30262d;
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+#operationDirectionPanel .operation-new-part-trigger:disabled {opacity:.55}
+.operation-new-part-dialog {
+  width:min(calc(100% - 24px),430px);
+}
+.operation-new-part-dialog .inventory-dialog-inner {
+  padding:20px;
+}
+.operation-new-part-dialog h2 {
+  font-size:21px;
+  margin:0 0 12px;
+}
+.operation-new-part-dialog .operation-new-part-warning {
+  margin:0 0 14px;
+  padding:9px 11px;
+  background:#30272a;
+  color:#ffe5df;
+  border:1px solid #92565d;
+  border-radius:8px;
+  font-size:12px;
+  line-height:1.4;
+}
+.operation-new-part-dialog label {
+  display:block;
+  margin:11px 0 5px;
+  font-size:13px;
+  font-weight:750;
+}
+.operation-new-part-dialog input[type="text"],
+.operation-new-part-dialog input[type="file"] {
+  display:block;
+  width:100%;
+  min-height:43px;
+  padding:9px 10px;
+  border:1px solid #657181;
+  border-radius:8px;
+  color:#fff;
+  background:#111820;
+  font-size:13px;
+}
+.operation-new-part-dialog input[type="file"] {
+  padding:9px 6px;
+}
+.operation-new-part-dialog input[type="file"]::file-selector-button {
+  border:1px solid #846169;
+  background:#3c3036;
+  color:#fff;
+  padding:6px 8px;
+  border-radius:7px;
+  margin-right:8px;
+}
+.operation-new-part-dialog .operation-new-part-hint {
+  margin:4px 0 7px;
+  font-size:11px;
+  line-height:1.4;
+  color:#afbbc8;
+}
+.operation-new-part-dialog .operation-new-part-preview:not([hidden]) {
+  display:block;
+  max-height:155px;
+  max-width:100%;
+  margin:7px auto 0;
+  object-fit:contain;
+  border-radius:8px;
+  border:1px solid #536272;
+}
+.operation-new-part-dialog .inventory-dialog-actions {
+  margin-top:15px;
+}
+@media(max-width:360px) {
+  #operationDirectionPanel .operation-task-header {gap:7px}
+  #operationDirectionPanel .operation-new-part-trigger {
+    padding:8px 7px;
+    font-size:11px;
+  }
+  #operationDirectionPanel .operation-task-title {font-size:14px}
+  .operation-new-part-dialog .inventory-dialog-inner {padding:16px}
+}
