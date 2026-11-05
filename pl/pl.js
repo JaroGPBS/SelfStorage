@@ -495,26 +495,33 @@
     for(const line of lines) {
       const row=document.createElement('div');
       row.className='inventory-draft-row';
-      const desc=document.createElement('div');
-      desc.className='inventory-draft-desc';
       const name=document.createElement('strong');
+      name.className='inventory-draft-name';
       name.textContent=inventoryPartLabel(line);
-      const nr=document.createElement('small');
-      nr.textContent=String(line.number||line.partId);
-      desc.append(name,nr);
 
+      // Compact second line: index on the left, quantity and actions on the right.
+      const bottom=document.createElement('div');
+      bottom.className='inventory-draft-bottom';
+      const nr=document.createElement('small');
+      nr.className='inventory-draft-index';
+      nr.textContent=String(line.number||line.partId);
+      nr.title=nr.textContent;
+      const controls=document.createElement('div');
+      controls.className='inventory-draft-controls';
       const quantity=document.createElement('strong');
       quantity.className='inventory-draft-qty';
       quantity.textContent=String(line.quantity)+' szt.';
       const actions=document.createElement('div');
       actions.className='inventory-draft-actions';
       actions.append(
-        inventoryDraftLineButton('Popraw sumę',()=>window.GPBSPlInventory?.showCount({
+        inventoryDraftLineButton('Popraw',()=>window.GPBSPlInventory?.showCount({
           id:line.partId,name:line.name,number:line.number,sap:line.sap
         },'set')),
         inventoryDraftLineButton('Usuń',()=>removeInventoryLine(line.partId))
       );
-      row.append(desc,quantity,actions);
+      controls.append(quantity,actions);
+      bottom.append(nr,controls);
+      row.append(name,bottom);
       list.append(row);
     }
     window.GPBSPlInventory?.setDraft(inv.draft);
