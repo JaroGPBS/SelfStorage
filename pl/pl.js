@@ -488,7 +488,7 @@
     const lines=Array.isArray(inv.draft.lines)?inv.draft.lines:[];
     const list=byId('inventoryDraftLines');
     list.replaceChildren();
-    byId('inventoryCounter').textContent=lines.length+' pozycji';
+    byId('inventoryCounter').textContent='Zeskanowanych: '+lines.length;
     byId('inventoryDraftInfo').textContent=lines.length
       ?'Arkusz zapisany w D1. Zakończ po sprawdzeniu wszystkich policzonych pozycji.'
       :'Arkusz jest pusty. Wybierz część i wpisz policzoną ilość.';
@@ -631,7 +631,7 @@
       inv.summary=null;
       inv.publishingEnabled=false;
       byId('inventoryDraftInfo').textContent='Nie można wczytać arkusza.';
-      byId('inventoryCounter').textContent='—';
+      byId('inventoryCounter').textContent='Zeskanowanych: —';
       byId('inventoryCommitButton').disabled=true;
       byId('inventoryResults').replaceChildren();
       inventoryError(error.message);
