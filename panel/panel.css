@@ -286,3 +286,40 @@ tr:hover td{background:#ffffff04}
   line-height:1.6;
 }
 .overissue-alert[hidden]{display:none!important}
+
+
+/* Admin review of new central catalogue parts */
+.new-parts-badge:not([hidden]){
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:23px;
+  height:21px;
+  padding:0 6px;
+  margin-left:auto;
+  border-radius:999px;
+  background:#a02a32;
+  color:#fff;
+  font-size:11px;
+  font-weight:800;
+}
+.new-parts-badge[hidden],.new-parts-alert[hidden],.part-edit-photo[hidden]{display:none!important}
+.new-parts-alert{
+  display:block;
+  width:100%;
+  text-align:left;
+  margin:14px 0;
+  padding:14px 17px;
+  border:1px solid #bf7178;
+  border-radius:11px;
+  background:#3c2428;
+  color:#fff;
+  font-size:14px;
+  font-weight:750;
+  cursor:pointer;
+}
+.new-parts-alert:hover{background:#543038}
+.part-edit-photo{margin:12px 0 2px}
+.part-edit-photo span{display:block;margin:0 0 6px;font-weight:750;font-size:12px}
+.part-edit-photo a{display:inline-block;border:1px solid #5c6a78;border-radius:9px;overflow:hidden}
+.part-edit-photo img{display:block;max-width:min(100%,290px);max-height:220px;object-fit:contain}
