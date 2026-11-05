@@ -716,18 +716,13 @@
     inventoryMutation('remove',partId);
   }
 
-  function confirmInventoryCommit(count,summary) {
+  function confirmInventoryCommit(count) {
     const dialog=byId('inventoryConfirmDialog');
-    const uncounted=Number(summary?.notCountedParts||0);
-    const pending=Number(summary?.pendingVerification||0);
     byId('inventoryConfirmText').textContent=
       'Magazyn: '+String(state.warehouse?.name||'')+'. '+
       'Policzone pozycje: '+count+'. '+
-      'Potwierdzenie trwale zaktualizuje stany magazynowe policzonych części, '+
-      'zapisze arkusz inwentaryzacji i historię zmian w bazie D1. '+
-      'Niepoliczone części ('+uncounted+') pozostaną bez zmian. '+
-      (pending?'Części wymagające weryfikacji: '+pending+'. ':'')+
-      'Po zakończeniu nie można już edytować tego arkusza.';
+      'Po potwierdzeniu stany magazynowe zostaną trwale zapisane '+
+      'w bazie danych, a wynik inwentaryzacji w historii inwentaryzacji.';
     return new Promise(resolve=>{
       if(dialog.open)dialog.close();
       const yes=byId('inventoryConfirmApprove');
@@ -772,7 +767,7 @@
       inventoryError('Arkusz zmienił się w międzyczasie. Sprawdź aktualne ilości i spróbuj ponownie.');
       return;
     }
-    if(!await confirmInventoryCommit(draft.count,latest.summary))return;
+    if(!await confirmInventoryCommit(draft.count))return;
     if(state.warehouse?.id!==warehouseId)return;
     inv.mutationBusy=true;
     byId('inventoryCommitButton').disabled=true;
