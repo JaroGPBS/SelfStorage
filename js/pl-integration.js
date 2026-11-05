@@ -6,9 +6,9 @@ const ROOT_SHELL_SELECTOR = '.app-shell';
 const WORKSPACE_ID = 'gpbsPolandWorkspace';
 const POLISH_SCRIPTS = [
   '/pl/inventory-scanner.js?v=2',
-  '/pl/inventory-flow.js?v=4',
-  '/pl/warehouse-operations.js?v=5',
-  '/pl/pl.js?v=11'
+  '/pl/inventory-flow.js?v=6',
+  '/pl/warehouse-operations.js?v=14',
+  '/pl/pl.js?v=23'
 ];
 
 let workspacePromise = null;
@@ -72,8 +72,8 @@ async function buildPolishWorkspace() {
   const workspace = document.getElementById(WORKSPACE_ID);
   if (!workspace) throw new Error('Brak kontenera polskiej części aplikacji.');
 
-  // Reuse the tested PL screen structure, not a second page or an iframe.
-  const response = await fetch('/pl/index.html', {
+  // Load the internal PL workspace template into the single main application.
+  const response = await fetch('/pl/workspace.txt?v=1', {
     credentials: 'same-origin',
     cache: 'no-store'
   });
@@ -93,7 +93,7 @@ async function buildPolishWorkspace() {
   const link = document.createElement('link');
   link.id = 'gpbsPolandStyles';
   link.rel = 'stylesheet';
-  link.href = '/pl/pl.css?v=12';
+  link.href = '/pl/pl.css?v=43';
   document.head.append(link);
 
   // Existing Polish modules bind their handlers to the newly inserted DOM.
