@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=8">
-  <script src="./panel.js?v=13" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=9">
+  <script src="./panel.js?v=14" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -44,6 +44,7 @@
         <button data-view="warehouses" class="nav-item" type="button"><span class="nav-symbol">▣</span> Magazyny</button>
         <button data-view="parts" class="nav-item" type="button"><span class="nav-symbol">▤</span> Katalog części</button>
         <button data-view="newParts" class="nav-item" type="button"><span class="nav-symbol">＋</span> Nowe części <span id="newPartsBadge" class="new-parts-badge" hidden>0</span></button>
+        <button data-view="indexMigration" class="nav-item" type="button"><span class="nav-symbol">⇢</span> Wymiana indeksów</button>
         <button data-view="movements" class="nav-item" type="button"><span class="nav-symbol">⇄</span> Ruchy PZ / WZ</button>
         <div class="side-section administrative">ADMINISTRACJA</div>
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
@@ -129,6 +130,21 @@
                 <p class="hint">Nie zmieniaj później PIN_PEPPER bez migracji istniejących PIN-ów — przestaną działać. Wygenerowany klucz nie opuszcza przeglądarki.</p>
               </div>
             </div>
+          </div>
+        </section>
+        <section id="indexMigrationView" class="view hidden">
+          <div class="table-panel">
+            <div class="table-title">
+              <div>
+                <h2>Wymiana indeksów</h2>
+                <p>Stare i nowe indeksy wskazują tę samą część. Zaznaczaj wymienione etykiety osobno dla każdego magazynu.</p>
+              </div>
+              <input id="indexMigrationSearch" class="search-input" type="search"
+                autocomplete="off" placeholder="Szukaj części lub indeksu…" aria-label="Szukaj indeksów">
+            </div>
+            <p class="index-migration-info">Nowe indeksy mają format <strong>MG-000-000</strong>. Stary numer działa do chwili, gdy sam go wyłączysz po wymianie etykiet we wszystkich trzech magazynach.</p>
+            <div id="indexMigrationResults" class="table-scroll"></div>
+            <div id="indexMigrationFooter" class="table-footer" role="status" aria-live="polite"></div>
           </div>
         </section>
         <section id="tableView" class="view hidden">
