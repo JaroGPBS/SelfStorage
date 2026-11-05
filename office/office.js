@@ -670,11 +670,15 @@ async function openPart(id){
     const p=payload.part;
     state.labelPart=p;
     const amount=demo?demoQuantity((await realParts()).findIndex(x=>x.id===id),DEMOS.findIndex(x=>x.id===state.warehouse)+1):p.quantity;
-    // Temporary illustrative photo, matched by exact part name; no write to D1.
     const hasDemoPhoto=String(p.name||'').trim().toLocaleLowerCase('pl')==='antena meduza';
-    const photo=hasDemoPhoto
+    const uploadedPhoto=Boolean(Number(p.has_photo));
+    const photoSrc=uploadedPhoto
+      ? '/api/office?view=partPhoto&warehouse='+encodeURIComponent(warehouse)+
+        '&part='+encodeURIComponent(p.id)
+      :DEMO_MEDUZA_PHOTO;
+    const photo=uploadedPhoto||hasDemoPhoto
       ? '<button type="button" class="part-photo-zoom" data-photo-open="1" aria-label="Powiększ zdjęcie części '+escapeHtml(p.name)+'">'+
-        '<img src="'+DEMO_MEDUZA_PHOTO+'" alt="'+escapeHtml(p.name)+' — zdjęcie części" loading="lazy">'+
+        '<img src="'+escapeHtml(photoSrc)+'" alt="'+escapeHtml(p.name)+' — zdjęcie części" loading="lazy">'+
         '<span class="photo-zoom-label" aria-hidden="true">⤢ Powiększ zdjęcie</span></button>'
       : '<div class="part-photo-empty" aria-label="Brak zdjęcia części"><span aria-hidden="true">▧</span><small>Zdjęcie części</small></div>';
     const deliveryQuantity=!demo&&payload.delivery?'Przyjęto '+escapeHtml(payload.delivery.quantity)+' szt.':'Brak danych';
@@ -730,7 +734,9 @@ function closeLabelPreview(){
 }
 function openPhotoViewer(){
   const viewer=$('photoViewer');
-  $('photoViewerImage').src=DEMO_MEDUZA_PHOTO;
+  const image=$('modalBody').querySelector('[data-photo-open] img');
+  if(!image)return;
+  $('photoViewerImage').src=image.src;
   viewer.classList.remove('hidden');
   $('photoViewerClose').focus();
 }
