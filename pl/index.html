@@ -13,7 +13,7 @@
   <script src="./inventory-scanner.js?v=2" defer></script>
   <script src="./inventory-flow.js?v=4" defer></script>
   <script src="./warehouse-operations.js?v=13" defer></script>
-  <script src="./pl.js?v=17" defer></script>
+  <script src="./pl.js?v=18" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -187,7 +187,6 @@
           <p id="inventoryDraftInfo" hidden aria-hidden="true"></p>
           <p id="inventoryFeedback" class="inventory-feedback" role="status" aria-live="polite" hidden></p>
           <div id="inventoryDraftLines" class="inventory-draft-lines"></div>
-          <p id="inventoryPublishInfo" hidden aria-hidden="true"></p>
         </section>
         <div id="inventoryScannerClosed" class="scanner-closed">
           <p id="inventoryScannerIdleMessage" hidden aria-hidden="true"></p>
@@ -396,12 +395,11 @@
   <dialog id="inventoryConfirmDialog" class="inventory-dialog" aria-labelledby="inventoryConfirmTitle" aria-describedby="inventoryConfirmText">
     <div class="inventory-dialog-inner">
       <div class="panel-kicker">GPBS STORAGE / INWENTARYZACJA</div>
-      <h2 id="inventoryConfirmTitle">Zakończyć inwentaryzację?</h2>
+      <h2 id="inventoryConfirmTitle">Czy na pewno chcesz zakończyć inwentaryzację?</h2>
       <p id="inventoryConfirmText"></p>
-      <p class="inventory-dialog-warning">Zakończenie zapisze rzeczywiste stany policzonych części w D1. Niepoliczone części nie zostaną wyzerowane. Historia zmian zostanie zachowana.</p>
       <div class="inventory-dialog-actions">
-        <button id="inventoryConfirmCancel" class="btn btn-outline" type="button">Sprawdź ponownie</button>
-        <button id="inventoryConfirmApprove" class="btn btn-primary" type="button">Zapisz stany i zakończ</button>
+        <button id="inventoryConfirmCancel" class="btn btn-outline" type="button">Wróć</button>
+        <button id="inventoryConfirmApprove" class="btn btn-primary" type="button">Tak, zakończ</button>
       </div>
     </div>
   </dialog>
