@@ -45,10 +45,15 @@ async function readDraft(db,warehouseId,userId) {
   const draft=await draftFor(db,warehouseId,userId);
   if(!draft)return {id:null,revision:0,lines:[],count:0};
   const result=await db.prepare(
-    // Rowid reflects first insertion order; correcting an old count does not move it above newer parts.
+    // Most recently scanned/added part first, INCLUDING repeat scans of a
+    // previously counted part. Event rowid is unambiguous even within a second.
+    // SET (editing quantity) does not pretend to be a new scan.
     'SELECT l.part_id,l.counted_quantity,l.base_quantity,p.name,p.part_number,p.sap_number '+
     'FROM pl_warehouse_inventory_lines l LEFT JOIN parts p ON p.id=l.part_id '+
-    'WHERE l.inventory_id=? ORDER BY l.rowid DESC'
+    'WHERE l.inventory_id=? ORDER BY '+
+    'COALESCE((SELECT MAX(e.rowid) FROM pl_warehouse_inventory_events e '+
+    "WHERE e.inventory_id=l.inventory_id AND e.part_id=l.part_id AND e.event_type='ADD'),0) DESC,"+
+    'l.rowid DESC'
   ).bind(draft.id).all();
   const lines=(result.results||[]).map(r=>({
     partId:r.part_id, name:r.name||'Pozycja niedostępna',
