@@ -923,6 +923,9 @@
     const draft=event.detail?.draft;
     if(!draft||state.subview!=='inventoryScreen')return;
     renderInventoryDraft(draft);
+    // Newly scanned/added parts are first: reveal that row even after
+    // scrolling through hundreds of existing positions.
+    if(event.detail?.mode==='add')byId('inventoryDraftLines').scrollTop=0;
     // No extra "Dodano X szt." summary: the counted row is the confirmation.
     // Both scanned and manually selected parts return to the main count list.
     inventoryFeedback('');
