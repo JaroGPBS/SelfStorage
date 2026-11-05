@@ -258,10 +258,43 @@
     releaseNewPartPreview();
     newPartError('');
   }
+  // A browser file picker is only a hint: inspect actual bytes before any upload.
+  // Camera images and files from disk follow the same rules.
+  async function validatePartPhotoFile(file){
+    if(!file)return;
+    if(file.size<16||file.size>20*1024*1024)
+      throw Error('Zdjęcie musi mieć od 16 B do 20 MB.');
+    const ext=String(file.name||'').split('.').pop().toLowerCase();
+    const extensions={jpg:'jpeg',jpeg:'jpeg',jpe:'jpeg',png:'png',bmp:'bmp',
+      webp:'webp',heic:'heic',heif:'heic',avif:'avif'};
+    const mimeTypes={'image/jpeg':'jpeg','image/pjpeg':'jpeg','image/png':'png',
+      'image/bmp':'bmp','image/x-ms-bmp':'bmp','image/webp':'webp',
+      'image/heic':'heic','image/heif':'heic','image/avif':'avif'};
+    const expected=extensions[ext]||'';
+    const declared=mimeTypes[String(file.type||'').toLowerCase()]||'';
+    if(!expected&&ext)throw Error('Dozwolone są tylko zdjęcia: JPG, PNG, BMP, WEBP, HEIC lub AVIF.');
+    if(file.type&&!declared)throw Error('To nie jest obsługiwany format zdjęcia. Wybierz JPG, PNG, BMP lub WEBP.');
+    const bytes=new Uint8Array(await file.slice(0,40).arrayBuffer());
+    const is=(offset,arr)=>arr.every((v,i)=>bytes[offset+i]===v);
+    const word=(start,end)=>String.fromCharCode(...bytes.slice(start,end));
+    let actual='';
+    if(is(0,[255,216,255]))actual='jpeg';
+    else if(is(0,[137,80,78,71,13,10,26,10]))actual='png';
+    else if(word(0,4)==='RIFF'&&word(8,12)==='WEBP')actual='webp';
+    else if(word(0,2)==='BM')actual='bmp';
+    else if(word(4,8)==='ftyp'){
+      const brand=word(8,12);
+      if(['heic','heix','hevc','hevx','heif','heis','hevm','mif1'].includes(brand))
+        actual='heic';
+      else if(['avif','avis'].includes(brand))actual='avif';
+    }
+    if(!actual||expected&&expected!==actual||declared&&declared!==actual)
+      throw Error('Plik nie jest poprawnym zdjęciem. Filmy, ZIP i inne dokumenty są zablokowane.');
+  }
+  
   async function photoForNewPart(file) {
     if(!file)return '';
-    if(!file.type.startsWith('image/')||file.size>20*1024*1024)
-      throw Error('Wybierz jedno zdjęcie części (maksymalnie 20 MB przed kompresją).');
+    await validatePartPhotoFile(file);
     const objectUrl=URL.createObjectURL(file);
     const img=new Image();
     try {
@@ -711,17 +744,22 @@
     releaseNewPartPreview();
   });
   el('operationNewPartDialog').addEventListener('close',releaseNewPartPreview);
-  el('operationNewPartPhoto').addEventListener('change',()=>{
+  el('operationNewPartPhoto').addEventListener('change',async()=>{
     releaseNewPartPreview();
     const file=el('operationNewPartPhoto').files?.[0];
     if(!file)return;
-    if(!file.type.startsWith('image/')){
-      newPartError('Wybierz plik ze zdjęciem części.');return;
+    try{
+      await validatePartPhotoFile(file);
+      if(el('operationNewPartPhoto').files?.[0]!==file)return;
+      state.photoPreviewUrl=URL.createObjectURL(file);
+      el('operationNewPartPreview').src=state.photoPreviewUrl;
+      el('operationNewPartPreview').hidden=false;
+      newPartError('');
+    }catch(error){
+      if(el('operationNewPartPhoto').files?.[0]!==file)return;
+      el('operationNewPartPhoto').value='';
+      newPartError(error.message||'Nieprawidłowy plik zdjęcia.');
     }
-    state.photoPreviewUrl=URL.createObjectURL(file);
-    el('operationNewPartPreview').src=state.photoPreviewUrl;
-    el('operationNewPartPreview').hidden=false;
-    newPartError('');
   });
   el('operationVisitForm').addEventListener('submit',beginVisit);
   el('operationEditVisit').addEventListener('click',editVisit);
