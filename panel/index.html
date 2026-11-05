@@ -9,7 +9,7 @@
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=8">
-  <script src="./panel.js?v=12" defer></script>
+  <script src="./panel.js?v=13" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -220,6 +220,10 @@
           <img id="partEditPhoto" alt="Zdjęcie dodanej części">
         </a>
       </div>
+      <label for="partEditReplacementPhoto">Zastąp zdjęcie po obróbce (opcjonalnie)</label>
+      <input id="partEditReplacementPhoto" type="file" accept=".jpg,.jpeg,.png,.bmp,.webp,.heic,.heif,.avif,image/*">
+      <p class="hint">Wgraj gotowe zdjęcie (maks. 20 MB). Poprzedni oryginał zostanie usunięty z R2.</p>
+      <button id="partEditReplacePhoto" class="btn ghost" type="button">Zapisz nowe zdjęcie</button>
       <label class="part-verify-choice"><input id="partEditVerify" type="checkbox">
         Dane zostały sprawdzone — oznacz część jako zweryfikowaną</label>
       <p id="partEditError" class="message error hidden" role="alert"></p>
