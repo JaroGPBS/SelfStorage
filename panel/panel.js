@@ -205,8 +205,10 @@
     setNewPartsBadge(pending);
     const review=$('newPartsAlert');
     review.hidden=pending===0;
+    const byWarehouse=(summary.pendingWarehouses||[]).map(w=>
+      w.name+': '+w.count).join(' · ');
     review.textContent=pending?
-      'Nowe części do weryfikacji: '+pending+'. Kliknij, aby sprawdzić magazyn i dane.':'';
+      'Nowe części do weryfikacji ('+pending+'): '+byWarehouse+'. Otwórz listę.':'';
     const alert=$('overissueAlert');
     const count=Number(summary.overissuedLines||0);
     alert.hidden=count===0;
