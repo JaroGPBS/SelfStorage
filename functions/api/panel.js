@@ -176,7 +176,7 @@ async function queryPanel(env,view,url) {
     await ensurePartIndexes(env.DB);
     const result=await env.DB.prepare(
       'SELECT p.id,p.name,p.sap_number,m.old_index,m.new_index,'+
-      'm.belleville_done,m.toulouse_done,m.paris_done,m.old_active '+
+      'm.toulouse_done,m.paris_done,m.old_active '+
       'FROM pl_part_index_migrations m JOIN parts p ON p.id=m.part_id '+
       'WHERE p.active=1 ORDER BY m.new_index LIMIT 5000'
     ).all();
@@ -993,7 +993,6 @@ async function route(request,env) {
     if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
     const id=String(body.partId||'');
     const field=new Map([
-      ['Belleville','belleville_done'],
       ['Toulouse','toulouse_done'],
       ['Paris','paris_done']
     ]).get(String(body.warehouse||''));
@@ -1017,21 +1016,21 @@ async function route(request,env) {
     if(!/^[A-Za-z0-9_-]{1,100}$/.test(id))return fail('Nieprawidłowa część.',400);
     try{
       const row=await env.DB.prepare(
-        'SELECT old_index,new_index,belleville_done,toulouse_done,paris_done,old_active '+
+        'SELECT old_index,new_index,toulouse_done,paris_done,old_active '+
         'FROM pl_part_index_migrations WHERE part_id=?'
       ).bind(id).first();
       if(!row||!row.old_active)return fail('Stary indeks nie jest aktywny.',409);
-      if(!row.belleville_done||!row.toulouse_done||!row.paris_done)
-        return fail('Najpierw potwierdź wymianę etykiety we wszystkich trzech magazynach.',409);
+      if(!row.toulouse_done||!row.paris_done)
+        return fail('Najpierw potwierdź wymianę etykiet w Tuluzie i Paryżu.',409);
       const result=await env.DB.batch([
         env.DB.prepare(
           'UPDATE parts SET part_number=? WHERE id=? AND part_number=? AND EXISTS ('+
           'SELECT 1 FROM pl_part_index_migrations m WHERE m.part_id=parts.id AND '+
-          'm.belleville_done=1 AND m.toulouse_done=1 AND m.paris_done=1 AND m.old_active=1)'
+          'm.toulouse_done=1 AND m.paris_done=1 AND m.old_active=1)'
         ).bind(row.new_index,id,row.old_index),
         env.DB.prepare(
           'UPDATE pl_part_index_migrations SET old_active=0,updated_at=CURRENT_TIMESTAMP '+
-          'WHERE part_id=? AND belleville_done=1 AND toulouse_done=1 AND paris_done=1 AND old_active=1'
+          'WHERE part_id=? AND toulouse_done=1 AND paris_done=1 AND old_active=1'
         ).bind(id),
         env.DB.prepare(
           'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
