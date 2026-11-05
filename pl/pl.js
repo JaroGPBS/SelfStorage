@@ -530,11 +530,6 @@
     window.GPBSPlInventory?.setDraft(inv.draft);
     byId('inventoryCommitButton').disabled=
       !inv.publishingEnabled||inv.mutationBusy||lines.length===0;
-    byId('inventoryPublishInfo').textContent=inv.publishingEnabled
-      ?'Zatwierdzenie trwale zaktualizuje stany w D1 i zapisze historię. '+
-       'Niepoliczone części pozostaną bez zmian.'
-      :'Zatwierdzanie stanów jest na razie wyłączone. Możesz bezpiecznie '+
-       'przygotować i poprawiać arkusz; magazyn nie zostanie zmieniony.';
   }
 
   function chooseInventoryPart(item) {
@@ -715,12 +710,12 @@
     const pending=Number(summary?.pendingVerification||0);
     byId('inventoryConfirmText').textContent=
       'Magazyn: '+String(state.warehouse?.name||'')+'. '+
-      'Policzone części: '+count+'. '+
-      'Niepoliczone pozycje katalogowe: '+uncounted+
-      ' — ich dotychczasowe stany pozostaną bez zmian. '+
-      'Nowe części wymagające weryfikacji: '+pending+'. '+
-      'Potwierdzenie zapisze policzone ilości jako rzeczywiste stany magazynu '+
-      'i utworzy historię zmian. Czy na pewno zakończyć inwentaryzację?';
+      'Policzone pozycje: '+count+'. '+
+      'Potwierdzenie trwale zaktualizuje stany magazynowe policzonych części, '+
+      'zapisze arkusz inwentaryzacji i historię zmian w bazie D1. '+
+      'Niepoliczone części ('+uncounted+') pozostaną bez zmian. '+
+      (pending?'Części wymagające weryfikacji: '+pending+'. ':'')+
+      'Po zakończeniu nie można już edytować tego arkusza.';
     return new Promise(resolve=>{
       if(dialog.open)dialog.close();
       const yes=byId('inventoryConfirmApprove');
