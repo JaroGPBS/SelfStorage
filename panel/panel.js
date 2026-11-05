@@ -9,6 +9,7 @@
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
     parts:['Katalog części','Pełny katalog i stany części w wybranym magazynie.'],
     newParts:['Nowe części','Nowe części zgłoszone przez magazynierów — do weryfikacji.'],
+    indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.']
@@ -387,6 +388,10 @@
     $('partEditId').value=part.id;
     $('partEditName').value=part.name||'';
     $('partEditNumber').value=part.part_number||'';
+    $('partEditNumber').readOnly=Boolean(part.old_index);
+    $('partEditNumber').title=part.old_index
+      ?'Nowy indeks jest nadany na stałe. Wymianę starego numeru prowadź w zakładce Wymiana indeksów.'
+      :'';
     $('partEditSap').value=part.sap_number||'';
     $('partEditVerify').checked=false;
     $('partEditStatus').textContent=part.verification_status==='PENDING'
@@ -475,6 +480,109 @@
     }finally{button.disabled=false;}
   }
 
+  function renderIndexMigration(){
+    const q=$('indexMigrationSearch').value.trim().toLocaleLowerCase('pl');
+    const all=state.records||[];
+    const shown=all.filter(p=>[p.name,p.old_index,p.new_index,p.sap_number]
+      .some(x=>String(x||'').toLocaleLowerCase('pl').includes(q)));
+    const area=$('indexMigrationResults');
+    area.replaceChildren();
+    if(!shown.length){
+      const empty=document.createElement('p');
+      empty.className='empty';
+      empty.textContent=all.length?'Nie znaleziono części.':'Nie znaleziono indeksów do wymiany.';
+      area.append(empty);
+    }else{
+      const table=document.createElement('table');
+      table.className='index-migration-table';
+      const header=table.createTHead().insertRow();
+      for(const name of ['CZĘŚĆ','STARY INDEKS','NOWY INDEKS','BELLEVILLE','TULUZA','PARYŻ','STARY KOD']){
+        const th=document.createElement('th');th.textContent=name;header.append(th);
+      }
+      const body=table.createTBody();
+      for(const item of shown){
+        const row=body.insertRow();
+        if(!item.old_active)row.classList.add('index-retired');
+        row.insertCell().textContent=item.name||'—';
+        const old=row.insertCell();old.className='mono';old.textContent=item.old_index;
+        const current=row.insertCell();current.className='mono index-new-code';current.textContent=item.new_index;
+        for(const [field,location] of [
+          ['belleville_done','Belleville'],['toulouse_done','Toulouse'],['paris_done','Paris']
+        ]){
+          const cell=row.insertCell();cell.className='index-status-cell';
+          const label=document.createElement('label');
+          label.className='index-check';
+          const input=document.createElement('input');
+          input.type='checkbox';
+          input.checked=Boolean(Number(item[field]));
+          input.disabled=!Number(item.old_active);
+          input.setAttribute('aria-label','Wymiana etykiety '+item.new_index+' w '+location);
+          const description=document.createElement('span');
+          description.textContent=input.checked?'Wymieniona':'Stara';
+          label.append(input,description);
+          cell.append(label);
+          input.addEventListener('change',async()=>{
+            input.disabled=true;
+            try{
+              await post({action:'markIndexMigration',partId:item.id,warehouse:location,done:input.checked});
+              item[field]=input.checked?1:0;
+              renderIndexMigration();
+            }catch(error){
+              input.checked=!input.checked;
+              input.disabled=false;
+              message(error.message,'error');
+            }
+          });
+        }
+        const actions=row.insertCell();
+        const complete=['belleville_done','toulouse_done','paris_done']
+          .every(field=>Number(item[field])===1);
+        if(!Number(item.old_active)){
+          actions.textContent='Wyłączony';
+          actions.className='index-retired-label';
+        }else{
+          const finish=document.createElement('button');
+          finish.className='btn mini';
+          finish.type='button';
+          finish.textContent='Wyłącz stary';
+          finish.disabled=!complete;
+          finish.title=complete?'Wyłącz stary kod po wymianie ostatniej etykiety':
+            'Najpierw zaznacz wszystkie trzy magazyny';
+          actions.append(finish);
+          finish.addEventListener('click',async()=>{
+            const approve=await confirmAction({
+              title:'Wyłączyć stary indeks?',
+              description:'Część: '+item.name+'. Stary kod '+item.old_index+
+                ' przestanie działać przy skanowaniu. Nowy '+item.new_index+
+                ' zostanie jedynym aktywnym indeksem.',
+              confirmLabel:'Wyłącz stary indeks',danger:true
+            });
+            if(!approve)return;
+            finish.disabled=true;
+            try{
+              const result=await post({action:'retireOldIndex',partId:item.id});
+              item.old_active=0;
+              renderIndexMigration();
+              message(result.message,'success');
+            }catch(error){
+              finish.disabled=false;
+              message(error.message,'error');
+            }
+          });
+        }
+      }
+      area.append(table);
+    }
+    const replaced=field=>all.filter(p=>Number(p[field])===1).length;
+    const retired=all.filter(p=>!Number(p.old_active)).length;
+    $('indexMigrationFooter').textContent=
+      'Wyświetlono '+shown.length+' z '+all.length+' części · '+
+      'Belleville: '+replaced('belleville_done')+'/'+all.length+' · '+
+      'Tuluza: '+replaced('toulouse_done')+'/'+all.length+' · '+
+      'Paryż: '+replaced('paris_done')+'/'+all.length+' · '+
+      'Wyłączone stare indeksy: '+retired;
+  }
+
   function renderList() {
     const q=$('tableSearch').value.toLocaleLowerCase('pl').trim();
     const matching=state.records.filter(row=>
@@ -516,7 +624,8 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration');
+    $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
     $('addUserBtn').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('showArchivedUsers').classList.toggle('hidden',view!=='users');
@@ -535,6 +644,12 @@
     closeSide();
     try {
       if(view==='security') return;
+      if(view==='indexMigration'){
+        const result=await api('indexMigration');
+        state.records=result.parts||[];
+        if(state.view===view)renderIndexMigration();
+        return;
+      }
       if(view==='summary') {
         const [a,b]=await Promise.all([api('summary'),api('warehouses')]);
         state.warehouses=b;
@@ -836,6 +951,7 @@
       const item=event.target.closest('[data-view]');if(item)navigate(item.dataset.view);
     });
     $('tableSearch').addEventListener('input',renderList);
+    $('indexMigrationSearch').addEventListener('input',renderIndexMigration);
     $('warehouseFilter').addEventListener('change',event=>{
       state.currentPartsWarehouse=event.target.value;navigate('parts');
     });
