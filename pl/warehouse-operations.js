@@ -293,37 +293,6 @@
       throw Error('Plik nie jest poprawnym zdjęciem. Filmy, ZIP i inne dokumenty są zablokowane.');
   }
   
-  async function photoForNewPart(file) {
-    if(!file)return '';
-    await validatePartPhotoFile(file);
-    const objectUrl=URL.createObjectURL(file);
-    const img=new Image();
-    try {
-      await new Promise((resolve,reject)=>{
-        img.onload=resolve;
-        img.onerror=()=>reject(Error('Nie można otworzyć zdjęcia. Wybierz plik JPG lub zrób nowe zdjęcie.'));
-        img.src=objectUrl;
-      });
-      if(!img.naturalWidth||!img.naturalHeight)throw Error('Nie można odczytać zdjęcia.');
-      for(const maxSide of [1050,900,750,600]) {
-        const ratio=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
-        const canvas=document.createElement('canvas');
-        canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));
-        canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));
-        const ctx=canvas.getContext('2d');
-        if(!ctx)throw Error('Przeglądarka nie może przygotować zdjęcia.');
-        ctx.fillStyle='#ffffff';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.drawImage(img,0,0,canvas.width,canvas.height);
-        for(const quality of [.78,.67,.55]) {
-          const encoded=canvas.toDataURL('image/jpeg',quality);
-          if(encoded.startsWith('data:image/jpeg;base64,')&&encoded.length<=195000)
-            return encoded;
-        }
-      }
-      throw Error('Zdjęcie jest zbyt szczegółowe, aby je zapisać. Spróbuj zrobić je bliżej i w lepszym świetle.');
-    }finally{URL.revokeObjectURL(objectUrl);}
-  }
   async function saveNewPart(event) {
     event.preventDefault();
     if(state.busy||state.pending||!state.warehouse||
@@ -337,13 +306,19 @@
     disableDuringPending();
     newPartError('');
     try{
-      const file=el('operationNewPartPhoto').files?.[0]||null;
-      const photo=await photoForNewPart(file);
+      const file=el('operationNewPartCamera').files?.[0]||
+        el('operationNewPartPhoto').files?.[0]||null;
+      if(file)await validatePartPhotoFile(file);
       if(state.warehouse?.id!==warehouseId)return;
-      const response=await api('/api/pl/inventory',{
+      const form=new FormData();
+      form.set('warehouseId',warehouseId);
+      form.set('name',name);
+      form.set('sap',sap);
+      if(file)form.set('photo',file,file.name);
+      // R2 receives the original file. Never resize or compress it here.
+      const response=await api('/api/pl/new-part',{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'newPart',warehouseId,name,sap,photo})
+        body:form
       });
       if(state.warehouse?.id!==warehouseId)return;
       el('operationNewPartDialog').close();
@@ -745,23 +720,30 @@
     releaseNewPartPreview();
   });
   el('operationNewPartDialog').addEventListener('close',releaseNewPartPreview);
-  el('operationNewPartPhoto').addEventListener('change',async()=>{
+  el('operationNewPartGalleryButton').addEventListener('click',()=>el('operationNewPartPhoto').click());
+  el('operationNewPartCameraButton').addEventListener('click',()=>el('operationNewPartCamera').click());
+  async function selectedNewPartPhoto(input,other){
     releaseNewPartPreview();
-    const file=el('operationNewPartPhoto').files?.[0];
+    const file=input.files?.[0];
     if(!file)return;
+    other.value='';
     try{
       await validatePartPhotoFile(file);
-      if(el('operationNewPartPhoto').files?.[0]!==file)return;
+      if(input.files?.[0]!==file)return;
       state.photoPreviewUrl=URL.createObjectURL(file);
       el('operationNewPartPreview').src=state.photoPreviewUrl;
       el('operationNewPartPreview').hidden=false;
       newPartError('');
     }catch(error){
-      if(el('operationNewPartPhoto').files?.[0]!==file)return;
-      el('operationNewPartPhoto').value='';
+      if(input.files?.[0]!==file)return;
+      input.value='';
       newPartError(error.message||'Nieprawidłowy plik zdjęcia.');
     }
-  });
+  }
+  el('operationNewPartPhoto').addEventListener('change',()=>selectedNewPartPhoto(
+    el('operationNewPartPhoto'),el('operationNewPartCamera')));
+  el('operationNewPartCamera').addEventListener('change',()=>selectedNewPartPhoto(
+    el('operationNewPartCamera'),el('operationNewPartPhoto')));
   el('operationVisitForm').addEventListener('submit',beginVisit);
   el('operationEditVisit').addEventListener('click',editVisit);
   el('operationBackToMenu').addEventListener('click',backToMenu);
