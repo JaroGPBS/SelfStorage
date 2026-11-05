@@ -299,9 +299,13 @@
         autocapitalize="characters" placeholder="Możesz uzupełnić później">
       <label for="operationNewPartPhoto">Zdjęcie części (opcjonalnie, jedno)</label>
       <p class="operation-new-part-hint">Pokaż cechy rozpoznawcze, np. końcówki przewodu i rodzaj wtyczek.</p>
-      <input id="operationNewPartPhoto" type="file" accept="image/*"
-        capture="environment" aria-describedby="operationNewPartPhotoHelp">
-      <p id="operationNewPartPhotoHelp" class="operation-new-part-hint">Zrób zdjęcie lub wybierz JPG, PNG, BMP, WEBP, HEIC albo AVIF (maks. 20 MB).</p>
+      <div class="operation-photo-controls">
+        <button id="operationNewPartGalleryButton" class="btn btn-outline" type="button">Wybierz z galerii</button>
+        <button id="operationNewPartCameraButton" class="btn btn-outline" type="button">Zrób zdjęcie</button>
+      </div>
+      <input id="operationNewPartPhoto" type="file" accept="image/*" hidden aria-describedby="operationNewPartPhotoHelp">
+      <input id="operationNewPartCamera" type="file" accept="image/*" capture="environment" hidden aria-describedby="operationNewPartPhotoHelp">
+      <p id="operationNewPartPhotoHelp" class="operation-new-part-hint">Tylko zdjęcia JPG, PNG, BMP, WEBP, HEIC lub AVIF (maks. 20 MB). Oryginał trafi do R2.</p>
       <img id="operationNewPartPreview" class="operation-new-part-preview"
         alt="Podgląd zdjęcia nowej części" hidden>
       <p id="operationNewPartError" class="error" role="alert" hidden></p>
