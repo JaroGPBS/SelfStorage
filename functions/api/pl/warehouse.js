@@ -92,7 +92,8 @@ export async function onRequestGet({request,env}) {
         'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id '+
         'WHERE p.active=1 AND (UPPER(p.part_number) IN ('+placeholders+') '+
         'OR UPPER(p.sap_number) IN ('+placeholders+') OR UPPER(p.id) IN ('+placeholders+') '+
-        'OR UPPER(v.raw_code) IN ('+placeholders+') '+
+        'OR (UPPER(v.raw_code) IN ('+placeholders+') AND '+
+        '(ix.part_id IS NULL OR ix.old_active=1 OR UPPER(v.raw_code)<>UPPER(ix.old_index))) '+
         'OR UPPER(ix.new_index) IN ('+placeholders+') '+
         'OR (ix.old_active=1 AND UPPER(ix.old_index) IN ('+placeholders+'))) LIMIT 3'
       ).bind(...candidates,...candidates,...candidates,...candidates,...candidates,...candidates).all();
