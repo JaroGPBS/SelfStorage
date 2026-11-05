@@ -34,6 +34,7 @@ W panelu **administracyjnym** GPBS Storage dodać widok wykorzystania limitów u
 - Blokada ma obejmować nowe wysyłanie i zastępowanie zdjęć, **nie może blokować** pracy magazynu: PZ, WZ, inwentaryzacji, wyszukiwania części ani odczytu wcześniej zapisanych zdjęć (o ile osobny limit odczytów nie wymaga ograniczenia).
 - W przypadku błędu odczytu metryk / niemożliwości potwierdzenia dostępnego limitu nowe operacje mogące powiększyć zużycie mają zostać wstrzymane (**fail closed**), z jasnym komunikatem dla administratora.
 - Dodatkowo ograniczyć maksymalny rozmiar pojedynczego pliku i tempo przesyłania; dostęp do R2 wyłącznie przez autoryzowany backend, bez publicznych zapisów i bez kluczy w przeglądarce.
+- **Wymóg bezpieczeństwa uploadu R2:** dopuszczać tylko rzeczywiste fotografie JPG/JPEG, PNG, BMP, WEBP (oraz obsługiwane zdjęcia HEIC/HEIF/AVIF z telefonów). Sprawdzać nie tylko nazwę i MIME, ale też sygnaturę pliku oraz poprawność dekodowania po stronie serwera. Blokować ZIP, wideo, SVG, dokumenty i pliki udające obrazy. Walidacja w przeglądarce jest dodatkowa; nie może zastąpić walidacji na serwerze. Na razie istniejący zapis D1 ma włączone sprawdzanie formatu — osobny upload R2 nie jest jeszcze aktywny.
 - Po jednorazowej obróbce zdjęcia zastępować oryginał wersją lekką i **usuwać oryginał**; nie przechowywać dwóch trwałych kopii.
 - Rozważyć alerty Cloudflare Billing jako **dodatkowe** ostrzeżenie, niezależne od blokady w aplikacji.
 
