@@ -144,7 +144,7 @@
         '<div class="a5-qr-column"><div class="a5-qr" data-qr="'+esc(part.part_number)+'"></div></div>'+
         '<div class="a5-information-column"><small>INDEKS GPBS</small>'+
           '<strong>'+esc(part.part_number)+'</strong>'+
-          '<img class="a5-brand" src="/office/gpbs-logo-sharp.svg?v=1" alt="GPBS"></div>'+
+          '<img class="a5-brand" src="/office/gpbs-logo-print.svg?v=1" alt="GPBS"></div>'+
         '<div class="a5-image-column">'+photoMarkup(part,warehouse)+'</div>'+
       '</div></div></article>';
   }
