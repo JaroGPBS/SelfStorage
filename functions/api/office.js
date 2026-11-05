@@ -131,9 +131,13 @@ export async function onRequestGet({request,env}){
       }});
     }
     if(view==='stocks'){
+      const hasIndices=await tableExists(env.DB,'pl_part_index_migrations');
       const parts=await selectRows(env.DB,
-        'SELECT p.id,p.part_number,p.name,p.sap_number,s.quantity '+
+        'SELECT p.id,'+
+        (hasIndices?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
+        ' AS part_number,p.name,p.sap_number,s.quantity '+
         'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
+        (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
         'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE,p.id LIMIT 3000',
         [warehouseId]);
       return workerJson({ok:true,warehouseId,parts});
@@ -141,6 +145,7 @@ export async function onRequestGet({request,env}){
     if(view==='part'){
       const partId=url.searchParams.get('part')||'';
       if(!PART.test(partId))return error('Nieprawidłowa część.');
+      const hasIndices=await tableExists(env.DB,'pl_part_index_migrations');
       const hasPhotos=await tableExists(env.DB,'pl_part_photos');
       const hasR2Photos=await tableExists(env.DB,'pl_part_photo_objects');
       const photoFlags=[
@@ -148,10 +153,13 @@ export async function onRequestGet({request,env}){
         hasPhotos?'EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id)':null
       ].filter(Boolean).join(' OR ');
       const part=await env.DB.prepare(
-        'SELECT p.id,p.name,p.sap_number,p.part_number,s.quantity '+
+        'SELECT p.id,p.name,p.sap_number,'+
+        (hasIndices?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
+        ' AS part_number,s.quantity '+
         (photoFlags?' ,('+photoFlags+') AS has_photo ':
           ' ,0 AS has_photo ')+
         'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
+        (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
         'WHERE p.id=? AND p.active=1'
       ).bind(warehouseId,partId).first();
       if(!part)return error('Nie znaleziono części.',404);
