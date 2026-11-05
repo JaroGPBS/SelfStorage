@@ -102,7 +102,7 @@ async function api(view,params={}){
   return payload;
 }
 // Office adds parts to the same central PL catalogue as the mobile warehouse.
-// R2 is not configured yet: use the existing one-photo (compressed JPEG) API.
+// R2 binding is configured, but photo uploads still use D1 until R2 cost guards are implemented.
 let newPartBusy=false;
 let newPartPreviewUrl=null;
 function newPartError(text=''){
