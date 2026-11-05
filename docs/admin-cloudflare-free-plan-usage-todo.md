@@ -23,7 +23,7 @@ W panelu **administracyjnym** GPBS Storage dodać widok wykorzystania limitów u
 
 ## R2 — zabezpieczenie kosztów i automatyczne blokady (ustalenie z 05.11.2026)
 
-**Priorytet:** obowiązkowe przed udostępnieniem produkcyjnego przesyłania zdjęć do R2, ale realizować przy pracach nad panelem administracyjnym. **Nie wdrażać teraz.**
+**Status:** podstawowa ochrona zapisu do R2 została wdrożona w API przy uruchamianiu zdjęć (limit 9 GB własnych plików aplikacji, limit 20 000 zapisów i 200 000 odczytów miesięcznie). **Pełny ekran monitoringu i ostrzeżenia w Storage Admin są nadal do wykonania.**
 
 **Powód:** R2 jest aktywowane z **prywatną kartą płatniczą** właściciela projektu. Sam darmowy limit nie jest twardym ograniczeniem opłat. Nie można polegać jedynie na powiadomieniach o rachunku.
 
@@ -34,10 +34,10 @@ W panelu **administracyjnym** GPBS Storage dodać widok wykorzystania limitów u
 - Blokada ma obejmować nowe wysyłanie i zastępowanie zdjęć, **nie może blokować** pracy magazynu: PZ, WZ, inwentaryzacji, wyszukiwania części ani odczytu wcześniej zapisanych zdjęć (o ile osobny limit odczytów nie wymaga ograniczenia).
 - W przypadku błędu odczytu metryk / niemożliwości potwierdzenia dostępnego limitu nowe operacje mogące powiększyć zużycie mają zostać wstrzymane (**fail closed**), z jasnym komunikatem dla administratora.
 - Dodatkowo ograniczyć maksymalny rozmiar pojedynczego pliku i tempo przesyłania; dostęp do R2 wyłącznie przez autoryzowany backend, bez publicznych zapisów i bez kluczy w przeglądarce.
-- **Wymóg bezpieczeństwa uploadu R2:** dopuszczać tylko rzeczywiste fotografie JPG/JPEG, PNG, BMP, WEBP (oraz obsługiwane zdjęcia HEIC/HEIF/AVIF z telefonów). Sprawdzać nie tylko nazwę i MIME, ale też sygnaturę pliku oraz poprawność dekodowania po stronie serwera. Blokować ZIP, wideo, SVG, dokumenty i pliki udające obrazy. Walidacja w przeglądarce jest dodatkowa; nie może zastąpić walidacji na serwerze. Na razie istniejący zapis D1 ma włączone sprawdzanie formatu — osobny upload R2 nie jest jeszcze aktywny.
+- **Bezpieczeństwo uploadu R2:** API przyjmuje zdjęcia JPG/JPEG, PNG, BMP, WEBP, HEIC/HEIF/AVIF po weryfikacji rozszerzenia, MIME i sygnatury pliku, blokuje ZIP, wideo, SVG i dokumenty. Wspomagająca walidacja w przeglądarce nie zastępuje kontroli serwera. Docelowo warto dodać również pełne dekodowanie obrazów po stronie serwera.
 - Po jednorazowej obróbce zdjęcia zastępować oryginał wersją lekką i **usuwać oryginał**; nie przechowywać dwóch trwałych kopii.
 - Rozważyć alerty Cloudflare Billing jako **dodatkowe** ostrzeżenie, niezależne od blokady w aplikacji.
 
 **Ważne ograniczenie:** Blokady po stronie GPBS Storage mogą skutecznie ograniczać własne żądania aplikacji, ale **nie gwarantują zerowych opłat** za wszelkie operacje na koncie Cloudflare (np. ręczne operacje lub inne usługi). Oficjalne statystyki mogą aktualizować się z opóźnieniem; własne liczniki i margines bezpieczeństwa trzeba zaprojektować ostrożnie. Nie przedstawiać rozwiązania jako twardego limitu rozliczeniowego Cloudflare.
 
-**Kolejność:** najpierw bieżące uruchomienie magazynu Polska; następnie w ramach rozbudowy Storage Admin wdrożyć kontrolę R2 **przed udostępnieniem produkcyjnego uploadu zdjęć**.
+**Kolejność:** podstawowe ograniczenia w API już istnieją, a przy rozbudowie Storage Admin dodać prezentację faktycznego wykorzystania R2, ostrzeżenie przy 8 GB, limity konfigurowalne oraz niezależne alerty Cloudflare Billing. Obecne liczniki obejmują wyłącznie operacje wykonywane przez aplikację, nie całe konto Cloudflare.
