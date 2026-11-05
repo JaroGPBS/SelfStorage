@@ -20,6 +20,11 @@
       new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',
         day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(date);
   }
+  function plural(value,one,few,many){
+    if(value===1)return one;
+    const tens=value%100,ones=value%10;
+    return ones>=2&&ones<=4&&(tens<12||tens>14)?few:many;
+  }
   function entries(){return model.parts.filter(p=>model.queue.has(p.id));}
   function updateWarehouseSelect(){
     const select=$('labelWarehouse');
@@ -61,8 +66,9 @@
   function renderQueue(){
     const list=entries();
     const total=list.reduce((sum,p)=>sum+(model.queue.get(p.id)||0),0);
-    $('labelQueueCount').textContent=total+' '+(total===1?'etykieta':total<5&&total>1?'etykiety':'etykiet');
-    $('labelSheetCount').textContent=Math.ceil(total/2)+' '+(Math.ceil(total/2)===1?'kartka A4':'kartek A4');
+    $('labelQueueCount').textContent=total+' '+plural(total,'etykieta','etykiety','etykiet');
+    const sheets=Math.ceil(total/2);
+    $('labelSheetCount').textContent=sheets+' '+plural(sheets,'kartka','kartki','kartek')+' A4';
     $('labelPrintNow').disabled=!total||model.busy;
     $('labelQueueList').innerHTML=list.length?list.map(p=>
       '<div class="label-queue-row"><div class="label-queue-name"><strong>'+esc(p.name)+'</strong>'+
