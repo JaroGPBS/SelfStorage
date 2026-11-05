@@ -317,6 +317,9 @@ async function queryPanel(env,view,url) {
   if(view==='movements') {
     // Historical operations and NEW mixed PZ/WZ sessions use separate tables.
     // Previous panel only queried warehouse_operations, making every new session invisible.
+    const indexed=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_index_migrations'"
+    ).first();
     const sessionSchema=await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' "+
       "AND name IN ('pl_warehouse_sessions','pl_warehouse_session_lines')"
@@ -325,11 +328,14 @@ async function queryPanel(env,view,url) {
       env.DB.prepare(
         'SELECT o.id,o.id AS session_id,o.operation_type,o.warehouse_id,'+
         "o.operator_id,COALESCE(u.name,o.operator_id) AS operator_name,"+
-        'o.recipient_name,o.created_at,p.name AS part_name,p.part_number,'+
+        'o.recipient_name,o.created_at,p.name AS part_name,'+
+        (indexed?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
+        ' AS part_number,'+
         'l.quantity_delta,l.quantity_before,l.quantity_after,'+
         '0 AS shortage_quantity,0 AS before_unknown '+
         'FROM warehouse_operations o JOIN warehouse_operation_lines l ON l.operation_id=o.id '+
         'JOIN parts p ON p.id=l.part_id '+
+        (indexed?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
         'LEFT JOIN users u ON u.id=o.operator_id '+
         'ORDER BY o.created_at DESC,o.id DESC LIMIT 250'
       ).all()
@@ -348,13 +354,17 @@ async function queryPanel(env,view,url) {
         's.warehouse_id,s.actor_id AS operator_id,'+
         'COALESCE(u.name,s.actor_id) AS operator_name,'+
         's.counterparty AS recipient_name,s.committed_at AS created_at,'+
-        'p.name AS part_name,p.part_number,'+
+        'p.name AS part_name,'+
+        (indexed?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
+        ' AS part_number,'+
         "CASE WHEN l.direction='PZ' THEN l.quantity ELSE -l.quantity END AS quantity_delta,"+
         originalQuantity+' AS quantity_before,l.quantity_after,'+
         shortageColumn+' AS shortage_quantity,'+unknownColumn+' AS before_unknown '+
         'FROM pl_warehouse_sessions s '+
         'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
-        'JOIN parts p ON p.id=l.part_id LEFT JOIN users u ON u.id=s.actor_id '+
+        'JOIN parts p ON p.id=l.part_id '+
+        (indexed?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
+        'LEFT JOIN users u ON u.id=s.actor_id '+
         'ORDER BY s.committed_at DESC,s.id DESC LIMIT 250'
       ).all());
     }
