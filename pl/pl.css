@@ -161,15 +161,17 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
 .inventory-section-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .inventory-section-heading h3{font-size:16px;margin:0;font-weight:800}
 .count-pill{border-radius:999px;background:#4a3036;border:1px solid #91525a;color:#ffced0;font-size:12px;font-weight:800;padding:6px 10px;white-space:nowrap}
-.inventory-draft-lines{display:grid;gap:9px}
-.inventory-draft-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;background:#121820;border:1px solid #394653;border-radius:10px;padding:13px}
-.inventory-draft-desc{display:flex;flex-direction:column;gap:5px;min-width:0;overflow-wrap:anywhere}
-.inventory-draft-desc strong{font-size:13px;line-height:1.4}
-.inventory-draft-desc small{font-size:11px;color:#a8b5c4}
-.inventory-draft-qty{font-size:14px;color:#ddf0e1;align-self:center;text-align:right}
-.inventory-draft-actions{grid-column:1/-1;display:flex;gap:14px;border-top:1px solid #2a333d;margin-top:3px;padding-top:8px}
-.inventory-inline-button{background:transparent;border:0;color:#ff9c9f;font-size:12px;font-weight:800;padding:5px 2px}
-.inventory-inline-button:hover{text-decoration:underline;color:#ffc1c3}
+.inventory-draft-lines{display:grid;gap:7px}
+.inventory-draft-row{display:flex;flex-direction:column;gap:4px;min-width:0;background:#121820;border:1px solid #394653;border-radius:10px;padding:9px 11px}
+.inventory-draft-name{display:block;min-width:0;font-size:13px;line-height:1.3;font-weight:800;overflow-wrap:anywhere}
+.inventory-draft-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.inventory-draft-index{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#a8b5c4;font-size:11px}
+.inventory-draft-controls{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.inventory-draft-qty{font-size:13px;color:#ddf0e1;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.inventory-draft-actions{display:flex;align-items:center;gap:5px}
+.inventory-inline-button{background:#27303a;border:1px solid #495565;border-radius:6px;color:#ffb5b8;font-size:11px;font-weight:800;line-height:1.1;min-height:31px;padding:6px 7px;white-space:nowrap}
+.inventory-inline-button:hover{background:#343c47;color:#ffd0d1}
+.inventory-inline-button:focus-visible{outline:2px solid #ff979b;outline-offset:2px}
 .inventory-commit{margin-top:17px}
 .inventory-feedback{margin:14px 0;padding:12px;border:1px solid #47745c;background:#1d392b;border-radius:10px;color:#c5edd1;font-weight:700;line-height:1.5;font-size:13px}
 .inventory-search-results{display:grid;gap:8px}
@@ -197,7 +199,10 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
 @media(max-width:360px){
   .inventory-dialog-inner{padding:22px 17px}
   .inventory-dialog-actions .btn{font-size:12px}
-  .inventory-draft-row{padding:12px 10px}
+  .inventory-draft-row{padding:8px 9px}
+  .inventory-draft-controls{gap:5px}
+  .inventory-draft-actions{gap:4px}
+  .inventory-inline-button{font-size:10px;padding:6px 5px}
   .inventory-search-badge{font-size:10px}
 }
 
