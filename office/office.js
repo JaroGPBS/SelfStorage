@@ -102,7 +102,7 @@ async function api(view,params={}){
   return payload;
 }
 // Office adds parts to the same central PL catalogue as the mobile warehouse.
-// R2 binding is configured, but photo uploads still use D1 until R2 cost guards are implemented.
+// New-part photos go directly to private R2 with server-side type and quota checks.
 let newPartBusy=false;
 let newPartPreviewUrl=null;
 function newPartError(text=''){
@@ -164,37 +164,6 @@ const ext=filename.includes('.')?filename.split('.').pop().toLowerCase():'';
     throw Error('Plik nie jest poprawnym zdjęciem. Filmy, ZIP i inne dokumenty są zablokowane.');
 }
 
-async function prepareOfficePartPhoto(file){
-  if(!file)return '';
-  await validatePartPhotoFile(file);
-  const url=URL.createObjectURL(file);
-  const img=new Image();
-  try{
-    await new Promise((resolve,reject)=>{
-      img.onload=resolve;
-      img.onerror=()=>reject(Error('Nie można otworzyć zdjęcia. Wybierz JPG, PNG lub WEBP.'));
-      img.src=url;
-    });
-    if(!img.naturalWidth||!img.naturalHeight)
-      throw Error('Nie można odczytać zdjęcia.');
-    for(const maxSide of [1050,900,750,600]){
-      const ratio=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
-      const canvas=document.createElement('canvas');
-      canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));
-      canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));
-      const ctx=canvas.getContext('2d');
-      if(!ctx)throw Error('Przeglądarka nie może przygotować zdjęcia.');
-      ctx.fillStyle='#ffffff';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(img,0,0,canvas.width,canvas.height);
-      for(const quality of [.78,.67,.55]){
-        const data=canvas.toDataURL('image/jpeg',quality);
-        if(data.startsWith('data:image/jpeg;base64,')&&data.length<=195000)return data;
-      }
-    }
-    throw Error('Zdjęcie jest zbyt szczegółowe. Wybierz mniejsze zdjęcie.');
-  }finally{URL.revokeObjectURL(url);}
-}
 async function saveOfficeNewPart(event){
   event.preventDefault();
   if(newPartBusy||state.view!=='stocks'||state.stockTab!=='parts'||
@@ -209,15 +178,19 @@ async function saveOfficeNewPart(event){
   newPartError('');
   try{
     const file=$('officeNewPartPhoto').files?.[0]||null;
-    const photo=await prepareOfficePartPhoto(file);
+    if(file)await validatePartPhotoFile(file);
     if(state.warehouse!==warehouseId)
       throw Error('Wybrano inny magazyn. Otwórz formularz ponownie.');
-    const response=await fetch('/api/office',{
+    const form=new FormData();
+    form.set('warehouseId',warehouseId);
+    form.set('name',name);
+    form.set('sap',sap);
+    if(file)form.set('photo',file,file.name);
+    const response=await fetch('/api/pl/new-part',{
       method:'POST',
       credentials:'same-origin',
       cache:'no-store',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'newPart',warehouseId,name,sap,photo})
+      body:form
     });
     const result=await response.json().catch(()=>({}));
     if(!response.ok||!result.ok)throw Error(result.error||'Nie udało się zapisać nowej części.');
