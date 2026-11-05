@@ -3,6 +3,7 @@
 import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worker-auth.js';
 import {createRememberToken,verifyRememberSession,officeRememberCookie} from '../../lib/pl-office-remember.js';
 import {createUnverifiedPart} from '../../lib/pl-part-create.js';
+import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
 const WAREHOUSE=/^[A-Z0-9-]{2,50}$/;
@@ -108,6 +109,14 @@ export async function onRequestGet({request,env}){
     if(view==='partPhoto') {
       const partId=url.searchParams.get('part')||'';
       if(!PART.test(partId))return error('Nieprawidłowa część.',400);
+      if(await tableExists(env.DB,'pl_part_photo_objects')){
+        const ref=await getPhotoObject(env.DB,partId);
+        if(ref){
+          if(!env.PART_PHOTOS)return error('Magazyn zdjęć R2 niedostępny.',503);
+          const reply=await readPhotoResponse(env,ref);
+          return reply||error('Brak pliku zdjęcia w R2.',404);
+        }
+      }
       if(!await tableExists(env.DB,'pl_part_photos'))return error('Brak zdjęcia.',404);
       const photo=await env.DB.prepare(
         'SELECT ph.mime_type,ph.photo_base64 FROM pl_part_photos ph '+
@@ -133,9 +142,14 @@ export async function onRequestGet({request,env}){
       const partId=url.searchParams.get('part')||'';
       if(!PART.test(partId))return error('Nieprawidłowa część.');
       const hasPhotos=await tableExists(env.DB,'pl_part_photos');
+      const hasR2Photos=await tableExists(env.DB,'pl_part_photo_objects');
+      const photoFlags=[
+        hasR2Photos?'EXISTS(SELECT 1 FROM pl_part_photo_objects r2 WHERE r2.part_id=p.id)':null,
+        hasPhotos?'EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id)':null
+      ].filter(Boolean).join(' OR ');
       const part=await env.DB.prepare(
         'SELECT p.id,p.name,p.sap_number,p.part_number,s.quantity '+
-        (hasPhotos?' ,EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id) AS has_photo ':
+        (photoFlags?' ,('+photoFlags+') AS has_photo ':
           ' ,0 AS has_photo ')+
         'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
         'WHERE p.id=? AND p.active=1'
