@@ -1,5 +1,7 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
-import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
+import {getPhotoObject,readPhotoResponse,r2Ready,
+  ensurePhotoTables,readValidatedPhoto,reservePhotoWrite,releasePhotoBytes}
+  from '../../lib/pl-r2-photos.js';
 // Bootstrap administrator access: strong secret PLUS legacy administrator PIN.
 // Later: migrate to scoped D1 users, passwordless/2FA and per-permission access.
 const COOKIE_NAME = '__Host-gpbs_panel_session';
@@ -738,6 +740,79 @@ async function provisionStaffPins(env,body,actor) {
     warning:'PIN jest widoczny tylko teraz. Zapisz go bezpiecznie.'});
 }
 
+// Admin replacement: upload edited file, atomically repoint D1 and delete the old original.
+async function replacePartPhoto(request,env){
+  const session=await readSession(request,env.PANEL_SESSION_SECRET);
+  if(!session||session.role!=='ADMIN')return fail('Zaloguj się jako administrator.',401);
+  if(!r2Ready(env))return fail('R2 nie jest podłączone do panelu.',503);
+  if(Number(request.headers.get('Content-Length')||0)>22*1024*1024)
+    return fail('Zdjęcie przekracza 20 MB.',413);
+  let form;
+  try{form=await request.formData();}
+  catch{return fail('Nie można odczytać pliku.',400);}
+  const id=String(form.get('partId')||'');
+  if(!/^[A-Za-z0-9_-]{1,100}$/.test(id))return fail('Nieprawidłowa część.',400);
+  const file=form.get('photo');
+  if(!file||typeof file!=='object'||!file.size)return fail('Wybierz zdjęcie do zastąpienia.');
+  let photo;
+  try{photo=await readValidatedPhoto(file);}
+  catch(error){return fail(error?.message||'Nieprawidłowe zdjęcie.',error?.status||400);}
+  try{
+    const exists=await env.DB.prepare('SELECT id FROM parts WHERE id=? AND active=1')
+      .bind(id).first();
+    if(!exists)return fail('Nie znaleziono części.',404);
+    await ensurePhotoTables(env.DB);
+  }catch(error){return fail('Baza zdjęć nie jest dostępna.',503);}
+  const prev=await getPhotoObject(env.DB,id);
+  const ext={
+    'image/jpeg':'jpg','image/png':'png','image/bmp':'bmp',
+    'image/webp':'webp','image/heic':'heic','image/avif':'avif'
+  }[photo.type];
+  const newKey='parts/'+crypto.randomUUID()+'.'+ext;
+  let reserved=false,uploaded=false,committed=false;
+  try{
+    await reservePhotoWrite(env.DB,photo.bytes.byteLength);reserved=true;
+    const obj=await env.PART_PHOTOS.put(newKey,photo.bytes,{
+      httpMetadata:{contentType:photo.type,cacheControl:'private, no-store'}
+    });
+    if(!obj)throw Error('R2 nie przyjęło zdjęcia.');
+    uploaded=true;
+    const statements=[
+      env.DB.prepare('INSERT INTO pl_part_photo_objects (part_id,object_key,mime_type,size_bytes) '+
+        'VALUES (?,?,?,?) ON CONFLICT(part_id) DO UPDATE SET '+
+        'object_key=excluded.object_key,mime_type=excluded.mime_type,'+
+        'size_bytes=excluded.size_bytes,updated_at=CURRENT_TIMESTAMP')
+        .bind(id,newKey,photo.type,photo.bytes.byteLength)
+    ];
+    const legacy=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
+    ).first();
+    if(legacy)statements.push(env.DB.prepare(
+      'DELETE FROM pl_part_photos WHERE part_id=?').bind(id));
+    await env.DB.batch(statements);
+    committed=true;
+    if(prev?.object_key){
+      try{
+        await env.PART_PHOTOS.delete(prev.object_key);
+        await releasePhotoBytes(env.DB,Number(prev.size_bytes));
+      }catch(error){
+        // If old object cleanup fails, count its bytes; avoid undeclared usage.
+        console.error('Admin old R2 photo cleanup unavailable',error?.name||'Error');
+      }
+    }
+    return respond({ok:true,message:'Zastąpiono zdjęcie. Poprzedni oryginał usunięto.'});
+  }catch(error){
+    if(!committed){
+      if(uploaded){
+        try{await env.PART_PHOTOS.delete(newKey);}
+        catch(err){console.error('Admin photo cleanup failed',err?.name||'Error');return fail('Nie można wycofać przesłanego zdjęcia R2.',503);}
+      }
+      if(reserved)await releasePhotoBytes(env.DB,photo.bytes.byteLength).catch(()=>{});
+    }
+    return fail(error?.status?error.message:'Nie udało się zastąpić zdjęcia.',error?.status||503);
+  }
+}
+
 async function route(request,env) {
   if(!ready(env)) return fail('Panel nie jest jeszcze aktywowany przez administratora.',503);
   const url=new URL(request.url);
@@ -793,6 +868,8 @@ async function route(request,env) {
   if(request.method!=='POST') return fail('Niedozwolona metoda.',405);
   const origin=request.headers.get('Origin');
   if(!origin||origin!==url.origin) return fail('Niedozwolona domena.',403);
+  if((request.headers.get('Content-Type')||'').toLowerCase().startsWith('multipart/form-data;'))
+    return replacePartPhoto(request,env);
   if(!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
     return fail('Wymagany format JSON.',415);
   let body;
