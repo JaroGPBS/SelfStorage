@@ -1,7 +1,8 @@
-// GPBS Storage - independent, read-only office API (Poland).
+// GPBS Storage - independent office API (Poland): read-only views and guarded new-part creation.
 // Existing /panel/ admin API and /pl/ warehouse operations are untouched.
 import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worker-auth.js';
 import {createRememberToken,verifyRememberSession,officeRememberCookie} from '../../lib/pl-office-remember.js';
+import {createUnverifiedPart} from '../../lib/pl-part-create.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
 const WAREHOUSE=/^[A-Z0-9-]{2,50}$/;
@@ -30,10 +31,35 @@ export async function onRequestPost({request,env}){
   let body;
   try{
     const raw=await request.text();
-    if(raw.length>200)return error('Zbyt duże żądanie.',413);
+    if(raw.length>260000)return error('Zbyt duże żądanie.',413);
     body=JSON.parse(raw);
+    if(!body||typeof body!=='object'||Array.isArray(body)||
+       (body.action!=='newPart'&&raw.length>200))
+      return error('Nieprawidłowe dane.',400);
   }catch{return error('Nieprawidłowe dane.',400);}
-  if(body?.action==='forget'){
+  if(body.action==='newPart'){
+    const warehouseId=String(body.warehouseId||'');
+    if(!WAREHOUSE.test(warehouseId))return error('Nieprawidłowy magazyn.',400);
+    try{
+      const user=await verifyWorkerSession(request,env) ||
+        await verifyRememberSession(request,env);
+      if(!user)return error('Zaloguj się ponownie.',401);
+      if(!ALLOWED.has(user.role))return error('Brak dostępu do katalogu.',403);
+      if(!user.warehouses.some(w=>w.id===warehouseId))
+        return error('Brak uprawnień do wybranego magazynu.',403);
+      const warehouse=await env.DB.prepare(
+        "SELECT id FROM warehouses WHERE id=? AND country_code='PL' AND active=1"
+      ).bind(warehouseId).first();
+      if(!warehouse)return error('Magazyn jest niedostępny.',404);
+      if(!await tableExists(env.DB,'pl_part_verifications'))
+        return error('Brak tabeli weryfikacji nowych części.',503);
+      return await createUnverifiedPart(env.DB,warehouseId,user.id,body);
+    }catch(ex){
+      console.error('Office new-part creation failed',ex?.name||'Error');
+      return error('Nie udało się dodać nowej części.',503);
+    }
+  }
+  if(body.action==='forget'){
     return workerJson({ok:true},200,{'Set-Cookie':officeRememberCookie('',0)});
   }
   if(body?.action!=='remember')return error('Nieznana akcja.',400);
