@@ -601,45 +601,6 @@
   .label-data span{font-size:10px}
   .label-photo-zone{padding:4px}
 }
-@media print{
-  @page{size:180mm 70mm;margin:0}
-  html,body{margin:0!important;padding:0!important;background:#fff!important}
-  body *{visibility:hidden!important}
-  .label-modal,.label-modal .label-print-area,
-  .label-modal .label-print-area *{visibility:visible!important}
-  .label-modal{
-    position:fixed!important;inset:0!important;z-index:1000!important;
-    display:block!important;padding:0!important;margin:0!important;
-    width:180mm!important;height:70mm!important;background:#fff!important;
-  }
-  .label-modal-card{
-    position:static!important;width:180mm!important;height:70mm!important;
-    max-height:none!important;overflow:visible!important;
-    padding:0!important;margin:0!important;
-    border:0!important;border-radius:0!important;box-shadow:none!important;
-  }
-  .label-modal-heading,.label-modal-actions,.label-modal-close,.label-backdrop{display:none!important}
-  .label-print-area{
-    position:absolute!important;top:0!important;left:0!important;
-    display:block!important;width:180mm!important;height:70mm!important;
-    border:0!important;padding:0!important;margin:0!important;
-    border-radius:0!important;background:#fff!important;
-  }
-  .printable-label{
-    display:grid!important;grid-template-columns:65mm 65mm 50mm!important;
-    width:180mm!important;height:70mm!important;aspect-ratio:auto!important;
-    border:0!important;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
-  }
-  .label-qr-zone{width:65mm!important;height:70mm!important;padding:5mm 2.5mm!important}
-  .label-qr{width:60mm!important;height:60mm!important}
-  .label-text-zone{padding:4mm 1mm 4mm 0!important;gap:3mm!important}
-  .label-part-name{font-size:21pt!important;line-height:1.1!important}
-  .label-data small{font-size:8pt!important}
-  .label-data span{font-size:13pt!important}
-  .label-photo-zone{padding:4mm 4mm 4mm 0!important}
-  .label-photo-zone img{width:100%!important;height:100%!important;object-fit:contain!important}
-}
 
 /* Module machine registry presentation. Kept separate from the real parts table. */
 .app.view-stocks.view-modules .table-toolbar{
