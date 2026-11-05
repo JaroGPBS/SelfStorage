@@ -924,23 +924,25 @@ body.operation-task-open {overflow:hidden}
 #operationDirectionPanel .operation-task-search input {
   flex:1 1 auto;
   min-width:0;
-  min-height:47px;
-  padding:10px 12px;
+  min-height:33px;
+  height:33px;
+  padding:5px 9px;
   border:1px solid #5a6677;
   border-radius:9px;
   background:#0f1620;
   color:#fff;
-  font-size:14px;
+  font-size:13px;
 }
 #operationDirectionPanel .operation-task-search button {
   flex:0 0 auto;
-  min-height:47px;
-  padding:9px 12px;
+  min-height:33px;
+  height:33px;
+  padding:5px 8px;
   border:1px solid #627185;
   border-radius:9px;
   background:#293545;
   color:#fff;
-  font-size:13px;
+  font-size:12px;
   font-weight:800;
 }
 #operationDirectionPanel .operation-task-scan {
