@@ -167,7 +167,7 @@
       #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
     }
   </style>
-  <script defer src="./office.js?v=26"></script>
+  <script defer src="./office.js?v=27"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -326,9 +326,9 @@
         autocapitalize="characters" autocomplete="off" placeholder="Możesz uzupełnić później">
       <label for="officeNewPartPhoto">Zdjęcie części (opcjonalnie)</label>
       <p class="office-new-part-hint">Pokaż cechy rozpoznawcze, np. końcówki przewodu i rodzaj wtyczek.</p>
-      <input id="officeNewPartPhoto" type="file" accept="image/*"
+      <input id="officeNewPartPhoto" type="file" accept=".jpg,.jpeg,.png,.bmp,.webp,.heic,.heif,.avif,image/jpeg,image/png,image/bmp,image/webp,image/heic,image/heif,image/avif"
         aria-describedby="officeNewPartPhotoHint">
-      <p id="officeNewPartPhotoHint" class="office-new-part-hint">Wybierz jedno zdjęcie z dysku.</p>
+      <p id="officeNewPartPhotoHint" class="office-new-part-hint">Wybierz jedno zdjęcie: JPG, PNG, BMP, WEBP, HEIC lub AVIF (maks. 20 MB).</p>
       <img id="officeNewPartPreview" class="office-new-part-preview"
         alt="Podgląd zdjęcia nowej części" hidden>
       <p id="officeNewPartError" class="office-new-part-error" role="alert" hidden></p>
