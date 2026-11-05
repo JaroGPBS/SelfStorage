@@ -1196,3 +1196,148 @@ body.operation-task-open {overflow:hidden}
   #inventoryScreen #inventoryCommitButton .inventory-finish-count {font-size:9px}
   #inventoryScreen #inventoryCommitButton .inventory-finish-label {font-size:12px}
 }
+
+
+/* Inventory counting and manual search: separate viewport-sized screens.
+   Only the counted rows scroll; Scan remains visible at the bottom. */
+#inventoryScreen:not([hidden]) {
+  position:fixed;
+  inset:0 auto 0 50%;
+  transform:translateX(-50%);
+  z-index:900;
+  width:min(100%,470px);
+  height:100dvh;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:max(15px,env(safe-area-inset-top)) 15px max(10px,env(safe-area-inset-bottom));
+  background:#0e1116;
+}
+#inventoryScreen .inventory-topbar {
+  flex:none;
+  margin:0 0 12px;
+}
+#inventoryScreen .inventory-draft {
+  display:flex;
+  flex-direction:column;
+  flex:1 1 0;
+  min-height:0;
+  overflow:hidden;
+}
+#inventoryScreen #inventoryCommitButton.inventory-commit {flex:none}
+#inventoryScreen #inventoryDraftLines {
+  flex:1 1 0;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:0 1px 8px 0;
+  scrollbar-width:thin;
+}
+#inventoryScreen #inventoryScannerClosed.scanner-closed {
+  position:static;
+  flex:none;
+  bottom:auto;
+  z-index:auto;
+  margin:0;
+  padding:8px 0 0;
+  box-shadow:none;
+  background:#0e1116;
+}
+#inventoryScreen #inventoryScannerClosed.scanner-closed[hidden] {
+  display:none!important;
+}
+#inventoryScreen #inventoryScannerPanel:not([hidden]) {
+  flex:none;
+  max-height:min(45dvh,370px);
+  overflow-y:auto;
+  margin:0 0 8px;
+}
+#inventoryScreen .inventory-search-screen:not([hidden]) {
+  position:fixed;
+  inset:0 auto 0 50%;
+  transform:translateX(-50%);
+  z-index:950;
+  width:min(100%,470px);
+  height:100dvh;
+  min-height:0;
+  margin:0;
+  padding:max(15px,env(safe-area-inset-top)) 15px max(12px,env(safe-area-inset-bottom));
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+  overflow:hidden;
+  border:0;
+  background:#0e1116;
+}
+#inventoryScreen .inventory-search-screen[hidden] {display:none!important}
+#inventoryScreen .inventory-search-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex:none;
+}
+#inventoryScreen #inventorySearchBack {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:none;
+  min-height:45px;
+  margin:0;
+  padding:9px 12px;
+  font-size:15px;
+  font-weight:800;
+  text-decoration:none;
+  color:#fff;
+  background:linear-gradient(180deg,#292b30,#15191d);
+  border:1px solid #a9525b;
+  border-radius:9px;
+}
+#inventoryScreen .inventory-search-header h2 {
+  min-width:0;
+  margin:0;
+  text-align:right;
+  color:#f0f4f8;
+  font-size:17px;
+  font-weight:850;
+}
+#inventoryScreen .inventory-search-controls {flex:none}
+#inventoryScreen .inventory-search-controls .search-row {
+  margin:0;
+}
+#inventoryScreen .inventory-search-scroll {
+  flex:1 1 0;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+#inventoryScreen .inventory-search-scroll #inventorySearchStatus {
+  margin:2px 0 10px;
+  font-size:12px;
+}
+#inventoryScreen .inventory-search-scroll #inventorySearchStatus:empty {
+  display:none;
+}
+#inventoryScreen .inventory-search-scroll #inventoryMoreButton {
+  margin-top:10px;
+}
+#inventoryScreen .inventory-search-screen #inventoryNewPartButton {
+  flex:none;
+  min-height:45px;
+  font-size:12px;
+}
+@media(max-width:360px) {
+  #inventoryScreen:not([hidden]),
+  #inventoryScreen .inventory-search-screen:not([hidden]) {
+    padding-right:11px;
+    padding-left:11px;
+  }
+  #inventoryScreen #inventorySearchBack {font-size:13px;padding:8px 10px}
+  #inventoryScreen .inventory-search-header h2 {font-size:15px}
+}
