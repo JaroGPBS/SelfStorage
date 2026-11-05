@@ -148,7 +148,9 @@
   function openManualSearch() {
     if(!state.warehouse||state.busy)return;
     el('inventoryManual').hidden=false;
-    el('inventoryQuery').focus({preventScroll:true});
+    // Let the office-like catalogue load at once, without requiring typing
+    // or opening the phone keyboard over the parts list.
+    document.dispatchEvent(new CustomEvent('gpbs-pl-inventory-manual-open'));
   }
 
   async function stop(manual=false,exit=false) {
