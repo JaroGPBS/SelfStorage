@@ -1445,3 +1445,9 @@ body.operation-task-open {overflow:hidden}
   #operationDirectionPanel .operation-task-title {font-size:14px}
   .operation-new-part-dialog .inventory-dialog-inner {padding:16px}
 }
+
+
+/* Two explicit choices: file gallery or camera, never an ambiguous input. */
+.operation-photo-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.operation-photo-controls .btn{min-height:43px;font-size:12px;padding:8px 5px;white-space:normal}
+@media(max-width:350px){.operation-photo-controls{grid-template-columns:1fr}}
