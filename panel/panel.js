@@ -478,7 +478,7 @@
     $('pageTitle').textContent=defs[view][0];
     $('pageSubtitle').textContent=defs[view][1];
     $('breadcrumbCurrent').textContent=defs[view][0];
-    document.title=defs[view][0]+' — GPBS Storage';
+    document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
     $('tableView').classList.toggle('hidden',view==='summary'||view==='security');
