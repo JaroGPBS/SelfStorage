@@ -2,7 +2,6 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const DEMO_MEDUZA_PHOTO='/office/images/antena-meduza-demo.jpg';
 // Self-contained presentation-only module registry; no connection to D1.
 const MODULE_GROUPS=[
   {id:'outdoor',name:'OUTDOOR',types:['FM','LQ','RQ','XS','ODL','ODR']},
@@ -29,41 +28,6 @@ const DEMO_MODULE_RECORDS=(()=>{
   });
   return items;
 })();
-const DEMO_QR_ROWS=[
-  '000000000000000000000000000000000',
-  '000000000000000000000000000000000',
-  '000000000000000000000000000000000',
-  '000000000000000000000000000000000',
-  '000011111110110010011011111110000',
-  '000010000010001111101010000010000',
-  '000010111010110000111010111010000',
-  '000010111010010010100010111010000',
-  '000010111010011011110010111010000',
-  '000010000010101010010010000010000',
-  '000011111110101010101011111110000',
-  '000000000000011010111000000000000',
-  '000010100011001001100001001010000',
-  '000011001000101001100100001000000',
-  '000001000011110100010000101100000',
-  '000010101100011101000010000010000',
-  '000010010010111111011001100000000',
-  '000001001100101010001001101010000',
-  '000011001011001011101111010000000',
-  '000000101100110110111101100010000',
-  '000011000110001001101111111000000',
-  '000000000000110001111000100110000',
-  '000011111110111100011010111110000',
-  '000010000010010001001000100100000',
-  '000010111010011111011111111010000',
-  '000010111010010010010000000000000',
-  '000010111010100011111011111110000',
-  '000010000010000110100110000010000',
-  '000011111110100001100101100110000',
-  '000000000000000000000000000000000',
-  '000000000000000000000000000000000',
-  '000000000000000000000000000000000',
-  '000000000000000000000000000000000'
-];
 const DEMOS=[{id:'demo1',name:'Magazyn 2',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Magazyn 3',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Magazyn 4',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
 // Client-only presentation vehicles. Kept separate from the demo warehouse list.
 const VEHICLES=[
@@ -247,6 +211,8 @@ function setHead(title,kicker,desc){
   $('crumb').textContent=title;
   $('newPart').classList.toggle('hidden',state.view!=='stocks');
   $('stockTabs').classList.toggle('hidden',state.view!=='stocks');
+  $('officeLabelsView').classList.toggle('hidden',state.view!=='labels');
+  $('officeTableCard').classList.toggle('hidden',state.view==='labels');
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate','vehicles'].includes(state.view));
   $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
@@ -324,8 +290,8 @@ function selectView(view,warehouse,focusDocument=null){
   state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
-  const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe'};
-  const descriptions={aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.'};
+  const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
+  const descriptions={aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.'};
   setHead(titles[view]||'Stany magazynowe','GPBS STORAGE / POLSKA',descriptions[view]||'');
   render();
 }
@@ -686,7 +652,14 @@ function drawVehicles(parts){
   noteSearch(filtered.length,parts.length,'częściach');
 }
 async function render(){
-  const ticket=++state.requestId;setLoading();
+  const ticket=++state.requestId;
+  if(state.view==='labels'){
+    errorBanner('');
+    try{await window.GPBSOfficeLabels.render(state.warehouses,state.warehouse);}
+    catch(error){errorBanner(error.message||'Nie udało się otworzyć drukowania etykiet.');}
+    return;
+  }
+  setLoading();
   const params={warehouse:state.warehouse};
   try{
     if(state.view==='stocks'){
@@ -781,13 +754,10 @@ async function openPart(id){
     const p=payload.part;
     state.labelPart=p;
     const amount=demo?demoQuantity((await realParts()).findIndex(x=>x.id===id),DEMOS.findIndex(x=>x.id===state.warehouse)+1):p.quantity;
-    const hasDemoPhoto=String(p.name||'').trim().toLocaleLowerCase('pl')==='antena meduza';
     const uploadedPhoto=Boolean(Number(p.has_photo));
-    const photoSrc=uploadedPhoto
-      ? '/api/office?view=partPhoto&warehouse='+encodeURIComponent(warehouse)+
-        '&part='+encodeURIComponent(p.id)
-      :DEMO_MEDUZA_PHOTO;
-    const photo=uploadedPhoto||hasDemoPhoto
+    const photoSrc='/api/office?view=partPhoto&warehouse='+encodeURIComponent(warehouse)+
+      '&part='+encodeURIComponent(p.id);
+    const photo=uploadedPhoto
       ? '<button type="button" class="part-photo-zoom" data-photo-open="1" aria-label="Powiększ zdjęcie części '+escapeHtml(p.name)+'">'+
         '<img src="'+escapeHtml(photoSrc)+'" alt="'+escapeHtml(p.name)+' — zdjęcie części" loading="lazy">'+
         '<span class="photo-zoom-label" aria-hidden="true">⤢ Powiększ zdjęcie</span></button>'
@@ -807,41 +777,11 @@ async function openPart(id){
         '</div>'+
       '</div>'+
       '<div class="modal-actions">'+
-        (hasDemoPhoto&&p.part_number==='MG-FR-0013'
-          ? '<button type="button" class="btn dark" data-label-open="1">Wydruk etykiety</button>'
-          : '<button type="button" class="btn outline" disabled>Wydruk etykiety · w przygotowaniu</button>')+
+        (demo?'':'<button type="button" class="btn dark" data-label-add-current="1">Drukuj etykietę</button>')+
       '</div>';
   }catch(ex){
     body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><p class="error">'+escapeHtml(ex.message)+'</p>';
   }
-}
-function demoQrSvg(){
-  const rects=[];
-  for(let y=0;y<DEMO_QR_ROWS.length;y++)
-    for(let x=0;x<DEMO_QR_ROWS[y].length;x++)
-      if(DEMO_QR_ROWS[y][x]==='1')rects.push('M'+x+' '+y+'h1v1h-1z');
-  return '<svg class="label-qr" viewBox="0 0 33 33" xmlns="http://www.w3.org/2000/svg" aria-label="Kod QR MG-FR-0013">'+
-    '<rect width="33" height="33" fill="#fff"/><path fill="#000" d="'+rects.join('')+'"/></svg>';
-}
-function openLabelPreview(){
-  const p=state.labelPart;
-  if(!p||p.part_number!=='MG-FR-0013'||String(p.name||'').trim().toLocaleLowerCase('pl')!=='antena meduza')return;
-  $('labelPrintArea').innerHTML='<div class="printable-label">'+
-    '<div class="label-qr-zone">'+demoQrSvg()+'</div>'+
-    '<div class="label-text-zone">'+
-      '<strong class="label-part-name">'+escapeHtml(p.name)+'</strong>'+
-      '<div class="label-data"><small>INDEKS SAP</small><span>'+escapeHtml(p.sap_number||'—')+'</span></div>'+
-      '<div class="label-data"><small>ID MAGAZYNOWE</small><span>'+escapeHtml(p.part_number)+'</span></div>'+
-    '</div>'+
-    '<div class="label-photo-zone"><img src="'+DEMO_MEDUZA_PHOTO+'" alt="Antena meduza"></div>'+
-  '</div>';
-  $('labelModal').classList.remove('hidden');
-  $('labelPrintButton').focus();
-}
-function closeLabelPreview(){
-  $('labelModal').classList.add('hidden');
-  $('labelPrintArea').innerHTML='';
-  $('modalBody').querySelector('[data-label-open]')?.focus();
 }
 function openPhotoViewer(){
   const viewer=$('photoViewer');
@@ -857,7 +797,6 @@ function closePhotoViewer(){
   $('modalBody').querySelector('[data-photo-open]')?.focus();
 }
 function closeModal(){
-  if(!$('labelModal').classList.contains('hidden'))closeLabelPreview();
   if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
   $('modal').classList.add('hidden');
   $('modal').querySelector('.modal-card').classList.remove('part-detail-card');
@@ -877,8 +816,14 @@ document.addEventListener('click',e=>{
     return;
   }
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
-  if(e.target.closest('[data-label-close]')){closeLabelPreview();return;}
-  if(e.target.closest('[data-label-open]')){openLabelPreview();return;}
+  if(e.target.closest('[data-label-add-current]')){
+    const part=state.labelPart;
+    if(!part||isDemo())return;
+    closeModal();
+    window.GPBSOfficeLabels?.enqueue(part,state.warehouse);
+    selectView('labels',state.warehouse);
+    return;
+  }
   const moduleCategory=e.target.closest('[data-module-category]');if(moduleCategory){setModuleCategory(moduleCategory.dataset.moduleCategory);return;}
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
@@ -930,13 +875,11 @@ $('officeNewPartPhoto').addEventListener('change',async()=>{
   }
 });
 $('modalClose').addEventListener('click',closeModal);
-$('labelPrintButton').addEventListener('click',()=>window.print());
 $('docPrintButton').addEventListener('click',printOfficeDocument);
 window.addEventListener('afterprint',clearOfficePrintStyle);
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(!$('docPrintModal').classList.contains('hidden'))closeDocumentPrint();
-    else if(!$('labelModal').classList.contains('hidden'))closeLabelPreview();
     else if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
     else closeModal();
     return;
@@ -954,7 +897,10 @@ $('search').addEventListener('input',e=>{
   }else filterCurrent();
 });
 $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';filterCurrent();});
-$('refresh').addEventListener('click',()=>{state.partsCache.clear();state.detailCache.clear();render();});
+$('refresh').addEventListener('click',()=>{
+  if(state.view==='labels'){window.GPBSOfficeLabels?.refresh();return;}
+  state.partsCache.clear();state.detailCache.clear();render();
+});
 $('warehouseToggle').addEventListener('click',()=>{const expanded=$('warehouseToggle').getAttribute('aria-expanded')==='true';$('warehouseToggle').setAttribute('aria-expanded',String(!expanded));$('warehouseMenu').classList.toggle('collapsed',expanded);});
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 $('logout').addEventListener('click',async()=>{
