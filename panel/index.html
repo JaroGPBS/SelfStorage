@@ -9,7 +9,7 @@
   <title>GPBS Storage — Panel biurowy</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=7">
-  <script src="./panel.js?v=10" defer></script>
+  <script src="./panel.js?v=11" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -43,6 +43,7 @@
         <button data-view="summary" class="nav-item active" type="button"><span class="nav-symbol">◈</span> Pulpit</button>
         <button data-view="warehouses" class="nav-item" type="button"><span class="nav-symbol">▣</span> Magazyny</button>
         <button data-view="parts" class="nav-item" type="button"><span class="nav-symbol">▤</span> Katalog części</button>
+        <button data-view="newParts" class="nav-item" type="button"><span class="nav-symbol">＋</span> Nowe części <span id="newPartsBadge" class="new-parts-badge" hidden>0</span></button>
         <button data-view="movements" class="nav-item" type="button"><span class="nav-symbol">⇄</span> Ruchy PZ / WZ</button>
         <div class="side-section administrative">ADMINISTRACJA</div>
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
@@ -94,6 +95,9 @@
             <div class="intro-decoration" aria-hidden="true">G</div>
           </div>
           <div id="overissueAlert" class="overissue-alert" role="status" aria-live="polite" hidden></div>
+          <button id="newPartsAlert" class="new-parts-alert" type="button" hidden>
+            Nowe części czekają na weryfikację. Otwórz listę.
+          </button>
           <div id="statGrid" class="stat-grid"></div>
           <div class="table-panel">
             <div class="table-title"><h2>Magazyny w Polsce</h2><span class="meta">AKTUALNY PODGLĄD</span></div>
@@ -210,6 +214,12 @@
       <input id="partEditNumber" type="text" required minlength="2" maxlength="100" autocomplete="off">
       <label for="partEditSap">Numer SAP (opcjonalnie)</label>
       <input id="partEditSap" type="text" maxlength="100" autocomplete="off">
+      <div id="partEditPhotoBox" class="part-edit-photo" hidden>
+        <span>Zdjęcie części</span>
+        <a id="partEditPhotoLink" target="_blank" rel="noopener noreferrer">
+          <img id="partEditPhoto" alt="Zdjęcie dodanej części">
+        </a>
+      </div>
       <label class="part-verify-choice"><input id="partEditVerify" type="checkbox">
         Dane zostały sprawdzone — oznacz część jako zweryfikowaną</label>
       <p id="partEditError" class="message error hidden" role="alert"></p>
