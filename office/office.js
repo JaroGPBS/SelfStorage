@@ -135,7 +135,8 @@ async function validatePartPhotoFile(file){
   if(!file)return;
   if(file.size<16||file.size>20*1024*1024)
     throw Error('Zdjęcie musi mieć od 16 B do 20 MB.');
-  const ext=String(file.name||'').split('.').pop().toLowerCase();
+  const filename=String(file.name||'');
+const ext=filename.includes('.')?filename.split('.').pop().toLowerCase():'';
   const extensions={jpg:'jpeg',jpeg:'jpeg',jpe:'jpeg',png:'png',bmp:'bmp',
     webp:'webp',heic:'heic',heif:'heic',avif:'avif'};
   const mimeTypes={'image/jpeg':'jpeg','image/pjpeg':'jpeg','image/png':'png',
