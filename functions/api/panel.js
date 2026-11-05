@@ -1,4 +1,5 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
+import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 // Bootstrap administrator access: strong secret PLUS legacy administrator PIN.
 // Later: migrate to scoped D1 users, passwordless/2FA and per-permission access.
 const COOKIE_NAME = '__Host-gpbs_panel_session';
@@ -239,10 +240,17 @@ async function queryPanel(env,view,url) {
     const hasPhotos=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
     ).first();
+    const hasR2Photos=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photo_objects'"
+    ).first();
+    const photoFlags=[
+      hasR2Photos?'EXISTS(SELECT 1 FROM pl_part_photo_objects r2 WHERE r2.part_id=p.id)':null,
+      hasPhotos?'EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id)':null
+    ].filter(Boolean).join(' OR ');
     const rows=await env.DB.prepare(
       'SELECT p.id,p.part_number,p.name,p.sap_number,s.quantity '+
       (verification?' ,v.status AS verification_status ':' ,NULL AS verification_status ')+
-      (hasPhotos?' ,EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id) AS has_photo ':
+      (photoFlags?' ,('+photoFlags+') AS has_photo ':
         ' ,0 AS has_photo ')+
       'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
       (verification?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
@@ -258,11 +266,18 @@ async function queryPanel(env,view,url) {
     const hasPhotos=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
     ).first();
+    const hasR2Photos=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photo_objects'"
+    ).first();
+    const photoFlags=[
+      hasR2Photos?'EXISTS(SELECT 1 FROM pl_part_photo_objects r2 WHERE r2.part_id=p.id)':null,
+      hasPhotos?'EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id)':null
+    ].filter(Boolean).join(' OR ');
     const rows=await env.DB.prepare(
       'SELECT p.id,p.part_number,p.name,p.sap_number,'+
       'v.status AS verification_status,v.created_at AS added_at,'+
       'w.name AS warehouse_name,v.warehouse_id,COALESCE(u.name,v.created_by) AS added_by,'+
-      (hasPhotos?'EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id) AS has_photo ':
+      (photoFlags?'('+photoFlags+') AS has_photo ':
         '0 AS has_photo ')+
       'FROM pl_part_verifications v JOIN parts p ON p.id=v.part_id '+
       'JOIN warehouses w ON w.id=v.warehouse_id '+
@@ -736,6 +751,17 @@ async function route(request,env) {
       const partId=url.searchParams.get('part')||'';
       if(!/^[A-Za-z0-9_-]{1,100}$/.test(partId))return fail('Nieprawidłowa część.',400);
       try {
+        const hasR2=await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photo_objects'"
+        ).first();
+        if(hasR2){
+          const ref=await getPhotoObject(env.DB,partId);
+          if(ref){
+            if(!env.PART_PHOTOS)return fail('Magazyn zdjęć R2 niedostępny.',503);
+            const photo=await readPhotoResponse(env,ref);
+            return photo||fail('Zdjęcie R2 nie zostało znalezione.',404);
+          }
+        }
         const exists=await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
         ).first();
