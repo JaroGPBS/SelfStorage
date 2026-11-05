@@ -301,7 +301,7 @@
       <p class="operation-new-part-hint">Pokaż cechy rozpoznawcze, np. końcówki przewodu i rodzaj wtyczek.</p>
       <input id="operationNewPartPhoto" type="file" accept="image/*"
         capture="environment" aria-describedby="operationNewPartPhotoHelp">
-      <p id="operationNewPartPhotoHelp" class="operation-new-part-hint">Zrób zdjęcie lub wybierz z telefonu.</p>
+      <p id="operationNewPartPhotoHelp" class="operation-new-part-hint">Zrób zdjęcie lub wybierz JPG, PNG, BMP, WEBP, HEIC albo AVIF (maks. 20 MB).</p>
       <img id="operationNewPartPreview" class="operation-new-part-preview"
         alt="Podgląd zdjęcia nowej części" hidden>
       <p id="operationNewPartError" class="error" role="alert" hidden></p>
