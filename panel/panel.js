@@ -189,17 +189,34 @@
 
   function renderSummary(summary,warehouses) {
     const stats=[
-      ['Aktywne magazyny',summary.warehouses,'POLSKA'],
-      ['Części w katalogu',summary.parts,'KATALOG CENTRALNY'],
-      ['Zapisane operacje',summary.operations,'HISTORIA PZ / WZ'],
-      ['Aktywni użytkownicy',summary.users,'BAZA D1']
+      {label:'Aktywne magazyny',value:summary.warehouses,rows:[
+        ['Polska',summary.warehouseCounts?.pl],['Francja',summary.warehouseCounts?.fr]
+      ]},
+      {label:'Główny katalog części',value:summary.parts,rows:[]},
+      {label:'Zapisane operacje',value:summary.operations,rows:[
+        ['PZ',summary.operationCounts?.pz],['WZ',summary.operationCounts?.wz]
+      ]},
+      {label:'Aktywni użytkownicy',value:summary.users,rows:[
+        ['Polska',summary.userCounts?.pl],['Francja',summary.userCounts?.fr]
+      ]}
     ];
-    $('statGrid').replaceChildren(...stats.map(([label,number,hint])=>{
+    $('statGrid').replaceChildren(...stats.map(({label,value,rows})=>{
       const card=document.createElement('article');card.className='stat-card';
-      const a=document.createElement('div');a.className='stat-label';a.textContent=label;
-      const b=document.createElement('div');b.className='stat-value';b.textContent=formatNum(number);
-      const c=document.createElement('div');c.className='stat-caption';c.textContent=hint;
-      card.append(a,b,c);return card;
+      const heading=document.createElement('div');heading.className='stat-label';heading.textContent=label;
+      const amount=document.createElement('div');amount.className='stat-value';amount.textContent=formatNum(value);
+      card.append(heading,amount);
+      if(rows.length){
+        const detail=document.createElement('div');detail.className='stat-detail';
+        for(const [name,count] of rows){
+          const line=document.createElement('div');line.className='stat-detail-row';
+          const caption=document.createElement('span');caption.textContent=name;
+          const number=document.createElement('strong');
+          number.textContent=count==null?'—':formatNum(count);
+          line.append(caption,number);detail.append(line);
+        }
+        card.append(detail);
+      }
+      return card;
     }));
     displayWarehouses(warehouses,'dashboardWarehouses');
     const pending=Number(summary.pendingParts||0);
