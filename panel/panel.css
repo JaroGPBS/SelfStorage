@@ -49,12 +49,47 @@ input::placeholder{color:#728092}
 .side-section{color:#788596;font-size:10px;font-weight:800;letter-spacing:1.3px;margin:10px 13px 13px}
 .side-section.administrative{margin-top:31px;padding-top:24px;border-top:1px solid var(--edge)}
 nav{display:grid;gap:6px}
-.nav-item{display:flex;align-items:center;gap:13px;width:100%;border:1px solid transparent;border-radius:10px;padding:13px 14px;color:#aebac9;background:transparent;text-align:left;font-size:13px;font-weight:700}
-.nav-item:hover{color:#fff;background:#ffffff0a}
-.nav-item.active{border-color:#ff393940;background:#ff373713;color:#fff}
-.nav-item.active:before{content:'';height:25px;width:3px;background:var(--red);position:absolute;left:0;border-radius:0 8px 8px 0}
-.nav-symbol{font-family:system-ui;width:18px;text-align:center;font-size:21px;line-height:1;color:#b3bec9}
-.nav-item.active .nav-symbol{color:#ff4747}
+/* Subtle red-tinted glass navigation, inspired by the supplied rounded tab. */
+#mainNav .nav-item{
+  position:relative;isolation:isolate;overflow:hidden;
+  display:flex;align-items:center;gap:13px;width:100%;
+  border:1px solid transparent;border-radius:13px;padding:13px 14px;
+  background:transparent;color:#aebac9;text-align:left;font-size:13px;font-weight:700;
+  transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .2s ease,color .2s ease;
+}
+#mainNav .nav-item::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  opacity:0;background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.035) 45%,transparent 80%);
+  transition:opacity .2s ease;
+}
+#mainNav .nav-item:hover{
+  color:#fff;border-color:rgba(255,104,110,.25);
+  background:linear-gradient(125deg,rgba(255,62,70,.14),rgba(255,255,255,.045) 57%,rgba(142,38,48,.07));
+  box-shadow:inset 0 1px rgba(255,255,255,.12),0 4px 16px rgba(185,30,46,.1);
+  transform:translateY(-1px);
+}
+#mainNav .nav-item:hover::before,
+#mainNav .nav-item.active::before{opacity:1}
+#mainNav .nav-item.active{
+  color:#fff;border-color:rgba(255,98,108,.42);
+  background:radial-gradient(ellipse at 25% 0%,rgba(248,72,86,.29),transparent 72%),
+    linear-gradient(120deg,rgba(111,40,51,.48),rgba(38,39,48,.8) 82%);
+  box-shadow:inset 0 1px rgba(255,255,255,.2),inset 0 -1px rgba(255,80,90,.13),
+    0 0 18px rgba(229,42,62,.13),0 6px 17px rgba(0,0,0,.2);
+}
+#mainNav .nav-item.active:hover{
+  border-color:rgba(255,126,136,.62);
+  box-shadow:inset 0 1px rgba(255,255,255,.26),0 0 22px rgba(229,42,62,.2),0 7px 19px rgba(0,0,0,.22);
+}
+#mainNav .nav-symbol{
+  font-family:system-ui;width:18px;flex:0 0 18px;text-align:center;
+  font-size:21px;line-height:1;color:#b3bec9;transition:color .2s ease;
+}
+#mainNav .nav-item:is(:hover,.active) .nav-symbol{color:#ff8c91}
+@media(prefers-reduced-motion:reduce){
+  #mainNav .nav-item,#mainNav .nav-item::before,#mainNav .nav-symbol{transition:none}
+  #mainNav .nav-item:hover{transform:none}
+}
 .sidebar-footer{display:flex;align-items:center;gap:12px;border-top:1px solid var(--edge);padding:20px 10px;margin-top:auto}
 .sidebar-footer strong{display:block;font-size:12px}
 .sidebar-footer small{display:block;color:var(--mute);font-size:11px;margin-top:3px}
