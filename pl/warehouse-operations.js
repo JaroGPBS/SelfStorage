@@ -5,7 +5,7 @@
   const el=id=>document.getElementById(id);
   const camera=()=>window.GPBSInventoryCamera;
   const state={warehouse:null,userId:'',direction:'PZ',stage:'details',pz:new Map(),wz:new Map(),
-    comments:{PZ:'',WZ:''},commentOpen:false,
+    comments:{PZ:'',WZ:''},
     ready:false,part:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
     scanning:false,stopPromise:null,searchPage:0,hasMore:false,photoPreviewUrl:null};
   const MAX_QUANTITY=100000;
@@ -33,7 +33,7 @@
   }
   function restoreDraft(){
     state.pz.clear();state.wz.clear();state.pending=null;state.stage='details';
-    state.comments={PZ:'',WZ:''};state.commentOpen=false;
+    state.comments={PZ:'',WZ:''};
     el('operationCounterparty').value='';
     el('operationPlate').value='';
     try{
@@ -174,10 +174,7 @@
     el('operationTaskTitle').textContent=state.stage==='WZ'?'WYDANIE (WZ)':'PRZYJĘCIE (PZ)';
     const comment=state.comments[state.direction]||'';
     el('operationCommentToggle').textContent='✎ Komentarz'+(comment.trim()?' ✓':'');
-    el('operationCommentToggle').setAttribute('aria-expanded',String(state.commentOpen&&taskOpen));
-    el('operationCommentPanel').hidden=!(state.commentOpen&&taskOpen);
-    el('operationCommentText').value=comment;
-    el('operationCommentCount').textContent=comment.length+' / 500 znaków';
+    el('operationCommentToggle').setAttribute('aria-expanded',String(el('operationCommentPanel').open));
     el('operationDirectionPanel').classList.toggle('task-wz',state.stage==='WZ');
     document.body.classList.toggle('operation-task-open',taskOpen);
     el('operationVisitCounterparty').textContent=upperName(el('operationCounterparty').value)||'—';
@@ -221,7 +218,7 @@
 
   function backToMenu(){
     if(!['PZ','WZ'].includes(state.stage))return false;
-    state.stage='menu';state.commentOpen=false;
+    state.stage='menu';
     state.searchSeq++;
     closeQuantity();
     el('operationSearchResults').replaceChildren();
@@ -236,7 +233,7 @@
     if(state.pending||state.busy)return;
     if(!['PZ','WZ'].includes(side))return;
     state.direction=side;
-    state.stage=side;state.commentOpen=false;
+    state.stage=side;
     state.searchSeq++;
     closeQuantity();
     el('operationSearchResults').replaceChildren();
@@ -625,7 +622,7 @@
       if(state.warehouse?.id!==payload.warehouseId)return;
       // The same ID is never sent again once server acknowledges the commit.
       state.pending=null;state.pz.clear();state.wz.clear();
-      state.comments={PZ:'',WZ:''};state.commentOpen=false;
+      state.comments={PZ:'',WZ:''};
       closeQuantity();
       state.stage='details';
       el('operationCounterparty').value='';
@@ -674,7 +671,7 @@
     });
     if(!approved||state.pending||state.busy||!state.warehouse)return;
     state.pz.clear();state.wz.clear();closeQuantity();state.stage='details';
-    state.comments={PZ:'',WZ:''};state.commentOpen=false;
+    state.comments={PZ:'',WZ:''};
     el('operationCounterparty').value='';
     el('operationPlate').value='';
     el('operationSearchResults').replaceChildren();
@@ -692,7 +689,6 @@
       restoreDraft();
     }
     state.direction=['PZ','WZ'].includes(state.stage)?state.stage:'PZ';
-    state.commentOpen=false;
     state.part=null;
     el('operationWarehouseCaption').textContent=warehouse.name+' · '+warehouse.id;
     el('operationSearchResults').replaceChildren();
@@ -712,7 +708,7 @@
     document.body.classList.remove('operation-task-open');
     state.searchSeq++;
     state.warehouse=null;state.userId='';
-    state.part=null;state.ready=false;state.commentOpen=false;
+    state.part=null;state.ready=false;
   }
   function clearSaved(warehouseId,userId){
     try{sessionStorage.removeItem('gpbs_pl_session_draft_v1_'+userId+'_'+warehouseId);}catch{}
@@ -769,20 +765,60 @@
   el('operationBackToMenu').addEventListener('click',backToMenu);
   el('operationTabPZ').addEventListener('click',()=>changeDirection('PZ'));
   el('operationTabWZ').addEventListener('click',()=>changeDirection('WZ'));
-  el('operationCommentToggle').addEventListener('click',()=>{
+  // The editor follows the VISUAL viewport when Android's keyboard opens.
+  // Closing it does not lose the saved comment: reopen to continue editing.
+  function positionCommentDialog(){
+    const dlg=el('operationCommentPanel');
+    if(!dlg.open)return;
+    const viewport=window.visualViewport;
+    const height=viewport?.height||window.innerHeight;
+    const offsetTop=viewport?.offsetTop||0;
+    dlg.style.top=Math.round(offsetTop+height-12)+'px';
+    dlg.style.maxHeight=Math.max(100,Math.floor(height-20))+'px';
+  }
+  function closeCommentDialog(){
+    const dlg=el('operationCommentPanel');
+    if(dlg.open){
+      el('operationCommentText').blur();
+      dlg.close();
+    }
+  }
+  function openCommentDialog(){
     if(state.busy||state.pending||!['PZ','WZ'].includes(state.stage))return;
-    state.commentOpen=!state.commentOpen;
-    render();
-    if(state.commentOpen)el('operationCommentText').focus({preventScroll:true});
-  });
-  el('operationCommentText').addEventListener('input',()=>{
+    const dlg=el('operationCommentPanel');
+    if(dlg.open)return;
+    const comment=state.comments[state.direction]||'';
+    el('operationCommentTitle').textContent=state.direction==='PZ'
+      ?'Komentarz do przyjęcia (PZ)':'Komentarz do wydania (WZ)';
+    el('operationCommentText').value=comment;
+    el('operationCommentCount').textContent=comment.length+' / 500 znaków';
+    dlg.showModal();
+    el('operationCommentToggle').setAttribute('aria-expanded','true');
+    positionCommentDialog();
+    el('operationCommentText').focus({preventScroll:true});
+    requestAnimationFrame(positionCommentDialog);
+  }
+  function saveComment(event){
+    event.preventDefault();
     if(state.busy||state.pending||!['PZ','WZ'].includes(state.stage))return;
-    const text=el('operationCommentText').value.slice(0,500);
-    state.comments[state.direction]=text;
-    el('operationCommentCount').textContent=text.length+' / 500 znaków';
-    el('operationCommentToggle').textContent='✎ Komentarz'+(text.trim()?' ✓':'');
+    state.comments[state.direction]=el('operationCommentText').value.slice(0,500).trim();
     saveDraft();
+    closeCommentDialog();
+    render();
+  }
+  el('operationCommentToggle').addEventListener('click',openCommentDialog);
+  el('operationCommentForm').addEventListener('submit',saveComment);
+  el('operationCommentCancel').addEventListener('click',closeCommentDialog);
+  el('operationCommentText').addEventListener('input',()=>{
+    const length=el('operationCommentText').value.length;
+    el('operationCommentCount').textContent=length+' / 500 znaków';
   });
+  el('operationCommentPanel').addEventListener('close',()=>{
+    el('operationCommentToggle').setAttribute('aria-expanded','false');
+  });
+  window.visualViewport?.addEventListener('resize',positionCommentDialog);
+  window.visualViewport?.addEventListener('scroll',positionCommentDialog);
+  window.addEventListener('resize',positionCommentDialog);
   el('operationSearchForm').addEventListener('submit',event=>{
     event.preventDefault();search();
   });
