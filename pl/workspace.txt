@@ -245,7 +245,7 @@
 
 
   <!-- Oddzielne pełnoekranowe okno PZ/WZ: bez logo, bez nagłówka magazynu.
-       TODO (późniejszy etap): notatki/informacje dodatkowe do PZ i WZ. -->
+       Osobne opcjonalne komentarze są przypisane do PZ i WZ. -->
   <section id="operationDirectionPanel" class="operation-task-screen" role="region"
     aria-labelledby="operationTaskTitle" hidden>
     <header class="operation-task-header">
@@ -262,6 +262,14 @@
       <button id="operationMore" class="btn btn-outline" type="button" hidden>Wczytaj więcej</button>
     </main>
     <div class="operation-task-bottom">
+      <button id="operationCommentToggle" class="operation-comment-toggle" type="button"
+        aria-controls="operationCommentPanel" aria-expanded="false">✎ Komentarz</button>
+      <div id="operationCommentPanel" class="operation-comment-panel" hidden>
+        <label for="operationCommentText">Komentarz do bieżącego PZ/WZ (opcjonalnie)</label>
+        <textarea id="operationCommentText" maxlength="500" rows="3"
+          placeholder="Np. uszkodzone opakowanie, brakujący element, uwagi do wydania…"></textarea>
+        <small id="operationCommentCount">0 / 500 znaków</small>
+      </div>
       <form id="operationSearchForm" class="operation-task-search" role="search" autocomplete="off">
         <label for="operationSearchQuery" class="visually-hidden">Indeks lub numer SAP części</label>
         <input id="operationSearchQuery" type="search" maxlength="80"
