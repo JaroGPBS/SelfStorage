@@ -5,6 +5,7 @@
   const el=id=>document.getElementById(id);
   const camera=()=>window.GPBSInventoryCamera;
   const state={warehouse:null,userId:'',direction:'PZ',stage:'details',pz:new Map(),wz:new Map(),
+    comments:{PZ:'',WZ:''},commentOpen:false,
     ready:false,part:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
     scanning:false,stopPromise:null,searchPage:0,hasMore:false,photoPreviewUrl:null};
   const MAX_QUANTITY=100000;
@@ -26,12 +27,13 @@
         counterparty:upperName(el('operationCounterparty').value),
         registrationPlate:upperPlate(el('operationPlate').value),
         stage:state.stage,
-        pz:lines('PZ'),wz:lines('WZ'),pending:state.pending
+        pz:lines('PZ'),wz:lines('WZ'),comments:state.comments,pending:state.pending
       }));
     }catch{}
   }
   function restoreDraft(){
     state.pz.clear();state.wz.clear();state.pending=null;state.stage='details';
+    state.comments={PZ:'',WZ:''};state.commentOpen=false;
     el('operationCounterparty').value='';
     el('operationPlate').value='';
     try{
@@ -39,6 +41,10 @@
       if(!data)return;
       el('operationCounterparty').value=upperName(data.counterparty).slice(0,90);
       el('operationPlate').value=upperPlate(data.registrationPlate).slice(0,20);
+      for(const side of ['PZ','WZ']){
+        if(typeof data.comments?.[side]==='string')
+          state.comments[side]=data.comments[side].slice(0,500);
+      }
       if(['menu','PZ','WZ'].includes(data.stage)&&
         el('operationCounterparty').value.length>=2&&validPlate(el('operationPlate').value))
         state.stage=data.stage;
@@ -96,7 +102,8 @@
     for(const id of ['operationCounterparty','operationPlate','operationVisitContinue',
       'operationEditVisit','operationBackToMenu','operationSearchQuery','operationSearchButton',
       'operationStartScan','operationNewPartOpen','operationAddButton','operationQuantity',
-      'operationTabPZ','operationTabWZ','operationClearSearch']){
+      'operationTabPZ','operationTabWZ','operationClearSearch',
+      'operationCommentToggle','operationCommentText']){
       el(id).disabled=lock;
     }
     // Pending commits cannot be discarded, but the user should be told why.
@@ -165,6 +172,12 @@
     el('operationWorkspace').hidden=details;
     el('operationDirectionPanel').hidden=!taskOpen;
     el('operationTaskTitle').textContent=state.stage==='WZ'?'WYDANIE (WZ)':'PRZYJĘCIE (PZ)';
+    const comment=state.comments[state.direction]||'';
+    el('operationCommentToggle').textContent='✎ Komentarz'+(comment.trim()?' ✓':'');
+    el('operationCommentToggle').setAttribute('aria-expanded',String(state.commentOpen&&taskOpen));
+    el('operationCommentPanel').hidden=!(state.commentOpen&&taskOpen);
+    el('operationCommentText').value=comment;
+    el('operationCommentCount').textContent=comment.length+' / 500 znaków';
     el('operationDirectionPanel').classList.toggle('task-wz',state.stage==='WZ');
     document.body.classList.toggle('operation-task-open',taskOpen);
     el('operationVisitCounterparty').textContent=upperName(el('operationCounterparty').value)||'—';
@@ -208,7 +221,7 @@
 
   function backToMenu(){
     if(!['PZ','WZ'].includes(state.stage))return false;
-    state.stage='menu';
+    state.stage='menu';state.commentOpen=false;
     state.searchSeq++;
     closeQuantity();
     el('operationSearchResults').replaceChildren();
@@ -223,7 +236,7 @@
     if(state.pending||state.busy)return;
     if(!['PZ','WZ'].includes(side))return;
     state.direction=side;
-    state.stage=side;
+    state.stage=side;state.commentOpen=false;
     state.searchSeq++;
     closeQuantity();
     el('operationSearchResults').replaceChildren();
@@ -520,7 +533,9 @@
     const wz=lines('WZ').map(row=>({partId:row.id,quantity:row.quantity}));
     if(!pz.length&&!wz.length){status('Dodaj co najmniej jedną część.',true);return null;}
     return {id:'PL-SES-'+crypto.randomUUID(),warehouseId:state.warehouse.id,
-      counterparty,registrationPlate,pz,wz};
+      counterparty,registrationPlate,pz,wz,
+      pzComment:pz.length?state.comments.PZ.trim():'',
+      wzComment:wz.length?state.comments.WZ.trim():''};
   }
 
   async function review(){
@@ -563,6 +578,8 @@
         '\nNumer rejestracyjny: '+input.registrationPlate+
         '\nPrzyjęcie PZ: '+input.pz.length+' pozycji · '+amount('pz')+' szt.'+
         '\nWydanie WZ: '+input.wz.length+' pozycji · '+amount('wz')+' szt.'+
+        (input.pzComment?'\nKomentarz do PZ: dodany':'')+
+        (input.wzComment?'\nKomentarz do WZ: dodany':'')+
         '\nZapisze oba dokumenty razem i zaktualizuje stany magazynu.';
       const warnings=preview.warnings||[];
       const warning=el('operationConfirmWarning');
@@ -608,6 +625,7 @@
       if(state.warehouse?.id!==payload.warehouseId)return;
       // The same ID is never sent again once server acknowledges the commit.
       state.pending=null;state.pz.clear();state.wz.clear();
+      state.comments={PZ:'',WZ:''};state.commentOpen=false;
       closeQuantity();
       state.stage='details';
       el('operationCounterparty').value='';
@@ -656,6 +674,7 @@
     });
     if(!approved||state.pending||state.busy||!state.warehouse)return;
     state.pz.clear();state.wz.clear();closeQuantity();state.stage='details';
+    state.comments={PZ:'',WZ:''};state.commentOpen=false;
     el('operationCounterparty').value='';
     el('operationPlate').value='';
     el('operationSearchResults').replaceChildren();
@@ -673,6 +692,7 @@
       restoreDraft();
     }
     state.direction=['PZ','WZ'].includes(state.stage)?state.stage:'PZ';
+    state.commentOpen=false;
     state.part=null;
     el('operationWarehouseCaption').textContent=warehouse.name+' · '+warehouse.id;
     el('operationSearchResults').replaceChildren();
@@ -692,7 +712,7 @@
     document.body.classList.remove('operation-task-open');
     state.searchSeq++;
     state.warehouse=null;state.userId='';
-    state.part=null;state.ready=false;
+    state.part=null;state.ready=false;state.commentOpen=false;
   }
   function clearSaved(warehouseId,userId){
     try{sessionStorage.removeItem('gpbs_pl_session_draft_v1_'+userId+'_'+warehouseId);}catch{}
@@ -749,6 +769,20 @@
   el('operationBackToMenu').addEventListener('click',backToMenu);
   el('operationTabPZ').addEventListener('click',()=>changeDirection('PZ'));
   el('operationTabWZ').addEventListener('click',()=>changeDirection('WZ'));
+  el('operationCommentToggle').addEventListener('click',()=>{
+    if(state.busy||state.pending||!['PZ','WZ'].includes(state.stage))return;
+    state.commentOpen=!state.commentOpen;
+    render();
+    if(state.commentOpen)el('operationCommentText').focus({preventScroll:true});
+  });
+  el('operationCommentText').addEventListener('input',()=>{
+    if(state.busy||state.pending||!['PZ','WZ'].includes(state.stage))return;
+    const text=el('operationCommentText').value.slice(0,500);
+    state.comments[state.direction]=text;
+    el('operationCommentCount').textContent=text.length+' / 500 znaków';
+    el('operationCommentToggle').textContent='✎ Komentarz'+(text.trim()?' ✓':'');
+    saveDraft();
+  });
   el('operationSearchForm').addEventListener('submit',event=>{
     event.preventDefault();search();
   });
