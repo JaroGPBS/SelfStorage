@@ -356,6 +356,10 @@
         <button type="button" data-digit="0">0</button>
         <button type="button" data-digit="backspace" class="inventory-keypad-action" aria-label="Usuń cyfrę">⌫</button>
       </div>
+      <label class="operation-nok-choice" for="operationNok">
+        <input id="operationNok" type="checkbox">
+        <span>Część niekompletna (NOK)</span>
+      </label>
       <div class="inventory-dialog-actions">
         <button id="operationCancelPart" class="btn btn-outline" type="button">Anuluj</button>
         <button id="operationAddButton" class="btn btn-primary" type="submit">Dodaj</button>

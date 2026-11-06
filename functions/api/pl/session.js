@@ -43,11 +43,14 @@ function normalizeLines(value,description){
   return value.map(row=>{
     const partId=String(row?.partId||'');
     const quantity=row?.quantity;
+    const nok=row?.nok===true;
+    const key=partId+':'+(nok?'NOK':'OK');
     if(!PART.test(partId)||!Number.isSafeInteger(quantity)||
-      quantity<1||quantity>MAX_QUANTITY||used.has(partId))
+      quantity<1||quantity>MAX_QUANTITY||
+      (row?.nok!==undefined&&typeof row.nok!=='boolean')||used.has(key))
       throw Error('Sprawdź części i ilości na liście '+description+'.');
-    used.add(partId);
-    return {partId,quantity};
+    used.add(key);
+    return {partId,quantity,nok};
   });
 }
 
@@ -67,6 +70,39 @@ function legacyCounterparty(input){
 async function hasRegistrationColumn(db){
   const columns=await db.prepare('PRAGMA table_info(pl_warehouse_sessions)').all();
   return (columns.results||[]).some(row=>row.name==='registration_plate');
+}
+
+async function nokTablesExist(db){
+  const result=await db.prepare(
+    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' "+
+    "AND name IN ('pl_nok_stock','pl_nok_session_lines')"
+  ).first();
+  return Number(result?.n)===2;
+}
+
+async function ensureNokTables(db){
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS pl_nok_stock ('+
+    'warehouse_id TEXT NOT NULL,part_id TEXT NOT NULL,'+
+    'quantity INTEGER NOT NULL DEFAULT 0 CHECK(quantity BETWEEN 0 AND 100000000),'+
+    'updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'+
+    'PRIMARY KEY(warehouse_id,part_id),'+
+    'FOREIGN KEY(warehouse_id) REFERENCES warehouses(id),'+
+    'FOREIGN KEY(part_id) REFERENCES parts(id))'
+  ).run();
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS pl_nok_session_lines ('+
+    'session_id TEXT NOT NULL,'+
+    "direction TEXT NOT NULL CHECK(direction IN ('PZ','WZ')),"+
+    'part_id TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 100000),'+
+    'quantity_before INTEGER NOT NULL CHECK(quantity_before>=0),'+
+    'quantity_after INTEGER NOT NULL CHECK(quantity_after>=0),'+
+    'before_unknown INTEGER NOT NULL DEFAULT 1 CHECK(before_unknown IN (0,1)),'+
+    'shortage_quantity INTEGER NOT NULL DEFAULT 0 CHECK(shortage_quantity>=0),'+
+    'PRIMARY KEY(session_id,direction,part_id),'+
+    'FOREIGN KEY(session_id) REFERENCES pl_warehouse_sessions(id),'+
+    'FOREIGN KEY(part_id) REFERENCES parts(id))'
+  ).run();
 }
 
 async function commentsTableExists(db){
@@ -112,15 +148,18 @@ function normalize(body){
   if(!['preview','commit'].includes(action))throw Error('Nieznana operacja.');
   const stockSnapshot=body.stockSnapshot;
   if(action==='commit'){
-    const parts=new Set([...pz,...wz].map(r=>r.partId));
+    const key=r=>r.partId+':'+(r.nok?'NOK':'OK');
+    const parts=new Set([...pz,...wz].map(key));
     if(!Array.isArray(stockSnapshot)||stockSnapshot.length!==parts.size)
       throw Error('Stan magazynu musi być sprawdzony przed zatwierdzeniem. Wróć do podsumowania.');
     const ids=new Set();
     for(const row of stockSnapshot){
-      if(!row||!parts.has(row.partId)||ids.has(row.partId)||
+      if(!row||!PART.test(String(row.partId||''))||
+         (row.nok!==undefined&&typeof row.nok!=='boolean')||
+         !parts.has(key(row))||ids.has(key(row))||
          (row.quantity!==null&&(!Number.isSafeInteger(row.quantity)||row.quantity<0)))
         throw Error('Nieprawidłowe potwierdzenie stanów magazynowych.');
-      ids.add(row.partId);
+      ids.add(key(row));
     }
   }
   return {id,warehouseId,counterparty,registrationPlate,pz,wz,action,
@@ -135,13 +174,16 @@ async function duplicate(db,input,actorId,hasPlate){
     ' FROM pl_warehouse_sessions WHERE id=?'
   ).bind(input.id).first();
   if(!existing)return null;
+  const hasNok=await nokTablesExist(db);
   const saved=await db.prepare(
-    'SELECT direction,part_id,quantity FROM pl_warehouse_session_lines WHERE session_id=?'
-  ).bind(input.id).all();
+    "SELECT direction,part_id,quantity,0 AS nok FROM pl_warehouse_session_lines WHERE session_id=?"+
+    (hasNok?" UNION ALL SELECT direction,part_id,quantity,1 AS nok "+
+      "FROM pl_nok_session_lines WHERE session_id=?":'')
+  ).bind(input.id,...(hasNok?[input.id]:[])).all();
   const expected=new Map();
   for(const direction of ['pz','wz']){
     for(const line of input[direction])
-      expected.set(direction.toUpperCase()+':'+line.partId,line.quantity);
+      expected.set(direction.toUpperCase()+':'+line.partId+':'+(line.nok?'NOK':'OK'),line.quantity);
   }
   const rows=saved.results||[];
   let sameComments=!input.pzComment&&!input.wzComment;
@@ -161,7 +203,7 @@ async function duplicate(db,input,actorId,hasPlate){
   const same=existing.warehouse_id===input.warehouseId&&
     existing.actor_id===actorId&&sameIdentity&&sameComments&&
     rows.length===expected.size&&rows.every(row=>
-      expected.get(row.direction+':'+row.part_id)===Number(row.quantity));
+      expected.get(row.direction+':'+row.part_id+':'+(row.nok?'NOK':'OK'))===Number(row.quantity));
   if(!same)return fail('Identyfikator sesji został już użyty dla innych danych.',409);
   return workerJson({ok:true,id:input.id,alreadySaved:true,
     committedAt:existing.committed_at,pzItems:input.pz.length,wzItems:input.wz.length});
@@ -169,35 +211,47 @@ async function duplicate(db,input,actorId,hasPlate){
 
 async function preview(db,input){
   const combined=new Map();
-  for(const line of input.pz)combined.set(line.partId,{partId:line.partId,pz:line.quantity,wz:0});
+  const key=r=>r.partId+':'+(r.nok?'NOK':'OK');
+  for(const line of input.pz)combined.set(key(line),{
+    partId:line.partId,nok:line.nok,pz:line.quantity,wz:0
+  });
   for(const line of input.wz){
-    const row=combined.get(line.partId)||{partId:line.partId,pz:0,wz:0};
+    const row=combined.get(key(line))||{partId:line.partId,nok:line.nok,pz:0,wz:0};
     row.wz=line.quantity;
-    combined.set(line.partId,row);
+    combined.set(key(line),row);
   }
   const parts=[...combined.values()];
+  const usesNok=parts.some(p=>p.nok);
   const result=await db.prepare(
     "SELECT json_extract(j.value,'$.partId') AS part_id,"+
-    'p.id AS valid_id,p.name AS name,p.active AS active,s.quantity AS quantity '+
+    "json_extract(j.value,'$.nok') AS nok,"+
+    'p.id AS valid_id,p.name AS name,p.active AS active,'+
+    (usesNok?"CASE WHEN json_extract(j.value,'$.nok')=1 THEN n.quantity ELSE s.quantity END":
+      's.quantity')+' AS quantity '+
     "FROM json_each(?) j LEFT JOIN parts p ON p.id=json_extract(j.value,'$.partId') "+
-    'LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=?'
-  ).bind(JSON.stringify(parts),input.warehouseId).all();
-  const rows=new Map((result.results||[]).map(r=>[r.part_id,r]));
-  if(rows.size!==parts.length||parts.some(p=>!rows.get(p.partId)?.valid_id||
-    Number(rows.get(p.partId).active)!==1))
+    'LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
+    (usesNok?'LEFT JOIN pl_nok_stock n ON n.part_id=p.id AND n.warehouse_id=?':'')
+  ).bind(JSON.stringify(parts),input.warehouseId,...(usesNok?[input.warehouseId]:[])).all();
+  const rows=new Map((result.results||[]).map(r=>[
+    r.part_id+':'+(r.nok?'NOK':'OK'),r
+  ]));
+  if(rows.size!==parts.length||parts.some(p=>!rows.get(key(p))?.valid_id||
+    Number(rows.get(key(p)).active)!==1))
     return fail('Część została wyłączona lub nie istnieje w katalogu. Odśwież listę.',409);
   const stockSnapshot=[];
   const warnings=[];
   for(const p of parts){
-    const row=rows.get(p.partId);
+    const row=rows.get(key(p));
     const stock=row.quantity===null||row.quantity===undefined?null:Number(row.quantity);
-    stockSnapshot.push({partId:p.partId,quantity:stock});
+    stockSnapshot.push({partId:p.partId,nok:p.nok,quantity:stock});
     if(p.wz===0)continue;
     const available=(stock??0)+p.pz;
     const shortfall=Math.max(0,p.wz-available);
-    if(shortfall>0)warnings.push({partId:p.partId,name:row.name||p.partId,
+    if(shortfall>0)warnings.push({
+      partId:p.partId,nok:p.nok,name:(row.name||p.partId)+(p.nok?' (NOK)':''),
       unknown:stock===null,available:stock===null?null:available,
-      received:p.pz,issued:p.wz,shortfall});
+      received:p.pz,issued:p.wz,shortfall
+    });
   }
   return workerJson({ok:true,stockSnapshot,warnings,requiresConfirmation:warnings.length>0});
 }
@@ -214,31 +268,41 @@ async function commit(db,input,actorId){
   if(input.pzComment||input.wzComment)await ensureCommentsTable(db);
 
   const combined=new Map();
+  const key=r=>r.partId+':'+(r.nok?'NOK':'OK');
   for(const line of input.pz){
-    combined.set(line.partId,{id:line.partId,pz:line.quantity,wz:0});
+    combined.set(key(line),{id:line.partId,nok:line.nok,pz:line.quantity,wz:0});
   }
   for(const line of input.wz){
-    const x=combined.get(line.partId)||{id:line.partId,pz:0,wz:0};
+    const x=combined.get(key(line))||{id:line.partId,nok:line.nok,pz:0,wz:0};
     x.wz=line.quantity;
-    combined.set(line.partId,x);
+    combined.set(key(line),x);
   }
   const parts=[...combined.values()];
-  // Revalidate the exact stock quantities shown on the worker phone.
-  // Any concurrent stock change rejects the entire batch for a fresh preview.
-  const snapshot=new Map(input.stockSnapshot.map(r=>[r.partId,r.quantity]));
-  if(parts.some(p=>!snapshot.has(p.id)))return fail('Sprawdź ponownie stany części.',409);
+  const usesNok=parts.some(p=>p.nok);
+  // Guard the exact snapshot of EACH stock class. Concurrent normal/NOK changes
+  // cannot silently overwrite another worker's operation.
+  const snapshot=new Map(input.stockSnapshot.map(r=>[
+    r.partId+':'+(r.nok?'NOK':'OK'),r.quantity
+  ]));
+  if(parts.some(p=>!snapshot.has(p.id+':'+(p.nok?'NOK':'OK'))))
+    return fail('Sprawdź ponownie stany części.',409);
   const snapshotJson=JSON.stringify(parts.map(p=>({
-    partId:p.id,stock:snapshot.get(p.id),pz:p.pz,wz:p.wz
+    partId:p.id,nok:p.nok,stock:snapshot.get(p.id+':'+(p.nok?'NOK':'OK')),
+    pz:p.pz,wz:p.wz
   })));
+  const stockColumn=usesNok
+    ?"(CASE WHEN json_extract(e.value,'$.nok')=1 THEN n.quantity ELSE s.quantity END)"
+    :"s.quantity";
   const partGuards=
     "NOT EXISTS(SELECT 1 FROM json_each(?) AS e "+
     "LEFT JOIN parts p ON p.id=json_extract(e.value,'$.partId') "+
     "LEFT JOIN warehouse_stock s ON s.warehouse_id=? AND s.part_id=p.id "+
+    (usesNok?"LEFT JOIN pl_nok_stock n ON n.warehouse_id=? AND n.part_id=p.id ":'')+
     "WHERE p.id IS NULL OR p.active IS NOT 1 "+
-    "OR s.quantity IS NOT json_extract(e.value,'$.stock') "+
-    "OR (COALESCE(s.quantity,0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)>100000000) "+
+    "OR "+stockColumn+" IS NOT json_extract(e.value,'$.stock') "+
+    "OR (COALESCE("+stockColumn+",0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)>100000000) "+
     "OR (?=0 AND CAST(json_extract(e.value,'$.wz') AS INTEGER)>"+
-    "COALESCE(s.quantity,0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)))";
+    "COALESCE("+stockColumn+",0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)))";
   const guardSql=
     'INSERT INTO pl_warehouse_sessions '+
     '(id,warehouse_id,actor_id,counterparty,'+(hasPlate?'registration_plate,':'')+
@@ -253,9 +317,53 @@ async function commit(db,input,actorId){
   const guardArgs=[input.id,input.warehouseId,actorId,storedCounterparty,
     ...(hasPlate?[input.registrationPlate||null]:[]),
     actorId,actorId,input.warehouseId,
-    snapshotJson,input.warehouseId,input.confirmedOverissue?1:0];
+    snapshotJson,input.warehouseId,...(usesNok?[input.warehouseId]:[]),
+    input.confirmedOverissue?1:0];
   const statements=[db.prepare(guardSql).bind(...guardArgs)];
   for(const part of parts){
+    if(part.nok){
+      // NOK entries are never added to warehouse_stock (complete goods).
+      // Their complete audit trail and stock live in separate D1 tables.
+      if(part.pz){
+        statements.push(db.prepare(
+          'INSERT INTO pl_nok_session_lines '+
+          '(session_id,direction,part_id,quantity,quantity_before,quantity_after,before_unknown) '+
+          "SELECT ?,'PZ',?,?,COALESCE(n.quantity,0),COALESCE(n.quantity,0)+?,"+
+          'CASE WHEN n.part_id IS NULL THEN 1 ELSE 0 END '+
+          'FROM parts p LEFT JOIN pl_nok_stock n ON n.part_id=p.id AND n.warehouse_id=? '+
+          'WHERE p.id=?'
+        ).bind(input.id,part.id,part.pz,part.pz,input.warehouseId,part.id));
+        statements.push(db.prepare(
+          'INSERT OR IGNORE INTO pl_nok_stock '+
+          '(warehouse_id,part_id,quantity,updated_at) VALUES (?,?,0,CURRENT_TIMESTAMP)'
+        ).bind(input.warehouseId,part.id));
+      }
+      if(part.wz){
+        statements.push(db.prepare(
+          'INSERT INTO pl_nok_session_lines '+
+          '(session_id,direction,part_id,quantity,quantity_before,quantity_after,'+
+          'before_unknown,shortage_quantity) '+
+          "SELECT ?,'WZ',?,?,COALESCE(n.quantity,0)+?,"+
+          'MAX(0,COALESCE(n.quantity,0)+?-?),'+
+          "CASE WHEN n.part_id IS NULL OR EXISTS(SELECT 1 FROM pl_nok_session_lines l "+
+          "WHERE l.session_id=? AND l.part_id=? AND l.direction='PZ' AND l.before_unknown=1) "+
+          'THEN 1 ELSE 0 END,'+
+          'MAX(0,?-COALESCE(n.quantity,0)-?) '+
+          'FROM parts p LEFT JOIN pl_nok_stock n ON n.part_id=p.id AND n.warehouse_id=? '+
+          'WHERE p.id=?'
+        ).bind(input.id,part.id,part.wz,part.pz,part.pz,part.wz,input.id,part.id,
+          part.wz,part.pz,input.warehouseId,part.id));
+        statements.push(db.prepare(
+          'INSERT OR IGNORE INTO pl_nok_stock '+
+          '(warehouse_id,part_id,quantity,updated_at) VALUES (?,?,0,CURRENT_TIMESTAMP)'
+        ).bind(input.warehouseId,part.id));
+      }
+      statements.push(db.prepare(
+        'UPDATE pl_nok_stock SET quantity=MAX(0,quantity+?),updated_at=CURRENT_TIMESTAMP '+
+        'WHERE warehouse_id=? AND part_id=?'
+      ).bind(part.pz-part.wz,input.warehouseId,part.id));
+      continue;
+    }
     // Record an accurate before/after snapshot BEFORE updating the stock.
     // If a part is both received and issued, PZ logically precedes WZ.
     if(part.pz){
@@ -342,13 +450,20 @@ export async function onRequestGet({request,env}){
     if(view!=='recent')return fail('Nieprawidłowy widok.',400);
     if(!ready)return workerJson({ok:true,ready,history:[]});
     const hasPlate=await hasRegistrationColumn(env.DB);
+    const hasNok=await nokTablesExist(env.DB);
+    const historyLines=
+      '(SELECT session_id,direction,part_id,quantity,quantity_before,quantity_after,'+
+      'before_unknown,shortage_quantity,0 AS nok FROM pl_warehouse_session_lines'+
+      (hasNok?' UNION ALL SELECT session_id,direction,part_id,quantity,quantity_before,'+
+        'quantity_after,before_unknown,shortage_quantity,1 AS nok FROM pl_nok_session_lines':'')+
+      ')';
     const rows=await env.DB.prepare(
       'SELECT s.id,s.counterparty,'+
       (hasPlate?'s.registration_plate,':'NULL AS registration_plate,')+
       's.committed_at,s.actor_id,u.name AS operator_name,'+
       "SUM(CASE WHEN l.direction='PZ' THEN 1 ELSE 0 END) AS pz_items,"+
       "SUM(CASE WHEN l.direction='WZ' THEN 1 ELSE 0 END) AS wz_items "+
-      'FROM pl_warehouse_sessions s LEFT JOIN pl_warehouse_session_lines l '+
+      'FROM pl_warehouse_sessions s LEFT JOIN '+historyLines+' l '+
       'ON l.session_id=s.id LEFT JOIN users u ON u.id=s.actor_id '+
       'WHERE s.warehouse_id=? GROUP BY s.id ORDER BY s.committed_at DESC,s.id DESC LIMIT 15'
     ).bind(wh).all();
@@ -356,17 +471,17 @@ export async function onRequestGet({request,env}){
     if(!sessions.length)return workerJson({ok:true,ready,history:[]});
     const ids=sessions.map(r=>r.id);
     const parts=await env.DB.prepare(
-      'SELECT l.session_id,l.direction,l.part_id,l.quantity,'+
+      'SELECT l.session_id,l.direction,l.part_id,l.quantity,l.nok,'+
       'CASE WHEN l.before_unknown=1 THEN NULL ELSE l.quantity_before END AS quantity_before,'+
       'l.quantity_after,l.shortage_quantity,p.name AS part_name,p.part_number '+
-      'FROM pl_warehouse_session_lines l LEFT JOIN parts p ON p.id=l.part_id '+
+      'FROM '+historyLines+' l LEFT JOIN parts p ON p.id=l.part_id '+
       'WHERE l.session_id IN ('+ids.map(()=>'?').join(',')+') '+
-      'ORDER BY CASE l.direction WHEN \'PZ\' THEN 0 ELSE 1 END, l.part_id'
+      "ORDER BY CASE l.direction WHEN 'PZ' THEN 0 ELSE 1 END, l.part_id,l.nok"
     ).bind(...ids).all();
     const bySession=new Map(ids.map(id=>[id,[]]));
     for(const line of (parts.results||[]))
       bySession.get(line.session_id)?.push({
-        direction:line.direction,partId:line.part_id,
+        direction:line.direction,partId:line.part_id,nok:Boolean(line.nok),
         name:line.part_name||line.part_number||line.part_id,
         number:line.part_number||null,quantity:Number(line.quantity),
         before:line.quantity_before===null?null:Number(line.quantity_before),
@@ -405,6 +520,8 @@ export async function onRequestPost({request,env}){
     if(auth.error)return auth.error;
     if(!await schemaReady(env.DB))
       return fail('Najpierw wykonaj migrację '+MIGRATION+'.',503);
+    if([...input.pz,...input.wz].some(row=>row.nok))
+      await ensureNokTables(env.DB);
     if(input.action==='preview')return await preview(env.DB,input);
     return await commit(env.DB,input,auth.user.id);
   }catch(error){

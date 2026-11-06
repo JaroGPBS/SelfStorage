@@ -43,7 +43,7 @@ const VEHICLES=[
   {team:'Ekipa L',reg:'LU 7319L',date:'31.10.2026'},
   {team:'Ekipa M',reg:'SZ 4926M',date:'02.11.2026'}
 ];
-const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function demoQuantity(index,demoIndex){return ((index*17+demoIndex*11)%11===0)?0:((index*13+demoIndex*7)%29);}
@@ -215,14 +215,14 @@ function setHead(title,kicker,desc){
   $('officeTableCard').classList.toggle('hidden',state.view==='labels');
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate','vehicles'].includes(state.view));
-  $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
+  $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
   const documentsView=state.view==='pz'||state.view==='wz';
   const vehicleView=state.view==='vehicles';
   const aggregateView=state.view==='aggregate';
-  const compactView=documentsView||vehicleView||aggregateView;
+  const compactView=documentsView||vehicleView||aggregateView||state.view==='nok';
   $('app').classList.toggle('view-stocks',stockView);
   $('app').classList.toggle('view-receipts',compactView);
   $('app').classList.toggle('view-vehicles',vehicleView);
@@ -232,10 +232,11 @@ function setHead(title,kicker,desc){
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
   $('vehicleTopScroll').classList.toggle('hidden',!vehicleView);
   if(compactView){
-    $('receiptToolbarInfo').querySelector('strong').textContent=aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':state.view==='pz'?'Przyjęcia':'Wydania';
+    $('receiptToolbarInfo').querySelector('strong').textContent=aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
     $('receiptToolbarInfo').querySelector('span').textContent=aggregateView
       ?'Porównanie stanów części pomiędzy magazynami.'
       :vehicleView?'Ewidencja części na samochodach serwisowych.'
+      :state.view==='nok'?'Oddzielna ewidencja NOK — nie powiększa stanu pełnowartościowego.'
       :state.view==='pz'?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
   }
   // Reuse the existing synchronization control in the compact toolbar.
@@ -293,8 +294,8 @@ function selectView(view,warehouse,focusDocument=null){
   state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
-  const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
-  const descriptions={aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.'};
+  const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
+  const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.'};
   setHead(titles[view]||'Stany magazynowe','GPBS STORAGE / POLSKA',descriptions[view]||'');
   render();
 }
@@ -468,6 +469,21 @@ function cellButton(label,id,expanded){
   return '<button type="button" class="detail-btn" data-expand="'+escapeHtml(id)+'">'+
     (expanded?'Ukryj':'Pokaż '+label)+' <span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button>';
 }
+function drawNokStock(){
+  const data=sortedFiltered(state.nokParts||[]);
+  const rows=data.map(p=>'<tr>'+
+    '<td>'+escapeHtml(p.sap_number||'—')+'</td>'+
+    '<td><span class="office-nok-name">'+escapeHtml(p.name)+' <strong>NOK</strong></span></td>'+
+    '<td>'+escapeHtml(p.part_number||'—')+'</td>'+
+    '<td class="num">'+quantity(p.quantity)+'</td></tr>').join('');
+  $('tableArea').innerHTML=wrapTable([
+    {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Indeks magazynowy'},
+    {label:'Stan NOK',numeric:true}
+  ],rows)||'<div class="empty">Brak części niekompletnych w tym magazynie.</div>';
+  $('tableFooter').textContent=data.length+' pozycji NOK';
+  noteSearch(data.length,(state.nokParts||[]).length,'częściach');
+}
+
 function drawDocs(){
   const direction=state.view==='pz'?'PZ':'WZ';
   const opposite=direction==='PZ'?'WZ':'PZ';
@@ -511,7 +527,9 @@ function drawDocs(){
 }
 function drawDocLines(parts,direction){
   if(!parts)return '<div class="loading">Wczytywanie pozycji...</div>';
-  const rows=parts.map(p=>'<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td>'+escapeHtml(p.name)+'</td><td class="num">'+quantity(p.quantity)+'</td></tr>').join('');
+  const rows=parts.map(p=>'<tr><td>'+escapeHtml(p.sap_number||'—')+'</td><td>'+
+    (p.nok?'<span class="office-nok-name">'+escapeHtml(p.name)+' <strong>NOK</strong></span>':escapeHtml(p.name))+
+    '</td><td class="num">'+quantity(p.quantity)+'</td></tr>').join('');
   return '<h3>'+ (direction==='PZ'?'Zawartość dostawy':'Wydane części')+'</h3>'+wrapTable([{label:'Indeks SAP'},{label:'Nazwa części'},{label:'Ilość',numeric:true}],rows);
 }
 function printField(label,value,registrationPlate=null){
@@ -545,7 +563,7 @@ async function openDocumentPrint(id,direction){
   const title=isReceipt?'POTWIERDZENIE PRZYJĘCIA':'POTWIERDZENIE WYDANIA';
   const items=lines.map((p,i)=>
     '<tr><td class="doc-print-number">'+(i+1)+'</td><td>'+escapeHtml(p.sap_number||'—')+'</td>'+
-    '<td>'+escapeHtml(p.name||'—')+'</td><td class="doc-print-qty">'+escapeHtml(p.quantity)+'</td></tr>').join('');
+    '<td>'+escapeHtml(p.name||'—')+(p.nok?' (NOK)':'')+'</td><td class="doc-print-qty">'+escapeHtml(p.quantity)+'</td></tr>').join('');
   const total=lines.reduce((sum,p)=>sum+(Number(p.quantity)||0),0);
   const warn=direction==='WZ'&&lines.some(p=>Number(p.shortage_quantity||0)>0);
   const leftName=isReceipt?'Przekazujący / dostawca':'Wydający / pracownik magazynu';
@@ -682,6 +700,11 @@ async function render(){
       if(ticket!==state.requestId)return;drawAggregate(realSets);
     }else if(state.view==='vehicles'){
       const parts=await realParts();if(ticket!==state.requestId)return;drawVehicles(parts);
+    }else if(state.view==='nok'&&!isDemo()){
+      const payload=await api('nokStock',params);
+      if(ticket!==state.requestId)return;
+      state.nokParts=payload.parts||[];
+      drawNokStock();
     }else if(isDemo()){
       $('tableArea').innerHTML='<div class="empty">Historia magazynów prezentacyjnych nie jest zapisana w D1.</div>';
     }else if(state.view==='pz'||state.view==='wz'){
@@ -734,6 +757,7 @@ function filterCurrent(){
   }
   else if(state.view==='aggregate'||state.view==='vehicles'){render();}
   else if(state.view==='pz'||state.view==='wz')drawDocs();
+  else if(state.view==='nok')drawNokStock();
   else if(state.view==='inventories')drawInventories();
 }
 async function expandRow(id){

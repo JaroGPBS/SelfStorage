@@ -6,7 +6,7 @@
   const camera=()=>window.GPBSInventoryCamera;
   const state={warehouse:null,userId:'',direction:'PZ',stage:'details',pz:new Map(),wz:new Map(),
     comments:{PZ:'',WZ:''},
-    ready:false,part:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
+    ready:false,part:null,editing:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
     scanning:false,stopPromise:null,searchPage:0,hasMore:false,photoPreviewUrl:null};
   const MAX_QUANTITY=100000;
   const upperName=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleUpperCase('pl-PL');
@@ -20,6 +20,7 @@
   function lines(which){
     return [...(which==='PZ'?state.pz:state.wz).values()];
   }
+  const lineKey=(id,nok)=>id+'|'+(nok?'NOK':'OK');
   function saveDraft(){
     if(!state.warehouse||!state.userId)return;
     try{
@@ -54,8 +55,12 @@
         for(const row of data[side].slice(0,80)){
           if(typeof row?.id==='string'&&row.id.length<=100&&
              Number.isSafeInteger(row.quantity)&&row.quantity>0&&row.quantity<=MAX_QUANTITY){
-            target.set(row.id,{id:row.id,name:String(row.name||row.id).slice(0,120),
-              number:String(row.number||row.id).slice(0,100),quantity:row.quantity});
+            const nok=row.nok===true;
+            target.set(lineKey(row.id,nok),{
+              id:row.id,name:String(row.name||row.id).slice(0,120),
+              number:String(row.number||row.id).slice(0,100),
+              quantity:row.quantity,nok
+            });
           }
         }
       }
@@ -92,8 +97,10 @@
   }
   function closeQuantity(){
     if(el('operationQuantityDialog').open)el('operationQuantityDialog').close();
-    state.part=null;
+    state.part=null;state.editing=null;
     el('operationQuantity').value='';
+    el('operationNok').checked=false;
+    el('operationAddButton').textContent='Dodaj';
     quantityError();
     el('operationQuantityForm').hidden=true;
   }
@@ -102,7 +109,7 @@
     for(const id of ['operationCounterparty','operationPlate','operationVisitContinue',
       'operationEditVisit','operationBackToMenu','operationSearchQuery','operationSearchButton',
       'operationStartScan','operationNewPartOpen','operationAddButton','operationQuantity',
-      'operationTabPZ','operationTabWZ','operationClearSearch',
+      'operationTabPZ','operationTabWZ','operationClearSearch','operationNok',
       'operationCommentToggle','operationCommentText']){
       el(id).disabled=lock;
     }
@@ -120,20 +127,46 @@
     description.className='operation-line-description';
     const title=document.createElement('strong');
     title.textContent=row.name;
+    if(row.nok) {
+      title.classList.add('operation-nok-name');
+      const badge=document.createElement('span');
+      badge.className='operation-nok-badge';
+      badge.textContent='NOK';
+      title.append(' ',badge);
+    }
     const subtitle=document.createElement('small');
     subtitle.textContent=row.number+' · '+row.quantity+' szt.';
     description.append(title,subtitle);
-    const button=document.createElement('button');
-    button.type='button';
-    button.className='operation-remove';
-    button.textContent='Usuń';
-    button.disabled=!!state.pending||state.busy;
-    button.addEventListener('click',()=>{
+    const actions=document.createElement('div');
+    actions.className='operation-line-actions';
+    const edit=document.createElement('button');
+    edit.type='button';edit.className='operation-edit';edit.textContent='Edytuj';
+    edit.disabled=!!state.pending||state.busy;
+    edit.addEventListener('click',()=>{
       if(state.pending||state.busy)return;
-      (side==='PZ'?state.pz:state.wz).delete(row.id);
-      saveDraft();render();
+      state.direction=side;
+      selectPart({id:row.id,name:row.name,number:row.number},{
+        key:lineKey(row.id,!!row.nok),quantity:row.quantity,nok:!!row.nok,side
+      });
     });
-    item.append(description,button);
+    const remove=document.createElement('button');
+    remove.type='button';remove.className='operation-remove';
+    remove.textContent='×';remove.title='Usuń pozycję';remove.setAttribute('aria-label','Usuń pozycję '+row.name);
+    remove.disabled=!!state.pending||state.busy;
+    remove.addEventListener('click',async()=>{
+      if(state.pending||state.busy)return;
+      const approved=await window.GPBSPlConfirm.ask({
+        title:'Usunąć pozycję?',
+        message:'Czy na pewno chcesz usunąć '+row.name+(row.nok?' (NOK)':'')+
+          ' · '+row.quantity+' szt. z '+side+'?',
+        approveLabel:'Tak, usuń'
+      });
+      if(!approved||state.pending||state.busy)return;
+      (side==='PZ'?state.pz:state.wz).delete(lineKey(row.id,!!row.nok));
+      saveDraft();status('');render();
+    });
+    actions.append(edit,remove);
+    item.append(description,actions);
     return item;
   }
 
@@ -347,11 +380,14 @@
     }
   }
 
-  function selectPart(part){
+  function selectPart(part,editing=null){
     if(state.pending||state.busy||!['PZ','WZ'].includes(state.stage))return;
     state.part=part;
+    state.editing=editing;
     el('operationPartName').textContent=part.name+' · '+part.number;
-    el('operationQuantity').value='';
+    el('operationQuantity').value=editing?String(editing.quantity):'';
+    el('operationNok').checked=!!editing?.nok;
+    el('operationAddButton').textContent=editing?'Zapisz':'Dodaj';
     quantityError();
     el('operationQuantityForm').hidden=false;
     const dlg=el('operationQuantityDialog');
@@ -369,17 +405,23 @@
       quantityError('Wpisz ilość od 1 do 100000 sztuk.');return;
     }
     const target=state.direction==='PZ'?state.pz:state.wz;
-    const old=target.get(state.part.id);
-    if((old?.quantity||0)+quantity>MAX_QUANTITY){
+    const nok=el('operationNok').checked;
+    const key=lineKey(state.part.id,nok);
+    const old=target.get(key);
+    const editing=state.editing;
+    const total=quantity+((old&&(!editing||editing.key!==key))?old.quantity:0);
+    if(total>MAX_QUANTITY){
       quantityError('Na jednej pozycji można zapisać maksymalnie 100000 sztuk.');return;
     }
-    target.set(state.part.id,{
+    if(editing)target.delete(editing.key);
+    target.set(key,{
       id:state.part.id,name:state.part.name,number:state.part.number,
-      quantity:(old?.quantity||0)+quantity
+      quantity:total,nok
     });
     closeQuantity();
     saveDraft();
-    status('Dodano '+quantity+' szt. do '+state.direction+'.');
+    // No green "Dodano X szt." tile; the list itself confirms the change.
+    status('');
     render();
   }
 
@@ -526,8 +568,8 @@
     }
     el('operationCounterparty').value=counterparty;
     el('operationPlate').value=registrationPlate;
-    const pz=lines('PZ').map(row=>({partId:row.id,quantity:row.quantity}));
-    const wz=lines('WZ').map(row=>({partId:row.id,quantity:row.quantity}));
+    const pz=lines('PZ').map(row=>({partId:row.id,quantity:row.quantity,nok:!!row.nok}));
+    const wz=lines('WZ').map(row=>({partId:row.id,quantity:row.quantity,nok:!!row.nok}));
     if(!pz.length&&!wz.length){status('Dodaj co najmniej jedną część.',true);return null;}
     return {id:'PL-SES-'+crypto.randomUUID(),warehouseId:state.warehouse.id,
       counterparty,registrationPlate,pz,wz,
