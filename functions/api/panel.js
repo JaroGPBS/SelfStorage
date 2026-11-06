@@ -212,12 +212,13 @@ async function queryPanel(env,view,url) {
       "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
     ).first();
     const waiting=reviewTable?await env.DB.prepare(
-      "SELECT COUNT(*) AS n FROM pl_part_verifications WHERE status='PENDING'"
+      "SELECT COUNT(*) AS n FROM pl_part_verifications v JOIN parts p ON p.id=v.part_id WHERE v.status='PENDING' AND p.active=1"
     ).first():null;
     const pendingWarehouses=reviewTable?(await env.DB.prepare(
       'SELECT w.name AS name,COUNT(*) AS count FROM pl_part_verifications v '+
       'JOIN warehouses w ON w.id=v.warehouse_id '+
-      "WHERE v.status='PENDING' AND w.country_code='PL' "+
+      'JOIN parts p ON p.id=v.part_id '+
+      "WHERE v.status='PENDING' AND w.country_code='PL' AND p.active=1 "+
       'GROUP BY w.id,w.name ORDER BY count DESC,w.name LIMIT 12'
     ).all()).results||[]:[];
     return {warehouses:warehouses?.n||0,
@@ -309,7 +310,7 @@ async function queryPanel(env,view,url) {
       (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
       'JOIN warehouses w ON w.id=v.warehouse_id '+
       'LEFT JOIN users u ON u.id=v.created_by '+
-      "WHERE v.status='PENDING' AND w.country_code='PL' "+
+      "WHERE v.status='PENDING' AND w.country_code='PL' AND p.active=1 "+
       'ORDER BY v.created_at DESC,v.part_id DESC LIMIT 1000'
     ).all();
     return {parts:rows.results||[]};
@@ -1046,6 +1047,49 @@ async function route(request,env) {
       return fail('Nie udało się wyłączyć starego indeksu.',503);
     }
   }
+  if(body?.action==='deletePart') {
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    const id=String(body.partId||'');
+    if(!/^[A-Za-z0-9_-]{1,100}$/.test(id))return fail('Nieprawidłowa część.',400);
+    try {
+      const part=await env.DB.prepare(
+        'SELECT id,name,part_number,sap_number FROM parts WHERE id=? AND active=1'
+      ).bind(id).first();
+      if(!part)return fail('Część już nie istnieje w aktywnym katalogu.',404);
+      const stock=await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM warehouse_stock WHERE part_id=? AND quantity<>0'
+      ).bind(id).first();
+      if(Number(stock?.n||0)>0)
+        return fail('Nie można usunąć części z niezerowym stanem magazynowym. Najpierw popraw jej stany.',409);
+      // Archive rather than DELETE: historical PZ/WZ and inventory lines keep their part ID.
+      // Release scanned raw_code, so a corrected part can be registered with the same code.
+      // The original index is not recycled.
+      const statements=[
+        env.DB.prepare(
+          'UPDATE parts SET active=0 WHERE id=? AND active=1 AND NOT EXISTS ('+
+          'SELECT 1 FROM warehouse_stock WHERE part_id=? AND quantity<>0)'
+        ).bind(id,id)
+      ];
+      const hasReview=await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
+      ).first();
+      if(hasReview)statements.push(env.DB.prepare(
+        'UPDATE pl_part_verifications SET raw_code=NULL WHERE part_id=?'
+      ).bind(id));
+      statements.push(env.DB.prepare(
+        'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
+        'VALUES (?,?,?,?,?,?)'
+      ).bind(crypto.randomUUID(),session.id,'PART_DEACTIVATE','PART',id,
+        JSON.stringify({name:part.name,number:part.part_number,sap:part.sap_number})));
+      const result=await env.DB.batch(statements);
+      if(Number(result[0]?.meta?.changes||0)!==1)
+        return fail('Nie udało się usunąć części: zmienił się jej stan. Odśwież katalog.',409);
+      return respond({ok:true,message:'Usunięto część z aktywnego katalogu. Historia operacji została zachowana.'});
+    }catch(error) {
+      console.error('panel part deactivate',error?.name||'Error');
+      return fail('Nie udało się usunąć części.',503);
+    }
+  }
   if(body?.action==='updatePart') {
     try {
       const id=String(body.partId||'');
@@ -1065,7 +1109,7 @@ async function route(request,env) {
       ).bind(id).first():null;
       if(migration&&number!==migration.new_index)
         return fail('Nowy indeks jest przypisany na stałe i nie można go zmienić w edycji części.',409);
-      const exists=await env.DB.prepare('SELECT id FROM parts WHERE id=?')
+      const exists=await env.DB.prepare('SELECT id FROM parts WHERE id=? AND active=1')
         .bind(id).first();
       if(!exists)return fail('Część nie istnieje.',404);
       if(verify) {
