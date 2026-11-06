@@ -254,6 +254,15 @@ tr:hover td{background:#ffffff04}
 #partEditDialog{max-width:min(560px,calc(100vw - 24px))}
 #partEditDialog .modal-inner{max-height:calc(100dvh - 50px);overflow:auto}
 #partEditDialog .dialog-actions .btn{min-height:43px}
+#partEditDialog .part-edit-delete{margin-right:auto}
+.parts-review-table td.part-row-actions{white-space:nowrap}
+.parts-review-table .part-row-actions .part-delete-btn{
+  margin:0 0 0 7px;padding:7px 11px;min-height:32px;font-size:11px;
+  border-color:#a94a50;background:#481b22;color:#ffb1b5
+}
+.parts-review-table .part-row-actions .part-delete-btn:hover{
+  background:#68202c;color:#fff
+}
 
 /* Warning for confirmed issue above recorded stock; only office/admin UI. */
 .movement-type{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
