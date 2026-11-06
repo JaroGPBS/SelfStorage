@@ -406,3 +406,26 @@ tr:hover td{background:#ffffff04}
 .index-retired{opacity:.69}
 .index-retired-label{color:#8eddb5;font-size:11px;font-weight:700}
 .index-migration-table button:disabled{opacity:.38;cursor:not-allowed}
+
+/* Admin dashboard: read-only Cloudflare resource utilization. */
+.resource-usage{margin-top:28px}
+.resource-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px}
+.resource-heading h2{margin:0;font-size:18px;letter-spacing:-.3px}
+.resource-heading span{font-size:11px;color:#8999aa;text-align:right}
+.resource-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.resource-card{min-width:0;border-radius:15px;border:1px solid var(--edge);background:linear-gradient(145deg,#1b2027,#15191f);padding:23px}
+.resource-topline{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.resource-topline h3{font-size:15px;margin:0;color:#edf2f8}
+.resource-topline>span{font-size:10px;color:#8493a3;white-space:nowrap}
+.resource-main-label{margin-top:20px;font-size:11px;color:#95a4b4}
+.resource-main-value{font:800 29px Manrope;letter-spacing:-.75px;margin:6px 0 17px}
+.resource-item{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#a8b5c4;font-size:12px;padding:8px 0;border-top:1px solid #ffffff0a}
+.resource-item strong{color:#f1f4f8;font-size:12px;white-space:nowrap}
+.resource-note{font-size:11px;color:#8998a8;line-height:1.5;margin:11px 0 0}
+.resource-guard{margin-top:12px;padding-top:7px;border-top:1px solid #ffffff0c}
+.resource-guard .resource-item{border:0}
+.resource-meter{height:7px;border-radius:99px;overflow:hidden;background:#313945;margin-top:5px}
+.resource-meter-fill{height:100%;width:0;background:#a3b6ca;border-radius:99px;transition:width .2s ease}
+.resource-meter-fill.warning{background:#fa6772}
+@media(max-width:960px){.resource-grid{grid-template-columns:1fr}}
+@media(max-width:550px){.resource-card{padding:17px}.resource-heading{align-items:flex-start;flex-direction:column}}
