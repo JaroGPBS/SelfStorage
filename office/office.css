@@ -909,6 +909,25 @@
   gap:10px;white-space:nowrap;
 }
 .app.view-receipts .doc-row-actions .detail-btn{margin-right:auto}
+.app.view-receipts .table .doc-actions-cell:has(.doc-comment-indicator){
+  min-width:340px;width:340px;
+}
+.app.view-receipts .doc-comment-indicator{
+  color:#975a21;font-size:10px;font-weight:800;
+  white-space:nowrap;line-height:1.3;
+}
+.app.view-receipts .doc-comment-box{
+  margin-top:13px;padding:12px 13px;
+  background:#fffaf3;border:1px solid #e7d7bd;border-radius:8px;
+}
+.app.view-receipts .doc-comment-box strong{
+  display:block;color:#74502c;font-size:11px;font-weight:800;
+  margin-bottom:7px;
+}
+.app.view-receipts .doc-comment-box p{
+  margin:0;color:#3f4249;font-size:12px;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
 .app.view-receipts .doc-print-btn{
   border:1px solid #d8dce2;border-radius:6px;
   padding:6px 11px;min-height:30px;
