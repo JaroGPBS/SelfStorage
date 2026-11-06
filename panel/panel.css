@@ -255,6 +255,18 @@ tr:hover td{background:#ffffff04}
 #partEditDialog .modal-inner{max-height:calc(100dvh - 50px);overflow:auto}
 #partEditDialog .dialog-actions .btn{min-height:43px}
 #partEditDialog .part-edit-delete{margin-right:auto}
+#partEditDialog .part-photo-modes{min-width:0;margin:15px 0 12px;padding:12px 14px;
+  border:1px solid #414b58;border-radius:11px;background:#11161d}
+#partEditDialog .part-photo-modes legend{padding:0 6px;font-size:12px;font-weight:800;color:#d9e0e7}
+#partEditDialog .part-photo-modes label{display:flex;align-items:flex-start;gap:10px;
+  margin:9px 0;padding:8px 0;cursor:pointer;color:#dce4ec}
+#partEditDialog .part-photo-modes label+label{border-top:1px solid #34404b;padding-top:13px}
+#partEditDialog .part-photo-modes input[type="radio"]{flex:0 0 18px;width:18px;min-width:18px;
+  min-height:18px;height:18px;margin:1px 0 0;accent-color:#ef4444;box-shadow:none}
+#partEditDialog .part-photo-modes label span{display:block;min-width:0}
+#partEditDialog .part-photo-modes label strong{display:block;font-size:12px;line-height:1.35}
+#partEditDialog .part-photo-modes label small{display:block;margin-top:4px;color:#97a7b8;
+  font-size:11px;font-weight:500;line-height:1.5}
 .parts-review-table td.part-row-actions{white-space:nowrap}
 .parts-review-table .part-row-actions .part-delete-btn{
   margin:0 0 0 7px;padding:7px 11px;min-height:32px;font-size:11px;
