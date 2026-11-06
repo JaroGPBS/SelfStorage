@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=35">
-  <link rel="stylesheet" href="./office-labels.css?v=3">
+  <link rel="stylesheet" href="./office-labels.css?v=4">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
@@ -276,10 +276,16 @@
         <p id="officeNewPartNotice" class="office-new-part-notice hidden" role="status" aria-live="polite"></p>
         <section id="officeLabelsView" class="label-tool hidden" aria-label="Drukowanie etykiet">
           <div class="label-tool-header">
-            <div><h2>Drukowanie etykiet</h2><p>Wybierz części, dodaj do kolejki i wydrukuj. Dwie etykiety na kartce A4.</p></div>
-            <label class="label-warehouse-choice" for="labelWarehouse">MAGAZYN
-              <select id="labelWarehouse" aria-label="Wybierz magazyn do drukowania etykiet"></select>
-            </label>
+            <div class="label-tool-heading">
+              <h1>Drukowanie etykiet</h1>
+              <p>Wybierz części, dodaj do kolejki i wydrukuj. Dwie etykiety na kartce A4.</p>
+            </div>
+            <div class="label-tool-controls">
+              <label class="label-warehouse-choice" for="labelWarehouse">MAGAZYN
+                <select id="labelWarehouse" aria-label="Wybierz magazyn do drukowania etykiet"></select>
+              </label>
+              <div class="label-sync-controls" id="labelToolbarActions"></div>
+            </div>
           </div>
           <p id="labelNotice" class="label-message hidden" role="status" aria-live="polite"></p>
           <div class="label-tool-columns">
