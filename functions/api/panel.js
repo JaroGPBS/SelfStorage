@@ -197,14 +197,16 @@ async function cloudflareUsage(env,url) {
 
   const now=new Date();
   const monthStart=now.toISOString().slice(0,7)+'-01';
+  const monthFrom=monthStart+'T00:00:00Z';
   const today=now.toISOString().slice(0,10);
   const storageStart=new Date(now.getTime()-7*86400000).toISOString();
   const query=String.raw`query GPBSUsage($accountTag: string!, $databaseId: string!, $bucketName: string!,
-      $startDate: Date!, $endDate: Date!, $storageFrom: Time!, $storageTo: Time!) {
+      $startDate: Date!, $endDate: Date!, $storageFrom: Time!, $storageTo: Time!, $monthFrom: Time!) {
     viewer {
       accounts(filter:{accountTag:$accountTag}) {
-        d1AnalyticsAdaptiveGroups(limit:1,
-          filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId}) {
+        d1AnalyticsAdaptiveGroups(limit:10000,
+          filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId},
+          orderBy:[date_DESC]) {
           sum { rowsRead rowsWritten }
         }
         d1StorageAdaptiveGroups(limit:1,
@@ -219,8 +221,8 @@ async function cloudflareUsage(env,url) {
           max { payloadSize metadataSize objectCount }
           dimensions { datetime }
         }
-        r2OperationsAdaptiveGroups(limit:1000,
-          filter:{bucketName:$bucketName,date_geq:$startDate,date_leq:$endDate}) {
+        r2OperationsAdaptiveGroups(limit:10000,
+          filter:{bucketName:$bucketName,datetime_geq:$monthFrom,datetime_leq:$storageTo}) {
           sum { requests }
         }
       }
@@ -234,7 +236,7 @@ async function cloudflareUsage(env,url) {
       headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
       body:JSON.stringify({query,variables:{
         accountTag:accountId,databaseId,bucketName,
-        startDate:monthStart,endDate:today,storageFrom:storageStart,storageTo:now.toISOString()
+        startDate:monthStart,endDate:today,storageFrom:storageStart,storageTo:now.toISOString(),monthFrom
       }}),
       signal:abort.signal
     });
