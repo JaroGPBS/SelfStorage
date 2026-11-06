@@ -779,6 +779,19 @@ async function openPart(id){
       '<div class="modal-actions">'+
         (demo?'':'<button type="button" class="btn dark" data-label-add-current="1">Drukuj etykietę</button>')+
       '</div>';
+    // A saved photo can exist in the catalogue even if the browser cannot decode it.
+    // Show a readable error instead of a broken or invisible image.
+    const partImage=body.querySelector('.part-photo-zoom img');
+    if(partImage)partImage.addEventListener('error',()=>{
+      const target=partImage.closest('.part-photo-zoom');
+      if(!target||!target.isConnected)return;
+      const placeholder=document.createElement('div');
+      placeholder.className='part-photo-empty';
+      const message=document.createElement('small');
+      message.textContent='Nie można wyświetlić zdjęcia. Administrator może wgrać je ponownie jako JPG lub PNG.';
+      placeholder.append(message);
+      target.replaceWith(placeholder);
+    },{once:true});
   }catch(ex){
     body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><p class="error">'+escapeHtml(ex.message)+'</p>';
   }
