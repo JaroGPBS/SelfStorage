@@ -322,24 +322,16 @@ function noteSearch(count,total,noun){
   $('searchNote').classList.toggle('hidden',!state.search.trim());
   $('searchNote').textContent=state.search.trim()?'Znaleziono w '+count+' '+noun+' z '+total+'.':'';
 }
-// Presentation-only figures; deterministic across search/sort and never stored in D1.
-function previewMinimum(part){
-  let hash=0;
-  for(const ch of String(part.id||part.name||''))hash=(Math.imul(hash,31)+ch.charCodeAt(0))|0;
-  return [5,10,15,20,25,30,35,40][(hash>>>0)%8];
-}
 function drawStocks(parts,warehouseId){
   const filtered=sortedFiltered(parts);const demoIndex=DEMOS.findIndex(w=>w.id===warehouseId);
   const rows=filtered.map(p=>{
     const originalIndex=parts.indexOf(p);
     const amount=demoIndex<0?p.quantity:demoQuantity(originalIndex,demoIndex+1);
-    const min=previewMinimum(p);
-    const reorder=amount===null||amount===undefined?'—':Math.max(0,min-Number(amount));
     return '<tr data-part-row="'+escapeHtml(p.id)+'" tabindex="0" aria-label="Szczegóły części: '+escapeHtml(p.name)+'">'+
       '<td>'+escapeHtml(p.sap_number||'—')+'</td><td><button class="row-link" data-part="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
       '<td class="num">'+quantity(amount)+'</td>'+
-      '<td class="num stock-demo-order">'+(reorder==='—'?'—':reorder>0?'<strong>'+escapeHtml(reorder)+'</strong>':escapeHtml(reorder))+'</td>'+
-      '<td class="num stock-demo-min">'+escapeHtml(min)+'</td></tr>';
+      '<td class="num stock-demo-order">—</td>'+
+      '<td class="num stock-demo-min">—</td></tr>';
   }).join('');
   $('tableArea').innerHTML=wrapTable([
     {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true},
