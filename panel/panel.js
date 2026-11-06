@@ -918,22 +918,60 @@
     }catch(error){message(error.message,'error');}
   }
 
+  // The WhatsApp message is created only in the browser while the one-time PIN
+  // is visible. Neither the message nor its PIN is persisted or sent to the API.
+  function pinMessage(pin) {
+    return [
+      'Aplikacja GPBS Storage',
+      '',
+      'Otwórz aplikację:',
+      'https://selfstorage-43f.pages.dev/',
+      '',
+      'PIN: '+pin,
+      '',
+      'Proszę nie udostępniać PIN-u innym osobom.'
+    ].join('\n');
+  }
+
+  async function copyPinMessage(pin, label) {
+    try {
+      await navigator.clipboard.writeText(pinMessage(pin));
+      message('Skopiowano wiadomość dla '+label+'. Możesz wkleić ją w WhatsApp.','info');
+    } catch {
+      message('Nie udało się skopiować wiadomości. Spróbuj ponownie przed zamknięciem okna.','error');
+    }
+  }
+
   function showGeneratedPins(entries) {
     const dialog=$('generatedPinsDialog');
     const target=$('generatedPinsResults');target.replaceChildren();
+    const valid=entries.map(item=>({
+      label:String(item.name||item.userId||'Użytkownik'),
+      pin:String(item.pin||'')
+    })).filter(item=>/^\d{4}$/.test(item.pin));
+    const isBulk=valid.length>1;
     const lines=[];
-    for(const item of entries) {
-      const label=String(item.name||item.userId||'Użytkownik');
-      const pin=String(item.pin||'');
-      if(!/^\d{4}$/.test(pin))continue;
+    for(const {label,pin} of valid) {
       const row=document.createElement('div');row.className='pin-result-item';
       const who=document.createElement('strong');who.textContent=label;
       const value=document.createElement('code');value.textContent=pin;
-      row.append(who,value);target.append(row);
+      row.append(who,value);
+      if(isBulk){
+        const copy=document.createElement('button');
+        copy.type='button';
+        copy.className='btn mini pin-copy-message';
+        copy.textContent='Kopiuj wiadomość';
+        copy.addEventListener('click',()=>copyPinMessage(pin,label));
+        row.append(copy);
+      }
+      target.append(row);
       lines.push(label+': '+pin);
     }
-    state.generatedPinText=lines.join('\n');
-    $('copyGeneratedPins').disabled=lines.length===0;
+    // With one PIN the main Copy button is a ready-to-send WhatsApp message.
+    // For a batch preserve the existing named PIN list and offer per-user copies.
+    state.generatedPinText=isBulk?lines.join('\n'):(valid.length?pinMessage(valid[0].pin):'');
+    $('copyGeneratedPins').textContent=isBulk?'Kopiuj listę PIN-ów':'Kopiuj wiadomość';
+    $('copyGeneratedPins').disabled=valid.length===0;
     dialog.showModal();
   }
 
@@ -948,7 +986,9 @@
     if(!state.generatedPinText)return;
     try {
       await navigator.clipboard.writeText(state.generatedPinText);
-      message('Skopiowano wygenerowane PIN-y. Przechowuj je bezpiecznie.','info');
+      message($('copyGeneratedPins').textContent==='Kopiuj wiadomość'
+        ?'Skopiowano wiadomość. Możesz wkleić ją w WhatsApp.'
+        :'Skopiowano listę PIN-ów. Nie udostępniaj całej listy pracownikom.','info');
     } catch {
       message('Kopiowanie się nie powiodło. Zapisz PIN-y przed zamknięciem okna.','error');
     }
