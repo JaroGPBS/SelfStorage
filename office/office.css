@@ -899,6 +899,9 @@
   }
 }
 
+.office-nok-name{color:#c32837;font-weight:850}
+.office-nok-name strong{display:inline-block;margin-left:5px;color:#d32d3c;
+  font-size:10px;letter-spacing:.35px;white-space:nowrap}
 /* Shared PZ/WZ actions and links between two operations of the same visit. */
 .app.view-receipts .table .doc-actions-cell{
   min-width:260px;width:260px;
