@@ -437,6 +437,7 @@
 
   function openPartEditor(part) {
     $('partEditReplacementPhoto').value='';
+    $('partEditPhotoOptimized').checked=true;
     $('partEditId').value=part.id;
     $('partEditName').value=part.name||'';
     $('partEditNumber').value=part.part_number||'';
@@ -475,6 +476,41 @@
     const extension=String(file.name||'').split('.').pop().toLowerCase();
     if(!['jpg','jpeg','jpe','png','bmp','webp','avif'].includes(extension))
       throw Error('Wybierz zdjęcie JPG, PNG, BMP, WEBP lub AVIF. Zdjęcia HEIC zapisz najpierw jako JPG.');
+  }
+
+  // Resize only when the administrator selected optimized mode.
+  // JPEG cannot preserve transparency: paint an opaque white background first.
+  async function optimizeEditorPhoto(file) {
+    const source=URL.createObjectURL(file);
+    const picture=new Image();
+    try {
+      await new Promise((resolve,reject)=>{
+        picture.onload=resolve;
+        picture.onerror=()=>reject(Error(
+          'Nie można przetworzyć tego zdjęcia w przeglądarce. Spróbuj JPG/PNG albo wybierz tryb Oryginalne.'));
+        picture.src=source;
+      });
+    } finally {
+      URL.revokeObjectURL(source);
+    }
+    const originalWidth=picture.naturalWidth,originalHeight=picture.naturalHeight;
+    if(!originalWidth||!originalHeight)
+      throw Error('Zdjęcie nie ma poprawnych wymiarów.');
+    const ratio=Math.min(1,1600/Math.max(originalWidth,originalHeight));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(originalWidth*ratio));
+    canvas.height=Math.max(1,Math.round(originalHeight*ratio));
+    const context=canvas.getContext('2d');
+    if(!context)throw Error('Przeglądarka nie obsługuje przetwarzania zdjęć.');
+    context.fillStyle='#FFFFFF';
+    context.fillRect(0,0,canvas.width,canvas.height);
+    context.drawImage(picture,0,0,canvas.width,canvas.height);
+    const jpg=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.85));
+    canvas.width=0;canvas.height=0;
+    if(!jpg||jpg.type!=='image/jpeg'||jpg.size<100||jpg.size>20*1024*1024)
+      throw Error('Nie udało się przygotować zdjęcia JPG. Spróbuj innego pliku.');
+    const base=String(file.name||'zdjecie').replace(/\.[^.]+$/,'').slice(0,110)||'zdjecie';
+    return new File([jpg],base+'.jpg',{type:'image/jpeg'});
   }
 
   async function savePartEditorPhoto(partId,file) {
@@ -516,8 +552,12 @@
     $('partEditError').classList.add('hidden');
     try {
       const partId=$('partEditId').value;
-      const file=$('partEditReplacementPhoto').files?.[0]||null;
-      validateEditorPhoto(file);
+      const selectedPhoto=$('partEditReplacementPhoto').files?.[0]||null;
+      validateEditorPhoto(selectedPhoto);
+      // Process before updating data/verification, so image decoding errors
+      // cannot create a partial successful save.
+      const file=selectedPhoto&&$('partEditPhotoOptimized').checked
+        ?await optimizeEditorPhoto(selectedPhoto):selectedPhoto;
       const result=await post({
         action:'updatePart',
         partId,
