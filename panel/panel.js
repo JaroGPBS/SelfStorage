@@ -198,12 +198,12 @@
       ?'Pobrano: '+now.toLocaleString('pl-PL',{dateStyle:'short',timeStyle:'short'})
       :'Statystyki Cloudflare';
     $('usageD1Size').textContent=active?formatBytes(cloud.d1?.sizeBytes):'—';
-    $('usageD1Reads').textContent=active?formatNum(cloud.d1?.rowsRead??0):'—';
-    $('usageD1Writes').textContent=active?formatNum(cloud.d1?.rowsWritten??0):'—';
+    $('usageD1Reads').textContent=active&&cloud.d1?.rowsRead!=null?formatNum(cloud.d1.rowsRead):'—';
+    $('usageD1Writes').textContent=active&&cloud.d1?.rowsWritten!=null?formatNum(cloud.d1.rowsWritten):'—';
     $('usageR2Size').textContent=active?formatBytes(cloud.r2?.sizeBytes):'—';
     $('usageR2Objects').textContent=active&&cloud.r2?.objectCount!=null
       ?formatNum(cloud.r2.objectCount):'—';
-    $('usageR2Ops').textContent=active?formatNum(cloud.r2?.operations??0):'—';
+    $('usageR2Ops').textContent=active&&cloud.r2?.operations!=null?formatNum(cloud.r2.operations):'—';
     const status=cloud.status==='not_configured'
       ?'Do podłączenia: token analityczny i identyfikatory Cloudflare.'
       :cloud.status==='invalid_configuration'
