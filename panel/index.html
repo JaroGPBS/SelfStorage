@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=10">
-  <script src="./panel.js?v=18" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=11">
+  <script src="./panel.js?v=19" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -238,7 +238,18 @@
       </div>
       <label for="partEditReplacementPhoto">Zdjęcie części (opcjonalnie)</label>
       <input id="partEditReplacementPhoto" type="file" accept=".jpg,.jpeg,.jpe,.png,.bmp,.webp,.avif,image/jpeg,image/png,image/bmp,image/webp,image/avif">
-      <p class="hint">Wybierz JPG, PNG, BMP, WEBP lub AVIF (maks. 20 MB). Zdjęcie zapisze się razem z danymi po kliknięciu „Zapisz dane”. Jeżeli część ma już zdjęcie, zostanie ono zastąpione.</p>
+      <fieldset class="part-photo-modes">
+        <legend>Sposób zapisu zdjęcia</legend>
+        <label for="partEditPhotoOptimized">
+          <input id="partEditPhotoOptimized" type="radio" name="partPhotoMode" value="optimized" checked>
+          <span><strong>Zoptymalizowane (zalecane)</strong><small>JPG, maks. 1600 px, jakość 85%. Przezroczyste tło zmieni się na białe.</small></span>
+        </label>
+        <label for="partEditPhotoOriginal">
+          <input id="partEditPhotoOriginal" type="radio" name="partPhotoMode" value="original">
+          <span><strong>Oryginalne</strong><small>Bez zmiany rozmiaru, jakości ani formatu pliku.</small></span>
+        </label>
+      </fieldset>
+      <p class="hint">Obsługiwane: JPG, PNG, BMP, WEBP, AVIF (do 20 MB). Kliknięcie „Zapisz dane” zapisuje też wybrane zdjęcie w R2 i zastępuje poprzednie.</p>
       <label class="part-verify-choice"><input id="partEditVerify" type="checkbox">
         Dane zostały sprawdzone — oznacz część jako zweryfikowaną</label>
       <p id="partEditError" class="message error hidden" role="alert"></p>
