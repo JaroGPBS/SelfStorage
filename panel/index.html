@@ -9,7 +9,7 @@
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=13">
-  <script src="./panel.js?v=21" defer></script>
+  <script src="./panel.js?v=22" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -68,7 +68,7 @@
         </div>
       </header>
       <main class="workspace">
-        <div class="heading">
+        <div class="heading" id="pageHeading">
           <div>
             <div class="eyebrow">GPBS STORAGE / POLSKA</div>
             <h1 id="pageTitle">Pulpit</h1>
@@ -91,10 +91,6 @@
         </div>
         <div id="message" class="message hidden" role="status" aria-live="polite"></div>
         <section id="dashboardView" class="view hidden">
-          <div class="intro-banner">
-            <div><span class="intro-kicker">PANEL ZARZĄDZANIA · OBECNA WERSJA ŁĄCZONA</span><h2>Wszystkie magazyny.<br><em>Pełna kontrola.</em></h2><p>Zarządzaj stanami i historią operacji w jednym miejscu.</p></div>
-            <div class="intro-decoration" aria-hidden="true">G</div>
-          </div>
           <div id="overissueAlert" class="overissue-alert" role="status" aria-live="polite" hidden></div>
           <button id="newPartsAlert" class="new-parts-alert" type="button" hidden>
             Nowe części czekają na weryfikację. Otwórz listę.
