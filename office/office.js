@@ -478,7 +478,7 @@ function drawDocs(){
     const related=Number(d.has_related||0)>0;
     const note=String(d.comment||'').trim();
     const commentIndicator=note?'<span class="doc-comment-indicator" title="Dokument zawiera komentarz">✎ Komentarz</span>':'';
-    const actions='<div class="doc-row-actions">'+commentIndicator+cellButton('części',d.id,expanded)+
+    const actions='<div class="doc-row-actions">'+cellButton('części',d.id,expanded)+commentIndicator+
       '<button type="button" class="doc-print-btn" data-doc-print="'+escapeHtml(d.id)+'" data-doc-direction="'+direction+'">Wydrukuj '+direction+'</button>'+
       '</div>';
     let expandedHtml='';
