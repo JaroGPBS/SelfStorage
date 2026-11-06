@@ -174,13 +174,16 @@ async function duplicate(db,input,actorId,hasPlate){
     ' FROM pl_warehouse_sessions WHERE id=?'
   ).bind(input.id).first();
   if(!existing)return null;
+  const hasNok=await nokTablesExist(db);
   const saved=await db.prepare(
-    'SELECT direction,part_id,quantity FROM pl_warehouse_session_lines WHERE session_id=?'
-  ).bind(input.id).all();
+    "SELECT direction,part_id,quantity,0 AS nok FROM pl_warehouse_session_lines WHERE session_id=?"+
+    (hasNok?" UNION ALL SELECT direction,part_id,quantity,1 AS nok "+
+      "FROM pl_nok_session_lines WHERE session_id=?":'')
+  ).bind(input.id,...(hasNok?[input.id]:[])).all();
   const expected=new Map();
   for(const direction of ['pz','wz']){
     for(const line of input[direction])
-      expected.set(direction.toUpperCase()+':'+line.partId,line.quantity);
+      expected.set(direction.toUpperCase()+':'+line.partId+':'+(line.nok?'NOK':'OK'),line.quantity);
   }
   const rows=saved.results||[];
   let sameComments=!input.pzComment&&!input.wzComment;
@@ -200,7 +203,7 @@ async function duplicate(db,input,actorId,hasPlate){
   const same=existing.warehouse_id===input.warehouseId&&
     existing.actor_id===actorId&&sameIdentity&&sameComments&&
     rows.length===expected.size&&rows.every(row=>
-      expected.get(row.direction+':'+row.part_id)===Number(row.quantity));
+      expected.get(row.direction+':'+row.part_id+':'+(row.nok?'NOK':'OK'))===Number(row.quantity));
   if(!same)return fail('Identyfikator sesji został już użyty dla innych danych.',409);
   return workerJson({ok:true,id:input.id,alreadySaved:true,
     committedAt:existing.committed_at,pzItems:input.pz.length,wzItems:input.wz.length});
@@ -208,35 +211,47 @@ async function duplicate(db,input,actorId,hasPlate){
 
 async function preview(db,input){
   const combined=new Map();
-  for(const line of input.pz)combined.set(line.partId,{partId:line.partId,pz:line.quantity,wz:0});
+  const key=r=>r.partId+':'+(r.nok?'NOK':'OK');
+  for(const line of input.pz)combined.set(key(line),{
+    partId:line.partId,nok:line.nok,pz:line.quantity,wz:0
+  });
   for(const line of input.wz){
-    const row=combined.get(line.partId)||{partId:line.partId,pz:0,wz:0};
+    const row=combined.get(key(line))||{partId:line.partId,nok:line.nok,pz:0,wz:0};
     row.wz=line.quantity;
-    combined.set(line.partId,row);
+    combined.set(key(line),row);
   }
   const parts=[...combined.values()];
+  const usesNok=parts.some(p=>p.nok);
   const result=await db.prepare(
     "SELECT json_extract(j.value,'$.partId') AS part_id,"+
-    'p.id AS valid_id,p.name AS name,p.active AS active,s.quantity AS quantity '+
+    "json_extract(j.value,'$.nok') AS nok,"+
+    'p.id AS valid_id,p.name AS name,p.active AS active,'+
+    (usesNok?"CASE WHEN json_extract(j.value,'$.nok')=1 THEN n.quantity ELSE s.quantity END":
+      's.quantity')+' AS quantity '+
     "FROM json_each(?) j LEFT JOIN parts p ON p.id=json_extract(j.value,'$.partId') "+
-    'LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=?'
-  ).bind(JSON.stringify(parts),input.warehouseId).all();
-  const rows=new Map((result.results||[]).map(r=>[r.part_id,r]));
-  if(rows.size!==parts.length||parts.some(p=>!rows.get(p.partId)?.valid_id||
-    Number(rows.get(p.partId).active)!==1))
+    'LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
+    (usesNok?'LEFT JOIN pl_nok_stock n ON n.part_id=p.id AND n.warehouse_id=?':'')
+  ).bind(JSON.stringify(parts),input.warehouseId,...(usesNok?[input.warehouseId]:[])).all();
+  const rows=new Map((result.results||[]).map(r=>[
+    r.part_id+':'+(r.nok?'NOK':'OK'),r
+  ]));
+  if(rows.size!==parts.length||parts.some(p=>!rows.get(key(p))?.valid_id||
+    Number(rows.get(key(p)).active)!==1))
     return fail('Część została wyłączona lub nie istnieje w katalogu. Odśwież listę.',409);
   const stockSnapshot=[];
   const warnings=[];
   for(const p of parts){
-    const row=rows.get(p.partId);
+    const row=rows.get(key(p));
     const stock=row.quantity===null||row.quantity===undefined?null:Number(row.quantity);
-    stockSnapshot.push({partId:p.partId,quantity:stock});
+    stockSnapshot.push({partId:p.partId,nok:p.nok,quantity:stock});
     if(p.wz===0)continue;
     const available=(stock??0)+p.pz;
     const shortfall=Math.max(0,p.wz-available);
-    if(shortfall>0)warnings.push({partId:p.partId,name:row.name||p.partId,
+    if(shortfall>0)warnings.push({
+      partId:p.partId,nok:p.nok,name:(row.name||p.partId)+(p.nok?' (NOK)':''),
       unknown:stock===null,available:stock===null?null:available,
-      received:p.pz,issued:p.wz,shortfall});
+      received:p.pz,issued:p.wz,shortfall
+    });
   }
   return workerJson({ok:true,stockSnapshot,warnings,requiresConfirmation:warnings.length>0});
 }
@@ -444,6 +459,8 @@ export async function onRequestPost({request,env}){
     if(auth.error)return auth.error;
     if(!await schemaReady(env.DB))
       return fail('Najpierw wykonaj migrację '+MIGRATION+'.',503);
+    if([...input.pz,...input.wz].some(row=>row.nok))
+      await ensureNokTables(env.DB);
     if(input.action==='preview')return await preview(env.DB,input);
     return await commit(env.DB,input,auth.user.id);
   }catch(error){
