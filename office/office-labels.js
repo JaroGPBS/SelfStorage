@@ -147,10 +147,11 @@
       '<div class="a5-label-heading"><small>NAZWA CZĘŚCI</small>'+
         '<h2 class="'+size+'">'+esc(part.name)+'</h2></div>'+
       '<div class="a5-label-main">'+
-        '<div class="a5-qr-column"><div class="a5-qr" data-qr="'+esc(part.part_number)+'"></div></div>'+
-        '<div class="a5-information-column"><small>INDEKS GPBS</small>'+
-          '<strong>'+esc(part.part_number)+'</strong>'+
+        '<div class="a5-qr-column">'+
+          '<div class="a5-qr" data-qr="'+esc(part.part_number)+'"></div>'+
           '<img class="a5-brand" src="/office/gpbs-logo-print.svg?v=1" alt="GPBS"></div>'+
+        '<div class="a5-information-column"><small>INDEKS GPBS</small>'+
+          '<strong>'+esc(part.part_number)+'</strong></div>'+
         '<div class="a5-image-column">'+photoMarkup(part,warehouse)+'</div>'+
       '</div></div></article>';
   }
