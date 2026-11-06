@@ -730,6 +730,7 @@
   function showView(view) {
     if(!defs[view])return;
     state.view=view;
+    $('pageHeading').classList.toggle('hidden',view==='summary');
     $('pageTitle').textContent=defs[view][0];
     $('pageSubtitle').textContent=defs[view][1];
     $('breadcrumbCurrent').textContent=defs[view][0];
