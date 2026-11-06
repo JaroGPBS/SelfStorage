@@ -395,7 +395,7 @@
     const accepted=await confirmAction({
       title:'Usunąć część z katalogu?',
       description:'„'+part.name+'” ('+(part.part_number||'bez indeksu')+
-        ') zniknie z aktywnych list oraz drukowania etykiet. Historia magazynowa pozostanie zachowana. Tej operacji nie można cofnąć z panelu.',
+        ') zniknie z aktywnych list i drukowania etykiet. Zdjęcie części zostanie trwale usunięte z R2. Historia PZ/WZ pozostanie zachowana. Tej operacji nie można cofnąć z panelu.',
       confirmLabel:'Usuń część',danger:true
     });
     if(!accepted)return;
