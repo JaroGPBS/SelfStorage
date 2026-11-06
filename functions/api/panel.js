@@ -254,15 +254,15 @@ async function cloudflareUsage(env,url) {
       d1:{
         sizeBytes:safeNumber(d1Storage?.max?.databaseSizeBytes),
         storageSampleAt:d1Storage?.dimensions?.datetime||null,
-        rowsRead:total(d1Metrics,'rowsRead'),
-        rowsWritten:total(d1Metrics,'rowsWritten')
+        rowsRead:d1Metrics.length?total(d1Metrics,'rowsRead'):null,
+        rowsWritten:d1Metrics.length?total(d1Metrics,'rowsWritten'):null
       },
       r2:{
         sizeBytes:r2Storage?((safeNumber(r2Storage.max?.payloadSize)||0)+
           (safeNumber(r2Storage.max?.metadataSize)||0)):null,
         objectCount:safeNumber(r2Storage?.max?.objectCount),
         storageSampleAt:r2Storage?.dimensions?.datetime||null,
-        operations:total(r2Ops,'requests')
+        operations:r2Ops.length?total(r2Ops,'requests'):null
       }
     };
     if(cache){
