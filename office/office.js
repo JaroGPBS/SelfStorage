@@ -10,43 +10,8 @@ const MODULE_GROUPS=[
   {id:'newgen',name:'NEW GEN',types:['CU IN','DUO L','DUO R']}
 ];
 const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.id,name:g.name}))];
-const DEMO_MODULE_RECORDS=(()=>{
-  const items=[];
-  let sequence=0;
-  MODULE_GROUPS.forEach((group,g)=>{
-    group.types.forEach((type,t)=>{
-      const count=8+((g*4+t*3)%9);
-      for(let n=0;n<count;n++){
-        const number=900000000+(sequence++*13);
-        items.push({
-          group:group.id,type,
-          serial:(n%5===0?'25':'26')+'/CQU'+String(number).padStart(9,'0'),
-          status:((n+t*3+g)%6===0||(n+t)%11===0)?'NOK':'OK'
-        });
-      }
-    });
-  });
-  return items;
-})();
-const DEMOS=[{id:'demo1',name:'Magazyn 2',team:'Ekipa A',reg:'SK 1234A',date:'28.10.2026'},{id:'demo2',name:'Magazyn 3',team:'Ekipa B',reg:'ST 5678B',date:'30.10.2026'},{id:'demo3',name:'Magazyn 4',team:'Ekipa C',reg:'DW 9012C',date:'25.10.2026'}];
-// Client-only presentation vehicles. Kept separate from the demo warehouse list.
-const VEHICLES=[
-  ...DEMOS.map(d=>({team:d.team,reg:d.reg,date:d.date})),
-  {team:'Ekipa D',reg:'SK 4578D',date:'27.10.2026'},
-  {team:'Ekipa E',reg:'ST 6214E',date:'29.10.2026'},
-  {team:'Ekipa F',reg:'SO 3187F',date:'31.10.2026'},
-  {team:'Ekipa G',reg:'KR 5468G',date:'26.10.2026'},
-  {team:'Ekipa H',reg:'DW 7621H',date:'01.11.2026'},
-  {team:'Ekipa I',reg:'PO 1834I',date:'02.11.2026'},
-  {team:'Ekipa J',reg:'WZ 9052J',date:'28.10.2026'},
-  {team:'Ekipa K',reg:'GD 2648K',date:'30.10.2026'},
-  {team:'Ekipa L',reg:'LU 7319L',date:'31.10.2026'},
-  {team:'Ekipa M',reg:'SZ 4926M',date:'02.11.2026'}
-];
 const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
-function isDemo(id=state.warehouse){return DEMOS.some(w=>w.id===id);}
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
-function demoQuantity(index,demoIndex){return ((index*17+demoIndex*11)%11===0)?0:((index*13+demoIndex*7)%29);}
 function dateText(raw){if(!raw)return '—';const dt=new Date(String(raw).replace(' ','T').replace(/Z?$/,'Z'));return isNaN(dt.getTime())?String(raw).slice(0,10):new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',day:'2-digit',month:'2-digit',year:'numeric'}).format(dt);}
 function isoWeek(raw){
   const date=new Date(String(raw||'').replace(' ','T').replace(/Z?$/,'Z'));
@@ -80,7 +45,7 @@ function clearNewPartPreview(){
   $('officeNewPartPreview').hidden=true;
 }
 function openOfficeNewPart(){
-  if(state.view!=='stocks'||state.stockTab!=='parts'||isDemo()||
+  if(state.view!=='stocks'||state.stockTab!=='parts'||
      !realWarehouse(state.warehouse)||newPartBusy)return;
   $('officeNewPartForm').reset();
   newPartError('');
@@ -131,7 +96,7 @@ const ext=filename.includes('.')?filename.split('.').pop().toLowerCase():'';
 async function saveOfficeNewPart(event){
   event.preventDefault();
   if(newPartBusy||state.view!=='stocks'||state.stockTab!=='parts'||
-     isDemo()||!realWarehouse(state.warehouse))return;
+     !realWarehouse(state.warehouse))return;
   const warehouseId=state.warehouse;
   const name=$('officeNewPartName').value.trim().replace(/\s+/g,' ');
   const sap=$('officeNewPartSap').value.trim().toUpperCase();
@@ -200,7 +165,6 @@ function setLoggedIn(payload){
 }
 function renderMenu(){
   $('warehouseMenu').innerHTML=state.warehouses.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+escapeHtml(w.name)+'</button>').join('')+
-    DEMOS.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+w.id+'">'+escapeHtml(w.name)+'</button>').join('')+
     '<button type="button" class="subnav-btn" data-view="aggregate">Zestawienie zbiorcze</button>';
   document.querySelectorAll('[data-view],[data-warehouse]').forEach(el=>{
     el.classList.toggle('active',el.dataset.view===state.view||(state.view==='stocks'&&el.dataset.warehouse===state.warehouse));
@@ -217,7 +181,7 @@ function setHead(title,kicker,desc){
   $('sort').classList.toggle('hidden',!['stocks','aggregate','vehicles'].includes(state.view));
   $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
-  const name=realWarehouse(state.warehouse)?.name||DEMOS.find(x=>x.id===state.warehouse)?.name||'Magazyn';
+  const name=realWarehouse(state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
   const documentsView=state.view==='pz'||state.view==='wz';
   const vehicleView=state.view==='vehicles';
@@ -262,10 +226,10 @@ function syncStockTabUI(){
     $(id).setAttribute('aria-selected',String(active));
   }
   $('newPart').textContent=modules?'+ Dodaj moduł':'+ Dodaj część';
-  const canAdd=state.view==='stocks'&&!modules&&!isDemo()&&!!realWarehouse(state.warehouse);
+  const canAdd=state.view==='stocks'&&!modules&&!!realWarehouse(state.warehouse);
   $('newPart').disabled=!canAdd;
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
-    modules?'Dodawanie modułów nie jest jeszcze dostępne':'W magazynach pokazowych nie można dodawać części';
+    modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
   $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':'Aktualne stany części w magazynie';
   $('search').placeholder=modules?'Wyszukaj po numerze seryjnym':'Szukaj po SAP lub nazwie części';
   $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
@@ -307,7 +271,6 @@ async function loadStocks(warehouseId){
   }
   return state.partsCache.get(warehouseId);
 }
-async function realParts(){return loadStocks(state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id);}
 function sortedFiltered(rows){
   const q=state.search.toLocaleLowerCase('pl').trim();
   const result=rows.filter(p=>!q||[p.sap_number,p.name].some(s=>String(s||'').toLocaleLowerCase('pl').includes(q)));
@@ -323,10 +286,9 @@ function noteSearch(count,total,noun){
   $('searchNote').textContent=state.search.trim()?'Znaleziono w '+count+' '+noun+' z '+total+'.':'';
 }
 function drawStocks(parts,warehouseId){
-  const filtered=sortedFiltered(parts);const demoIndex=DEMOS.findIndex(w=>w.id===warehouseId);
+  const filtered=sortedFiltered(parts);
   const rows=filtered.map(p=>{
-    const originalIndex=parts.indexOf(p);
-    const amount=demoIndex<0?p.quantity:demoQuantity(originalIndex,demoIndex+1);
+    const amount=p.quantity;
     return '<tr data-part-row="'+escapeHtml(p.id)+'" tabindex="0" aria-label="Szczegóły części: '+escapeHtml(p.name)+'">'+
       '<td>'+escapeHtml(p.sap_number||'—')+'</td><td><button class="row-link" data-part="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
       '<td class="num">'+quantity(amount)+'</td>'+
@@ -340,100 +302,33 @@ function drawStocks(parts,warehouseId){
   $('tableFooter').textContent=filtered.length+' części';
   noteSearch(filtered.length,parts.length,'częściach');
 }
-function demoModuleMatches(record,query){
-  return !query||[record.serial,record.type].some(x=>
-    String(x).toLocaleLowerCase('pl').includes(query));
-}
 function drawModules(){
-  const query=state.search.trim().toLocaleLowerCase('pl');
-  const selected=state.moduleCategory;
-  if(selected==='all'){
-    let visible=0,okTotal=0,nokTotal=0;
-    let body='';
-    for(const group of MODULE_GROUPS){
-      let groupRows='';
-      const types=state.sortReverse?[...group.types].sort((a,b)=>b.localeCompare(a,'pl',{sensitivity:'base'})):[...group.types];
-      for(const type of types){
-        const matches=DEMO_MODULE_RECORDS.filter(r=>
-          r.group===group.id&&r.type===type&&demoModuleMatches(r,query));
-        if(!matches.length)continue;
-        const ok=matches.filter(r=>r.status==='OK').length;
-        const nok=matches.length-ok;
-        visible+=matches.length;okTotal+=ok;nokTotal+=nok;
-        groupRows+='<tr class="module-summary-row">'+
-          '<td class="module-type">'+escapeHtml(type)+'</td>'+
-          '<td class="num module-count-ok">'+ok+'</td>'+
-          '<td class="num module-count-nok">'+nok+'</td>'+
-          '<td class="num module-count-total">'+matches.length+'</td></tr>';
-      }
-      if(groupRows)body+='<tr class="module-group-row"><th colspan="4" scope="rowgroup">'+escapeHtml(group.name)+'</th></tr>'+groupRows;
-    }
-    if(!body)body='<tr><td colspan="4" class="module-no-results">Nie znaleziono maszyn.</td></tr>';
-    body+='<tr class="module-grand-total"><td>ŁĄCZNIE</td><td class="num">'+okTotal+
-      '</td><td class="num">'+nokTotal+'</td><td class="num">'+visible+'</td></tr>';
-    $('tableArea').innerHTML='<table class="table module-summary-table">'+
-      '<thead><tr><th>Typ maszyny</th><th class="num">Maszyny OK</th>'+
-      '<th class="num">Maszyny NOK</th><th class="num">Suma</th></tr></thead>'+
-      '<tbody>'+body+'</tbody></table>';
-    $('tableFooter').textContent=visible+' maszyn';
-    noteSearch(visible,DEMO_MODULE_RECORDS.length,'maszynach');
-    return;
-  }
-  const group=MODULE_GROUPS.find(g=>g.id===selected);
-  if(!group)return;
-  const types=state.sortReverse?[...group.types].sort((a,b)=>b.localeCompare(a,'pl',{sensitivity:'base'})):[...group.types];
-  const columns=types.map(type=>{
-    const all=DEMO_MODULE_RECORDS.filter(r=>r.group===selected&&r.type===type);
-    return {type,items:all.filter(r=>demoModuleMatches(r,query))};
-  });
-  const height=Math.max(0,...columns.map(c=>c.items.length));
-  const count=columns.reduce((sum,c)=>sum+c.items.length,0);
-  const fullCount=DEMO_MODULE_RECORDS.filter(r=>r.group===selected).length;
-  const head='<thead><tr>'+columns.map(c=>
-    '<th><div class="module-column-heading">'+escapeHtml(c.type)+
-    '<span class="module-column-quantity">'+c.items.length+'</span></div></th>').join('')+'</tr></thead>';
-  let rows='';
-  for(let n=0;n<height;n++){
-    rows+='<tr>'+columns.map(c=>{
-      const item=c.items[n];
-      if(!item)return '<td class="module-empty">—</td>';
-      return '<td><div class="module-serial-cell">'+
-        '<span class="module-serial">'+escapeHtml(item.serial)+'</span>'+
-        '<span class="module-status '+(item.status==='OK'?'module-ok':'module-nok')+'">'+item.status+'</span>'+
-        '</div></td>';
-    }).join('')+'</tr>';
-  }
-  if(!rows)rows='<tr><td colspan="'+columns.length+'" class="module-no-results">Nie znaleziono numerów seryjnych.</td></tr>';
-  $('tableArea').innerHTML='<table class="table module-serial-table" style="--module-width:'+columns.length*228+'px">'+head+'<tbody>'+rows+'</tbody></table>';
-  $('tableFooter').textContent=count+' maszyn';
-  noteSearch(count,fullCount,'maszynach');
+  $('tableArea').innerHTML='<div class="empty">Brak danych modułów. Ewidencja modułów nie jest jeszcze podłączona do D1.</div>';
+  $('tableFooter').textContent='0 modułów w ewidencji';
+  noteSearch(0,0,'modułach');
 }
 function drawAggregate(realSets){
   const base=realSets[0]?.parts||[];
   const filtered=sortedFiltered(base);
   const warehouseStock=realSets.map(s=>new Map(s.parts.map(part=>[part.id,part.quantity])));
-  const originalIndices=new Map(base.map((p,i)=>[p.id,i]));
   const headers=[
     {label:'Indeks SAP'},{label:'Nazwa części'},
     ...realSets.map(p=>({label:p.name,numeric:true})),
-    ...DEMOS.map(p=>({label:p.name,numeric:true})),
     {label:'SUMA',numeric:true}
   ];
   const rows=filtered.map(p=>{
-    let total=0;
-    const knownValues=warehouseStock.map(stock=>stock.get(p.id));
-    const realCells=knownValues.map(value=>{
-      if(value!==null&&value!==undefined&&Number.isFinite(Number(value)))total+=Number(value);
-      return '<td class="num">'+quantity(value)+'</td>';
-    }).join('');
-    const demoCells=DEMOS.map((d,i)=>{
-      const value=demoQuantity(originalIndices.get(p.id),i+1);
-      total+=value;
+    let total=0,hasKnownState=false;
+    const realCells=warehouseStock.map(stock=>{
+      const value=stock.get(p.id);
+      if(value!==null&&value!==undefined&&Number.isFinite(Number(value))){
+        total+=Number(value);
+        hasKnownState=true;
+      }
       return '<td class="num">'+quantity(value)+'</td>';
     }).join('');
     return '<tr><td>'+escapeHtml(p.sap_number||'—')+'</td>'+
-      '<td>'+escapeHtml(p.name)+'</td>'+realCells+demoCells+
-      '<td class="num aggregate-total">'+escapeHtml(total)+'</td></tr>';
+      '<td>'+escapeHtml(p.name)+'</td>'+realCells+
+      '<td class="num aggregate-total">'+(hasKnownState?escapeHtml(total):'—')+'</td></tr>';
   }).join('');
   $('tableArea').innerHTML=wrapTable(headers,rows,'aggregate-table');
   $('tableFooter').textContent=filtered.length+' części';
@@ -647,26 +542,10 @@ function syncVehicleTopScroll(){
   $('vehicleScrollWidth').style.width=width+'px';
   $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
 }
-function drawVehicles(parts){
-  const filtered=sortedFiltered(parts);
-  const originalIndices=new Map(parts.map((p,i)=>[p.id,i]));
-  let html='<table class="table vehicle-stock-table" style="--vehicle-columns:'+VEHICLES.length+'"><thead><tr>'+
-    '<th>Indeks SAP</th><th>Nazwa części</th>'+
-    VEHICLES.map(d=>'<th class="car-head"><strong>'+escapeHtml(d.team)+'</strong>'+
-      '<small>'+escapeHtml(d.reg)+'</small>'+
-      '<span class="car-inventory-label">INWENT.</span>'+
-      '<time>'+escapeHtml(d.date)+'</time></th>').join('')+
-    '</tr></thead><tbody>';
-  for(const p of filtered){
-    const index=originalIndices.get(p.id)??parts.indexOf(p);
-    html+='<tr><td>'+escapeHtml(p.sap_number||'—')+'</td>'+
-      '<td title="'+escapeHtml(p.name)+'">'+escapeHtml(p.name)+'</td>'+
-      VEHICLES.map((d,i)=>'<td class="num">'+demoQuantity(index,i+1)%7+'</td>').join('')+'</tr>';
-  }
-  $('tableArea').innerHTML=html+'</tbody></table>';
-  syncVehicleTopScroll();
-  $('tableFooter').textContent=filtered.length+' części · '+VEHICLES.length+' pojazdów (przykładowe)';
-  noteSearch(filtered.length,parts.length,'częściach');
+function drawVehicles(){
+  $('tableArea').innerHTML='<div class="empty">Brak danych pojazdów. Ewidencja stanów samochodowych nie jest jeszcze podłączona do D1.</div>';
+  $('tableFooter').textContent='0 pojazdów w ewidencji';
+  noteSearch(0,0,'pojazdach');
 }
 async function render(){
   const ticket=++state.requestId;
@@ -684,21 +563,19 @@ async function render(){
         if(ticket!==state.requestId)return;
         drawModules();
       }else{
-      const parts=isDemo()?await realParts():await loadStocks(state.warehouse);
+      const parts=await loadStocks(state.warehouse);
       if(ticket!==state.requestId)return;drawStocks(parts,state.warehouse);
       }
     }else if(state.view==='aggregate'){
       const realSets=await Promise.all(state.warehouses.map(async w=>({name:w.name,parts:await loadStocks(w.id)})));
       if(ticket!==state.requestId)return;drawAggregate(realSets);
     }else if(state.view==='vehicles'){
-      const parts=await realParts();if(ticket!==state.requestId)return;drawVehicles(parts);
-    }else if(state.view==='nok'&&!isDemo()){
+      if(ticket!==state.requestId)return;drawVehicles();
+    }else if(state.view==='nok'){
       const payload=await api('nokStock',params);
       if(ticket!==state.requestId)return;
       state.nokParts=payload.parts||[];
       drawNokStock();
-    }else if(isDemo()){
-      $('tableArea').innerHTML='<div class="empty">Historia magazynów prezentacyjnych nie jest zapisana w D1.</div>';
     }else if(state.view==='pz'||state.view==='wz'){
       const direction=state.view==='pz'?'PZ':'WZ';
       const focus=state.focusDocument;
@@ -769,14 +646,13 @@ async function openPart(id){
   modal.classList.remove('hidden');
   modal.querySelector('.modal-card').classList.add('part-detail-card');
   body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><div class="loading">Wczytywanie...</div>';
-  const demo=isDemo();
   try{
-    const warehouse=demo?(state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0].id):state.warehouse;
+    const warehouse=state.warehouse;
     const payload=await api('part',{warehouse,part:id});
     if(modal.classList.contains('hidden'))return;
     const p=payload.part;
     state.labelPart=p;
-    const amount=demo?demoQuantity((await realParts()).findIndex(x=>x.id===id),DEMOS.findIndex(x=>x.id===state.warehouse)+1):p.quantity;
+    const amount=p.quantity;
     const uploadedPhoto=Boolean(Number(p.has_photo));
     const photoSrc='/api/office?view=partPhoto&warehouse='+encodeURIComponent(warehouse)+
       '&part='+encodeURIComponent(p.id);
@@ -785,7 +661,7 @@ async function openPart(id){
         '<img src="'+escapeHtml(photoSrc)+'" alt="'+escapeHtml(p.name)+' — zdjęcie części" loading="lazy">'+
         '<span class="photo-zoom-label" aria-hidden="true">⤢ Powiększ zdjęcie</span></button>'
       : '<div class="part-photo-empty" aria-label="Brak zdjęcia części"><span aria-hidden="true">▧</span><small>Zdjęcie części</small></div>';
-    const deliveryQuantity=!demo&&payload.delivery?'Przyjęto '+escapeHtml(payload.delivery.quantity)+' szt.':'Brak danych';
+    const deliveryQuantity=payload.delivery?'Przyjęto '+escapeHtml(payload.delivery.quantity)+' szt.':'Brak danych';
     body.innerHTML=
       '<div class="kicker">KARTA CZĘŚCI</div>'+
       '<h2 id="modalTitle">'+escapeHtml(p.name)+'</h2>'+
@@ -795,12 +671,12 @@ async function openPart(id){
         '<div class="part-detail-data">'+
           '<div class="part-stock-block"><small>AKTUALNY STAN</small><strong>'+quantity(amount)+' <span>szt.</span></strong></div>'+
           '<div class="part-meta-item"><small>Identyfikator magazynowy</small><strong>'+escapeHtml(p.part_number||'—')+'</strong></div>'+
-          '<div class="part-meta-item"><small>Ostatnia dostawa</small><strong>'+(demo?'—':dateText(payload.delivery?.date))+'</strong><p>'+deliveryQuantity+'</p></div>'+
-          '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>'+(demo?'—':dateText(payload.inventory?.date))+'</strong></div>'+
+          '<div class="part-meta-item"><small>Ostatnia dostawa</small><strong>'+dateText(payload.delivery?.date)+'</strong><p>'+deliveryQuantity+'</p></div>'+
+          '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>'+dateText(payload.inventory?.date)+'</strong></div>'+
         '</div>'+
       '</div>'+
       '<div class="modal-actions">'+
-        (demo?'':'<button type="button" class="btn dark" data-label-add-current="1">Drukuj etykietę</button>')+
+        '<button type="button" class="btn dark" data-label-add-current="1">Drukuj etykietę</button>'+
       '</div>';
     // A saved photo can exist in the catalogue even if the browser cannot decode it.
     // Show a readable error instead of a broken or invisible image.
@@ -854,7 +730,7 @@ document.addEventListener('click',e=>{
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
   if(e.target.closest('[data-label-add-current]')){
     const part=state.labelPart;
-    if(!part||isDemo())return;
+    if(!part)return;
     closeModal();
     window.GPBSOfficeLabels?.enqueue(part,state.warehouse);
     selectView('labels',state.warehouse);
