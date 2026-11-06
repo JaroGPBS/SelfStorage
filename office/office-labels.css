@@ -1,13 +1,23 @@
 /* Polish Office: one fixed layout, two A5 landscape labels on A4 portrait. */
 .label-tool{display:block;}
-.label-tool-header{display:flex;justify-content:space-between;align-items:center;gap:16px;
-  background:#fff;border:1px solid #e6e9ee;border-radius:12px;padding:20px 24px;margin-bottom:15px;}
-.label-tool-header h2{font-size:20px;color:#29323c;margin:0 0 5px}
+/* The labels workspace has one clear header instead of the general office breadcrumbs and duplicate title. */
+.app.view-labels .topbar,.app.view-labels .page-head{display:none}
+.app.view-labels .content{padding-top:25px}
+.label-tool-header{display:flex;justify-content:space-between;align-items:center;gap:22px;
+  padding:4px 2px 20px;margin-bottom:15px;border-bottom:1px solid #e3e7ed}
+.label-tool-heading{min-width:0}
+.label-tool-header h1{font-size:clamp(29px,2.65vw,38px);line-height:1.16;font-weight:800;
+  letter-spacing:-.025em;color:#29323c;margin:0 0 8px}
 .label-tool-header p{color:#74808d;font-size:12px;margin:0}
-.label-warehouse-choice{display:flex;flex-direction:column;gap:6px;color:#7b8793;font-size:10px;
-  letter-spacing:.08em;font-weight:800;min-width:180px}
-.label-warehouse-choice select{background:#fff;border:1px solid #d7dce2;border-radius:7px;
-  height:38px;padding:7px 10px;color:#29323c;font-weight:700;font-size:12px}
+.label-tool-controls{display:flex;align-items:end;justify-content:flex-end;gap:18px;flex-wrap:wrap}
+.label-warehouse-choice{display:flex;flex-direction:column;gap:5px;color:#7b8793;font-size:10px;
+  letter-spacing:.08em;font-weight:800;min-width:190px}
+.label-warehouse-choice select{background:#fff;border:2px solid #e13d43;border-radius:11px;
+  height:44px;width:100%;padding:7px 12px;color:#29323c;font-weight:700;font-size:13px}
+.label-warehouse-choice select:focus-visible{outline:3px solid #ed9ca0;outline-offset:2px}
+.label-sync-controls{display:flex;align-items:center;gap:10px;min-height:44px}
+.label-sync-controls .sync-label{margin:0}
+.label-sync-controls #refresh{min-height:44px;font-size:13px;font-weight:750}
 .label-tool-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(295px,340px);
   gap:15px;align-items:start}
 .label-catalog,.label-queue{background:#fff;border:1px solid #e6e9ee;border-radius:12px;
@@ -61,10 +71,20 @@
   .label-queue{position:static}
   .label-list-wrap{max-height:520px}
 }
+@media(max-width:850px){
+  .label-tool-header{align-items:stretch;flex-direction:column;gap:18px}
+  .label-tool-controls{justify-content:flex-start}
+}
 @media(max-width:700px){
-  .label-tool-header,.label-catalog-head{flex-direction:column;align-items:stretch}
+  /* Keep the hamburger menu accessible on phones even in the simplified labels view. */
+  .app.view-labels .topbar{display:flex;height:54px;padding:0 15px}
+  .app.view-labels .topbar .breadcrumbs,.app.view-labels .topbar .top-status{display:none}
+  .app.view-labels .content{padding-top:18px}
+  .label-catalog-head{flex-direction:column;align-items:stretch}
   .label-warehouse-choice,#labelSearch{width:100%}
-  .label-tool-header{padding:16px}
+  .label-tool-controls{flex-direction:column;align-items:stretch;gap:12px}
+  .label-sync-controls{justify-content:space-between;flex-wrap:wrap}
+  .label-tool-header{padding:0 0 16px}
 }
 
 /* The preview sheets are present only while native window.print() is running. */
