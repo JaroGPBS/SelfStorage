@@ -930,25 +930,61 @@ body.operation-task-open {overflow:hidden}
 #operationDirectionPanel .operation-comment-toggle[aria-expanded="true"]{
   border-color:#e1858d;background:#3b2a33;
 }
-#operationDirectionPanel .operation-comment-panel{
-  display:grid;gap:6px;
-  padding:10px;
-  border:1px solid #526073;
-  border-radius:10px;
-  background:#111924;
+/* Keyboard-aware comment editor is a native modal above the PZ/WZ screen.
+   JS anchors it to the visible area when the virtual keyboard is open. */
+.operation-comment-dialog{
+  position:fixed;
+  inset:auto;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-100%);
+  width:min(480px,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+  max-height:calc(100dvh - 20px);
+  margin:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid #7a5a63;
+  border-radius:15px;
+  background:#171f29;
+  color:#eef3f8;
+  box-shadow:0 16px 50px #000a;
 }
-#operationDirectionPanel .operation-comment-panel[hidden]{display:none!important}
-#operationDirectionPanel .operation-comment-panel label{
-  color:#e0e7ee;font-weight:750;font-size:12px;
+.operation-comment-dialog .inventory-dialog-inner{
+  display:flex;flex-direction:column;gap:10px;
+  padding:16px;
 }
-#operationDirectionPanel .operation-comment-panel textarea{
-  width:100%;max-height:120px;min-height:65px;resize:vertical;
-  border:1px solid #728093;border-radius:8px;
-  background:#0b121b;color:#fff;font:13px/1.45 system-ui,sans-serif;
-  padding:9px 10px;
+.operation-comment-dialog h2{
+  margin:0;font-size:18px;line-height:1.35;
 }
-#operationDirectionPanel .operation-comment-panel small{
-  color:#97a6b5;text-align:right;font-size:10px;
+.operation-comment-dialog label{
+  color:#d8e1eb;font-weight:750;font-size:12px;
+}
+.operation-comment-dialog textarea{
+  display:block;width:100%;min-height:100px;max-height:180px;
+  resize:vertical;
+  border:1px solid #748195;border-radius:9px;
+  background:#0b121b;color:#fff;
+  font:16px/1.45 system-ui,sans-serif;
+  padding:11px 12px;
+}
+.operation-comment-dialog textarea:focus{
+  outline:2px solid #e47e88;outline-offset:1px;
+}
+.operation-comment-dialog small{
+  color:#adbac8;text-align:right;font-size:11px;
+}
+.operation-comment-dialog .operation-comment-actions{
+  display:flex;gap:9px;margin-top:4px;
+}
+.operation-comment-dialog .operation-comment-actions .btn{
+  flex:1;min-width:0;
+  padding:10px 9px;min-height:44px;font-size:12px;
+}
+@media(max-height:440px){
+  .operation-comment-dialog .inventory-dialog-inner{gap:7px;padding:10px 12px}
+  .operation-comment-dialog textarea{min-height:66px;max-height:98px}
+  .operation-comment-dialog .operation-comment-actions{margin-top:0}
 }
 #operationDirectionPanel .operation-task-search {
   display:flex;

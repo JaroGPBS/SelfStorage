@@ -263,13 +263,7 @@
     </main>
     <div class="operation-task-bottom">
       <button id="operationCommentToggle" class="operation-comment-toggle" type="button"
-        aria-controls="operationCommentPanel" aria-expanded="false">✎ Komentarz</button>
-      <div id="operationCommentPanel" class="operation-comment-panel" hidden>
-        <label for="operationCommentText">Komentarz do bieżącego PZ/WZ (opcjonalnie)</label>
-        <textarea id="operationCommentText" maxlength="500" rows="3"
-          placeholder="Np. uszkodzone opakowanie, brakujący element, uwagi do wydania…"></textarea>
-        <small id="operationCommentCount">0 / 500 znaków</small>
-      </div>
+        aria-controls="operationCommentPanel" aria-haspopup="dialog" aria-expanded="false">✎ Komentarz</button>
       <form id="operationSearchForm" class="operation-task-search" role="search" autocomplete="off">
         <label for="operationSearchQuery" class="visually-hidden">Indeks lub numer SAP części</label>
         <input id="operationSearchQuery" type="search" maxlength="80"
@@ -280,6 +274,21 @@
       <button id="operationStartScan" class="btn btn-primary operation-task-scan" type="button">Skanuj QR</button>
     </div>
   </section>
+
+  <dialog id="operationCommentPanel" class="inventory-dialog operation-comment-dialog"
+    aria-labelledby="operationCommentTitle" aria-modal="true">
+    <form id="operationCommentForm" class="inventory-dialog-inner" autocomplete="off">
+      <h2 id="operationCommentTitle">Komentarz PZ</h2>
+      <label for="operationCommentText">Komentarz (opcjonalnie)</label>
+      <textarea id="operationCommentText" maxlength="500" rows="4"
+        placeholder="Np. uszkodzone opakowanie, brakujący element, uwagi do wydania…"></textarea>
+      <small id="operationCommentCount">0 / 500 znaków</small>
+      <div class="operation-comment-actions">
+        <button id="operationCommentCancel" class="btn btn-outline" type="button">Anuluj</button>
+        <button id="operationCommentSave" class="btn btn-primary" type="submit">Zapisz komentarz</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="operationScanDialog" class="inventory-dialog operation-scan-dialog"
     aria-label="Skanowanie kodu części">
