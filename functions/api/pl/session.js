@@ -297,8 +297,7 @@ async function commit(db,input,actorId){
     "NOT EXISTS(SELECT 1 FROM json_each(?) AS e "+
     "LEFT JOIN parts p ON p.id=json_extract(e.value,'$.partId') "+
     "LEFT JOIN warehouse_stock s ON s.warehouse_id=? AND s.part_id=p.id "+
-    (usesNok?"LEFT JOIN pl_nok_stock n ON n.warehouse_id=s.warehouse_id AND n.part_id=p.id "+
-      "OR (n.warehouse_id=? AND n.part_id=p.id) ":'')+
+    (usesNok?"LEFT JOIN pl_nok_stock n ON n.warehouse_id=? AND n.part_id=p.id ":'')+
     "WHERE p.id IS NULL OR p.active IS NOT 1 "+
     "OR "+stockColumn+" IS NOT json_extract(e.value,'$.stock') "+
     "OR (COALESCE("+stockColumn+",0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)>100000000) "+
@@ -451,13 +450,20 @@ export async function onRequestGet({request,env}){
     if(view!=='recent')return fail('Nieprawidłowy widok.',400);
     if(!ready)return workerJson({ok:true,ready,history:[]});
     const hasPlate=await hasRegistrationColumn(env.DB);
+    const hasNok=await nokTablesExist(env.DB);
+    const historyLines=
+      '(SELECT session_id,direction,part_id,quantity,quantity_before,quantity_after,'+
+      'before_unknown,shortage_quantity,0 AS nok FROM pl_warehouse_session_lines'+
+      (hasNok?' UNION ALL SELECT session_id,direction,part_id,quantity,quantity_before,'+
+        'quantity_after,before_unknown,shortage_quantity,1 AS nok FROM pl_nok_session_lines':'')+
+      ')';
     const rows=await env.DB.prepare(
       'SELECT s.id,s.counterparty,'+
       (hasPlate?'s.registration_plate,':'NULL AS registration_plate,')+
       's.committed_at,s.actor_id,u.name AS operator_name,'+
       "SUM(CASE WHEN l.direction='PZ' THEN 1 ELSE 0 END) AS pz_items,"+
       "SUM(CASE WHEN l.direction='WZ' THEN 1 ELSE 0 END) AS wz_items "+
-      'FROM pl_warehouse_sessions s LEFT JOIN pl_warehouse_session_lines l '+
+      'FROM pl_warehouse_sessions s LEFT JOIN '+historyLines+' l '+
       'ON l.session_id=s.id LEFT JOIN users u ON u.id=s.actor_id '+
       'WHERE s.warehouse_id=? GROUP BY s.id ORDER BY s.committed_at DESC,s.id DESC LIMIT 15'
     ).bind(wh).all();
@@ -465,17 +471,17 @@ export async function onRequestGet({request,env}){
     if(!sessions.length)return workerJson({ok:true,ready,history:[]});
     const ids=sessions.map(r=>r.id);
     const parts=await env.DB.prepare(
-      'SELECT l.session_id,l.direction,l.part_id,l.quantity,'+
+      'SELECT l.session_id,l.direction,l.part_id,l.quantity,l.nok,'+
       'CASE WHEN l.before_unknown=1 THEN NULL ELSE l.quantity_before END AS quantity_before,'+
       'l.quantity_after,l.shortage_quantity,p.name AS part_name,p.part_number '+
-      'FROM pl_warehouse_session_lines l LEFT JOIN parts p ON p.id=l.part_id '+
+      'FROM '+historyLines+' l LEFT JOIN parts p ON p.id=l.part_id '+
       'WHERE l.session_id IN ('+ids.map(()=>'?').join(',')+') '+
-      'ORDER BY CASE l.direction WHEN \'PZ\' THEN 0 ELSE 1 END, l.part_id'
+      "ORDER BY CASE l.direction WHEN 'PZ' THEN 0 ELSE 1 END, l.part_id,l.nok"
     ).bind(...ids).all();
     const bySession=new Map(ids.map(id=>[id,[]]));
     for(const line of (parts.results||[]))
       bySession.get(line.session_id)?.push({
-        direction:line.direction,partId:line.part_id,
+        direction:line.direction,partId:line.part_id,nok:Boolean(line.nok),
         name:line.part_name||line.part_number||line.part_id,
         number:line.part_number||null,quantity:Number(line.quantity),
         before:line.quantity_before===null?null:Number(line.quantity_before),
