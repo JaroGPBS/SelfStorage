@@ -8,6 +8,7 @@ const WH=/^[A-Z0-9-]{2,50}$/;
 const PART=/^[A-Za-z0-9_-]{1,100}$/;
 const MAX_LINES=80;
 const MAX_QUANTITY=100000;
+const MAX_COMMENT_CHARS=500;
 const MIGRATION='db/13-pl-confirmed-overissues.sql';
 
 function fail(message,status=400){return workerJson({ok:false,error:message},status);}
@@ -50,6 +51,13 @@ function normalizeLines(value,description){
   });
 }
 
+function normalizeComment(value,side){
+  const text=String(value??'').replace(/\r\n?/g,'\n').trim();
+  if(text.length>MAX_COMMENT_CHARS||/[\u0000-\u0008\u000B-\u001F\u007F]/.test(text))
+    throw Error('Komentarz '+side+' może zawierać maksymalnie 500 znaków.');
+  return text;
+}
+
 function legacyCounterparty(input){
   return input.registrationPlate
     ?input.counterparty+' | REJ: '+input.registrationPlate
@@ -59,6 +67,24 @@ function legacyCounterparty(input){
 async function hasRegistrationColumn(db){
   const columns=await db.prepare('PRAGMA table_info(pl_warehouse_sessions)').all();
   return (columns.results||[]).some(row=>row.name==='registration_plate');
+}
+
+async function commentsTableExists(db){
+  const result=await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_warehouse_session_comments'"
+  ).first();
+  return Boolean(result);
+}
+
+async function ensureCommentsTable(db){
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS pl_warehouse_session_comments ('+
+    'session_id TEXT NOT NULL,'+
+    "direction TEXT NOT NULL CHECK(direction IN ('PZ','WZ')),"+
+    'comment TEXT NOT NULL CHECK(length(comment) BETWEEN 1 AND 500),'+
+    'PRIMARY KEY(session_id,direction),'+
+    'FOREIGN KEY(session_id) REFERENCES pl_warehouse_sessions(id))'
+  ).run();
 }
 
 function normalize(body){
@@ -80,6 +106,8 @@ function normalize(body){
   const wz=normalizeLines(body.wz,'WZ');
   if(pz.length+wz.length<1||pz.length+wz.length>MAX_LINES)
     throw Error('Dodaj od 1 do '+MAX_LINES+' pozycji PZ/WZ w jednej sesji.');
+  const pzComment=normalizeComment(body.pzComment,'PZ');
+  const wzComment=normalizeComment(body.wzComment,'WZ');
   const action=body.action===undefined||body.action==='commit'?'commit':body.action;
   if(!['preview','commit'].includes(action))throw Error('Nieznana operacja.');
   const stockSnapshot=body.stockSnapshot;
@@ -96,6 +124,7 @@ function normalize(body){
     }
   }
   return {id,warehouseId,counterparty,registrationPlate,pz,wz,action,
+    pzComment:pz.length?pzComment:'',wzComment:wz.length?wzComment:'',
     stockSnapshot,confirmedOverissue:body.confirmedOverissue===true};
 }
 
@@ -115,13 +144,22 @@ async function duplicate(db,input,actorId,hasPlate){
       expected.set(direction.toUpperCase()+':'+line.partId,line.quantity);
   }
   const rows=saved.results||[];
+  let sameComments=!input.pzComment&&!input.wzComment;
+  if(await commentsTableExists(db)){
+    const stored=await db.prepare(
+      'SELECT direction,comment FROM pl_warehouse_session_comments WHERE session_id=?'
+    ).bind(input.id).all();
+    const notes=new Map((stored.results||[]).map(r=>[r.direction,r.comment]));
+    sameComments=(notes.get('PZ')||'')===input.pzComment&&
+      (notes.get('WZ')||'')===input.wzComment;
+  }
   const name=String(existing.counterparty||'').toLocaleUpperCase('pl-PL');
   const plate=String(existing.registration_plate||'');
   // Also recognize visits stored in legacy combined form before the migration.
   const sameIdentity=(name===input.counterparty&&(!hasPlate||plate===input.registrationPlate))||
     (name===legacyCounterparty(input)&&(!hasPlate||!plate));
   const same=existing.warehouse_id===input.warehouseId&&
-    existing.actor_id===actorId&&sameIdentity&&
+    existing.actor_id===actorId&&sameIdentity&&sameComments&&
     rows.length===expected.size&&rows.every(row=>
       expected.get(row.direction+':'+row.part_id)===Number(row.quantity));
   if(!same)return fail('Identyfikator sesji został już użyty dla innych danych.',409);
@@ -171,6 +209,9 @@ async function commit(db,input,actorId){
     return fail('Nazwa ekipy wraz z rejestracją jest za długa (maks. 120 znaków).',400);
   const prior=await duplicate(db,input,actorId,hasPlate);
   if(prior)return prior;
+  // Additive table, created only for visits carrying a comment.
+  // If this fails, do not commit PZ/WZ without their notes.
+  if(input.pzComment||input.wzComment)await ensureCommentsTable(db);
 
   const combined=new Map();
   for(const line of input.pz){
@@ -262,6 +303,12 @@ async function commit(db,input,actorId){
       'UPDATE warehouse_stock SET quantity=MAX(0,quantity+?),updated_at=CURRENT_TIMESTAMP '+
       'WHERE warehouse_id=? AND part_id=?'
     ).bind(part.pz-part.wz,input.warehouseId,part.id));
+  }
+  // Insert notes in the same atomic D1 batch as PZ/WZ and stock changes.
+  for(const [direction,comment] of [['PZ',input.pzComment],['WZ',input.wzComment]]){
+    if(comment)statements.push(db.prepare(
+      'INSERT INTO pl_warehouse_session_comments(session_id,direction,comment) VALUES(?,?,?)'
+    ).bind(input.id,direction,comment));
   }
   try{
     await db.batch(statements);
