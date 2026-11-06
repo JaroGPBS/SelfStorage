@@ -337,10 +337,21 @@ async function queryPanel(env,view,url) {
       ).all(),
       env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name IN "+
-        "('pl_warehouse_sessions','pl_warehouse_session_lines','pl_nok_session_lines','pl_part_verifications')"
+        "('pl_warehouse_sessions','pl_warehouse_session_lines','pl_nok_session_lines','pl_part_verifications','pl_part_photo_objects','pl_part_photos')"
       ).all()
     ]);
     const existing = new Set((tables.results||[]).map(row=>row.name));
+    // Each active catalogue part counts once, even if an old D1 photo and an
+    // R2 photo reference coexist during migration.
+    const photoSources=[];
+    if(existing.has('pl_part_photo_objects'))
+      photoSources.push('EXISTS(SELECT 1 FROM pl_part_photo_objects r WHERE r.part_id=p.id)');
+    if(existing.has('pl_part_photos'))
+      photoSources.push('EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id)');
+    const photoCount=photoSources.length?await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM parts p WHERE p.active=1 AND ('+
+      photoSources.join(' OR ')+')'
+    ).first():{n:0};
     const documentCounts = {PZ:0,WZ:0};
     for(const row of oldOperations.results||[]) {
       if(row.direction==='PZ'||row.direction==='WZ')
@@ -388,6 +399,7 @@ async function queryPanel(env,view,url) {
       warehouses:Number(warehouses?.total||0),
       warehouseCounts:{pl:Number(warehouses?.pl||0),fr:Number(warehouses?.fr||0)},
       parts:Number(parts?.n||0),
+      photos:Number(photoCount?.n||0),
       operations:documentCounts.PZ+documentCounts.WZ,
       operationCounts:{pz:documentCounts.PZ,wz:documentCounts.WZ},
       users:Number(users?.n||0),
