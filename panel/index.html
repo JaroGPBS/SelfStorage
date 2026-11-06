@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=15">
-  <script src="./panel.js?v=24" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=16">
+  <script src="./panel.js?v=25" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -96,6 +96,35 @@
             Nowe części czekają na weryfikację. Otwórz listę.
           </button>
           <div id="statGrid" class="stat-grid"></div>
+          <section class="resource-usage" aria-labelledby="usageHeading">
+            <div class="resource-heading">
+              <h2 id="usageHeading">Wykorzystanie zasobów Cloudflare</h2>
+              <span id="usageLastUpdated">Ładowanie danych…</span>
+            </div>
+            <div class="resource-grid">
+              <article class="resource-card">
+                <div class="resource-topline"><h3>D1 · Baza danych</h3><span>gpbs-storage</span></div>
+                <div class="resource-main-label">Zajęta przestrzeń · ostatni pomiar</div>
+                <div id="usageD1Size" class="resource-main-value">—</div>
+                <div class="resource-item"><span>Wiersze odczytane · ten miesiąc</span><strong id="usageD1Reads">—</strong></div>
+                <div class="resource-item"><span>Wiersze zapisane · ten miesiąc</span><strong id="usageD1Writes">—</strong></div>
+                <p class="resource-note" id="usageD1Note">Oczekiwanie na dane Cloudflare.</p>
+              </article>
+              <article class="resource-card">
+                <div class="resource-topline"><h3>R2 · Zdjęcia części</h3><span>Magazyn plików</span></div>
+                <div class="resource-main-label">Zajęta przestrzeń · ostatni pomiar</div>
+                <div id="usageR2Size" class="resource-main-value">—</div>
+                <div class="resource-item"><span>Liczba plików w R2</span><strong id="usageR2Objects">—</strong></div>
+                <div class="resource-item"><span>Operacje R2 · ten miesiąc</span><strong id="usageR2Ops">—</strong></div>
+                <div class="resource-guard">
+                  <div class="resource-item"><span>Wewnętrzny limit zdjęć GPBS</span><strong id="usageR2Guard">—</strong></div>
+                  <div class="resource-meter"><div id="usageR2Meter" class="resource-meter-fill"></div></div>
+                  <p class="resource-note">To zabezpieczenie aplikacji, nie limit rozliczeniowy Cloudflare.</p>
+                </div>
+                <p class="resource-note" id="usageR2Note">Oczekiwanie na dane Cloudflare.</p>
+              </article>
+            </div>
+          </section>
         </section>
         <section id="securityView" class="view hidden">
           <div class="table-panel security-card">
