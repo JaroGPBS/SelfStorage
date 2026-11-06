@@ -228,7 +228,9 @@
       {label:'Aktywne magazyny',value:summary.warehouses,rows:[
         ['Polska',summary.warehouseCounts?.pl],['Francja',summary.warehouseCounts?.fr]
       ]},
-      {label:'Główny katalog części',value:summary.parts,rows:[]},
+      {label:'Główny katalog części',value:summary.parts,rows:[
+        ['Zdjęcia',summary.photos]
+      ]},
       {label:'Zapisane operacje',value:summary.operations,rows:[
         ['PZ',summary.operationCounts?.pz],['WZ',summary.operationCounts?.wz]
       ]},
