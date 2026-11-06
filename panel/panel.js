@@ -406,17 +406,25 @@
     try {
       const result=await post({action:'deletePart',partId:part.id});
       if(currentPart)$('partEditDialog').close();
+      // Remove the confirmed deleted row immediately, even if a later refresh fails.
       if(state.view==='parts'||state.view==='newParts'){
+        state.records=state.records.filter(item=>item.id!==part.id);
+        renderList();
+      }
+      message(result.message||'Część usunięto z aktywnego katalogu.','success');
+      try {
         const view=state.view;
-        const response=await api(view);
-        if(view===state.view){
+        const requests=[api('summary')];
+        if(view==='parts'||view==='newParts')requests.push(api(view));
+        const [summary,response]=await Promise.all(requests);
+        setNewPartsBadge(summary.pendingParts);
+        if(response&&view===state.view){
           state.records=response.parts||[];
           renderList();
         }
+      }catch(refreshError){
+        message('Część została usunięta, ale nie udało się odświeżyć danych. Użyj odświeżenia strony.','info');
       }
-      const summary=await api('summary');
-      setNewPartsBadge(summary.pendingParts);
-      message(result.message||'Część usunięto z aktywnego katalogu.','success');
     }catch(error){
       if(currentPart&&$('partEditDialog').open){
         $('partEditError').textContent=error.message;
