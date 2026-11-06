@@ -173,13 +173,6 @@
     ]);
   }
 
-  function displayWarehouses(items,target) {
-    const element=$(target);
-    element.replaceChildren(
-      buildTable(['MAGAZYN','ID','STATUS','POZYCJE','ŁĄCZNY STAN'],warehouseRows(items))
-    );
-  }
-
   function setNewPartsBadge(count) {
     const n=Number(count||0);
     const badge=$('newPartsBadge');
@@ -187,7 +180,7 @@
     badge.hidden=n===0;
   }
 
-  function renderSummary(summary,warehouses) {
+  function renderSummary(summary) {
     const stats=[
       {label:'Aktywne magazyny',value:summary.warehouses,rows:[
         ['Polska',summary.warehouseCounts?.pl],['Francja',summary.warehouseCounts?.fr]
@@ -218,7 +211,6 @@
       }
       return card;
     }));
-    displayWarehouses(warehouses,'dashboardWarehouses');
     const pending=Number(summary.pendingParts||0);
     setNewPartsBadge(pending);
     const review=$('newPartsAlert');
@@ -781,9 +773,8 @@
         return;
       }
       if(view==='summary') {
-        const [a,b]=await Promise.all([api('summary'),api('warehouses')]);
-        state.warehouses=b;
-        if(state.view===view)renderSummary(a,b);
+        const summary=await api('summary');
+        if(state.view===view)renderSummary(summary);
       } else {
         if(view==='parts')await loadWarehouses();
         if(view==='users') {
