@@ -1061,18 +1061,55 @@ async function route(request,env) {
       ).bind(id).first();
       if(Number(stock?.n||0)>0)
         return fail('Nie można usunąć części z niezerowym stanem magazynowym. Najpierw popraw jej stany.',409);
-      // Archive rather than DELETE: historical PZ/WZ and inventory lines keep their part ID.
-      // Release scanned raw_code, so a corrected part can be registered with the same code.
-      // The original index is not recycled.
-      const statements=[
-        env.DB.prepare(
-          'UPDATE parts SET active=0 WHERE id=? AND active=1 AND NOT EXISTS ('+
-          'SELECT 1 FROM warehouse_stock WHERE part_id=? AND quantity<>0)'
-        ).bind(id,id)
-      ];
+
+      const hasR2Table=await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photo_objects'"
+      ).first();
+      const photoRef=hasR2Table?await getPhotoObject(env.DB,id):null;
+      const hasLegacyPhotoTable=await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_photos'"
+      ).first();
       const hasReview=await env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
       ).first();
+
+      // Delete R2 first: when storage is unavailable, leave the part active
+      // so the administrator can retry without creating an invisible orphan.
+      // R2.delete is idempotent; a retry also repairs a previous D1 failure.
+      if(photoRef) {
+        if(!env.PART_PHOTOS||typeof env.PART_PHOTOS.delete!=='function')
+          return fail('R2 jest niedostępne. Część i zdjęcie nie zostały usunięte.',503);
+        try {
+          await env.PART_PHOTOS.delete(photoRef.object_key);
+        }catch(error) {
+          console.error('Admin part R2 removal failed',error?.name||'Error');
+          return fail('Nie udało się usunąć zdjęcia z R2. Część nie została usunięta.',503);
+        }
+      }
+
+      // The D1 batch is atomic: archive the part, remove photo references,
+      // update quota, and keep a permanent audit. No operational history is deleted.
+      const statements=[];
+      if(photoRef) {
+        // Refund only while this exact photo reference still exists.
+        // This prevents double refunds in repeated removal attempts.
+        statements.push(env.DB.prepare(
+          'UPDATE pl_r2_photo_quota SET used_bytes=MAX(0,used_bytes-?) '+
+          'WHERE id=1 AND EXISTS ('+
+          'SELECT 1 FROM pl_part_photo_objects WHERE part_id=? AND object_key=?)'
+        ).bind(Number(photoRef.size_bytes),id,photoRef.object_key));
+        statements.push(env.DB.prepare(
+          'DELETE FROM pl_part_photo_objects WHERE part_id=? AND object_key=?'
+        ).bind(id,photoRef.object_key));
+      }
+      if(hasLegacyPhotoTable)statements.push(env.DB.prepare(
+        'DELETE FROM pl_part_photos WHERE part_id=?'
+      ).bind(id));
+      const partStatementIndex=statements.length;
+      statements.push(env.DB.prepare(
+        'UPDATE parts SET active=0 WHERE id=? AND active=1 AND NOT EXISTS ('+
+        'SELECT 1 FROM warehouse_stock WHERE part_id=? AND quantity<>0)'
+      ).bind(id,id));
       if(hasReview)statements.push(env.DB.prepare(
         'UPDATE pl_part_verifications SET raw_code=NULL WHERE part_id=?'
       ).bind(id));
@@ -1080,14 +1117,17 @@ async function route(request,env) {
         'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
         'VALUES (?,?,?,?,?,?)'
       ).bind(crypto.randomUUID(),session.id,'PART_DEACTIVATE','PART',id,
-        JSON.stringify({name:part.name,number:part.part_number,sap:part.sap_number})));
+        JSON.stringify({name:part.name,number:part.part_number,
+          sap:part.sap_number,photoRemoved:Boolean(photoRef),legacyPhotoCleared:Boolean(hasLegacyPhotoTable)})));
       const result=await env.DB.batch(statements);
-      if(Number(result[0]?.meta?.changes||0)!==1)
-        return fail('Nie udało się usunąć części: zmienił się jej stan. Odśwież katalog.',409);
-      return respond({ok:true,message:'Usunięto część z aktywnego katalogu. Historia operacji została zachowana.'});
+      if(Number(result[partStatementIndex]?.meta?.changes||0)!==1)
+        return fail('Nie można zakończyć usuwania: stan części zmienił się. Odśwież katalog.',409);
+      return respond({ok:true,message:photoRef
+        ?'Usunięto część i jej zdjęcie z R2. Historia PZ/WZ została zachowana.'
+        :'Usunięto część z aktywnego katalogu. Historia PZ/WZ została zachowana.'});
     }catch(error) {
       console.error('panel part deactivate',error?.name||'Error');
-      return fail('Nie udało się usunąć części.',503);
+      return fail('Nie udało się zakończyć usuwania części. Jeśli zdjęcie było w R2, ponów usunięcie z katalogu.',503);
     }
   }
   if(body?.action==='updatePart') {
