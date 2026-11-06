@@ -909,6 +909,10 @@
   gap:10px;white-space:nowrap;
 }
 .app.view-receipts .doc-row-actions .detail-btn{margin-right:auto}
+/* Keep "Pokaż części" and "Komentarz" together on the left,
+   while "Wydrukuj PZ/WZ" remains at the far right. */
+.app.view-receipts .doc-row-actions:has(.doc-comment-indicator) .detail-btn{margin-right:0}
+.app.view-receipts .doc-row-actions .doc-comment-indicator{margin-right:auto}
 .app.view-receipts .table .doc-actions-cell:has(.doc-comment-indicator){
   min-width:340px;width:340px;
 }
