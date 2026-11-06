@@ -227,6 +227,7 @@ function setHead(title,kicker,desc){
   $('app').classList.toggle('view-receipts',compactView);
   $('app').classList.toggle('view-vehicles',vehicleView);
   $('app').classList.toggle('view-aggregate',aggregateView);
+  $('app').classList.toggle('view-labels',state.view==='labels');
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView);
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
   $('vehicleTopScroll').classList.toggle('hidden',!vehicleView);
@@ -240,6 +241,8 @@ function setHead(title,kicker,desc){
   // Reuse the existing synchronization control in the compact toolbar.
   if(compactView){
     $('receiptToolbarActions').append($('syncTime'),$('refresh'));
+  }else if(state.view==='labels'){
+    $('labelToolbarActions').append($('syncTime'),$('refresh'));
   }else{
     $('pageActions').insertBefore($('syncTime'),$('newPart'));
     $('pageActions').insertBefore($('refresh'),$('newPart'));
