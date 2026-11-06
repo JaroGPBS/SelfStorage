@@ -142,6 +142,20 @@ export async function onRequestGet({request,env}){
         [warehouseId]);
       return workerJson({ok:true,warehouseId,parts});
     }
+    if(view==='nokStock'){
+      if(!await tableExists(env.DB,'pl_nok_stock'))
+        return workerJson({ok:true,parts:[]});
+      const hasIndices=await tableExists(env.DB,'pl_part_index_migrations');
+      const parts=await selectRows(env.DB,
+        'SELECT p.id,p.name,p.sap_number,'+
+        (hasIndices?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
+        ' AS part_number,n.quantity '+
+        'FROM pl_nok_stock n JOIN parts p ON p.id=n.part_id '+
+        (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
+        'WHERE n.warehouse_id=? AND n.quantity>0 ORDER BY p.name COLLATE NOCASE,p.id LIMIT 3000',
+        [warehouseId]);
+      return workerJson({ok:true,warehouseId,parts});
+    }
     if(view==='part'){
       const partId=url.searchParams.get('part')||'';
       if(!PART.test(partId))return error('Nieprawidłowa część.');
@@ -196,8 +210,13 @@ export async function onRequestGet({request,env}){
       const columns=await env.DB.prepare('PRAGMA table_info(pl_warehouse_sessions)').all();
       const hasRegistrationPlate=(columns.results||[]).some(col=>col.name==='registration_plate');
       const hasComments=await tableExists(env.DB,'pl_warehouse_session_comments');
+      const hasNok=await tableExists(env.DB,'pl_nok_session_lines');
+      const lineSource='(SELECT session_id,direction,part_id,quantity,shortage_quantity,0 AS nok '+
+        'FROM pl_warehouse_session_lines'+
+        (hasNok?' UNION ALL SELECT session_id,direction,part_id,quantity,shortage_quantity,'+
+          '1 AS nok FROM pl_nok_session_lines':'')+')';
       const join='FROM pl_warehouse_sessions s '+
-        'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
+        'JOIN '+lineSource+' l ON l.session_id=s.id '+
         'LEFT JOIN users u ON u.id=s.actor_id '+
         (hasComments?'LEFT JOIN pl_warehouse_session_comments c '+
           'ON c.session_id=s.id AND c.direction=l.direction ':'');
@@ -207,7 +226,7 @@ export async function onRequestGet({request,env}){
           :'')+
         "OR LOWER(COALESCE(u.name,'')) LIKE '%'||LOWER(?)||'%' "+
         "OR s.committed_at LIKE '%'||?||'%' "+
-        "OR EXISTS (SELECT 1 FROM pl_warehouse_session_lines x "+
+        'OR EXISTS (SELECT 1 FROM '+lineSource+' x '+
         "JOIN parts p ON p.id=x.part_id WHERE x.session_id=s.id AND x.direction=? "+
         "AND (LOWER(p.name) LIKE '%'||LOWER(?)||'%' "+
         "OR LOWER(COALESCE(p.sap_number,'')) LIKE '%'||LOWER(?)||'%' "+
@@ -228,7 +247,7 @@ export async function onRequestGet({request,env}){
         'COALESCE(SUM(l.quantity),0) AS units,'+
         'COALESCE(SUM(l.shortage_quantity),0) AS shortage,'+
         (hasComments?"COALESCE(MAX(c.comment),'') AS comment,":"'' AS comment,")+
-        'EXISTS (SELECT 1 FROM pl_warehouse_session_lines related '+
+        'EXISTS (SELECT 1 FROM '+lineSource+' related '+
         "WHERE related.session_id=s.id AND related.direction='"+relatedDirection+"') AS has_related ";
       const docs=await selectRows(env.DB,fields+join+where+matching+
         ' GROUP BY s.id ORDER BY s.committed_at DESC,s.id DESC LIMIT 200',params);
@@ -247,16 +266,21 @@ export async function onRequestGet({request,env}){
       const direction=url.searchParams.get('direction')||'';
       if(!SESSION.test(id)||!['PZ','WZ'].includes(direction))return error('Nieprawidłowy dokument.');
       const indexed=await tableExists(env.DB,'pl_part_index_migrations');
+      const hasNok=await tableExists(env.DB,'pl_nok_session_lines');
+      const lineSource='(SELECT session_id,direction,part_id,quantity,shortage_quantity,0 AS nok '+
+        'FROM pl_warehouse_session_lines'+
+        (hasNok?' UNION ALL SELECT session_id,direction,part_id,quantity,shortage_quantity,'+
+          '1 AS nok FROM pl_nok_session_lines':'')+')';
       const rows=await selectRows(env.DB,
         'SELECT p.sap_number,'+
         (indexed?'COALESCE(ix.new_index,p.part_number)':'p.part_number')+
-        ' AS part_number,p.name,l.quantity,'+
+        ' AS part_number,p.name,l.quantity,l.nok,'+
         'COALESCE(l.shortage_quantity,0) AS shortage_quantity '+
-        'FROM pl_warehouse_sessions s JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
+        'FROM pl_warehouse_sessions s JOIN '+lineSource+' l ON l.session_id=s.id '+
         'JOIN parts p ON p.id=l.part_id '+
         (indexed?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
         'WHERE s.id=? AND s.warehouse_id=? AND l.direction=? '+
-        'ORDER BY p.name COLLATE NOCASE',[id,warehouseId,direction]);
+        'ORDER BY p.name COLLATE NOCASE,l.nok',[id,warehouseId,direction]);
       return workerJson({ok:true,lines:rows});
     }
     if(view==='inventories'){
