@@ -372,15 +372,59 @@
       status.className=pending?'part-review-status':'';
       row.append(status);
       const action=td('');
+      action.className='part-row-actions';
       const edit=document.createElement('button');
       edit.type='button';
       edit.className='btn mini';
       edit.textContent=pending?'Sprawdź / edytuj':'Edytuj';
       edit.addEventListener('click',()=>openPartEditor(part));
-      action.append(edit);
+      const remove=document.createElement('button');
+      remove.type='button';
+      remove.className='btn mini archive-danger part-delete-btn';
+      remove.textContent='Usuń';
+      remove.setAttribute('aria-label','Usuń część '+part.name);
+      remove.addEventListener('click',()=>removePart(part));
+      action.append(edit,remove);
       row.append(action);
     }
     return table;
+  }
+
+  async function removePart(part) {
+    if(!part?.id)return;
+    const accepted=await confirmAction({
+      title:'Usunąć część z katalogu?',
+      description:'„'+part.name+'” ('+(part.part_number||'bez indeksu')+
+        ') zniknie z aktywnych list oraz drukowania etykiet. Historia magazynowa pozostanie zachowana. Tej operacji nie można cofnąć z panelu.',
+      confirmLabel:'Usuń część',danger:true
+    });
+    if(!accepted)return;
+    const removeButton=$('partEditDelete');
+    const currentPart=$('partEditDialog').open&&$('partEditId').value===part.id;
+    if(currentPart)removeButton.disabled=true;
+    message();
+    try {
+      const result=await post({action:'deletePart',partId:part.id});
+      if(currentPart)$('partEditDialog').close();
+      if(state.view==='parts'||state.view==='newParts'){
+        const view=state.view;
+        const response=await api(view);
+        if(view===state.view){
+          state.records=response.parts||[];
+          renderList();
+        }
+      }
+      const summary=await api('summary');
+      setNewPartsBadge(summary.pendingParts);
+      message(result.message||'Część usunięto z aktywnego katalogu.','success');
+    }catch(error){
+      if(currentPart&&$('partEditDialog').open){
+        $('partEditError').textContent=error.message;
+        $('partEditError').classList.remove('hidden');
+      }else message(error.message,'error');
+    }finally{
+      if(currentPart)removeButton.disabled=false;
+    }
   }
 
   function openPartEditor(part) {
@@ -394,6 +438,7 @@
       :'';
     $('partEditSap').value=part.sap_number||'';
     $('partEditVerify').checked=false;
+    $('partEditDelete').disabled=false;
     $('partEditStatus').textContent=part.verification_status==='PENDING'
       ?'Nowa część. Sprawdź nazwę, indeks i SAP przed oznaczeniem jako zweryfikowana.'
       :'Możesz skorygować dane tej części.';
@@ -459,6 +504,7 @@
     const button=$('partEditSave');
     button.disabled=true;
     $('partEditCancel').disabled=true;
+    $('partEditDelete').disabled=true;
     $('partEditError').classList.add('hidden');
     try {
       const partId=$('partEditId').value;
@@ -496,7 +542,7 @@
     }catch(error) {
       $('partEditError').textContent=error.message;
       $('partEditError').classList.remove('hidden');
-    }finally{button.disabled=false;$('partEditCancel').disabled=false;}
+    }finally{button.disabled=false;$('partEditCancel').disabled=false;$('partEditDelete').disabled=false;}
   }
 
   function renderIndexMigration(){
@@ -1004,6 +1050,13 @@
     $('cancelUser').addEventListener('click',()=>$('userDialog').close());
     $('createUserForm').addEventListener('submit',saveUser);
     $('partEditForm').addEventListener('submit',savePartEditor);
+    $('partEditDelete').addEventListener('click',()=>{
+      const id=$('partEditId').value;
+      const part=state.records.find(item=>item.id===id)||{
+        id,name:$('partEditName').value,part_number:$('partEditNumber').value
+      };
+      removePart(part);
+    });
     $('partEditPhoto').addEventListener('error',()=>{
       if(!$('partEditDialog').open)return;
       $('partEditError').textContent='Zdjęcie jest oznaczone w bazie, ale nie można go wyświetlić. Spróbuj zastąpić je plikiem JPG lub PNG i zapisać dane.';
