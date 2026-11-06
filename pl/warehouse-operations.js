@@ -703,6 +703,7 @@
   function close(){
     stopScanner();
     if(el('operationNewPartDialog').open&&!state.busy)closeNewPart();
+    closeCommentDialog();
     closeQuantity();
     el('operationDirectionPanel').hidden=true;
     document.body.classList.remove('operation-task-open');
