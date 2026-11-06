@@ -198,8 +198,9 @@ tr:hover td{background:#ffffff04}
 .heading-actions #pinRoleFilter{width:137px}
 .heading-actions #generateMissingPins{white-space:nowrap}
 .pins-result{display:grid;gap:9px;margin:22px 0 25px;max-height:44dvh;overflow:auto}
-.pin-result-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--edge);border-radius:9px;padding:11px 14px;background:#11161d}
-.pin-result-item strong{font-weight:750;font-size:13px}
+.pin-result-item{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;border:1px solid var(--edge);border-radius:9px;padding:11px 14px;background:#11161d}
+.pin-result-item strong{font-weight:750;font-size:13px;overflow-wrap:anywhere}
+.pin-result-item .pin-copy-message{margin-left:auto;white-space:nowrap}
 .pin-result-item code{color:#ffb4b4;font-size:20px;letter-spacing:5px;font-weight:800;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 .secret-subsection{border-top:1px solid var(--edge);margin-top:27px;padding-top:24px}
 .secret-subsection h3{font-size:17px;margin-bottom:10px}
