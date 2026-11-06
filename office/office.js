@@ -476,7 +476,9 @@ function drawDocs(){
     const over=Number(d.shortage||0)>0;
     const expanded=state.expanded===d.id;
     const related=Number(d.has_related||0)>0;
-    const actions='<div class="doc-row-actions">'+cellButton('części',d.id,expanded)+
+    const note=String(d.comment||'').trim();
+    const commentIndicator=note?'<span class="doc-comment-indicator" title="Dokument zawiera komentarz">✎ Komentarz</span>':'';
+    const actions='<div class="doc-row-actions">'+commentIndicator+cellButton('części',d.id,expanded)+
       '<button type="button" class="doc-print-btn" data-doc-print="'+escapeHtml(d.id)+'" data-doc-direction="'+direction+'">Wydrukuj '+direction+'</button>'+
       '</div>';
     let expandedHtml='';
@@ -485,8 +487,10 @@ function drawDocs(){
       const link=related?'<div class="doc-related-link"><span>W tej samej wizycie wykonano również '+
         (direction==='PZ'?'wydanie.':'przyjęcie.')+'</span>'+
         '<button type="button" data-related-direction="'+opposite+'" data-related-session="'+escapeHtml(d.id)+'">Zobacz '+opposite+' →</button></div>':'';
+      const commentHtml=note?'<div class="doc-comment-box"><strong>Komentarz '+direction+
+        '</strong><p>'+escapeHtml(note)+'</p></div>':'';
       expandedHtml='<tr class="receipt-expansion-row"><td colspan="5" class="receipt-expanded-cell">'+
-        '<div class="receipt-lines-anchor"><div class="receipt-lines-card">'+details+link+'</div></div></td></tr>';
+        '<div class="receipt-lines-anchor"><div class="receipt-lines-card">'+details+commentHtml+link+'</div></div></td></tr>';
     }
     return '<tr data-doc-id="'+escapeHtml(d.id)+'"'+(over?' class="warning-row"':'')+'>'+
       '<td>'+dateText(d.date)+'</td><td>'+isoWeek(d.date)+'</td>'+
