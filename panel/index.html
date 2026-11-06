@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=9">
-  <script src="./panel.js?v=16" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=10">
+  <script src="./panel.js?v=17" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -243,6 +243,7 @@
         Dane zostały sprawdzone — oznacz część jako zweryfikowaną</label>
       <p id="partEditError" class="message error hidden" role="alert"></p>
       <div class="dialog-actions">
+        <button id="partEditDelete" class="btn archive-danger part-edit-delete" type="button">Usuń część</button>
         <button id="partEditCancel" class="btn ghost" type="button">Anuluj</button>
         <button id="partEditSave" class="btn primary" type="submit">Zapisz dane</button>
       </div>
