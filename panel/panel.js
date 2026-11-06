@@ -924,7 +924,7 @@
     return [
       'Aplikacja GPBS Storage',
       '',
-      'Otwórz aplikację:',
+      'Link do aplikacji:',
       'https://selfstorage-43f.pages.dev/',
       '',
       'PIN: '+pin,
