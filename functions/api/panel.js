@@ -1055,7 +1055,7 @@ async function route(request,env) {
       const verify=body.verify===true;
       if(!/^[A-Za-z0-9_-]{1,100}$/.test(id)||
         name.length<2||name.length>120||number.length<2||number.length>100||
-        sap.length>100||/[\\r\\n]/.test(name+number+sap))
+        sap.length>100||/[\r\n]/.test(name+number+sap))
         return fail('Podaj poprawną nazwę, indeks i SAP.',400);
       const indexTable=await env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_index_migrations'"
