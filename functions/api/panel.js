@@ -1079,6 +1079,9 @@ async function route(request,env) {
       if(photoRef) {
         if(!env.PART_PHOTOS||typeof env.PART_PHOTOS.delete!=='function')
           return fail('R2 jest niedostępne. Część i zdjęcie nie zostały usunięte.',503);
+        // Also ensure the accounting table exists before touching remote storage.
+        // Otherwise a missing quota table could leave an active part with no photo.
+        await ensurePhotoTables(env.DB);
         try {
           await env.PART_PHOTOS.delete(photoRef.object_key);
         }catch(error) {
