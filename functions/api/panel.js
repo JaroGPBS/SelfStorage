@@ -183,22 +183,57 @@ async function queryPanel(env,view,url) {
     return {parts:result.results||[]};
   }
   if(view==='summary') {
-    const [warehouses, operations, parts, users, sessionsTable]=await Promise.all([
-      env.DB.prepare("SELECT COUNT(*) AS n FROM warehouses WHERE country_code='PL' AND active=1").first(),
-      env.DB.prepare("SELECT COUNT(*) AS n FROM warehouse_operations").first(),
+    const [warehouses, parts, users, marketUsers, oldOperations, tables] = await Promise.all([
+      env.DB.prepare(
+        "SELECT COUNT(*) AS total,"+
+        "COUNT(CASE WHEN country_code='PL' THEN 1 END) AS pl,"+
+        "COUNT(CASE WHEN country_code='FR' THEN 1 END) AS fr "+
+        "FROM warehouses WHERE active=1 AND country_code IN ('PL','FR')"
+      ).first(),
       env.DB.prepare("SELECT COUNT(*) AS n FROM parts WHERE active=1").first(),
       env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE active=1").first(),
-      env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pl_warehouse_session_lines'").first()
+      env.DB.prepare(
+        "SELECT COUNT(DISTINCT CASE WHEN w.country_code='PL' THEN u.id END) AS pl,"+
+        "COUNT(DISTINCT CASE WHEN w.country_code='FR' THEN u.id END) AS fr "+
+        "FROM users u "+
+        "JOIN user_warehouse_access a ON a.user_id=u.id "+
+        "JOIN warehouses w ON w.id=a.warehouse_id "+
+        "WHERE u.active=1 AND w.active=1 AND w.country_code IN ('PL','FR')"
+      ).first(),
+      env.DB.prepare(
+        "SELECT operation_type AS direction,COUNT(*) AS n "+
+        "FROM warehouse_operations WHERE operation_type IN ('PZ','WZ') "+
+        "GROUP BY operation_type"
+      ).all(),
+      env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN "+
+        "('pl_warehouse_sessions','pl_warehouse_session_lines','pl_nok_session_lines','pl_part_verifications')"
+      ).all()
     ]);
-    // One document per direction and session, not one per catalogue part.
-    let recentDocuments=0;
+    const existing = new Set((tables.results||[]).map(row=>row.name));
+    const documentCounts = {PZ:0,WZ:0};
+    for(const row of oldOperations.results||[]) {
+      if(row.direction==='PZ'||row.direction==='WZ')
+        documentCounts[row.direction]+=Number(row.n||0);
+    }
+    // Count one PZ/WZ document per session and direction. Include NOK-only
+    // documents, but never count one session twice when both OK and NOK exist.
+    if(existing.has('pl_warehouse_sessions')&&existing.has('pl_warehouse_session_lines')){
+      const source=existing.has('pl_nok_session_lines')
+        ?'SELECT session_id,direction FROM pl_warehouse_session_lines '+
+          'UNION SELECT session_id,direction FROM pl_nok_session_lines'
+        :'SELECT DISTINCT session_id,direction FROM pl_warehouse_session_lines';
+      const sessionCounts=await env.DB.prepare(
+        "SELECT direction,COUNT(*) AS n FROM ("+source+") "+
+        "WHERE direction IN ('PZ','WZ') GROUP BY direction"
+      ).all();
+      for(const row of sessionCounts.results||[]) {
+        if(row.direction==='PZ'||row.direction==='WZ')
+          documentCounts[row.direction]+=Number(row.n||0);
+      }
+    }
     let overissuedLines=0;
-    if(sessionsTable){
-      const count=await env.DB.prepare(
-        "SELECT COUNT(*) AS n FROM (SELECT session_id,direction "+
-        "FROM pl_warehouse_session_lines GROUP BY session_id,direction)"
-      ).first();
-      recentDocuments=Number(count?.n||0);
+    if(existing.has('pl_warehouse_session_lines')){
       const columns=await env.DB.prepare('PRAGMA table_info(pl_warehouse_session_lines)').all();
       if((columns.results||[]).some(c=>c.name==='shortage_quantity')){
         const overissued=await env.DB.prepare(
@@ -208,9 +243,7 @@ async function queryPanel(env,view,url) {
         overissuedLines=Number(overissued?.n||0);
       }
     }
-    const reviewTable=await env.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
-    ).first();
+    const reviewTable=existing.has('pl_part_verifications');
     const waiting=reviewTable?await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM pl_part_verifications v JOIN parts p ON p.id=v.part_id WHERE v.status='PENDING' AND p.active=1"
     ).first():null;
@@ -221,10 +254,16 @@ async function queryPanel(env,view,url) {
       "WHERE v.status='PENDING' AND w.country_code='PL' AND p.active=1 "+
       'GROUP BY w.id,w.name ORDER BY count DESC,w.name LIMIT 12'
     ).all()).results||[]:[];
-    return {warehouses:warehouses?.n||0,
-      operations:Number(operations?.n||0)+recentDocuments,
-      parts:parts?.n||0,users:users?.n||0,
-      overissuedLines,pendingParts:Number(waiting?.n||0),pendingWarehouses};
+    return {
+      warehouses:Number(warehouses?.total||0),
+      warehouseCounts:{pl:Number(warehouses?.pl||0),fr:Number(warehouses?.fr||0)},
+      parts:Number(parts?.n||0),
+      operations:documentCounts.PZ+documentCounts.WZ,
+      operationCounts:{pz:documentCounts.PZ,wz:documentCounts.WZ},
+      users:Number(users?.n||0),
+      userCounts:{pl:Number(marketUsers?.pl||0),fr:Number(marketUsers?.fr||0)},
+      overissuedLines,pendingParts:Number(waiting?.n||0),pendingWarehouses
+    };
   }
   if(view==='warehouses') {
     const rows=await env.DB.prepare(
