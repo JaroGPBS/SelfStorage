@@ -413,56 +413,75 @@
     $('partEditDialog').showModal();
   }
 
-  async function replacePartEditorPhoto(){
-    const file=$('partEditReplacementPhoto').files?.[0];
-    if(!file){
-      $('partEditError').textContent='Najpierw wybierz poprawione zdjęcie.';
-      $('partEditError').classList.remove('hidden');
-      return;
-    }
-    const button=$('partEditReplacePhoto');
-    button.disabled=true;
-    $('partEditError').classList.add('hidden');
-    try{
-      const form=new FormData();
-      const partId=$('partEditId').value;
-      form.set('partId',partId);
-      form.set('photo',file,file.name);
-      const response=await fetch('/api/panel',{
-        method:'POST',credentials:'same-origin',cache:'no-store',body:form
+  // A selected photo is saved by the same 'Zapisz dane' action as the part details.
+  // Checking the private image endpoint prevents an upload success from hiding a read error.
+  function validateEditorPhoto(file) {
+    if(!file)return;
+    if(file.size<100||file.size>20*1024*1024)
+      throw Error('Zdjęcie musi mieć maksymalnie 20 MB.');
+    const extension=String(file.name||'').split('.').pop().toLowerCase();
+    if(!['jpg','jpeg','jpe','png','bmp','webp','avif'].includes(extension))
+      throw Error('Wybierz zdjęcie JPG, PNG, BMP, WEBP lub AVIF. Zdjęcia HEIC zapisz najpierw jako JPG.');
+  }
+
+  async function savePartEditorPhoto(partId,file) {
+    const form=new FormData();
+    form.set('partId',partId);
+    form.set('photo',file,file.name);
+    const response=await fetch('/api/panel',{
+      method:'POST',credentials:'same-origin',cache:'no-store',body:form
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||!data.ok)
+      throw Error(data.error||'Nie udało się zapisać zdjęcia w R2.');
+
+    // Confirm that the saved photograph can actually be read and displayed.
+    const photoUrl='/api/panel?view=partPhoto&part='+encodeURIComponent(partId)+'&v='+Date.now();
+    const check=await fetch(photoUrl,{credentials:'same-origin',cache:'no-store'});
+    if(!check.ok)
+      throw Error('Zdjęcie przesłano, ale podgląd nie działa (HTTP '+check.status+').');
+    const blob=await check.blob();
+    if(!blob.type.startsWith('image/')||!blob.size)
+      throw Error('Zdjęcie przesłano, ale serwer nie zwrócił poprawnego obrazu.');
+    const previewUrl=URL.createObjectURL(blob);
+    try {
+      await new Promise((resolve,reject)=>{
+        const image=new Image();
+        image.onload=resolve;
+        image.onerror=()=>reject(Error('Zdjęcie jest w R2, ale przeglądarka nie może go wyświetlić. Użyj JPG lub PNG.'));
+        image.src=previewUrl;
       });
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok||!data.ok)throw Error(data.error||'Nie udało się zastąpić zdjęcia.');
-      const src='/api/panel?view=partPhoto&part='+encodeURIComponent(partId)+'&v='+Date.now();
-      $('partEditPhotoBox').hidden=false;
-      $('partEditPhoto').src=src;
-      $('partEditPhotoLink').href=src;
-      $('partEditReplacementPhoto').value='';
-      const row=state.records.find(part=>part.id===partId);
-      if(row)row.has_photo=1;
-      message('Nowe zdjęcie zapisane w R2.','success');
-    }catch(error){
-      $('partEditError').textContent=error.message;
-      $('partEditError').classList.remove('hidden');
-    }finally{button.disabled=false;}
+    } finally {URL.revokeObjectURL(previewUrl);}
   }
 
   async function savePartEditor(event) {
     event.preventDefault();
     const button=$('partEditSave');
     button.disabled=true;
+    $('partEditCancel').disabled=true;
     $('partEditError').classList.add('hidden');
     try {
+      const partId=$('partEditId').value;
+      const file=$('partEditReplacementPhoto').files?.[0]||null;
+      validateEditorPhoto(file);
       const result=await post({
         action:'updatePart',
-        partId:$('partEditId').value,
+        partId,
         name:$('partEditName').value.trim(),
         number:$('partEditNumber').value.trim(),
         sap:$('partEditSap').value.trim(),
         verify:$('partEditVerify').checked
       });
+      if(file) {
+        try {await savePartEditorPhoto(partId,file);}
+        catch(error) {
+          throw Error('Dane części zapisano, ale zdjęcie nie zostało potwierdzone: '+error.message+
+            ' Możesz spróbować ponownie bez utraty wpisanych danych.');
+        }
+      }
+      $('partEditReplacementPhoto').value='';
       $('partEditDialog').close();
-      message(result.message||'Zapisano dane części.','success');
+      message(file?'Zapisano dane i zdjęcie części.':(result.message||'Zapisano dane części.'),'success');
       const current=state.view;
       if(current==='parts'||current==='newParts') {
         const response=await api(current);
@@ -477,7 +496,7 @@
     }catch(error) {
       $('partEditError').textContent=error.message;
       $('partEditError').classList.remove('hidden');
-    }finally{button.disabled=false;}
+    }finally{button.disabled=false;$('partEditCancel').disabled=false;}
   }
 
   function renderIndexMigration(){
@@ -985,7 +1004,11 @@
     $('cancelUser').addEventListener('click',()=>$('userDialog').close());
     $('createUserForm').addEventListener('submit',saveUser);
     $('partEditForm').addEventListener('submit',savePartEditor);
-    $('partEditReplacePhoto').addEventListener('click',replacePartEditorPhoto);
+    $('partEditPhoto').addEventListener('error',()=>{
+      if(!$('partEditDialog').open)return;
+      $('partEditError').textContent='Zdjęcie jest oznaczone w bazie, ale nie można go wyświetlić. Spróbuj zastąpić je plikiem JPG lub PNG i zapisać dane.';
+      $('partEditError').classList.remove('hidden');
+    });
     $('partEditCancel').addEventListener('click',()=>$('partEditDialog').close());
     try {
       await api('summary');
