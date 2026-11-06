@@ -309,6 +309,21 @@ h1{font-size:clamp(27px,7.5vw,36px);letter-spacing:-1px;line-height:1.2;margin:1
 .operation-line-description small{color:#acbac8;font-size:11px}
 .operation-remove{border:1px solid #8b5257;background:#3b282c;color:#ffc5c7;
   border-radius:8px;padding:7px 9px;font-weight:750;font-size:11px}
+/* Edit and delete PZ/WZ lines; NOK stays visible without extra tile. */
+.operation-line-description .operation-nok-name{color:#ff7077}
+.operation-nok-badge{display:inline-block;margin-left:7px;color:#ff646e;font-size:11px;
+  font-weight:900;letter-spacing:.25px}
+.operation-line-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.operation-line-actions button{min-height:36px;padding:7px 9px;border-radius:9px;
+  font-size:12px;font-weight:800}
+.operation-line-actions .operation-edit{color:#dbe4ee;border:1px solid #647489;background:#253140}
+.operation-line-actions .operation-remove{min-width:36px;font-size:17px;font-weight:900}
+.operation-nok-choice{display:flex;gap:11px;align-items:center;min-height:48px;
+  margin:10px 0 2px;padding:10px 12px;border:1px solid #64515a;border-radius:10px;
+  background:#2d242a;color:#f0dce0;font-size:13px;font-weight:800;cursor:pointer}
+.operation-nok-choice input{width:21px;height:21px;min-width:21px;accent-color:#e94b57}
+#operationDirectionPanel .operation-line-description{flex:1}
+
 .operation-empty{font-size:12px;color:#9dabb9;margin:0}
 .operation-confirm-text{white-space:pre-line;line-height:1.8;color:#dae1ea;
   font-size:13px}
