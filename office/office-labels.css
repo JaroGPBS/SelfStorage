@@ -119,8 +119,8 @@
   .a5-label-heading h2.label-name-very-long{font-size:12.5pt!important}
   .a5-label-main{flex:1!important;min-height:0!important;width:100%!important;
     display:grid!important;grid-template-columns:47mm 53mm minmax(0,1fr)!important;gap:3mm!important}
-  .a5-qr-column{display:flex!important;justify-content:flex-start!important;align-items:flex-start!important;
-    padding-top:2mm!important}
+  .a5-qr-column{display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:flex-start!important;
+    min-height:0!important;padding-top:2mm!important}
   .a5-qr{box-sizing:border-box!important;width:47mm!important;height:47mm!important;overflow:hidden!important;
     padding:4mm!important;background:#fff!important}
   .a5-qr img,.a5-qr canvas{width:39mm!important;height:39mm!important;
@@ -129,7 +129,8 @@
     padding-top:8mm!important;min-width:0!important}
   .a5-information-column strong{font:800 19pt/1.1 Arial,sans-serif!important;
     color:#111!important;white-space:nowrap!important;margin-top:3mm!important}
-  .a5-brand{margin-top:auto!important;margin-bottom:4mm!important;width:39mm!important;max-height:16mm!important;
+  .a5-qr-column .a5-brand{display:block!important;flex:0 0 auto!important;
+    margin:auto 0 4mm 4mm!important;width:31.2mm!important;max-height:12.8mm!important;
     object-fit:contain!important;object-position:left center!important}
   .a5-image-column{display:flex!important;align-items:center!important;justify-content:center!important;
     width:100%!important;min-height:0!important;overflow:hidden!important}
