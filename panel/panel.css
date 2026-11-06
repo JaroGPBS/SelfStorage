@@ -102,7 +102,7 @@ nav{display:grid;gap:6px}
 .topbar{height:79px;padding:0 clamp(20px,3vw,48px);border-bottom:1px solid var(--edge);display:flex;align-items:center;justify-content:space-between;gap:20px;background:#11151a}
 .topbar-left,.topbar-right{display:flex;align-items:center;gap:20px}
 .breadcrumb{color:#8591a0;font-size:12px}
-.breadcrumb strong{color:#e7ecf3;font-weight:700}
+.breadcrumb strong{color:#f6f7f9;font-family:'Manrope','DM Sans',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.45px;line-height:1.1}
 .breadcrumb .slash{color:#657181;margin:0 11px}
 .connection{display:flex;align-items:center;gap:9px;color:#bac6d1;font-size:12px}
 .connection i{width:7px;height:7px;background:var(--green);border-radius:100%;box-shadow:0 0 14px #5bc59a60}
@@ -169,7 +169,7 @@ tr:hover td{background:#ffffff04}
   .sidebar{position:fixed;top:0;bottom:0;left:0;width:265px;min-height:0;transform:translateX(-110%);transition:transform .2s ease;box-shadow:20px 0 70px #000b}
   .sidebar.open{transform:translateX(0)}.side-overlay:not(.hidden){display:block;position:fixed;inset:0;background:#0009;z-index:25}
   .mobile-toggle{display:block}.topbar{height:65px;padding:0 18px}.topbar-right{gap:8px}
-  .connection{font-size:11px}.breadcrumb{font-size:11px}.workspace{padding:23px 17px 20px}
+  .connection{font-size:11px}.breadcrumb{font-size:11px}.breadcrumb strong{font-size:17px}.workspace{padding:23px 17px 20px}
   .intro-banner{min-height:190px;padding:25px}.intro-decoration{right:0}
 }
 @media(max-width:550px){
