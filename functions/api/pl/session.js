@@ -268,31 +268,42 @@ async function commit(db,input,actorId){
   if(input.pzComment||input.wzComment)await ensureCommentsTable(db);
 
   const combined=new Map();
+  const key=r=>r.partId+':'+(r.nok?'NOK':'OK');
   for(const line of input.pz){
-    combined.set(line.partId,{id:line.partId,pz:line.quantity,wz:0});
+    combined.set(key(line),{id:line.partId,nok:line.nok,pz:line.quantity,wz:0});
   }
   for(const line of input.wz){
-    const x=combined.get(line.partId)||{id:line.partId,pz:0,wz:0};
+    const x=combined.get(key(line))||{id:line.partId,nok:line.nok,pz:0,wz:0};
     x.wz=line.quantity;
-    combined.set(line.partId,x);
+    combined.set(key(line),x);
   }
   const parts=[...combined.values()];
-  // Revalidate the exact stock quantities shown on the worker phone.
-  // Any concurrent stock change rejects the entire batch for a fresh preview.
-  const snapshot=new Map(input.stockSnapshot.map(r=>[r.partId,r.quantity]));
-  if(parts.some(p=>!snapshot.has(p.id)))return fail('Sprawdź ponownie stany części.',409);
+  const usesNok=parts.some(p=>p.nok);
+  // Guard the exact snapshot of EACH stock class. Concurrent normal/NOK changes
+  // cannot silently overwrite another worker's operation.
+  const snapshot=new Map(input.stockSnapshot.map(r=>[
+    r.partId+':'+(r.nok?'NOK':'OK'),r.quantity
+  ]));
+  if(parts.some(p=>!snapshot.has(p.id+':'+(p.nok?'NOK':'OK'))))
+    return fail('Sprawdź ponownie stany części.',409);
   const snapshotJson=JSON.stringify(parts.map(p=>({
-    partId:p.id,stock:snapshot.get(p.id),pz:p.pz,wz:p.wz
+    partId:p.id,nok:p.nok,stock:snapshot.get(p.id+':'+(p.nok?'NOK':'OK')),
+    pz:p.pz,wz:p.wz
   })));
+  const stockColumn=usesNok
+    ?"(CASE WHEN json_extract(e.value,'$.nok')=1 THEN n.quantity ELSE s.quantity END)"
+    :"s.quantity";
   const partGuards=
     "NOT EXISTS(SELECT 1 FROM json_each(?) AS e "+
     "LEFT JOIN parts p ON p.id=json_extract(e.value,'$.partId') "+
     "LEFT JOIN warehouse_stock s ON s.warehouse_id=? AND s.part_id=p.id "+
+    (usesNok?"LEFT JOIN pl_nok_stock n ON n.warehouse_id=s.warehouse_id AND n.part_id=p.id "+
+      "OR (n.warehouse_id=? AND n.part_id=p.id) ":'')+
     "WHERE p.id IS NULL OR p.active IS NOT 1 "+
-    "OR s.quantity IS NOT json_extract(e.value,'$.stock') "+
-    "OR (COALESCE(s.quantity,0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)>100000000) "+
+    "OR "+stockColumn+" IS NOT json_extract(e.value,'$.stock') "+
+    "OR (COALESCE("+stockColumn+",0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)>100000000) "+
     "OR (?=0 AND CAST(json_extract(e.value,'$.wz') AS INTEGER)>"+
-    "COALESCE(s.quantity,0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)))";
+    "COALESCE("+stockColumn+",0)+CAST(json_extract(e.value,'$.pz') AS INTEGER)))";
   const guardSql=
     'INSERT INTO pl_warehouse_sessions '+
     '(id,warehouse_id,actor_id,counterparty,'+(hasPlate?'registration_plate,':'')+
@@ -307,9 +318,53 @@ async function commit(db,input,actorId){
   const guardArgs=[input.id,input.warehouseId,actorId,storedCounterparty,
     ...(hasPlate?[input.registrationPlate||null]:[]),
     actorId,actorId,input.warehouseId,
-    snapshotJson,input.warehouseId,input.confirmedOverissue?1:0];
+    snapshotJson,input.warehouseId,...(usesNok?[input.warehouseId]:[]),
+    input.confirmedOverissue?1:0];
   const statements=[db.prepare(guardSql).bind(...guardArgs)];
   for(const part of parts){
+    if(part.nok){
+      // NOK entries are never added to warehouse_stock (complete goods).
+      // Their complete audit trail and stock live in separate D1 tables.
+      if(part.pz){
+        statements.push(db.prepare(
+          'INSERT INTO pl_nok_session_lines '+
+          '(session_id,direction,part_id,quantity,quantity_before,quantity_after,before_unknown) '+
+          "SELECT ?,'PZ',?,?,COALESCE(n.quantity,0),COALESCE(n.quantity,0)+?,"+
+          'CASE WHEN n.part_id IS NULL THEN 1 ELSE 0 END '+
+          'FROM parts p LEFT JOIN pl_nok_stock n ON n.part_id=p.id AND n.warehouse_id=? '+
+          'WHERE p.id=?'
+        ).bind(input.id,part.id,part.pz,part.pz,input.warehouseId,part.id));
+        statements.push(db.prepare(
+          'INSERT OR IGNORE INTO pl_nok_stock '+
+          '(warehouse_id,part_id,quantity,updated_at) VALUES (?,?,0,CURRENT_TIMESTAMP)'
+        ).bind(input.warehouseId,part.id));
+      }
+      if(part.wz){
+        statements.push(db.prepare(
+          'INSERT INTO pl_nok_session_lines '+
+          '(session_id,direction,part_id,quantity,quantity_before,quantity_after,'+
+          'before_unknown,shortage_quantity) '+
+          "SELECT ?,'WZ',?,?,COALESCE(n.quantity,0)+?,"+
+          'MAX(0,COALESCE(n.quantity,0)+?-?),'+
+          "CASE WHEN n.part_id IS NULL OR EXISTS(SELECT 1 FROM pl_nok_session_lines l "+
+          "WHERE l.session_id=? AND l.part_id=? AND l.direction='PZ' AND l.before_unknown=1) "+
+          'THEN 1 ELSE 0 END,'+
+          'MAX(0,?-COALESCE(n.quantity,0)-?) '+
+          'FROM parts p LEFT JOIN pl_nok_stock n ON n.part_id=p.id AND n.warehouse_id=? '+
+          'WHERE p.id=?'
+        ).bind(input.id,part.id,part.wz,part.pz,part.pz,part.wz,input.id,part.id,
+          part.wz,part.pz,input.warehouseId,part.id));
+        statements.push(db.prepare(
+          'INSERT OR IGNORE INTO pl_nok_stock '+
+          '(warehouse_id,part_id,quantity,updated_at) VALUES (?,?,0,CURRENT_TIMESTAMP)'
+        ).bind(input.warehouseId,part.id));
+      }
+      statements.push(db.prepare(
+        'UPDATE pl_nok_stock SET quantity=MAX(0,quantity+?),updated_at=CURRENT_TIMESTAMP '+
+        'WHERE warehouse_id=? AND part_id=?'
+      ).bind(part.pz-part.wz,input.warehouseId,part.id));
+      continue;
+    }
     // Record an accurate before/after snapshot BEFORE updating the stock.
     // If a part is both received and issued, PZ logically precedes WZ.
     if(part.pz){
