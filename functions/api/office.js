@@ -195,9 +195,12 @@ export async function onRequestGet({request,env}){
       // with a dedicated registration_plate column, without modifying D1.
       const columns=await env.DB.prepare('PRAGMA table_info(pl_warehouse_sessions)').all();
       const hasRegistrationPlate=(columns.results||[]).some(col=>col.name==='registration_plate');
+      const hasComments=await tableExists(env.DB,'pl_warehouse_session_comments');
       const join='FROM pl_warehouse_sessions s '+
         'JOIN pl_warehouse_session_lines l ON l.session_id=s.id '+
-        'LEFT JOIN users u ON u.id=s.actor_id ';
+        'LEFT JOIN users u ON u.id=s.actor_id '+
+        (hasComments?'LEFT JOIN pl_warehouse_session_comments c '+
+          'ON c.session_id=s.id AND c.direction=l.direction ':'');
       const matching="AND (?='' OR LOWER(s.counterparty) LIKE '%'||LOWER(?)||'%' "+
         (hasRegistrationPlate
           ?"OR LOWER(COALESCE(s.registration_plate,'')) LIKE '%'||LOWER(?)||'%' "
@@ -224,6 +227,7 @@ export async function onRequestGet({request,env}){
         'COALESCE(u.name,s.actor_id) AS worker,COUNT(l.part_id) AS positions,'+
         'COALESCE(SUM(l.quantity),0) AS units,'+
         'COALESCE(SUM(l.shortage_quantity),0) AS shortage,'+
+        (hasComments?"COALESCE(MAX(c.comment),'') AS comment,":"'' AS comment,")+
         'EXISTS (SELECT 1 FROM pl_warehouse_session_lines related '+
         "WHERE related.session_id=s.id AND related.direction='"+relatedDirection+"') AS has_related ";
       const docs=await selectRows(env.DB,fields+join+where+matching+
