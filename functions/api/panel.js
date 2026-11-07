@@ -309,7 +309,25 @@ async function cloudflareUsage(env,url) {
       phase==='fetch'?'fetch_failed':
       phase==='response'?'invalid_response':
       'processing_error';
-    console.error('Cloudflare analytics unavailable',reason,error?.name||'Error');
+    // Server-side diagnostics only; never include raw exception text in API responses.
+    // Defensively redact all configured credentials, URLs and identifier-shaped values.
+    function safeExceptionText(value) {
+      let clean=String(value||'');
+      for(const sensitive of [token,accountId,databaseId,bucketName].filter(Boolean))
+        clean=clean.split(sensitive).join('[redacted]');
+      return clean
+        .replace(/Bearer\\s+\\S+/gi,'Bearer [redacted]')
+        .replace(/https?:\\/\\/[^\\s)]+/gi,'[URL]')
+        .replace(/\\b[a-f0-9]{32}\\b/gi,'[id]')
+        .replace(/\\b[a-f0-9]{8}-[a-f0-9-]{27,}\\b/gi,'[id]')
+        .replace(/[A-Za-z0-9_\\-]{40,}/g,'[value]')
+        .slice(0,240);
+    }
+    const code=String(error?.cause?.code||'');
+    console.error('Cloudflare analytics unavailable',reason,error?.name||'Error',
+      'detail:',safeExceptionText(error?.message),
+      'cause:',safeExceptionText(error?.cause?.message),
+      'causeCode:',/^[A-Z0-9_]{1,40}$/.test(code)?code:'none');
     return {status:'unavailable',reason};
   }finally{clearTimeout(timer);}
 }
