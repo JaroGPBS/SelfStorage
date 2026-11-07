@@ -17,11 +17,13 @@
   };
 
   const FONT_SIZE_KEY='gpbs_admin_font_size';
-  const FONT_SIZES=new Set(['12','13','14','15']);
+  const FONT_SIZES=new Set(['11','13','15','17']);
 
   function storedFontSize() {
     try {
       const value=localStorage.getItem(FONT_SIZE_KEY);
+      if(value==='12')return '11'; // Previous option, migrate existing selection.
+      if(value==='14')return '15';
       return FONT_SIZES.has(value)?value:'13';
     } catch { return '13'; }
   }
