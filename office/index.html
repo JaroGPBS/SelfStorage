@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=40">
+  <link rel="stylesheet" href="./office.css?v=41">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -51,57 +51,17 @@
       letter-spacing:1.8px;color:#cbd2dc;
       white-space:normal;
     }
-    #loginScreen .login-brand-country{
-      display:flex;align-items:center;gap:clamp(12px,1.2vw,20px);
-      width:max-content;max-width:100%;
-    }
-    #loginScreen .login-brand-country .polish-flag{
-      margin:0;align-self:center;
-    }
     #loginScreen .login-brand-right{
       display:flex;flex-direction:column;align-items:flex-end;
       justify-content:center;gap:12px;flex:0 1 auto;min-width:0;
     }
     #loginScreen .office-heading{
       display:block;color:#f4f6f8;
-      font-size:clamp(19px,1.65vw,27px);
-      line-height:1.18;font-weight:500;
-      letter-spacing:1.35px;text-align:right;
+      font-size:clamp(21px,1.87vw,28px);
+      line-height:1.05;font-weight:850;
+      letter-spacing:2px;text-align:right;
       white-space:nowrap;
       text-shadow:0 3px 15px rgba(0,0,0,.35);
-    }
-    #loginScreen .polish-flag{
-      display:flex;align-items:center;justify-content:center;
-      flex:none;width:clamp(21.25px,1.75vw,31.875px);
-      height:clamp(12.5px,1.05vw,19.375px);
-      perspective:550px;
-      filter:drop-shadow(0 7px 15px rgba(0,0,0,.38));
-    }
-    #loginScreen .flag-cloth{
-      width:100%;height:100%;position:relative;overflow:hidden;
-      display:flex;flex-direction:column;
-      border-radius:0;
-      transform-origin:15% 50%;
-      animation:office-flag-breeze 5.5s ease-in-out infinite;
-    }
-    #loginScreen .flag-white,#loginScreen .flag-red{
-      display:block;width:100%;height:50%;flex:1;
-    }
-    #loginScreen .flag-white{background:#fff}
-    #loginScreen .flag-red{background:#d91f34}
-    #loginScreen .flag-cloth::after{
-      content:"";position:absolute;inset:0;pointer-events:none;
-      background:linear-gradient(105deg,rgba(20,20,20,.16),transparent 25%,rgba(12,12,12,.19) 40%,rgba(255,255,255,.15) 58%,rgba(30,30,30,.14) 78%,transparent);
-      background-size:190% 100%;
-      animation:office-flag-shimmer 5.5s ease-in-out infinite;
-    }
-    @keyframes office-flag-breeze{
-      0%,100%{transform:rotateY(-7deg) skewY(.6deg) scaleX(.987)}
-      50%{transform:rotateY(5deg) skewY(-.7deg) scaleX(.994)}
-    }
-    @keyframes office-flag-shimmer{
-      0%,100%{background-position:10% 0}
-      50%{background-position:90% 0}
     }
     #loginScreen .login-card{
       width:min(100%,475px);max-width:475px;
@@ -129,19 +89,13 @@
       #loginScreen .login-brand{gap:12px}
       #loginScreen .login-brand-lockup{gap:9px}
       #loginScreen .login-brand-lockup img{width:clamp(71px,14.45vw,106px)}
-      #loginScreen .login-brand-name strong{font-size:clamp(15px,2.72vw,20px)}
-      #loginScreen .login-brand-name span{font-size:10px;letter-spacing:.5px}
-      #loginScreen .office-heading{font-size:clamp(12px,1.85vw,18px);white-space:normal;max-width:240px}
+      #loginScreen .office-heading{font-size:clamp(15px,2.72vw,20px);white-space:normal;max-width:240px}
       #loginScreen .login-brand-right{gap:8px}
-      #loginScreen .polish-flag{width:15.625px;height:10px}
     }
     @media(max-width:480px){
       #loginScreen .login-brand{gap:8px}
       #loginScreen .login-brand-lockup img{width:clamp(60px,14.45vw,72px)}
-      #loginScreen .login-brand-name strong{font-size:15px;letter-spacing:.7px}
-      #loginScreen .login-brand-name span{font-size:9px;letter-spacing:.1px}
-      #loginScreen .office-heading{font-size:11px;max-width:130px;letter-spacing:.45px}
-      #loginScreen .polish-flag{width:12.5px;height:8.125px}
+      #loginScreen .office-heading{font-size:15px;max-width:170px;letter-spacing:1.1px}
     }
     #loginScreen .remember-option{
       display:flex;align-items:center;justify-content:center;gap:10px;
@@ -164,9 +118,6 @@
       -webkit-text-fill-color:initial !important;
       letter-spacing:normal;
     }
-    @media(prefers-reduced-motion:reduce){
-      #loginScreen .flag-cloth,#loginScreen .flag-cloth::after{animation:none}
-    }
   </style>
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=3"></script>
@@ -178,18 +129,6 @@
       <header class="login-brand">
         <div class="login-brand-lockup">
           <img src="./gpbs-logo-sharp.svg?v=1" alt="GPBS">
-          <div class="login-brand-name">
-            <strong>STORAGE</strong>
-            <div class="login-brand-country">
-              <span>POLSKA</span>
-              <div class="polish-flag" role="img" aria-label="Flaga Polski">
-                <div class="flag-cloth" aria-hidden="true">
-                  <span class="flag-white"></span>
-                  <span class="flag-red"></span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
         <div class="login-brand-right">
           <strong class="office-heading">STORAGE OFFICE</strong>
