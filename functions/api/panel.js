@@ -177,8 +177,14 @@ async function cloudflareUsage(env,url) {
   const databaseId=String(env.CF_D1_DATABASE_ID||'').trim();
   const bucketName=String(env.CF_R2_BUCKET_NAME||'').trim();
   const token=String(env.CF_ANALYTICS_API_TOKEN||'').trim();
-  if(!accountId||!databaseId||!bucketName||!token)
-    return {status:'not_configured'};
+  // Only variable names are exposed to an authenticated ADMIN, never values or tokens.
+  const missing=[
+    !accountId?'CF_ACCOUNT_ID':null,
+    !databaseId?'CF_D1_DATABASE_ID':null,
+    !bucketName?'CF_R2_BUCKET_NAME':null,
+    !token?'CF_ANALYTICS_API_TOKEN':null
+  ].filter(Boolean);
+  if(missing.length)return {status:'not_configured',missing};
   if(!/^[a-fA-F0-9]{32}$/.test(accountId) ||
      !/^[a-fA-F0-9-]{36}$/.test(databaseId) ||
      !/^[a-z0-9][a-z0-9-]{1,62}$/.test(bucketName))
