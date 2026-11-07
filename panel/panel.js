@@ -237,6 +237,21 @@
     return (n/1000000000).toLocaleString('pl-PL',{maximumFractionDigits:2})+' GB';
   }
 
+  // Quotas are reference Free-tier thresholds, not a verified billing plan.
+  // Always show an unavailable reading as a dash; never replace it with zero.
+  function renderQuota(valueId,meterId,percentageId,used,limit,bytes=false,suffix='') {
+    const valid=used!==null&&used!==undefined&&Number.isFinite(Number(used))&&Number(used)>=0;
+    const display=n=>bytes?formatBytes(n):formatNum(n);
+    $(valueId).textContent=(valid?display(Number(used)):'—')+' / '+display(limit)+suffix;
+    const pct=valid?100*Number(used)/limit:null;
+    const bar=$(meterId);
+    bar.style.width=valid?(pct>0?Math.max(1,Math.min(100,pct)):0)+'%':'0%';
+    bar.classList.toggle('warning',Boolean(valid&&pct>=80));
+    $(percentageId).textContent=!valid?'Brak danych do obliczenia procentu':
+      pct>0&&pct<0.1?'Poniżej 0,1% progu Free':
+      pct.toLocaleString('pl-PL',{maximumFractionDigits:1})+'% progu Free';
+  }
+
   function renderUsage(data) {
     const cloud=data?.cloudflare||{status:'unavailable'};
     const active=cloud.status==='ok';
@@ -244,10 +259,20 @@
     $('usageLastUpdated').textContent=now&&!Number.isNaN(now.getTime())
       ?'Pobrano: '+now.toLocaleString('pl-PL',{dateStyle:'short',timeStyle:'short'})
       :'Statystyki Cloudflare';
-    $('usageD1Size').textContent=active?formatBytes(cloud.d1?.sizeBytes):'—';
+    renderQuota('usageD1Size','usageD1SizeMeter','usageD1SizePct',
+      active?cloud.d1?.sizeBytes:null,500000000,true);
     $('usageD1Reads').textContent=active&&cloud.d1?.rowsRead!=null?formatNum(cloud.d1.rowsRead):'—';
     $('usageD1Writes').textContent=active&&cloud.d1?.rowsWritten!=null?formatNum(cloud.d1.rowsWritten):'—';
-    $('usageR2Size').textContent=active?formatBytes(cloud.r2?.sizeBytes):'—';
+    renderQuota('usageR2Size','usageR2SizeMeter','usageR2SizePct',
+      active?cloud.r2?.sizeBytes:null,10000000000,true,'-mies.');
+    renderQuota('usageD1TodayReads','usageD1ReadsMeter','usageD1ReadsPct',
+      active?cloud.d1?.todayRowsRead:null,5000000);
+    renderQuota('usageD1TodayWrites','usageD1WritesMeter','usageD1WritesPct',
+      active?cloud.d1?.todayRowsWritten:null,100000);
+    renderQuota('usageR2ClassA','usageR2AMeter','usageR2APct',
+      active?cloud.r2?.classA:null,1000000);
+    renderQuota('usageR2ClassB','usageR2BMeter','usageR2BPct',
+      active?cloud.r2?.classB:null,10000000);
     $('usageR2Objects').textContent=active&&cloud.r2?.objectCount!=null
       ?formatNum(cloud.r2.objectCount):'—';
     $('usageR2Ops').textContent=active&&cloud.r2?.operations!=null?formatNum(cloud.r2.operations):'—';
@@ -276,7 +301,8 @@
         :cloud.status==='unavailable'
           ?(failMessages[cloud.reason]||'Cloudflare nie zwrócił statystyk. Sprawdź token i dostęp Analytics Read.')
           :'Dane Cloudflare mogą pojawiać się z opóźnieniem.';
-    const datasetNames={d1Rows:'odczyt/zapis D1',d1Storage:'rozmiar D1',
+    const datasetNames={d1Rows:'odczyt/zapis D1 (miesiąc)',d1Today:'odczyt/zapis D1 (dziś)',
+      d1Storage:'rozmiar D1',
       r2Storage:'rozmiar R2',r2Ops:'operacje R2'};
     const issueNote=group=>{
       const issues=cloud.issues?.[group];
@@ -287,7 +313,10 @@
       ).join(' ');
     };
     $('usageD1Note').textContent=issueNote('d1');
-    $('usageR2Note').textContent=issueNote('r2');
+    $('usageR2Note').textContent=issueNote('r2')+
+      (active&&Number(cloud.r2?.unclassified)>0
+        ?' Nieznane typy operacji R2: '+formatNum(cloud.r2.unclassified)+
+          '. Rozbicie na klasy A/B jest niedostępne.':'');
     const photo=data?.photo;
     const bytes=Number(photo?.usedBytes);
     const max=Number(photo?.hardBytes);
