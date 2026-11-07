@@ -544,7 +544,7 @@ tr:hover td{background:#ffffff04}
 }
 :root[data-admin-theme="gray"] .main-layout,
 :root[data-admin-theme="gray"] .modal{
-  --admin-theme-bg:#b5bfc9;--admin-theme-card:#e8edf2;--admin-theme-alt:#dbe2e9;
+  --admin-theme-bg:#98a4b0;--admin-theme-card:#e8edf2;--admin-theme-alt:#dbe2e9;
   --admin-theme-ink:#222b36;--admin-theme-muted:#536274;
   --admin-theme-soft:#657588;--admin-theme-line:#b8c2ce;
   --admin-theme-hover:#d6dfe8;--admin-theme-highlight:#ced9e3;
@@ -811,6 +811,6 @@ tr:hover td{background:#ffffff04}
 .theme-option>span:last-child{font-weight:750}
 .theme-swatch{width:25px;height:25px;border-radius:6px;border:1px solid #9ba5b2;flex:0 0 25px}
 .theme-swatch-white{background:#f8fafc}
-.theme-swatch-gray{background:#b5bfc9}
+.theme-swatch-gray{background:#98a4b0}
 .theme-swatch-dark{background:#161b22}
 @media(max-width:650px){.appearance-settings .theme-options{padding:15px 17px 23px}}
