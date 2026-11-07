@@ -17,8 +17,9 @@ const OWNER_ROLE = 'ADMIN';
 // Keep this alias immutable in the panel until a unique D1 owner ID is configured.
 const OWNER_D1_SYMBOL = 'JJ';
 function isProtectedOwnerAccount(user){
-  return user?.role_code===OWNER_ROLE ||
-    String(user?.name||'').trim().toUpperCase()===OWNER_D1_SYMBOL;
+  // A role is a permission, NOT the identity of the system's owner.
+  // Other ADMIN accounts may be created, edited and archived by the owner.
+  return String(user?.name||'').trim().toUpperCase()===OWNER_D1_SYMBOL;
 }
 const enc = new TextEncoder();
 
@@ -180,6 +181,60 @@ async function verifyLegacyAdmin(pin,env) {
       return String(body.ekipa.id);
     return null;
   } finally {clearTimeout(timer);}
+}
+
+// Separate owner PIN used exclusively for the Admin panel.
+// No change to the legacy FR account PIN or to D1 Office / mobile PINs.
+// Until the owner chooses a new PIN, the existing legacy login remains active.
+async function ownerPinDigest(env,pin){
+  const key=await crypto.subtle.importKey('raw',
+    enc.encode('GPBS:PANEL:OWNER:PIN:SECRET:v1:'+env.PANEL_SESSION_SECRET),
+    {name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const signature=await crypto.subtle.sign('HMAC',key,
+    enc.encode('GPBS:PANEL:OWNER:PIN:v1:'+pin));
+  return Array.from(new Uint8Array(signature),b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function storedOwnerPinDigest(db){
+  const exists=await db.prepare(
+    "SELECT 1 AS yes FROM sqlite_master WHERE type='table' AND name='panel_owner_credentials'"
+  ).first();
+  if(!exists)return null;
+  const entry=await db.prepare(
+    'SELECT pin_digest FROM panel_owner_credentials WHERE owner_id=?'
+  ).bind(OWNER_LEGACY_ID).first();
+  return entry?.pin_digest||null;
+}
+async function verifyOwnerLoginPin(pin,env){
+  if(typeof pin!=='string'||!/^\\d{4}$/.test(pin))return false;
+  const digest=await storedOwnerPinDigest(env.DB);
+  if(digest){
+    const supplied=await ownerPinDigest(env,pin);
+    return equalSecret(supplied,digest);
+  }
+  return (await verifyLegacyAdmin(pin,env))===OWNER_LEGACY_ID;
+}
+async function changeOwnerPin(env,body){
+  const newPin=body.newPin;
+  const confirm=body.confirmPin;
+  if(typeof newPin!=='string'||!/^\\d{4}$/.test(newPin)||
+     confirm!==newPin||['0000','1111','1234'].includes(newPin))
+    return fail('Wpisz i potwierdź nowy 4-cyfrowy PIN (bez prostych kodów).',400);
+  if(!await equalSecret(body.password,env.PANEL_ADMIN_PASSWORD))
+    return fail('Nieprawidłowe hasło administratora.',401);
+  const digest=await ownerPinDigest(env,newPin);
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS panel_owner_credentials ('+
+    'owner_id TEXT PRIMARY KEY,pin_digest TEXT NOT NULL,'+
+    'changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)'
+  ).run();
+  await env.DB.prepare(
+    'INSERT INTO panel_owner_credentials(owner_id,pin_digest,changed_at) '+
+    'VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(owner_id) DO UPDATE SET '+
+    'pin_digest=excluded.pin_digest,changed_at=CURRENT_TIMESTAMP'
+  ).bind(OWNER_LEGACY_ID,digest).run();
+  return respond({ok:true,message:'PIN panelu Admin został zmieniony. PIN FR i hasło bez zmian.'},200,{
+    'Set-Cookie':COOKIE_NAME+'=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'
+  });
 }
 
 // Read-only Cloudflare account metrics. The API token stays on the server.
@@ -679,7 +734,6 @@ async function addUser(env, body, actor) {
   const name=String(body?.name||'').trim();
   const role=String(body?.role||'').trim().toUpperCase();
   const warehouses=body?.warehouses;
-  if(role===OWNER_ROLE)return fail('Nie można dodać kolejnego głównego administratora z poziomu panelu.',403);
   if(name.length<2||name.length>100 || !ALLOWED_ROLES.has(role) ||
     !Array.isArray(warehouses)||warehouses.length>20 ||
     new Set(warehouses).size!==warehouses.length ||
@@ -726,8 +780,8 @@ async function updateUser(env, body, actor) {
   }
   const existing=await env.DB.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!existing)return fail('Nie znaleziono użytkownika.',404);
-  if(isProtectedOwnerAccount(existing)||role===OWNER_ROLE)
-    return fail('Rola ADMIN jest chroniona przed zmianami przez panel.',403);
+  if(isProtectedOwnerAccount(existing))
+    return fail('Nie można zmienić konta właściciela przez ten panel.',403);
   if(await archiveTableExists(env.DB)&&
      await env.DB.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first())
     return fail('Konto w archiwum. Użyj najpierw opcji Przywróć.',409);
@@ -821,8 +875,6 @@ async function staffMutation(env,body,actor,edit) {
   if(!await requireStaffSchema(db))
     return fail('Najpierw wykonaj migrację db/05-user-private-profiles.sql w D1.',503);
   const id=edit?String(body.userId||''):'GPBS-U-'+crypto.randomUUID();
-  if(!edit&&staff.role===OWNER_ROLE)
-    return fail('Nowego konta ADMIN nie można utworzyć w panelu.',403);
   let before=null,prior=[];
   if(edit) {
     if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Niepoprawne konto.',400);
@@ -844,8 +896,6 @@ async function staffMutation(env,body,actor,edit) {
       if(staff.nickname!==before.name||staff.role!==before.role_code||
          staff.active!==1||before.active!==1||!unchangedGrants)
         return fail('Konto właściciela: identyfikator, rola, status i uprawnienia są chronione.',403);
-    }else if(staff.role===OWNER_ROLE){
-      return fail('Nie można nadać roli głównego administratora innemu użytkownikowi.',403);
     }
   }
   // The short visible nickname must identify one account unambiguously.
@@ -1013,10 +1063,9 @@ async function provisionStaffPins(env,body,actor) {
   if(action==='pinGenerateMissing') {
     const role=String(body.role||'').trim().toUpperCase();
     if(role&&!ALLOWED_ROLES.has(role))return fail('Nieprawidłowa rola.',400);
-    if(role===OWNER_ROLE)return fail('PIN administratora nie jest generowany automatycznie.',403);
     const sql='SELECT u.id,u.name,u.role_code FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
-      "WHERE u.active=1 AND u.role_code<>'ADMIN' AND UPPER(TRIM(u.name))<>'JJ' AND p.user_id IS NULL "+
+      "WHERE u.active=1 AND UPPER(TRIM(u.name))<>'JJ' AND p.user_id IS NULL "+
       (await archiveTableExists(db)?'AND NOT EXISTS (SELECT 1 FROM user_archives ar WHERE ar.user_id=u.id) ':'')+
       (role?'AND u.role_code=? ':'')+
       'ORDER BY u.created_at,u.id LIMIT ?';
@@ -1225,13 +1274,13 @@ async function route(request,env) {
       );
       if(pinLock>0) return blocked(pinLock);
 
-      const actor=await verifyLegacyAdmin(body.pin,env);
-      // Having the ADMIN role alone must never grant access to this panel.
-      if(actor!==OWNER_LEGACY_ID) return fail('Nieprawidłowe dane logowania.',401);
+      // Once a dedicated Admin PIN exists, this does not ask French Apps Script.
+      if(!await verifyOwnerLoginPin(body.pin,env))
+        return fail('Nieprawidłowe dane logowania.',401);
 
       // A failed database cleanup must not issue a session: fail closed.
       await clearLoginAttempts(env.DB,[ipKey,adminKey]);
-      const token=await createToken(env.PANEL_SESSION_SECRET,actor);
+      const token=await createToken(env.PANEL_SESSION_SECRET,OWNER_LEGACY_ID);
       return respond({ok:true,role:'ADMIN'},200,{
         'Set-Cookie':COOKIE_NAME+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=28800'
       });
@@ -1246,6 +1295,13 @@ async function route(request,env) {
     return respond({ok:true},200,{
       'Set-Cookie':COOKIE_NAME+'=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'
     });
+  if(body?.action==='changeOwnerPin'){
+    try{return await changeOwnerPin(env,body);}
+    catch(error){
+      console.error('Owner Admin PIN update failed',error?.name||'Error');
+      return fail('Nie udało się zmienić PIN-u administratora. Spróbuj ponownie.',503);
+    }
+  }
   if(['pinGenerate','pinGenerateMissing','pinReset'].includes(body?.action)) {
     if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
     try {
