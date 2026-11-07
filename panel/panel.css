@@ -651,6 +651,24 @@ tr:hover td{background:#ffffff04}
 :root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .btn:not(.primary):not(.archive-danger):hover{
   background:var(--admin-theme-hover);
 }
+
+/* Red action buttons retain white labels in light modes. */
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .btn.primary,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .modal .btn.primary{
+  color:#fff;
+}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .stat-card .stat-label,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .resource-main-label{
+  color:var(--admin-theme-muted);
+}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .modal .modal-heading p,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .modal .hint{
+  color:var(--admin-theme-muted);
+}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .modal .part-photo-modes label small,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .modal .security-content code{
+  color:var(--admin-theme-muted);
+}
 :root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .pill{
   color:var(--admin-theme-muted);border-color:var(--admin-theme-line);
   background:var(--admin-theme-alt);
