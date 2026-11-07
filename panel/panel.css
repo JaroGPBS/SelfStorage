@@ -446,8 +446,9 @@ tr:hover td{background:#ffffff04}
 .main-layout .breadcrumb strong{font-size:calc(20px + var(--admin-font-delta))}
 .main-layout .heading h1{font-size:clamp(calc(27px + var(--admin-font-delta)),2.8vw,calc(37px + var(--admin-font-delta)))}
 .main-layout .heading p,.main-layout .heading-actions .select,
-.main-layout .stat-detail-row strong,.main-layout .resource-topline h3,
-.main-layout .user-detail-value{font-size:calc(13px + var(--admin-font-delta))}
+.main-layout .stat-detail-row strong,.main-layout .user-detail-value,
+.main-layout .index-migration-info{font-size:calc(13px + var(--admin-font-delta))}
+.main-layout .resource-topline h3{font-size:calc(15px + var(--admin-font-delta))}
 .main-layout .table-title h2,.main-layout .secret-subsection h3{font-size:calc(17px + var(--admin-font-delta))}
 .main-layout .resource-heading h2{font-size:calc(18px + var(--admin-font-delta))}
 .main-layout .resource-main-value{font-size:calc(29px + var(--admin-font-delta))}
@@ -463,14 +464,18 @@ tr:hover td{background:#ffffff04}
 .main-layout .resource-item strong,.main-layout .index-migration-table td,
 .main-layout .secret-label,.main-layout .secret-value,
 .main-layout .security-content code,.main-layout .hint,
-.main-layout .user-detail-value a{font-size:calc(12px + var(--admin-font-delta))}
+.main-layout .part-review-status{font-size:calc(12px + var(--admin-font-delta))}
 .main-layout table th,.main-layout .pill,.main-layout .table-title .meta,
 .main-layout .user-detail-label,.main-layout .resource-topline>span{
   font-size:calc(10px + var(--admin-font-delta))
 }
-.main-layout .index-migration-table th,.main-layout .index-migration-info,
+.main-layout .index-migration-table th,
 .main-layout .index-migration-table .index-check{font-size:calc(11px + var(--admin-font-delta))}
 .main-layout .btn{font-size:calc(14px + var(--admin-font-delta))}
+.main-layout .new-parts-alert{font-size:calc(14px + var(--admin-font-delta))}
+.main-layout .overissue-alert{font-size:calc(13px + var(--admin-font-delta))}
+.main-layout .new-parts-badge,.main-layout .eyebrow{font-size:calc(11px + var(--admin-font-delta))}
+.main-layout .admin-badge{font-size:calc(10px + var(--admin-font-delta))}
 .main-layout .btn.mini{font-size:calc(11px + var(--admin-font-delta))}
 .main-layout .security-content>p,.main-layout .table-title .security-description{
   font-size:calc(13px + var(--admin-font-delta))
@@ -479,11 +484,12 @@ tr:hover td{background:#ffffff04}
 .modal .modal-heading p,.modal .secret-value,.modal .pin-result-item strong{
   font-size:calc(13px + var(--admin-font-delta))
 }
-.modal label,.modal legend,.modal .hint,.modal input,.modal .select,
+.modal label,.modal legend,.modal .hint,
 .modal .part-photo-modes label strong,.modal .part-edit-photo span{
   font-size:calc(12px + var(--admin-font-delta))
 }
 .modal .btn{font-size:calc(14px + var(--admin-font-delta))}
+.modal input,.modal .select{font-size:calc(14px + var(--admin-font-delta))}
 .modal .btn.mini,.modal .part-row-actions .part-delete-btn{font-size:calc(11px + var(--admin-font-delta))}
 .modal.confirm-dialog h2{font-size:calc(22px + var(--admin-font-delta))}
 .modal.confirm-dialog #confirmDescription{font-size:calc(16px + var(--admin-font-delta))}
