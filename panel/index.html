@@ -25,10 +25,11 @@
       <form id="loginForm" autocomplete="on">
         <label for="panelPassword">Hasło administracyjne panelu</label>
         <input id="panelPassword" type="password" required minlength="8" autocomplete="current-password" placeholder="Hasło administratora">
-        <label for="panelPin">Twój PIN GPBS Storage</label>
+        <label for="panelPin">PIN administratora</label>
         <input id="panelPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" placeholder="4 cyfry">
         <button class="btn primary login-button" type="submit" id="loginButton">Zaloguj do panelu <span aria-hidden="true">↗</span></button>
       </form>
+      <p class="login-notice hidden" id="loginNotice" role="status"></p>
       <p class="login-error hidden" id="loginError" role="alert"></p>
       <div class="login-foot">Dostęp wyłącznie dla uprawnionych użytkowników. <span>GPBS Storage • D1</span></div>
     </section>
