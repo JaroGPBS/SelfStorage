@@ -180,12 +180,57 @@
     badge.hidden=n===0;
   }
 
+  function formatBytes(bytes) {
+    if(bytes==null||!Number.isFinite(Number(bytes))||Number(bytes)<0)return '—';
+    const n=Number(bytes);
+    if(n===0)return '0 B';
+    if(n<1000)return formatNum(n)+' B';
+    if(n<1000000)return (n/1000).toLocaleString('pl-PL',{maximumFractionDigits:1})+' kB';
+    if(n<1000000000)return (n/1000000).toLocaleString('pl-PL',{maximumFractionDigits:2})+' MB';
+    return (n/1000000000).toLocaleString('pl-PL',{maximumFractionDigits:2})+' GB';
+  }
+
+  function renderUsage(data) {
+    const cloud=data?.cloudflare||{status:'unavailable'};
+    const active=cloud.status==='ok';
+    const now=active&&cloud.sampledAt?new Date(cloud.sampledAt):null;
+    $('usageLastUpdated').textContent=now&&!Number.isNaN(now.getTime())
+      ?'Pobrano: '+now.toLocaleString('pl-PL',{dateStyle:'short',timeStyle:'short'})
+      :'Statystyki Cloudflare';
+    $('usageD1Size').textContent=active?formatBytes(cloud.d1?.sizeBytes):'—';
+    $('usageD1Reads').textContent=active&&cloud.d1?.rowsRead!=null?formatNum(cloud.d1.rowsRead):'—';
+    $('usageD1Writes').textContent=active&&cloud.d1?.rowsWritten!=null?formatNum(cloud.d1.rowsWritten):'—';
+    $('usageR2Size').textContent=active?formatBytes(cloud.r2?.sizeBytes):'—';
+    $('usageR2Objects').textContent=active&&cloud.r2?.objectCount!=null
+      ?formatNum(cloud.r2.objectCount):'—';
+    $('usageR2Ops').textContent=active&&cloud.r2?.operations!=null?formatNum(cloud.r2.operations):'—';
+    const status=cloud.status==='not_configured'
+      ?'Do podłączenia: token analityczny i identyfikatory Cloudflare.'
+      :cloud.status==='invalid_configuration'
+        ?'Sprawdź konfigurację identyfikatorów Cloudflare.'
+        :cloud.status==='unavailable'
+          ?'Cloudflare nie zwrócił statystyk. Sprawdź token i dostęp Analytics Read.'
+          :'Dane Cloudflare mogą pojawiać się z opóźnieniem.';
+    $('usageD1Note').textContent=status;
+    $('usageR2Note').textContent=status;
+    const photo=data?.photo;
+    const bytes=Number(photo?.usedBytes);
+    const max=Number(photo?.hardBytes);
+    const valid=photo&&Number.isFinite(bytes)&&Number.isFinite(max)&&max>0;
+    $('usageR2Guard').textContent=valid?formatBytes(bytes)+' / '+formatBytes(max):'Brak danych';
+    const meter=$('usageR2Meter');
+    meter.style.width=valid?Math.min(100,Math.max(0,bytes/max*100))+'%':'0%';
+    meter.classList.toggle('warning',Boolean(valid&&bytes>=Number(photo.warningBytes)));
+  }
+
   function renderSummary(summary) {
     const stats=[
       {label:'Aktywne magazyny',value:summary.warehouses,rows:[
         ['Polska',summary.warehouseCounts?.pl],['Francja',summary.warehouseCounts?.fr]
       ]},
-      {label:'Główny katalog części',value:summary.parts,rows:[]},
+      {label:'Główny katalog części',value:summary.parts,rows:[
+        ['Zdjęcia',summary.photos]
+      ]},
       {label:'Zapisane operacje',value:summary.operations,rows:[
         ['PZ',summary.operationCounts?.pz],['WZ',summary.operationCounts?.wz]
       ]},
@@ -773,8 +818,13 @@
         return;
       }
       if(view==='summary') {
-        const summary=await api('summary');
-        if(state.view===view)renderSummary(summary);
+        const [summary,usage]=await Promise.all([
+          api('summary'),api('usage').catch(()=>null)
+        ]);
+        if(state.view===view){
+          renderSummary(summary);
+          renderUsage(usage);
+        }
       } else {
         if(view==='parts')await loadWarehouses();
         if(view==='users') {

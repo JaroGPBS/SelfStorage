@@ -171,7 +171,139 @@ async function verifyLegacyAdmin(pin,env) {
   } finally {clearTimeout(timer);}
 }
 
+// Read-only Cloudflare account metrics. The API token stays on the server.
+async function cloudflareUsage(env,url) {
+  const accountId=String(env.CF_ACCOUNT_ID||'').trim();
+  const databaseId=String(env.CF_D1_DATABASE_ID||'').trim();
+  const bucketName=String(env.CF_R2_BUCKET_NAME||'').trim();
+  const token=String(env.CF_ANALYTICS_API_TOKEN||'').trim();
+  if(!accountId||!databaseId||!bucketName||!token)
+    return {status:'not_configured'};
+  if(!/^[a-fA-F0-9]{32}$/.test(accountId) ||
+     !/^[a-fA-F0-9-]{36}$/.test(databaseId) ||
+     !/^[a-z0-9][a-z0-9-]{1,62}$/.test(bucketName))
+    return {status:'invalid_configuration'};
+
+  // Edge cache is optional (e.g. unavailable during local development).
+  // Cache only after the authenticated Admin session check in route().
+  const cache=typeof caches!=='undefined'?caches.default:null;
+  const cacheKey=new Request(url.origin+'/api/panel?view=usage&internal_cache_v=1');
+  if(cache){
+    try{
+      const cached=await cache.match(cacheKey);
+      if(cached)return await cached.json();
+    }catch{}
+  }
+
+  const now=new Date();
+  const monthStart=now.toISOString().slice(0,7)+'-01';
+  const monthFrom=monthStart+'T00:00:00Z';
+  const today=now.toISOString().slice(0,10);
+  const storageStart=new Date(now.getTime()-7*86400000).toISOString();
+  const query=String.raw`query GPBSUsage($accountTag: string!, $databaseId: string!, $bucketName: string!,
+      $startDate: Date!, $endDate: Date!, $storageFrom: Time!, $storageTo: Time!, $monthFrom: Time!) {
+    viewer {
+      accounts(filter:{accountTag:$accountTag}) {
+        d1AnalyticsAdaptiveGroups(limit:10000,
+          filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId},
+          orderBy:[date_DESC]) {
+          sum { rowsRead rowsWritten }
+        }
+        d1StorageAdaptiveGroups(limit:1,
+          filter:{databaseId:$databaseId,datetime_geq:$storageFrom,datetime_leq:$storageTo},
+          orderBy:[datetime_DESC]) {
+          max { databaseSizeBytes }
+          dimensions { datetime }
+        }
+        r2StorageAdaptiveGroups(limit:1,
+          filter:{bucketName:$bucketName,datetime_geq:$storageFrom,datetime_leq:$storageTo},
+          orderBy:[datetime_DESC]) {
+          max { payloadSize metadataSize objectCount }
+          dimensions { datetime }
+        }
+        r2OperationsAdaptiveGroups(limit:10000,
+          filter:{bucketName:$bucketName,datetime_geq:$monthFrom,datetime_leq:$storageTo}) {
+          sum { requests }
+        }
+      }
+    }
+  }`;
+  const abort=new AbortController();
+  const timer=setTimeout(()=>abort.abort(),9000);
+  try{
+    const response=await fetch('https://api.cloudflare.com/client/v4/graphql',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({query,variables:{
+        accountTag:accountId,databaseId,bucketName,
+        startDate:monthStart,endDate:today,storageFrom:storageStart,storageTo:now.toISOString(),monthFrom
+      }}),
+      signal:abort.signal
+    });
+    if(!response.ok)throw Error('Analytics HTTP '+response.status);
+    const result=await response.json();
+    const account=result?.data?.viewer?.accounts?.[0];
+    if((result.errors&&result.errors.length)||!account)
+      throw Error('Analytics GraphQL unavailable');
+    const d1Metrics=account.d1AnalyticsAdaptiveGroups||[];
+    const d1Storage=account.d1StorageAdaptiveGroups?.[0]||null;
+    const r2Storage=account.r2StorageAdaptiveGroups?.[0]||null;
+    const r2Ops=account.r2OperationsAdaptiveGroups||[];
+    const safeNumber=n=>n==null||!Number.isFinite(Number(n))?null:Number(n);
+    const total=(rows,key)=>rows.reduce((sum,row)=>sum+(safeNumber(row?.sum?.[key])||0),0);
+    const output={
+      status:'ok',sampledAt:now.toISOString(),month:now.toISOString().slice(0,7),
+      d1:{
+        sizeBytes:safeNumber(d1Storage?.max?.databaseSizeBytes),
+        storageSampleAt:d1Storage?.dimensions?.datetime||null,
+        rowsRead:d1Metrics.length?total(d1Metrics,'rowsRead'):null,
+        rowsWritten:d1Metrics.length?total(d1Metrics,'rowsWritten'):null
+      },
+      r2:{
+        sizeBytes:r2Storage?((safeNumber(r2Storage.max?.payloadSize)||0)+
+          (safeNumber(r2Storage.max?.metadataSize)||0)):null,
+        objectCount:safeNumber(r2Storage?.max?.objectCount),
+        storageSampleAt:r2Storage?.dimensions?.datetime||null,
+        operations:r2Ops.length?total(r2Ops,'requests'):null
+      }
+    };
+    if(cache){
+      try{await cache.put(cacheKey,new Response(JSON.stringify(output),{
+        headers:{'Cache-Control':'public, max-age=900'}
+      }));}catch{}
+    }
+    return output;
+  }catch(error){
+    console.error('Cloudflare analytics unavailable',error?.name||'Error');
+    return {status:'unavailable'};
+  }finally{clearTimeout(timer);}
+}
+
+async function adminUsage(env,url) {
+  // Application-specific photo safeguards, not Cloudflare billing usage.
+  let photo=null;
+  try{
+    const table=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_r2_photo_quota'"
+    ).first();
+    if(table){
+      const row=await env.DB.prepare(
+        'SELECT used_bytes,cycle,write_count,read_count FROM pl_r2_photo_quota WHERE id=1'
+      ).first();
+      if(row)photo={
+        usedBytes:Number(row.used_bytes)||0,
+        warningBytes:8000000000,hardBytes:9000000000,
+        month:row.cycle||null,
+        readCount:Number(row.read_count)||0,
+        writeCount:Number(row.write_count)||0
+      };
+    }
+  }catch(error){console.error('Local photo usage unavailable',error?.name||'Error');}
+  return {cloudflare:await cloudflareUsage(env,url),photo};
+}
+
 async function queryPanel(env,view,url) {
+  if(view==='usage')return adminUsage(env,url);
   if(view==='indexMigration') {
     await ensurePartIndexes(env.DB);
     const result=await env.DB.prepare(
@@ -207,10 +339,21 @@ async function queryPanel(env,view,url) {
       ).all(),
       env.DB.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name IN "+
-        "('pl_warehouse_sessions','pl_warehouse_session_lines','pl_nok_session_lines','pl_part_verifications')"
+        "('pl_warehouse_sessions','pl_warehouse_session_lines','pl_nok_session_lines','pl_part_verifications','pl_part_photo_objects','pl_part_photos')"
       ).all()
     ]);
     const existing = new Set((tables.results||[]).map(row=>row.name));
+    // Each active catalogue part counts once, even if an old D1 photo and an
+    // R2 photo reference coexist during migration.
+    const photoSources=[];
+    if(existing.has('pl_part_photo_objects'))
+      photoSources.push('EXISTS(SELECT 1 FROM pl_part_photo_objects r WHERE r.part_id=p.id)');
+    if(existing.has('pl_part_photos'))
+      photoSources.push('EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id)');
+    const photoCount=photoSources.length?await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM parts p WHERE p.active=1 AND ('+
+      photoSources.join(' OR ')+')'
+    ).first():{n:0};
     const documentCounts = {PZ:0,WZ:0};
     for(const row of oldOperations.results||[]) {
       if(row.direction==='PZ'||row.direction==='WZ')
@@ -258,6 +401,7 @@ async function queryPanel(env,view,url) {
       warehouses:Number(warehouses?.total||0),
       warehouseCounts:{pl:Number(warehouses?.pl||0),fr:Number(warehouses?.fr||0)},
       parts:Number(parts?.n||0),
+      photos:Number(photoCount?.n||0),
       operations:documentCounts.PZ+documentCounts.WZ,
       operationCounts:{pz:documentCounts.PZ,wz:documentCounts.WZ},
       users:Number(users?.n||0),
@@ -899,7 +1043,7 @@ async function route(request,env) {
     const session=await readSession(request,env.PANEL_SESSION_SECRET);
     if(!session) return fail('Zaloguj się do panelu.',401);
     const view=url.searchParams.get('view')||'summary';
-    if((view==='users'||view==='newParts') && session.role!=='ADMIN')
+    if((view==='users'||view==='newParts'||view==='usage') && session.role!=='ADMIN')
       return fail('Brak uprawnień.',403);
     if(view==='partPhoto') {
       const partId=url.searchParams.get('part')||'';
