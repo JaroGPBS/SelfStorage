@@ -198,7 +198,8 @@ function renderMenu(){
   // visible to Admin, not permission grants and NEVER queried through the API.
   const pl=state.warehouses.filter(w=>w.country_code==='PL');
   const fr=state.warehouses.filter(w=>w.country_code==='FR');
-  const canPreviewFrance=state.user?.role==='ADMIN';
+  const canPreviewFrance=state.user?.role==='ADMIN'&&
+    String(state.user?.nickname||'').trim().toUpperCase()==='JJ';
   const renderReal=w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+
     escapeHtml(w.name)+'</button>';
   const group=(country,items)=>'<div class="office-market-group">'+
