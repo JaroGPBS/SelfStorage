@@ -246,11 +246,26 @@ async function cloudflareUsage(env,url) {
       }}),
       signal:abort.signal
     });
-    if(!response.ok)throw Error('Analytics HTTP '+response.status);
+    // Return safe error categories only. Never expose the token or Cloudflare's
+    // raw error messages, which may contain account identifiers.
+    if(!response.ok){
+      const reason=[401,403].includes(response.status)?'authorization':
+        response.status===400?'request_invalid':
+        response.status===429?'rate_limited':'http_error';
+      return {status:'unavailable',reason,httpStatus:response.status};
+    }
     const result=await response.json();
+    if(Array.isArray(result.errors)&&result.errors.length){
+      const descriptions=result.errors.map(error=>String(error?.message||'')).join(' ');
+      const reason=/cannot query field|unknown field|unknown argument/i.test(descriptions)
+        ?'graphql_schema':/variable|expected type|invalid value|unknown type/i.test(descriptions)
+        ?'graphql_variables':/limit|budget|cost|quota|too many/i.test(descriptions)
+        ?'graphql_limit':/forbidden|unauthori[sz]ed|permission|access denied/i.test(descriptions)
+        ?'authorization':'graphql_error';
+      return {status:'unavailable',reason};
+    }
     const account=result?.data?.viewer?.accounts?.[0];
-    if((result.errors&&result.errors.length)||!account)
-      throw Error('Analytics GraphQL unavailable');
+    if(!account)return {status:'unavailable',reason:'account_unavailable'};
     const d1Metrics=account.d1AnalyticsAdaptiveGroups||[];
     const d1Storage=account.d1StorageAdaptiveGroups?.[0]||null;
     const r2Storage=account.r2StorageAdaptiveGroups?.[0]||null;
@@ -280,8 +295,9 @@ async function cloudflareUsage(env,url) {
     }
     return output;
   }catch(error){
-    console.error('Cloudflare analytics unavailable',error?.name||'Error');
-    return {status:'unavailable'};
+    const reason=error?.name==='AbortError'?'timeout':'network_error';
+    console.error('Cloudflare analytics unavailable',reason);
+    return {status:'unavailable',reason};
   }finally{clearTimeout(timer);}
 }
 
