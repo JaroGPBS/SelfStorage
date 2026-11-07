@@ -434,8 +434,8 @@ tr:hover td{background:#ffffff04}
 .parts-review-table td.part-name-cell{font-size:13px;line-height:1.45}
 
 
-/* User-configurable Admin text sizes. The left sidebar intentionally stays 13px.
-   At 12px the content uses its original text sizes; 13px is the default. */
+/* User-configurable Admin text sizes. The left sidebar stays unchanged.
+   13px is the default; the content scales across 11, 13, 15 and 17px. */
 :root{--admin-font-delta:1px}
 :root[data-admin-font-size="11"]{--admin-font-delta:-1px}
 :root[data-admin-font-size="13"]{--admin-font-delta:1px}
