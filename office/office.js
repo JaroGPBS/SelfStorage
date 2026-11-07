@@ -10,7 +10,37 @@ const MODULE_GROUPS=[
   {id:'newgen',name:'NEW GEN',types:['CU IN','DUO L','DUO R']}
 ];
 const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.id,name:g.name}))];
-const state={user:null,warehouses:[],warehouse:'',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+// Office presentation only. These locations are NOT created in D1 and no fake stock is loaded.
+const FR_LAYOUT_WAREHOUSES=[
+  {key:'belleville',name:'Belleville'},
+  {key:'toulouse',name:'Tuluza'},
+  {key:'paris',name:'Paryż'},
+  {key:'bovis-paris',name:'Bovis Paryż'},
+  {key:'bovis-lille',name:'Bovis Lille'},
+  {key:'bovis-nantes',name:'Bovis Nantes'},
+  {key:'bovis-nancy',name:'Bovis Nancy'},
+  {key:'bovis-marseille',name:'Bovis Marsylia'},
+  {key:'bovis-bordeaux',name:'Bovis Bordeaux'},
+  {key:'bovis-toulouse',name:'Bovis Tuluza'},
+  {key:'bovis-pescau',name:'Bovis Pescau'}
+];
+const FR_LAYOUT_MODULES=[
+  {key:'machines',name:'Maszyny OK / NOK',icon:'▤'},
+  {key:'scanning',name:'Skanowanie S/N',icon:'⌗'},
+  {key:'service',name:'Serwisy',icon:'⚙'},
+  {key:'deliveries',name:'Dostawy',icon:'↓'},
+  {key:'crews',name:'Zaopatrzenie ekip',icon:'▦'}
+];
+const OFFICE_OPERATION_PREVIEWS={
+  pz:'Przyjęcia PZ',wz:'Wydania WZ',nok:'Części niekompletne',
+  inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',
+  labels:'Drukowanie etykiet',aggregate:'Zestawienie zbiorcze'
+};
+const normalizeWarehouseName=value=>String(value||'').normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pl')
+  .replace(/ł/g,'l').replace(/[^a-z0-9]/g,'');
+
+const state={user:null,warehouses:[],warehouse:'',preview:null,view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function dateText(raw){if(!raw)return '—';const dt=new Date(String(raw).replace(' ','T').replace(/Z?$/,'Z'));return isNaN(dt.getTime())?String(raw).slice(0,10):new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',day:'2-digit',month:'2-digit',year:'numeric'}).format(dt);}
 function isoWeek(raw){
@@ -155,7 +185,7 @@ function greetingName(user){
 }
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
-  state.user=payload.user;state.warehouses=payload.warehouses;
+  state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
   $('username').textContent=name?name+'!':'!';
@@ -164,24 +194,74 @@ function setLoggedIn(payload){
   renderMenu();selectView('stocks',state.warehouse);
 }
 function renderMenu(){
-  // One Office for both markets. Each user only sees warehouses granted in D1.
-  const sections=['PL','FR'].map(market=>{
-    const items=state.warehouses.filter(w=>w.country_code===market);
-    if(!items.length)return '';
-    return '<div class="office-market-label">'+(market==='FR'?'Francja':'Polska')+'</div>'+
-      items.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+escapeHtml(w.name)+'</button>').join('');
-  }).join('');
-  $('warehouseMenu').innerHTML=sections+
-    '<button type="button" class="subnav-btn" data-view="aggregate">Zestawienie zbiorcze</button>';
-  const french=realWarehouse(state.warehouse)?.country_code==='FR';
-  // French operational documents will be introduced with their own workflow,
-  // not erroneously pulled from Poland's PZ/WZ/inventory tables.
-  for(const el of document.querySelectorAll('#sidebar [data-view]')){
-    el.classList.toggle('hidden',french&&['pz','wz','nok','inventories','labels'].includes(el.dataset.view));
+  // Real warehouses obey D1 grants. Other FR entries are layout-only placeholders
+  // visible to Admin, not permission grants and NEVER queried through the API.
+  const pl=state.warehouses.filter(w=>w.country_code==='PL');
+  const fr=state.warehouses.filter(w=>w.country_code==='FR');
+  const canPreviewFrance=state.user?.role==='ADMIN';
+  const renderReal=w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+
+    escapeHtml(w.name)+'</button>';
+  const group=(country,items)=>'<div class="office-market-group">'+
+    '<div class="office-market-label">MAGAZYNY '+country+'</div>'+
+    '<div class="office-market-list">'+items+'</div></div>';
+  const plSection=group('PL',pl.length?pl.map(renderReal).join(''):
+    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>');
+  let frItems=[];
+  if(canPreviewFrance){
+    const used=new Set();
+    for(const location of FR_LAYOUT_WAREHOUSES){
+      const real=fr.find(w=>normalizeWarehouseName(w.name)===normalizeWarehouseName(location.name));
+      if(real){
+        used.add(real.id);
+        frItems.push(renderReal(real));
+      }else{
+        frItems.push('<button type="button" class="subnav-btn office-preview-link" '+
+          'data-preview-warehouse="'+escapeHtml(location.key)+'" title="Układ — bez danych">'+
+          escapeHtml(location.name)+'</button>');
+      }
+    }
+    frItems.push(...fr.filter(w=>!used.has(w.id)).map(renderReal));
+  }else{
+    frItems=fr.map(renderReal);
   }
-  document.querySelectorAll('[data-view],[data-warehouse]').forEach(el=>{
-    el.classList.toggle('active',el.dataset.view===state.view||(state.view==='stocks'&&el.dataset.warehouse===state.warehouse));
-  });
+  const hasFrance=canPreviewFrance||frItems.length>0;
+  $('warehouseMenu').innerHTML=plSection+
+    (hasFrance?group('FR',frItems.join('')):'');
+  const modules=$('frModuleMenu');
+  modules.classList.toggle('hidden',!hasFrance);
+  modules.innerHTML=hasFrance?'<div class="nav-divider"></div>'+
+    '<div class="office-sidebar-section">FRANCJA — MODUŁY</div>'+
+    FR_LAYOUT_MODULES.map(item=>'<button type="button" class="nav-item" '+
+      'data-fr-module="'+escapeHtml(item.key)+'"><span class="nav-icon">'+
+      escapeHtml(item.icon)+'</span>'+escapeHtml(item.name)+'</button>').join(''):'';
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-module],#sidebar [data-view]')){
+    const isReal=state.view==='stocks'&&el.dataset.warehouse===state.warehouse;
+    const isPreview=state.view==='preview'&&(
+      el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
+      el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
+    const isView=state.view!=='preview'&&el.dataset.view===state.view;
+    el.classList.toggle('active',Boolean(isReal||isPreview||isView));
+  }
+}
+function showOfficePreview(type,key,label){
+  // Abort stale data paints if an earlier real warehouse request was in flight.
+  ++state.requestId;
+  state.view='preview';
+  state.preview={type,key,label};
+  state.stockTab='parts';state.search='';state.focusDocument=null;
+  $('sidebar').classList.remove('open');
+  renderMenu();
+  setHead(label,'GPBS STORAGE / FRANCJA','Układ przygotowany do podłączenia danych.');
+  $('pageKicker').textContent='FRANCJA / UKŁAD OFFICE';
+  $('officePreviewTitle').textContent=label;
+  $('officePreviewDescription').textContent=type==='warehouse'
+    ?'Przyszły podgląd stanów i operacji magazynu '+label+'.'
+    :'Miejsce na funkcję „'+label+'” w systemie francuskim.';
+  $('officePreview').classList.remove('hidden');
+  $('officeTableCard').classList.add('hidden');
+  $('pageActions').classList.add('hidden');
+  $('warehouseCrumb').classList.add('hidden');
+  errorBanner('');
 }
 function setHead(title,kicker,desc){
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
@@ -269,8 +349,14 @@ function setModuleCategory(category){
 }
 function selectView(view,warehouse,focusDocument=null){
   const targetWarehouse=warehouse||state.warehouse;
-  if(realWarehouse(targetWarehouse)?.country_code==='FR' &&
-     !['stocks','aggregate','vehicles'].includes(view))view='stocks';
+  const french=warehouse?realWarehouse(warehouse)?.country_code==='FR':
+    Boolean(state.preview)||realWarehouse(targetWarehouse)?.country_code==='FR';
+  if(french&&view!=='stocks'){
+    return showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view]||view);
+  }
+  if(warehouse)state.preview=null;
+  $('officePreview').classList.add('hidden');
+  $('pageActions').classList.remove('hidden');
   state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
@@ -564,6 +650,7 @@ function drawVehicles(){
   noteSearch(0,0,'pojazdach');
 }
 async function render(){
+  if(state.view==='preview')return;
   const ticket=++state.requestId;
   if(state.view==='labels'){
     errorBanner('');
@@ -758,6 +845,18 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
   const w=e.target.closest('[data-warehouse]');if(w){selectView('stocks',w.dataset.warehouse);return;}
+  const preview=e.target.closest('[data-preview-warehouse]');
+  if(preview){
+    const item=FR_LAYOUT_WAREHOUSES.find(x=>x.key===preview.dataset.previewWarehouse);
+    if(item)showOfficePreview('warehouse',item.key,item.name);
+    return;
+  }
+  const module=e.target.closest('[data-fr-module]');
+  if(module){
+    const item=FR_LAYOUT_MODULES.find(x=>x.key===module.dataset.frModule);
+    if(item)showOfficePreview('module',item.key,item.name);
+    return;
+  }
   const v=e.target.closest('[data-view]');if(v){selectView(v.dataset.view);return;}
   const part=e.target.closest('[data-part]');if(part){openPart(part.dataset.part);return;}
   const partRow=e.target.closest('tr[data-part-row]');if(partRow){openPart(partRow.dataset.partRow);return;}
@@ -831,7 +930,7 @@ $('refresh').addEventListener('click',()=>{
   if(state.view==='labels'){window.GPBSOfficeLabels?.refresh();return;}
   state.partsCache.clear();state.detailCache.clear();render();
 });
-$('warehouseToggle').addEventListener('click',()=>{const expanded=$('warehouseToggle').getAttribute('aria-expanded')==='true';$('warehouseToggle').setAttribute('aria-expanded',String(!expanded));$('warehouseMenu').classList.toggle('collapsed',expanded);});
+// Warehouse lists remain permanently visible; no expanding menu.
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 $('logout').addEventListener('click',async()=>{
   try{
