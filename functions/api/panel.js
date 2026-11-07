@@ -9,6 +9,10 @@ const COOKIE_NAME = '__Host-gpbs_panel_session';
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const SCRIPT_FALLBACK = 'https://script.google.com/macros/s/AKfycbzsQXobFjEBDN_UG054chyGMr60_UPLSjR0AQqIp4-KbfwRDsjxw11j3corErgoNfsL1g/exec';
 const ALLOWED_ROLES = new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
+// Owner's fixed legacy login ID, from Admin Stock FR / Ekipy.
+// The password and personally chosen legacy PIN remain unchanged.
+const OWNER_LEGACY_ID = 'ADMIN';
+const OWNER_ROLE = 'ADMIN';
 const enc = new TextEncoder();
 
 function respond(body, status=200, extra={}) {
@@ -66,7 +70,7 @@ async function readSession(request, secret) {
     const key=await signingKey(secret);
     if (!await crypto.subtle.verify('HMAC',key,signature,data)) return null;
     const session=JSON.parse(new TextDecoder().decode(data));
-    if (session.role!=='ADMIN'||!session.id||
+    if (session.role!=='ADMIN'||session.id!==OWNER_LEGACY_ID||
       !Number.isFinite(session.exp)||session.exp<Date.now()||
       session.exp>Date.now()+SESSION_TTL_MS) return null;
     return session;
@@ -668,6 +672,7 @@ async function addUser(env, body, actor) {
   const name=String(body?.name||'').trim();
   const role=String(body?.role||'').trim().toUpperCase();
   const warehouses=body?.warehouses;
+  if(role===OWNER_ROLE)return fail('Nie można dodać kolejnego głównego administratora z poziomu panelu.',403);
   if(name.length<2||name.length>100 || !ALLOWED_ROLES.has(role) ||
     !Array.isArray(warehouses)||warehouses.length>20 ||
     new Set(warehouses).size!==warehouses.length ||
@@ -714,6 +719,8 @@ async function updateUser(env, body, actor) {
   }
   const existing=await env.DB.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!existing)return fail('Nie znaleziono użytkownika.',404);
+  if(existing.role_code===OWNER_ROLE||role===OWNER_ROLE)
+    return fail('Rola ADMIN jest chroniona przed zmianami przez panel.',403);
   if(await archiveTableExists(env.DB)&&
      await env.DB.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first())
     return fail('Konto w archiwum. Użyj najpierw opcji Przywróć.',409);
@@ -807,6 +814,8 @@ async function staffMutation(env,body,actor,edit) {
   if(!await requireStaffSchema(db))
     return fail('Najpierw wykonaj migrację db/05-user-private-profiles.sql w D1.',503);
   const id=edit?String(body.userId||''):'GPBS-U-'+crypto.randomUUID();
+  if(!edit&&staff.role===OWNER_ROLE)
+    return fail('Nowego konta ADMIN nie można utworzyć w panelu.',403);
   let before=null,prior=[];
   if(edit) {
     if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Niepoprawne konto.',400);
@@ -821,6 +830,16 @@ async function staffMutation(env,body,actor,edit) {
     }
     prior=(await db.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?')
       .bind(id).all()).results.map(r=>r.warehouse_id);
+    if(before.role_code===OWNER_ROLE){
+      // Allow profile/contact edits, but forbid role, active flag and grant changes.
+      // Compare sets so visual checkbox order cannot change the outcome.
+      const unchangedGrants=prior.length===staff.warehouses.length &&
+        prior.every(w=>staff.warehouses.includes(w));
+      if(staff.role!==OWNER_ROLE||staff.active!==1||before.active!==1||!unchangedGrants)
+        return fail('Główne konto administratora: rola, status i uprawnienia są chronione.',403);
+    }else if(staff.role===OWNER_ROLE){
+      return fail('Nie można nadać roli głównego administratora innemu użytkownikowi.',403);
+    }
   }
   // The short visible nickname must identify one account unambiguously.
   const nicknameUsed=await db.prepare(
@@ -878,6 +897,7 @@ async function changeStaffArchive(env,body,actor,restore) {
     return fail('Najpierw wykonaj migrację db/06-user-archive.sql w Cloudflare D1.',503);
   const user=await db.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!user)return fail('Nie znaleziono użytkownika.',404);
+  if(user.role_code===OWNER_ROLE)return fail('Konta głównego administratora nie można zarchiwizować.',403);
   const archive=await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first();
   if(restore&&!archive)return fail('To konto nie jest zarchiwizowane.',409);
   if(!restore&&archive)return fail('Konto zostało już zarchiwizowane.',409);
@@ -986,9 +1006,10 @@ async function provisionStaffPins(env,body,actor) {
   if(action==='pinGenerateMissing') {
     const role=String(body.role||'').trim().toUpperCase();
     if(role&&!ALLOWED_ROLES.has(role))return fail('Nieprawidłowa rola.',400);
+    if(role===OWNER_ROLE)return fail('PIN administratora nie jest generowany automatycznie.',403);
     const sql='SELECT u.id,u.name,u.role_code FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
-      'WHERE u.active=1 AND p.user_id IS NULL '+
+      "WHERE u.active=1 AND u.role_code<>'ADMIN' AND p.user_id IS NULL "+
       (await archiveTableExists(db)?'AND NOT EXISTS (SELECT 1 FROM user_archives ar WHERE ar.user_id=u.id) ':'')+
       (role?'AND u.role_code=? ':'')+
       'ORDER BY u.created_at,u.id LIMIT ?';
@@ -1014,6 +1035,8 @@ async function provisionStaffPins(env,body,actor) {
     'SELECT id,name,role_code FROM users WHERE id=? AND active=1'
   ).bind(userId).first();
   if(!user)return fail('Nie znaleziono aktywnego użytkownika.',404);
+  if(user.role_code===OWNER_ROLE)
+    return fail('PIN administratora jest ustawiany indywidualnie, nie przez generator.',403);
   if(await archiveTableExists(db) &&
     await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(userId).first())
     return fail('Nie można nadać PIN-u użytkownikowi w archiwum.',409);
@@ -1196,7 +1219,8 @@ async function route(request,env) {
       if(pinLock>0) return blocked(pinLock);
 
       const actor=await verifyLegacyAdmin(body.pin,env);
-      if(!actor) return fail('Nieprawidłowe dane logowania.',401);
+      // Having the ADMIN role alone must never grant access to this panel.
+      if(actor!==OWNER_LEGACY_ID) return fail('Nieprawidłowe dane logowania.',401);
 
       // A failed database cleanup must not issue a session: fail closed.
       await clearLoginAttempts(env.DB,[ipKey,adminKey]);
