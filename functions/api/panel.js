@@ -234,6 +234,15 @@ async function cloudflareUsage(env,url) {
       }
     }
   }`;
+  // Interpret GraphQL errors locally; only predefined categories reach the browser.
+  function graphqlFailureReason(errors) {
+    const descriptions=errors.map(error=>String(error?.message||'')).join(' ');
+    return /cannot query field|unknown field|unknown argument/i.test(descriptions)
+      ?'graphql_schema':/variable|expected type|invalid value|unknown type|syntax error/i.test(descriptions)
+      ?'graphql_variables':/limit|budget|cost|quota|too many/i.test(descriptions)
+      ?'graphql_limit':/forbidden|unauthori[sz]ed|permission|access denied/i.test(descriptions)
+      ?'authorization':'graphql_error';
+  }
   const abort=new AbortController();
   const timer=setTimeout(()=>abort.abort(),9000);
   try{
@@ -249,20 +258,17 @@ async function cloudflareUsage(env,url) {
     // Return safe error categories only. Never expose the token or Cloudflare's
     // raw error messages, which may contain account identifiers.
     if(!response.ok){
+      const errorBody=response.status===400?await response.json().catch(()=>null):null;
       const reason=[401,403].includes(response.status)?'authorization':
+        response.status===400&&Array.isArray(errorBody?.errors)&&errorBody.errors.length
+          ?graphqlFailureReason(errorBody.errors):
         response.status===400?'request_invalid':
         response.status===429?'rate_limited':'http_error';
       return {status:'unavailable',reason,httpStatus:response.status};
     }
     const result=await response.json();
     if(Array.isArray(result.errors)&&result.errors.length){
-      const descriptions=result.errors.map(error=>String(error?.message||'')).join(' ');
-      const reason=/cannot query field|unknown field|unknown argument/i.test(descriptions)
-        ?'graphql_schema':/variable|expected type|invalid value|unknown type/i.test(descriptions)
-        ?'graphql_variables':/limit|budget|cost|quota|too many/i.test(descriptions)
-        ?'graphql_limit':/forbidden|unauthori[sz]ed|permission|access denied/i.test(descriptions)
-        ?'authorization':'graphql_error';
-      return {status:'unavailable',reason};
+      return {status:'unavailable',reason:graphqlFailureReason(result.errors)};
     }
     const account=result?.data?.viewer?.accounts?.[0];
     if(!account)return {status:'unavailable',reason:'account_unavailable'};
