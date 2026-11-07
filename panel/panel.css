@@ -828,3 +828,11 @@ tr:hover td{background:#ffffff04}
 .theme-swatch-gray{background:#98a4b0}
 .theme-swatch-dark{background:#161b22}
 @media(max-width:650px){.appearance-settings .theme-options{padding:15px 17px 23px}}
+
+/* Dedicated Admin PIN: compact private form in Security. */
+.owner-pin-form{max-width:490px;display:flex;flex-direction:column;gap:9px;padding:20px 22px 24px}
+.owner-pin-form label{font-size:13px;font-weight:700}
+.owner-pin-form input{width:100%;min-height:42px;padding:10px 12px;border:1px solid var(--line,#d4dbe3);border-radius:9px;background:var(--surface,#fff);color:var(--ink,#202631);font:inherit}
+.owner-pin-form .hint{line-height:1.5;margin:5px 0}
+.owner-pin-form .security-actions{margin-top:5px}
+.login-notice{margin:12px 0;font-size:13px;font-weight:650;color:#92d8ba}
