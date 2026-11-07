@@ -316,11 +316,11 @@ async function cloudflareUsage(env,url) {
       for(const sensitive of [token,accountId,databaseId,bucketName].filter(Boolean))
         clean=clean.split(sensitive).join('[redacted]');
       return clean
-        .replace(/Bearer\\s+\\S+/gi,'Bearer [redacted]')
-        .replace(/https?:\\/\\/[^\\s)]+/gi,'[URL]')
-        .replace(/\\b[a-f0-9]{32}\\b/gi,'[id]')
-        .replace(/\\b[a-f0-9]{8}-[a-f0-9-]{27,}\\b/gi,'[id]')
-        .replace(/[A-Za-z0-9_\\-]{40,}/g,'[value]')
+        .replace(/Bearer\s+\S+/gi,'Bearer [redacted]')
+        .replace(/https?:\/\/[^\s)]+/gi,'[URL]')
+        .replace(/\b[a-f0-9]{32}\b/gi,'[id]')
+        .replace(/\b[a-f0-9]{8}-[a-f0-9-]{27,}\b/gi,'[id]')
+        .replace(/[A-Za-z0-9_\-]{40,}/g,'[value]')
         .slice(0,240);
     }
     const code=String(error?.cause?.code||'');
