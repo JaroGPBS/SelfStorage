@@ -193,7 +193,7 @@ async function cloudflareUsage(env,url) {
   // Edge cache is optional (e.g. unavailable during local development).
   // Cache only after the authenticated Admin session check in route().
   const cache=typeof caches!=='undefined'?caches.default:null;
-  const cacheKey=new Request(url.origin+'/api/panel?view=usage&internal_cache_v=2');
+  const cacheKey=new Request(url.origin+'/api/panel?view=usage&internal_cache_v=3');
   if(cache){
     try{
       const cached=await cache.match(cacheKey);
@@ -207,17 +207,19 @@ async function cloudflareUsage(env,url) {
   const today=now.toISOString().slice(0,10);
   const storageStart=new Date(now.getTime()-7*86400000).toISOString();
   const values={accountTag:accountId,databaseId,bucketName,startDate:monthStart,
-    endDate:today,storageFrom:storageStart,storageTo:now.toISOString(),monthFrom};
+    endDate:today,today,storageFrom:storageStart,storageTo:now.toISOString(),monthFrom};
   // Each node is independent; failure of one does not blank the entire dashboard.
   const specs=[
     {key:'d1Rows',args:'$accountTag:string!,$databaseId:string!,$startDate:Date!,$endDate:Date!',
       node:'d1AnalyticsAdaptiveGroups(limit:10000,filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId}) {sum {rowsRead rowsWritten}}'},
+    {key:'d1Today',args:'$accountTag:string!,$databaseId:string!,$today:Date!',
+      node:'d1AnalyticsAdaptiveGroups(limit:10000,filter:{date_geq:$today,date_leq:$today,databaseId:$databaseId}) {sum {rowsRead rowsWritten}}'},
     {key:'d1Storage',args:'$accountTag:string!,$databaseId:string!,$storageFrom:Time!,$storageTo:Time!',
       node:'d1StorageAdaptiveGroups(limit:1,filter:{databaseId:$databaseId,datetime_geq:$storageFrom,datetime_leq:$storageTo},orderBy:[datetime_DESC]) {max {databaseSizeBytes} dimensions {datetime}}'},
     {key:'r2Storage',args:'$accountTag:string!,$bucketName:string!,$storageFrom:Time!,$storageTo:Time!',
       node:'r2StorageAdaptiveGroups(limit:1,filter:{bucketName:$bucketName,datetime_geq:$storageFrom,datetime_leq:$storageTo},orderBy:[datetime_DESC]) {max {payloadSize metadataSize objectCount} dimensions {datetime}}'},
     {key:'r2Ops',args:'$accountTag:string!,$bucketName:string!,$monthFrom:Time!,$storageTo:Time!',
-      node:'r2OperationsAdaptiveGroups(limit:10000,filter:{bucketName:$bucketName,datetime_geq:$monthFrom,datetime_leq:$storageTo}) {sum {requests}}'}
+      node:'r2OperationsAdaptiveGroups(limit:10000,filter:{bucketName:$bucketName,datetime_geq:$monthFrom,datetime_leq:$storageTo}) {sum {requests} dimensions {actionType}}'}
   ];
   const safeMessage=value=>{
     let clean=String(value||'');
@@ -278,16 +280,45 @@ async function cloudflareUsage(env,url) {
   let results;
   try{results=await Promise.all(specs.map(load));}
   finally{clearTimeout(timer);}
-  const [d1Rows,d1Size,r2Size,r2Ops]=results;
+  const [d1Rows,d1Today,d1Size,r2Size,r2Ops]=results;
   const successCount=results.filter(r=>r.ok).length;
   const issues={
-    d1:results.slice(0,2).map((r,i)=>r.ok?null:{dataset:specs[i].key,reason:r.reason}).filter(Boolean),
-    r2:results.slice(2).map((r,i)=>r.ok?null:{dataset:specs[i+2].key,reason:r.reason}).filter(Boolean)
+    d1:results.slice(0,3).map((r,i)=>r.ok?null:{dataset:specs[i].key,reason:r.reason}).filter(Boolean),
+    r2:results.slice(3).map((r,i)=>r.ok?null:{dataset:specs[i+3].key,reason:r.reason}).filter(Boolean)
   };
   const safeNumber=n=>n==null||!Number.isFinite(Number(n))?null:Number(n);
   const total=(rows,key)=>rows.reduce((sum,row)=>sum+(safeNumber(row?.sum?.[key])||0),0);
   const d1Storage=d1Size.ok?d1Size.rows[0]:null;
   const r2Storage=r2Size.ok?r2Size.rows[0]:null;
+  // R2 quota classes follow the official operation-to-class mapping.
+  // Unknown action types make class counts unavailable rather than falsely reporting 0.
+  const r2ClassA=new Set([
+    'LISTBUCKETS','PUTBUCKET','LISTOBJECTS','PUTOBJECT','COPYOBJECT',
+    'COMPLETEMULTIPARTUPLOAD','CREATEMULTIPARTUPLOAD',
+    'LIFECYCLESTORAGETIERTRANSITION','LISTMULTIPARTUPLOADS',
+    'UPLOADPART','UPLOADPARTCOPY','LISTPARTS','PUTBUCKETENCRYPTION',
+    'PUTBUCKETCORS','PUTBUCKETLIFECYCLECONFIGURATION'
+  ]);
+  const r2ClassB=new Set([
+    'HEADBUCKET','HEADOBJECT','GETOBJECT','USAGESUMMARY',
+    'GETBUCKETENCRYPTION','GETBUCKETLOCATION','GETBUCKETCORS',
+    'GETBUCKETLIFECYCLECONFIGURATION'
+  ]);
+  const r2FreeOps=new Set(['DELETEOBJECT','DELETEBUCKET','ABORTMULTIPARTUPLOAD']);
+  const opsSummary={a:0,b:0,unknown:0};
+  if(r2Ops.ok){
+    for(const row of r2Ops.rows){
+      const action=String(row?.dimensions?.actionType||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+      const count=safeNumber(row?.sum?.requests)||0;
+      if(r2ClassA.has(action))opsSummary.a+=count;
+      else if(r2ClassB.has(action))opsSummary.b+=count;
+      else if(!r2FreeOps.has(action))opsSummary.unknown+=count;
+    }
+    if(opsSummary.unknown){
+      console.error('Cloudflare usage R2 contains unclassified operation types',
+        'count',opsSummary.unknown);
+    }
+  }
   const output={
     status:successCount?'ok':'unavailable',
     reason:successCount?null:(results[0]?.reason||'graphql_error'),
@@ -295,15 +326,20 @@ async function cloudflareUsage(env,url) {
     d1:{
       sizeBytes:safeNumber(d1Storage?.max?.databaseSizeBytes),
       storageSampleAt:d1Storage?.dimensions?.datetime||null,
-      rowsRead:d1Rows.ok&&d1Rows.rows.length?total(d1Rows.rows,'rowsRead'):null,
-      rowsWritten:d1Rows.ok&&d1Rows.rows.length?total(d1Rows.rows,'rowsWritten'):null
+      rowsRead:d1Rows.ok?total(d1Rows.rows,'rowsRead'):null,
+      rowsWritten:d1Rows.ok?total(d1Rows.rows,'rowsWritten'):null,
+      todayRowsRead:d1Today.ok?total(d1Today.rows,'rowsRead'):null,
+      todayRowsWritten:d1Today.ok?total(d1Today.rows,'rowsWritten'):null
     },
     r2:{
       sizeBytes:r2Storage?((safeNumber(r2Storage.max?.payloadSize)||0)+
         (safeNumber(r2Storage.max?.metadataSize)||0)):null,
       objectCount:safeNumber(r2Storage?.max?.objectCount),
       storageSampleAt:r2Storage?.dimensions?.datetime||null,
-      operations:r2Ops.ok&&r2Ops.rows.length?total(r2Ops.rows,'requests'):null
+      operations:r2Ops.ok?total(r2Ops.rows,'requests'):null,
+      classA:r2Ops.ok&&!opsSummary.unknown?opsSummary.a:null,
+      classB:r2Ops.ok&&!opsSummary.unknown?opsSummary.b:null,
+      unclassified:r2Ops.ok?opsSummary.unknown:null
     }
   };
   // Keep only complete successful responses in cache.
