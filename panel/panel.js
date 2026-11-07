@@ -17,11 +17,13 @@
   };
 
   const FONT_SIZE_KEY='gpbs_admin_font_size';
-  const FONT_SIZES=new Set(['12','13','14','15']);
+  const FONT_SIZES=new Set(['11','13','15','17']);
 
   function storedFontSize() {
     try {
       const value=localStorage.getItem(FONT_SIZE_KEY);
+      if(value==='12')return '11'; // Previous option, migrate existing selection.
+      if(value==='14')return '15';
       return FONT_SIZES.has(value)?value:'13';
     } catch { return '13'; }
   }
@@ -35,6 +37,28 @@
     if(save) {
       try { localStorage.setItem(FONT_SIZE_KEY,value); }
       catch { /* Private browsing / blocked storage: keep selection for this page. */ }
+    }
+  }
+
+  const THEME_KEY='gpbs_admin_theme';
+  const THEMES=new Set(['white','gray','dark']);
+
+  function storedTheme() {
+    try {
+      const value=localStorage.getItem(THEME_KEY);
+      return THEMES.has(value)?value:'dark';
+    } catch { return 'dark'; }
+  }
+
+  function applyTheme(value,save=true) {
+    if(!THEMES.has(value))return;
+    document.documentElement.dataset.adminTheme=value;
+    document.querySelectorAll('input[name="adminTheme"]').forEach(input=>{
+      input.checked=input.value===value;
+    });
+    if(save) {
+      try { localStorage.setItem(THEME_KEY,value); }
+      catch { /* Private mode: still apply selected theme in this tab. */ }
     }
   }
 
@@ -1182,6 +1206,11 @@
 
   async function init() {
     applyFontSize(storedFontSize(),false);
+    applyTheme(storedTheme(),false);
+    $('themeOptions').addEventListener('change',event=>{
+      const input=event.target;
+      if(input.matches('input[name="adminTheme"]'))applyTheme(input.value);
+    });
     $('fontOptions').addEventListener('change',event=>{
       const input=event.target;
       if(input.matches('input[name="adminFontSize"]'))applyFontSize(input.value);
