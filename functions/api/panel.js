@@ -205,7 +205,7 @@ async function storedOwnerPinDigest(db){
   return entry?.pin_digest||null;
 }
 async function verifyOwnerLoginPin(pin,env){
-  if(typeof pin!=='string'||!/^\\d{4}$/.test(pin))return false;
+  if(typeof pin!=='string'||!/^\d{4}$/.test(pin))return false;
   const digest=await storedOwnerPinDigest(env.DB);
   if(digest){
     const supplied=await ownerPinDigest(env,pin);
@@ -216,7 +216,7 @@ async function verifyOwnerLoginPin(pin,env){
 async function changeOwnerPin(env,body){
   const newPin=body.newPin;
   const confirm=body.confirmPin;
-  if(typeof newPin!=='string'||!/^\\d{4}$/.test(newPin)||
+  if(typeof newPin!=='string'||!/^\d{4}$/.test(newPin)||
      confirm!==newPin||['0000','1111','1234'].includes(newPin))
     return fail('Wpisz i potwierdź nowy 4-cyfrowy PIN (bez prostych kodów).',400);
   if(!await equalSecret(body.password,env.PANEL_ADMIN_PASSWORD))
