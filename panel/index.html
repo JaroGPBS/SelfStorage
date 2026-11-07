@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=20">
-  <script src="./panel.js?v=33" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=21">
+  <script src="./panel.js?v=34" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -102,21 +102,42 @@
               <h2 id="usageHeading">Wykorzystanie zasobów Cloudflare</h2>
               <span id="usageLastUpdated">Ładowanie danych…</span>
             </div>
+            <p class="resource-quota-disclaimer">Progi porównawcze <strong>Free / R2 Standard</strong> (plan konta nie jest automatycznie weryfikowany). Wykorzystanie dotyczy tylko tej bazy i bucketa; część progów jest wspólna dla całego konta.</p>
             <div class="resource-grid">
               <article class="resource-card">
                 <div class="resource-topline"><h3>D1 · Baza danych</h3><span>gpbs-storage</span></div>
-                <div class="resource-main-label">Zajęta przestrzeń · ostatni pomiar</div>
-                <div id="usageD1Size" class="resource-main-value">—</div>
+                <div class="resource-main-label">Zajęta przestrzeń · ostatni pomiar / limit bazy Free</div>
+                <div id="usageD1Size" class="resource-main-value">— / 500 MB</div>
+                <div class="resource-meter"><div id="usageD1SizeMeter" class="resource-meter-fill"></div></div>
+                <div id="usageD1SizePct" class="resource-meter-label">—</div>
+                <p class="resource-quota-hint">Free: 500 MB na bazę, 5 GB łącznie na konto D1. Pomiar obejmuje tylko gpbs-storage.</p>
+                <div class="resource-item"><span>Wiersze odczytane · dziś (UTC)</span><strong id="usageD1TodayReads">— / 5 000 000</strong></div>
+                <div class="resource-meter"><div id="usageD1ReadsMeter" class="resource-meter-fill"></div></div>
+                <div id="usageD1ReadsPct" class="resource-meter-label">—</div>
+                <div class="resource-item"><span>Wiersze zapisane · dziś (UTC)</span><strong id="usageD1TodayWrites">— / 100 000</strong></div>
+                <div class="resource-meter"><div id="usageD1WritesMeter" class="resource-meter-fill"></div></div>
+                <div id="usageD1WritesPct" class="resource-meter-label">—</div>
+                <p class="resource-quota-hint">Dzienne progi Free dotyczą wszystkich baz D1 na koncie i odnawiają się o 00:00 UTC.</p>
                 <div class="resource-item"><span>Wiersze odczytane · ten miesiąc</span><strong id="usageD1Reads">—</strong></div>
                 <div class="resource-item"><span>Wiersze zapisane · ten miesiąc</span><strong id="usageD1Writes">—</strong></div>
                 <p class="resource-note" id="usageD1Note">Oczekiwanie na dane Cloudflare.</p>
               </article>
               <article class="resource-card">
                 <div class="resource-topline"><h3>R2 · Zdjęcia części</h3><span>Magazyn plików</span></div>
-                <div class="resource-main-label">Zajęta przestrzeń · ostatni pomiar</div>
-                <div id="usageR2Size" class="resource-main-value">—</div>
+                <div class="resource-main-label">Zajęta przestrzeń · ostatni pomiar / darmowa pula Standard</div>
+                <div id="usageR2Size" class="resource-main-value">— / 10 GB-mies.</div>
+                <div class="resource-meter"><div id="usageR2SizeMeter" class="resource-meter-fill"></div></div>
+                <div id="usageR2SizePct" class="resource-meter-label">—</div>
+                <p class="resource-quota-hint">Porównanie orientacyjne: bieżąca zajętość i pula 10 GB-mies. Rzeczywiste zużycie rozliczeniowe jest średnią w czasie.</p>
+                <div class="resource-item"><span>Operacje klasy A · ten miesiąc</span><strong id="usageR2ClassA">— / 1 000 000</strong></div>
+                <div class="resource-meter"><div id="usageR2AMeter" class="resource-meter-fill"></div></div>
+                <div id="usageR2APct" class="resource-meter-label">—</div>
+                <div class="resource-item"><span>Operacje klasy B · ten miesiąc</span><strong id="usageR2ClassB">— / 10 000 000</strong></div>
+                <div class="resource-meter"><div id="usageR2BMeter" class="resource-meter-fill"></div></div>
+                <div id="usageR2BPct" class="resource-meter-label">—</div>
+                <p class="resource-quota-hint">Pule R2 są miesięczne i wspólne dla wszystkich bucketów Standard na koncie. Tu pokazany jest tylko bucket GPBS.</p>
                 <div class="resource-item"><span>Liczba plików w R2</span><strong id="usageR2Objects">—</strong></div>
-                <div class="resource-item"><span>Operacje R2 · ten miesiąc</span><strong id="usageR2Ops">—</strong></div>
+                <div class="resource-item"><span>Wszystkie operacje R2 · ten miesiąc</span><strong id="usageR2Ops">—</strong></div>
                 <div class="resource-guard">
                   <div class="resource-item"><span>Wewnętrzny limit zdjęć GPBS</span><strong id="usageR2Guard">—</strong></div>
                   <div class="resource-meter"><div id="usageR2Meter" class="resource-meter-fill"></div></div>
