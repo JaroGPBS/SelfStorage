@@ -437,10 +437,10 @@ tr:hover td{background:#ffffff04}
 /* User-configurable Admin text sizes. The left sidebar intentionally stays 13px.
    At 12px the content uses its original text sizes; 13px is the default. */
 :root{--admin-font-delta:1px}
-:root[data-admin-font-size="12"]{--admin-font-delta:0px}
+:root[data-admin-font-size="11"]{--admin-font-delta:-1px}
 :root[data-admin-font-size="13"]{--admin-font-delta:1px}
-:root[data-admin-font-size="14"]{--admin-font-delta:2px}
 :root[data-admin-font-size="15"]{--admin-font-delta:3px}
+:root[data-admin-font-size="17"]{--admin-font-delta:5px}
 .main-layout,.modal{font-size:calc(14px + var(--admin-font-delta))}
 .main-layout .breadcrumb,.main-layout .connection{font-size:calc(12px + var(--admin-font-delta))}
 .main-layout .breadcrumb strong{font-size:calc(20px + var(--admin-font-delta))}
@@ -504,27 +504,30 @@ tr:hover td{background:#ffffff04}
   .modal.confirm-dialog #confirmDescription{font-size:calc(15px + var(--admin-font-delta))}
 }
 
-/* Appearance controls: only in Admin → Ustawienia; previews retain true px sizes. */
+/* One left-aligned list inside a single Settings panel, not four separate tiles. */
 .appearance-settings .font-options{margin:0;padding:23px 24px 28px;border:0;min-width:0}
 .appearance-settings .font-options legend{padding:22px 0 0;font-weight:800;color:#dbe2eb;font-size:calc(13px + var(--admin-font-delta))}
-.font-option-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:12px}
-.font-option{display:flex;align-items:flex-start;gap:13px;min-width:0;padding:16px;border-radius:11px;
-  background:#11161d;border:1px solid #384353;cursor:pointer;color:#eef2f7}
-.font-option:has(input:checked){border-color:#e74c59;background:#38232b;box-shadow:inset 0 1px #ffffff12}
-.font-option:focus-within{outline:2px solid #ff5252;outline-offset:2px}
+.font-option-list{display:flex;flex-direction:column;max-width:760px;margin-top:12px;
+  border:1px solid #384353;border-radius:11px;overflow:hidden;background:#11161d}
+.font-option{display:flex;align-items:center;gap:14px;min-width:0;padding:13px 16px;
+  cursor:pointer;color:#eef2f7}
+.font-option+.font-option{border-top:1px solid #35404c}
+.font-option:has(input:checked){background:#38232b}
+.font-option:focus-within{outline:2px solid #ff5252;outline-offset:-2px}
 .font-option input{appearance:auto;accent-color:#f24954;width:18px;height:18px;min-height:0;flex:0 0 18px;
-  padding:0;margin:2px 0 0;box-shadow:none}
-.font-option-content{display:grid;gap:8px;min-width:0;flex:1}
-.font-option-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.font-option-heading strong{font-size:calc(13px + var(--admin-font-delta))}
-.font-option-heading small{color:#9caabd;font-size:calc(11px + var(--admin-font-delta))}
-.font-sample{color:#d3dbe7;line-height:1.5;overflow-wrap:anywhere}
-.font-sample.sample-12{font-size:12px}
+  padding:0;margin:0;box-shadow:none}
+.font-option-name{width:112px;flex:0 0 112px;white-space:nowrap;font-size:calc(13px + var(--admin-font-delta))}
+.font-sample{color:#d3dbe7;line-height:1.5;flex:1;min-width:0;overflow-wrap:anywhere}
+.font-option-px{color:#9caabd;white-space:nowrap;margin-left:auto;font-size:calc(11px + var(--admin-font-delta))}
+.font-sample.sample-11{font-size:11px}
 .font-sample.sample-13{font-size:13px}
-.font-sample.sample-14{font-size:14px}
 .font-sample.sample-15{font-size:15px}
+.font-sample.sample-17{font-size:17px}
 .font-option-hint{color:#9cabbb;font-size:calc(12px + var(--admin-font-delta));line-height:1.6;margin:18px 0 0}
 @media(max-width:650px){
-  .font-option-list{grid-template-columns:1fr}
   .appearance-settings .font-options{padding:17px}
+  .font-option{flex-wrap:wrap;gap:7px 12px}
+  .font-option-name{width:auto;flex:1}
+  .font-sample{flex:0 0 calc(100% - 30px);margin-left:30px}
+  .font-option-px{margin-left:auto}
 }
