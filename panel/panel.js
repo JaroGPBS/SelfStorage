@@ -445,7 +445,7 @@
       row.append(td(user.warehouses||'—'));
       const pin=td('');pin.className='pin-cell';
       pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));
-      if(user.active&&!state.showArchives&&user.role_code!=='ADMIN') {
+      if(user.active&&!state.showArchives&&user.role_code!=='ADMIN'&&String(user.name||'').trim().toUpperCase()!=='JJ') {
         const pinAction=document.createElement('button');
         pinAction.className='btn mini pin-action';
         pinAction.type='button';pinAction.textContent=user.has_pin?'Reset PIN':'Generuj';
@@ -1003,7 +1003,7 @@
       $('userFirstName').value=existing?.first_name||'';
       $('userLastName').value=existing?.last_name||'';
       $('userPhone').value=existing?.phone||'';
-      const protectedAdmin=existing?.role_code==='ADMIN';
+      const protectedAdmin=existing?.role_code==='ADMIN'||String(existing?.name||'').trim().toUpperCase()==='JJ';
       $('userStatusRow').hidden=!existing;
       $('userStatus').value=existing?(existing.active?'1':'0'):'1';
       $('userStatus').disabled=protectedAdmin;
