@@ -1,5 +1,6 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
+import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
   ensurePhotoTables,readValidatedPhoto,reservePhotoWrite,releasePhotoBytes}
   from '../../lib/pl-r2-photos.js';
@@ -56,16 +57,17 @@ async function signingKey(secret) {
   return crypto.subtle.importKey('raw',enc.encode(secret),
     {name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
 }
-async function createToken(secret, actor) {
+async function createToken(secret, actor, ctx=null) {
   const payload = enc.encode(JSON.stringify({
-    id:actor,role:'ADMIN',exp:Date.now()+SESSION_TTL_MS,
+    id:actor,role:'ADMIN',rev:Number(ctx?.config?.revision||0),ownerUserId:ctx?.owner?.id||null,exp:Date.now()+SESSION_TTL_MS,
     nonce:crypto.randomUUID()
   }));
   const key=await signingKey(secret);
   const sig=await crypto.subtle.sign('HMAC',key,payload);
   return b64(payload)+'.'+b64(sig);
 }
-async function readSession(request, secret) {
+async function readSession(request, env) {
+  const secret=env.PANEL_SESSION_SECRET;
   const cookie=request.headers.get('Cookie') || '';
   const match=cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE_NAME+'='));
   if (!match) return null;
@@ -81,7 +83,14 @@ async function readSession(request, secret) {
     if (session.role!=='ADMIN'||session.id!==OWNER_LEGACY_ID||
       !Number.isFinite(session.exp)||session.exp<Date.now()||
       session.exp>Date.now()+SESSION_TTL_MS) return null;
-    return session;
+    const ctx=await ownerContext(env);
+    if(ctx){
+      if(session.ownerUserId&&session.ownerUserId!==ctx.owner.id)return null;
+      if(Number(session.rev||0)!==Number(ctx.config.revision||0))return null;
+      // After the switch, old pre-D1 signed cookies no longer work.
+      if(ctx.config.unified_pin===1&&!session.ownerUserId)return null;
+    }
+    return {...session,superAdmin:!!ctx};
   } catch {return null;}
 }
 async function equalSecret(actual,expected) {
@@ -183,63 +192,8 @@ async function verifyLegacyAdmin(pin,env) {
   } finally {clearTimeout(timer);}
 }
 
-// Separate owner PIN used exclusively for the Admin panel.
-// No change to the legacy FR account PIN or to D1 Office / mobile PINs.
-// Until the owner chooses a new PIN, the existing legacy login remains active.
-async function ownerPinDigest(env,pin){
-  const key=await crypto.subtle.importKey('raw',
-    enc.encode('GPBS:PANEL:OWNER:PIN:SECRET:v1:'+env.PIN_PEPPER),
-    {name:'HMAC',hash:'SHA-256'},false,['sign']);
-  const signature=await crypto.subtle.sign('HMAC',key,
-    enc.encode('GPBS:PANEL:OWNER:PIN:v1:'+pin));
-  return Array.from(new Uint8Array(signature),b=>b.toString(16).padStart(2,'0')).join('');
-}
-async function storedOwnerPinDigest(db){
-  const exists=await db.prepare(
-    "SELECT 1 AS yes FROM sqlite_master WHERE type='table' AND name='panel_owner_credentials'"
-  ).first();
-  if(!exists)return null;
-  const entry=await db.prepare(
-    'SELECT pin_digest FROM panel_owner_credentials WHERE owner_id=?'
-  ).bind(OWNER_LEGACY_ID).first();
-  return entry?.pin_digest||null;
-}
-async function verifyOwnerLoginPin(pin,env){
-  if(typeof pin!=='string'||!/^\d{4}$/.test(pin))return false;
-  const digest=await storedOwnerPinDigest(env.DB);
-  if(digest){
-    const supplied=await ownerPinDigest(env,pin);
-    return equalSecret(supplied,digest);
-  }
-  return (await verifyLegacyAdmin(pin,env))===OWNER_LEGACY_ID;
-}
-async function changeOwnerPin(env,body){
-  // Reuse the stable D1 PIN pepper; changing a session key must not invalidate the owner PIN.
-  if(typeof env.PIN_PEPPER!=='string'||env.PIN_PEPPER.length<32)
-    return fail('Najpierw skonfiguruj klucz PIN_PEPPER w Cloudflare.',503);
-  const newPin=body.newPin;
-  const confirm=body.confirmPin;
-  if(typeof newPin!=='string'||!/^\d{4}$/.test(newPin)||
-     confirm!==newPin||['0000','1111','1234'].includes(newPin))
-    return fail('Wpisz i potwierdź nowy 4-cyfrowy PIN (bez prostych kodów).',400);
-  if(!await equalSecret(body.password,env.PANEL_ADMIN_PASSWORD))
-    return fail('Nieprawidłowe hasło administratora.',401);
-  const digest=await ownerPinDigest(env,newPin);
-  await env.DB.prepare(
-    'CREATE TABLE IF NOT EXISTS panel_owner_credentials ('+
-    'owner_id TEXT PRIMARY KEY,pin_digest TEXT NOT NULL,'+
-    'changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)'
-  ).run();
-  await env.DB.prepare(
-    'INSERT INTO panel_owner_credentials(owner_id,pin_digest,changed_at) '+
-    'VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(owner_id) DO UPDATE SET '+
-    'pin_digest=excluded.pin_digest,changed_at=CURRENT_TIMESTAMP'
-  ).bind(OWNER_LEGACY_ID,digest).run();
-  return respond({ok:true,message:'PIN panelu Admin został zmieniony. PIN FR i hasło bez zmian.'},200,{
-    'Set-Cookie':COOKIE_NAME+'=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'
-  });
-}
-
+// The owner now shares a single D1 PIN across mobile, Office and Admin.
+// The legacy FR credential remains a temporary login bridge until migration.
 // Read-only Cloudflare account metrics. The API token stays on the server.
 async function cloudflareUsage(env,url) {
   const accountId=String(env.CF_ACCOUNT_ID||'').trim();
@@ -1115,7 +1069,7 @@ async function provisionStaffPins(env,body,actor) {
 
 // Admin replacement: upload edited file, atomically repoint D1 and delete the old original.
 async function replacePartPhoto(request,env){
-  const session=await readSession(request,env.PANEL_SESSION_SECRET);
+  const session=await readSession(request,env);
   if(!session||session.role!=='ADMIN')return fail('Zaloguj się jako administrator.',401);
   if(!r2Ready(env))return fail('R2 nie jest podłączone do panelu.',503);
   if(Number(request.headers.get('Content-Length')||0)>22*1024*1024)
@@ -1194,7 +1148,7 @@ async function route(request,env) {
   if(!ready(env)) return fail('Panel nie jest jeszcze aktywowany przez administratora.',503);
   const url=new URL(request.url);
   if(request.method==='GET') {
-    const session=await readSession(request,env.PANEL_SESSION_SECRET);
+    const session=await readSession(request,env);
     if(!session) return fail('Zaloguj się do panelu.',401);
     const view=url.searchParams.get('view')||'summary';
     if((view==='users'||view==='newParts'||view==='usage') && session.role!=='ADMIN')
@@ -1236,7 +1190,15 @@ async function route(request,env) {
       }
     }
     try {
-      return respond({ok:true,view,data:await queryPanel(env,view,url),user:{role:'ADMIN'}});
+      if(view==='superAdmin') {
+        if(!session.superAdmin)return fail('Brak dostępu do Super Admin.',403);
+        const ctx=await ownerContext(env);
+        if(!ctx)return fail('Nie znaleziono głównego konta JJ w D1.',503);
+        return respond({ok:true,view,data:{owner:ctx.owner.name,unifiedPin:Boolean(ctx.config.unified_pin)},
+          user:{role:'ADMIN',superAdmin:true}});
+      }
+      return respond({ok:true,view,data:await queryPanel(env,view,url),
+        user:{role:'ADMIN',superAdmin:Boolean(session.superAdmin)}});
     } catch(e) {
       console.error('panel GET',e?.name||'Error');
       return fail('Nie udało się pobrać danych panelu.',500);
@@ -1268,7 +1230,8 @@ async function route(request,env) {
       );
       if(ipLock>0) return blocked(ipLock);
 
-      if(!await equalSecret(body.password,env.PANEL_ADMIN_PASSWORD))
+      const ctx=await ownerContext(env);
+      if(!await ownerPasswordMatches(env,body.password,ctx))
         return fail('Nieprawidłowe dane logowania.',401);
 
       const adminKey='admin-pin:primary';
@@ -1277,14 +1240,15 @@ async function route(request,env) {
       );
       if(pinLock>0) return blocked(pinLock);
 
-      // Once a dedicated Admin PIN exists, this does not ask French Apps Script.
-      if(!await verifyOwnerLoginPin(body.pin,env))
-        return fail('Nieprawidłowe dane logowania.',401);
+      const verified=ctx
+        ?await ownerPinMatches(env,body.pin,ctx,pin=>verifyLegacyAdmin(pin,env))
+        :(await verifyLegacyAdmin(body.pin,env))===OWNER_LEGACY_ID;
+      if(!verified)return fail('Nieprawidłowe dane logowania.',401);
 
       // A failed database cleanup must not issue a session: fail closed.
       await clearLoginAttempts(env.DB,[ipKey,adminKey]);
-      const token=await createToken(env.PANEL_SESSION_SECRET,OWNER_LEGACY_ID);
-      return respond({ok:true,role:'ADMIN'},200,{
+      const token=await createToken(env.PANEL_SESSION_SECRET,OWNER_LEGACY_ID,ctx);
+      return respond({ok:true,role:'ADMIN',superAdmin:!!ctx},200,{
         'Set-Cookie':COOKIE_NAME+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=28800'
       });
     } catch(error) {
@@ -1292,17 +1256,30 @@ async function route(request,env) {
       return fail('Logowanie chwilowo niedostępne. Spróbuj ponownie później.',503);
     }
   }
-  const session=await readSession(request,env.PANEL_SESSION_SECRET);
+  const session=await readSession(request,env);
   if(!session) return fail('Sesja wygasła. Zaloguj się ponownie.',401);
   if(body?.action==='logout')
     return respond({ok:true},200,{
       'Set-Cookie':COOKIE_NAME+'=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'
     });
-  if(body?.action==='changeOwnerPin'){
-    try{return await changeOwnerPin(env,body);}
-    catch(error){
-      console.error('Owner Admin PIN update failed',error?.name||'Error');
-      return fail('Nie udało się zmienić PIN-u administratora. Spróbuj ponownie.',503);
+  if(body?.action==='changeOwnerPin')
+    return fail('Użyj zakładki Super Admin. Oddzielne PIN-y zostały wycofane.',410);
+  if(body?.action==='superAdminChange'){
+    if(!session.superAdmin)return fail('Tylko właściciel może zmieniać hasło i PIN.',403);
+    try{
+      const attemptKey='super-admin-change';
+      const lock=await reserveLoginAttempt(env.DB,attemptKey,5,30*60);
+      if(lock>0)return blocked(lock);
+      const ctx=await ownerContext(env);
+      const result=await changeOwnerCredential(env,ctx,body,pin=>verifyLegacyAdmin(pin,env));
+      if(!result.ok)return fail(result.error,result.status||400);
+      await clearLoginAttempts(env.DB,[attemptKey]);
+      return respond({ok:true,changed:result.changed,message:'Dane logowania zmieniono. Zaloguj się ponownie.'},200,{
+        'Set-Cookie':COOKIE_NAME+'=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0'
+      });
+    }catch(error){
+      console.error('Super Admin credential change failed',error?.name||'Error');
+      return fail('Nie udało się zapisać zmiany danych logowania.',503);
     }
   }
   if(['pinGenerate','pinGenerateMissing','pinReset'].includes(body?.action)) {
