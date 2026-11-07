@@ -211,7 +211,7 @@ async function cloudflareUsage(env,url) {
   // Each node is independent; failure of one does not blank the entire dashboard.
   const specs=[
     {key:'d1Rows',args:'$accountTag:string!,$databaseId:string!,$startDate:Date!,$endDate:Date!',
-      node:'d1AnalyticsAdaptiveGroups(limit:10000,filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId},orderBy:[date_DESC]) {sum {rowsRead rowsWritten}}'},
+      node:'d1AnalyticsAdaptiveGroups(limit:10000,filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId}) {sum {rowsRead rowsWritten}}'},
     {key:'d1Storage',args:'$accountTag:string!,$databaseId:string!,$storageFrom:Time!,$storageTo:Time!',
       node:'d1StorageAdaptiveGroups(limit:1,filter:{databaseId:$databaseId,datetime_geq:$storageFrom,datetime_leq:$storageTo},orderBy:[datetime_DESC]) {max {databaseSizeBytes} dimensions {datetime}}'},
     {key:'r2Storage',args:'$accountTag:string!,$bucketName:string!,$storageFrom:Time!,$storageTo:Time!',
