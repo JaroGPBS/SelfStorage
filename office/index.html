@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=41">
+  <link rel="stylesheet" href="./office.css?v=42">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -121,7 +121,7 @@
   </style>
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=3"></script>
-  <script defer src="./office.js?v=37"></script>
+  <script defer src="./office.js?v=38"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -168,17 +168,16 @@
         <span class="sidebar-brand-name">STORAGE OFFICE</span>
       </div>
       <nav aria-label="Menu główne">
-        <button id="warehouseToggle" class="nav-heading" type="button" aria-expanded="true">
-          <span class="nav-icon">▣</span><span>Magazyny</span><span class="chevron">⌄</span>
-        </button>
-        <div id="warehouseMenu" class="subnav"></div>
+        <div id="warehouseMenu" class="office-warehouse-menu"></div>
         <div class="nav-divider"></div>
+        <div class="office-sidebar-section">OPERACJE MAGAZYNOWE</div>
         <button type="button" class="nav-item" data-view="pz"><span class="nav-icon">↓</span>Przyjęcia</button>
         <button type="button" class="nav-item" data-view="wz"><span class="nav-icon">↑</span>Wydania</button>
         <button type="button" class="nav-item" data-view="nok"><span class="nav-icon">!</span>Części niekompletne</button>
         <button type="button" class="nav-item" data-view="inventories"><span class="nav-icon">☷</span>Inwentaryzacje</button>
         <button type="button" class="nav-item" data-view="vehicles"><span class="nav-icon">▤</span>Stany samochodowe</button>
         <button type="button" class="nav-item" data-view="labels"><span class="nav-icon">▦</span>Drukowanie etykiet</button>
+        <div id="frModuleMenu" class="office-fr-modules hidden" aria-label="Moduły francuskie"></div>
       </nav>
       <div class="side-footer office-side-footer">
         <div class="office-welcome">
@@ -250,6 +249,13 @@
               <div id="labelQueueList" class="label-queue-list"><p class="label-queue-empty">Wybierz części z listy po lewej.</p></div>
             </aside>
           </div>
+        </section>
+        <section id="officePreview" class="office-placeholder hidden" aria-live="polite" aria-label="Projekt układu Office">
+          <div class="office-placeholder-icon" aria-hidden="true">▣</div>
+          <p class="office-placeholder-eyebrow">UKŁAD OFFICE — FRANCJA</p>
+          <h2 id="officePreviewTitle">Magazyn</h2>
+          <p id="officePreviewDescription">To jest miejsce przygotowane na przyszły moduł.</p>
+          <p class="office-placeholder-note">Dane i obsługę podłączymy w kolejnym etapie. Tutaj nie są wyświetlane żadne testowe stany magazynowe.</p>
         </section>
         <section id="officeTableCard" class="table-card" aria-label="Dane">
           <div class="table-toolbar">
