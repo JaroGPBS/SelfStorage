@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=19">
-  <script src="./panel.js?v=28" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=20">
+  <script src="./panel.js?v=29" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -191,6 +191,27 @@
                 </label>
               </div>
               <p class="font-option-hint">Zmiana działa od razu i jest zapamiętywana w tej przeglądarce. Czcionka w lewym menu pozostaje bez zmian.</p>
+            </fieldset>
+            <fieldset class="theme-options" id="themeOptions">
+              <legend>Kolor panelu</legend>
+              <div class="theme-option-list">
+                <label class="theme-option">
+                  <input type="radio" name="adminTheme" value="white">
+                  <span class="theme-swatch theme-swatch-white" aria-hidden="true"></span>
+                  <span>Biały</span>
+                </label>
+                <label class="theme-option">
+                  <input type="radio" name="adminTheme" value="gray">
+                  <span class="theme-swatch theme-swatch-gray" aria-hidden="true"></span>
+                  <span>Szary</span>
+                </label>
+                <label class="theme-option">
+                  <input type="radio" name="adminTheme" value="dark">
+                  <span class="theme-swatch theme-swatch-dark" aria-hidden="true"></span>
+                  <span>Ciemny</span>
+                </label>
+              </div>
+              <p class="font-option-hint">Zmienia tło i kolory tekstu w głównej części panelu. Lewe menu zawsze pozostaje ciemne.</p>
             </fieldset>
           </div>
         </section>
