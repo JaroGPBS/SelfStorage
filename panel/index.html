@@ -9,7 +9,7 @@
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=21">
-  <script src="./panel.js?v=37" defer></script>
+  <script src="./panel.js?v=38" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -318,6 +318,7 @@
         </select>
       </div>
       <fieldset id="userWarehouses"><legend>Dostęp do magazynów</legend></fieldset>
+      <p id="protectedAdminHint" class="hint" hidden>Konto administratora jest chronione. Rola, status i przypisane magazyny nie mogą zostać zmienione w panelu.</p>
       <p class="hint">Nadanie i zmiana PIN-u to oddzielna operacja. Edycja danych pracownika nie zmienia PIN-u.</p>
       <div class="dialog-actions">
         <button id="archiveUserBtn" class="btn archive-danger" type="button" hidden>Usuń z listy</button>
