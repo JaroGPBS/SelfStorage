@@ -1012,7 +1012,7 @@
 
       const roleInput=$('userRole');roleInput.replaceChildren();
       roleInput.disabled=protectedAdmin;
-      for(const role of roles.filter(item=>item.code!=='ADMIN'||protectedAdmin)) {
+      for(const role of roles) {
         const option=document.createElement('option');
         option.value=role.code;option.textContent=role.name;
         roleInput.append(option);
