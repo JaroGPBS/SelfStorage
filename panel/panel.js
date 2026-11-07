@@ -252,7 +252,9 @@
       ?formatNum(cloud.r2.objectCount):'—';
     $('usageR2Ops').textContent=active&&cloud.r2?.operations!=null?formatNum(cloud.r2.operations):'—';
     const status=cloud.status==='not_configured'
-      ?'Do podłączenia: token analityczny i identyfikatory Cloudflare.'
+      ?(Array.isArray(cloud.missing)&&cloud.missing.length
+        ?'Brakujące zmienne Production: '+cloud.missing.join(', ')+'.'
+        :'Do podłączenia: token analityczny i identyfikatory Cloudflare.')
       :cloud.status==='invalid_configuration'
         ?'Sprawdź konfigurację identyfikatorów Cloudflare.'
         :cloud.status==='unavailable'
