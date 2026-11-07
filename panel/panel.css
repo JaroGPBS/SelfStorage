@@ -429,3 +429,6 @@ tr:hover td{background:#ffffff04}
 .resource-meter-fill.warning{background:#fa6772}
 @media(max-width:960px){.resource-grid{grid-template-columns:1fr}}
 @media(max-width:550px){.resource-card{padding:17px}.resource-heading{align-items:flex-start;flex-direction:column}}
+
+/* Part names in Admin catalogue and new-part review only. */
+.parts-review-table td.part-name-cell{font-size:13px;line-height:1.45}
