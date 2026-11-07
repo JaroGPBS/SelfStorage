@@ -22,6 +22,17 @@ function isProtectedOwnerAccount(user){
   // Other ADMIN accounts may be created, edited and archived by the owner.
   return String(user?.name||'').trim().toUpperCase()===OWNER_D1_SYMBOL;
 }
+async function isProtectedOwnerRecord(db,user){
+  if(isProtectedOwnerAccount(user))return true;
+  if(!user?.id)return false;
+  const table=await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='panel_super_admin_security'"
+  ).first();
+  if(!table)return false;
+  return !!await db.prepare(
+    'SELECT 1 FROM panel_super_admin_security WHERE owner_user_id=?'
+  ).bind(user.id).first();
+}
 const enc = new TextEncoder();
 
 function respond(body, status=200, extra={}) {
@@ -737,7 +748,7 @@ async function updateUser(env, body, actor) {
   }
   const existing=await env.DB.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!existing)return fail('Nie znaleziono użytkownika.',404);
-  if(isProtectedOwnerAccount(existing))
+  if(await isProtectedOwnerRecord(env.DB,existing))
     return fail('Nie można zmienić konta właściciela przez ten panel.',403);
   if(await archiveTableExists(env.DB)&&
      await env.DB.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first())
@@ -846,7 +857,7 @@ async function staffMutation(env,body,actor,edit) {
     }
     prior=(await db.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?')
       .bind(id).all()).results.map(r=>r.warehouse_id);
-    if(isProtectedOwnerAccount(before)){
+    if(await isProtectedOwnerRecord(db,before)){
       // Allow optional contact edits only. Owner identity, role, status, and grants stay fixed.
       const unchangedGrants=prior.length===staff.warehouses.length &&
         prior.every(w=>staff.warehouses.includes(w));
@@ -911,7 +922,7 @@ async function changeStaffArchive(env,body,actor,restore) {
     return fail('Najpierw wykonaj migrację db/06-user-archive.sql w Cloudflare D1.',503);
   const user=await db.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!user)return fail('Nie znaleziono użytkownika.',404);
-  if(isProtectedOwnerAccount(user))return fail('Konta właściciela nie można zarchiwizować.',403);
+  if(await isProtectedOwnerRecord(db,user))return fail('Konta właściciela nie można zarchiwizować.',403);
   const archive=await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first();
   if(restore&&!archive)return fail('To konto nie jest zarchiwizowane.',409);
   if(!restore&&archive)return fail('Konto zostało już zarchiwizowane.',409);
@@ -1020,9 +1031,13 @@ async function provisionStaffPins(env,body,actor) {
   if(action==='pinGenerateMissing') {
     const role=String(body.role||'').trim().toUpperCase();
     if(role&&!ALLOWED_ROLES.has(role))return fail('Nieprawidłowa rola.',400);
+    const hasOwnerSecurity=!!await db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='panel_super_admin_security'"
+    ).first();
     const sql='SELECT u.id,u.name,u.role_code FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
       "WHERE u.active=1 AND UPPER(TRIM(u.name))<>'JJ' AND p.user_id IS NULL "+
+      (hasOwnerSecurity?'AND NOT EXISTS (SELECT 1 FROM panel_super_admin_security sa WHERE sa.owner_user_id=u.id) ':'')+
       (await archiveTableExists(db)?'AND NOT EXISTS (SELECT 1 FROM user_archives ar WHERE ar.user_id=u.id) ':'')+
       (role?'AND u.role_code=? ':'')+
       'ORDER BY u.created_at,u.id LIMIT ?';
@@ -1048,7 +1063,7 @@ async function provisionStaffPins(env,body,actor) {
     'SELECT id,name,role_code FROM users WHERE id=? AND active=1'
   ).bind(userId).first();
   if(!user)return fail('Nie znaleziono aktywnego użytkownika.',404);
-  if(isProtectedOwnerAccount(user))
+  if(await isProtectedOwnerRecord(db,user))
     return fail('PIN właściciela jest ustawiany indywidualnie, nie przez generator.',403);
   if(await archiveTableExists(db) &&
     await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(userId).first())
