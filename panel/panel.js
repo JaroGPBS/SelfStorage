@@ -251,6 +251,19 @@
     $('usageR2Objects').textContent=active&&cloud.r2?.objectCount!=null
       ?formatNum(cloud.r2.objectCount):'—';
     $('usageR2Ops').textContent=active&&cloud.r2?.operations!=null?formatNum(cloud.r2.operations):'—';
+    const failMessages={
+      authorization:'Cloudflare odrzucił dostęp (401/403). Sprawdź token i przypisane konto.',
+      request_invalid:'Cloudflare odrzucił zapytanie (HTTP 400). Problem może być w zapytaniu GraphQL.',
+      rate_limited:'Cloudflare ograniczył liczbę zapytań (429).',
+      http_error:'Cloudflare zwrócił błąd HTTP '+String(cloud.httpStatus||'')+'.',
+      graphql_schema:'Błąd GraphQL: niezgodne nazwy pól lub argumentów. Wymagana poprawka kodu.',
+      graphql_variables:'Błąd GraphQL: nieprawidłowe typy lub wartości parametrów. Wymagana poprawka kodu.',
+      graphql_limit:'Cloudflare odrzucił zapytanie z powodu limitu GraphQL.',
+      graphql_error:'Cloudflare zgłosił błąd GraphQL. Wymagana dokładniejsza weryfikacja zapytania.',
+      account_unavailable:'Cloudflare nie udostępnił danych wybranego konta. Sprawdź zakres dostępu tokena.',
+      timeout:'Przekroczono czas oczekiwania na Cloudflare.',
+      network_error:'Nie udało się uzyskać odpowiedzi od Cloudflare.'
+    };
     const status=cloud.status==='not_configured'
       ?(Array.isArray(cloud.missing)&&cloud.missing.length
         ?'Brakujące zmienne Production: '+cloud.missing.join(', ')+'.'
@@ -258,7 +271,7 @@
       :cloud.status==='invalid_configuration'
         ?'Sprawdź konfigurację identyfikatorów Cloudflare.'
         :cloud.status==='unavailable'
-          ?'Cloudflare nie zwrócił statystyk. Sprawdź token i dostęp Analytics Read.'
+          ?(failMessages[cloud.reason]||'Cloudflare nie zwrócił statystyk. Sprawdź token i dostęp Analytics Read.')
           :'Dane Cloudflare mogą pojawiać się z opóźnieniem.';
     $('usageD1Note').textContent=status;
     $('usageR2Note').textContent=status;
