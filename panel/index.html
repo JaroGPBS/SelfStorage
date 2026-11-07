@@ -9,7 +9,7 @@
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=22">
-  <script src="./panel.js?v=39" defer></script>
+  <script src="./panel.js?v=40" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -50,6 +50,7 @@
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
         <button data-view="security" class="nav-item" type="button"><span class="nav-symbol">⚿</span> Bezpieczeństwo</button>
         <button data-view="settings" class="nav-item" type="button"><span class="nav-symbol">⚙</span> Ustawienia</button>
+        <button data-view="superAdmin" id="superAdminNav" class="nav-item hidden" type="button"><span class="nav-symbol">♛</span> Super Admin</button>
       </nav>
       <div class="sidebar-footer">
         <div class="role-dot"></div>
@@ -155,24 +156,6 @@
         </section>
         <section id="securityView" class="view hidden">
           <div class="table-panel security-card">
-            <div class="table-title"><div>
-              <h2>Własny PIN administratora</h2>
-              <p>Ustaw niezależny PIN do tego panelu. Hasło pozostanie takie samo, a PIN francuskiego konta i PIN aplikacji magazynowej nie zostaną zmienione.</p>
-            </div></div>
-            <form id="ownerPinForm" class="security-content owner-pin-form" autocomplete="off">
-              <label for="ownerPinPassword">Obecne hasło administratora</label>
-              <input id="ownerPinPassword" type="password" autocomplete="current-password" minlength="8" required>
-              <label for="ownerPinNew">Nowy PIN tylko do Admin (4 cyfry)</label>
-              <input id="ownerPinNew" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" required>
-              <label for="ownerPinConfirm">Powtórz nowy PIN</label>
-              <input id="ownerPinConfirm" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" required>
-              <p class="hint">Po zapisaniu zostaniesz wylogowany z Admin. Następnie użyjesz dotychczasowego hasła i nowego PIN-u. Stary PIN nadal będzie działał we francuskiej aplikacji.</p>
-              <div class="security-actions">
-                <button type="submit" id="ownerPinSave" class="btn primary">Zapisz nowy PIN</button>
-              </div>
-            </form>
-          </div>
-          <div class="table-panel security-card">
             <div class="table-title"><div><h2>Nowy klucz zabezpieczający sesje</h2><p>Zastąp klucz, który był widoczny we wcześniejszej rozmowie. Ten generator działa wyłącznie w Twojej przeglądarce.</p></div><span class="pill blue">LOKALNIE</span></div>
             <div class="security-content">
               <p>1. Kliknij <strong>Generuj nowy klucz</strong>, a następnie <strong>Kopiuj klucz</strong>.</p>
@@ -258,6 +241,53 @@
               <p class="font-option-hint">Zmienia tło i kolory tekstu w głównej części panelu. Lewe menu zawsze pozostaje ciemne.</p>
             </fieldset>
           </div>
+        </section>
+        <section id="superAdminView" class="view hidden" aria-labelledby="superAdminTitle">
+          <div class="table-panel security-card">
+            <div class="table-title"><div>
+              <h2 id="superAdminTitle">Super Admin — właściciel systemu</h2>
+              <p>Chronione konto główne. Tylko Ty możesz zmienić swoje hasło i wspólny PIN.</p>
+            </div><span class="pill blue">WYŁĄCZNIE WŁAŚCICIEL</span></div>
+            <div class="security-content">
+              <p class="hint">Nowy PIN działa w panelu Admin, Office i aplikacji magazynowej korzystających z D1. Konto FR w Apps Script pozostanie na razie bez zmian, aż zakończymy migrację.</p>
+              <p id="superAdminStatus" class="hint" role="status"></p>
+            </div>
+          </div>
+          <div class="table-panel security-card">
+            <div class="table-title"><div>
+              <h2>Zmień PIN</h2>
+              <p>Jeden PIN do wszystkich elementów GPBS Storage opartych na D1.</p>
+            </div></div>
+            <form id="superPinForm" class="security-content owner-pin-form" autocomplete="off">
+              <label for="superPinPassword">Aktualne hasło</label>
+              <input id="superPinPassword" type="password" autocomplete="current-password" minlength="8" required>
+              <label for="superPinCurrent">Aktualny PIN</label>
+              <input id="superPinCurrent" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required>
+              <label for="superPinNew">Nowy PIN (4 cyfry)</label>
+              <input id="superPinNew" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" required>
+              <label for="superPinConfirm">Powtórz nowy PIN</label>
+              <input id="superPinConfirm" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" required>
+              <div class="security-actions"><button id="superPinSave" class="btn primary" type="submit">Zapisz nowy PIN</button></div>
+            </form>
+          </div>
+          <div class="table-panel security-card">
+            <div class="table-title"><div>
+              <h2>Zmień hasło administratora</h2>
+              <p>Zmiana dotyczy logowania do panelu Admin. Nie zmienia PIN-u.</p>
+            </div></div>
+            <form id="superPasswordForm" class="security-content owner-pin-form" autocomplete="off">
+              <label for="superPasswordCurrent">Aktualne hasło</label>
+              <input id="superPasswordCurrent" type="password" autocomplete="current-password" required>
+              <label for="superPasswordPin">Aktualny PIN</label>
+              <input id="superPasswordPin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required>
+              <label for="superPasswordNew">Nowe hasło (minimum 12 znaków)</label>
+              <input id="superPasswordNew" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+              <label for="superPasswordConfirm">Powtórz nowe hasło</label>
+              <input id="superPasswordConfirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+              <div class="security-actions"><button id="superPasswordSave" class="btn primary" type="submit">Zapisz nowe hasło</button></div>
+            </form>
+          </div>
+          <p class="hint">Po każdej zmianie nastąpi wylogowanie i trzeba będzie zalogować się ponownie.</p>
         </section>
         <section id="indexMigrationView" class="view hidden">
           <div class="table-panel">
