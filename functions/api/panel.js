@@ -193,7 +193,7 @@ async function cloudflareUsage(env,url) {
   // Edge cache is optional (e.g. unavailable during local development).
   // Cache only after the authenticated Admin session check in route().
   const cache=typeof caches!=='undefined'?caches.default:null;
-  const cacheKey=new Request(url.origin+'/api/panel?view=usage&internal_cache_v=1');
+  const cacheKey=new Request(url.origin+'/api/panel?view=usage&internal_cache_v=2');
   if(cache){
     try{
       const cached=await cache.match(cacheKey);
@@ -206,130 +206,113 @@ async function cloudflareUsage(env,url) {
   const monthFrom=monthStart+'T00:00:00Z';
   const today=now.toISOString().slice(0,10);
   const storageStart=new Date(now.getTime()-7*86400000).toISOString();
-  const query=String.raw`query GPBSUsage($accountTag: string!, $databaseId: string!, $bucketName: string!,
-      $startDate: Date!, $endDate: Date!, $storageFrom: Time!, $storageTo: Time!, $monthFrom: Time!) {
-    viewer {
-      accounts(filter:{accountTag:$accountTag}) {
-        d1AnalyticsAdaptiveGroups(limit:10000,
-          filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId},
-          orderBy:[date_DESC]) {
-          sum { rowsRead rowsWritten }
-        }
-        d1StorageAdaptiveGroups(limit:1,
-          filter:{databaseId:$databaseId,datetime_geq:$storageFrom,datetime_leq:$storageTo},
-          orderBy:[datetime_DESC]) {
-          max { databaseSizeBytes }
-          dimensions { datetime }
-        }
-        r2StorageAdaptiveGroups(limit:1,
-          filter:{bucketName:$bucketName,datetime_geq:$storageFrom,datetime_leq:$storageTo},
-          orderBy:[datetime_DESC]) {
-          max { payloadSize metadataSize objectCount }
-          dimensions { datetime }
-        }
-        r2OperationsAdaptiveGroups(limit:10000,
-          filter:{bucketName:$bucketName,datetime_geq:$monthFrom,datetime_leq:$storageTo}) {
-          sum { requests }
-        }
-      }
-    }
-  }`;
-  // Interpret GraphQL errors locally; only predefined categories reach the browser.
-  function graphqlFailureReason(errors) {
-    const descriptions=errors.map(error=>String(error?.message||'')).join(' ');
-    return /cannot query field|unknown field|unknown argument/i.test(descriptions)
-      ?'graphql_schema':/variable|expected type|invalid value|unknown type|syntax error/i.test(descriptions)
-      ?'graphql_variables':/limit|budget|cost|quota|too many/i.test(descriptions)
-      ?'graphql_limit':/forbidden|unauthori[sz]ed|permission|access denied/i.test(descriptions)
+  const values={accountTag:accountId,databaseId,bucketName,startDate:monthStart,
+    endDate:today,storageFrom:storageStart,storageTo:now.toISOString(),monthFrom};
+  // Each node is independent; failure of one does not blank the entire dashboard.
+  const specs=[
+    {key:'d1Rows',args:'$accountTag:string!,$databaseId:string!,$startDate:Date!,$endDate:Date!',
+      node:'d1AnalyticsAdaptiveGroups(limit:10000,filter:{date_geq:$startDate,date_leq:$endDate,databaseId:$databaseId},orderBy:[date_DESC]) {sum {rowsRead rowsWritten}}'},
+    {key:'d1Storage',args:'$accountTag:string!,$databaseId:string!,$storageFrom:Time!,$storageTo:Time!',
+      node:'d1StorageAdaptiveGroups(limit:1,filter:{databaseId:$databaseId,datetime_geq:$storageFrom,datetime_leq:$storageTo},orderBy:[datetime_DESC]) {max {databaseSizeBytes} dimensions {datetime}}'},
+    {key:'r2Storage',args:'$accountTag:string!,$bucketName:string!,$storageFrom:Time!,$storageTo:Time!',
+      node:'r2StorageAdaptiveGroups(limit:1,filter:{bucketName:$bucketName,datetime_geq:$storageFrom,datetime_leq:$storageTo},orderBy:[datetime_DESC]) {max {payloadSize metadataSize objectCount} dimensions {datetime}}'},
+    {key:'r2Ops',args:'$accountTag:string!,$bucketName:string!,$monthFrom:Time!,$storageTo:Time!',
+      node:'r2OperationsAdaptiveGroups(limit:10000,filter:{bucketName:$bucketName,datetime_geq:$monthFrom,datetime_leq:$storageTo}) {sum {requests}}'}
+  ];
+  const safeMessage=value=>{
+    let clean=String(value||'');
+    for(const sensitive of [token,accountId,databaseId,bucketName].filter(Boolean))
+      clean=clean.split(sensitive).join('[redacted]');
+    return clean.replace(/Bearer\s+\S+/gi,'Bearer [redacted]')
+      .replace(/https?:\/\/[^\s)]+/gi,'[URL]')
+      .replace(/\b[a-f0-9]{32}\b/gi,'[id]')
+      .replace(/\b[a-f0-9]{8}-[a-f0-9-]{27,}\b/gi,'[id]')
+      .replace(/[A-Za-z0-9_\-]{40,}/g,'[value]').slice(0,200);
+  };
+  const errorReason=errors=>{
+    const description=errors.map(e=>String(e?.message||'')).join(' ');
+    return /cannot query field|unknown field|unknown argument|unknown type/i.test(description)
+      ?'graphql_schema':/variable|expected type|invalid value|syntax error|parsing/i.test(description)
+      ?'graphql_variables':/limit|budget|cost|quota|too many|range too large|older than|excessive resources/i.test(description)
+      ?'graphql_limit':/forbidden|unauthori[sz]ed|permission|access denied|not authorized/i.test(description)
       ?'authorization':'graphql_error';
-  }
+  };
   const abort=new AbortController();
   const timer=setTimeout(()=>abort.abort(),9000);
-  let phase='fetch';
-  try{
-    const response=await fetch('https://api.cloudflare.com/client/v4/graphql',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({query,variables:{
-        accountTag:accountId,databaseId,bucketName,
-        startDate:monthStart,endDate:today,storageFrom:storageStart,storageTo:now.toISOString(),monthFrom
-      }}),
-      signal:abort.signal
-    });
-    phase='response';
-    // Return safe error categories only. Never expose the token or Cloudflare's
-    // raw error messages, which may contain account identifiers.
-    if(!response.ok){
-      const errorBody=response.status===400?await response.json().catch(()=>null):null;
-      const reason=[401,403].includes(response.status)?'authorization':
-        response.status===400&&Array.isArray(errorBody?.errors)&&errorBody.errors.length
-          ?graphqlFailureReason(errorBody.errors):
-        response.status===400?'request_invalid':
-        response.status===429?'rate_limited':'http_error';
-      return {status:'unavailable',reason,httpStatus:response.status};
-    }
-    const result=await response.json();
-    phase='processing';
-    if(Array.isArray(result.errors)&&result.errors.length){
-      return {status:'unavailable',reason:graphqlFailureReason(result.errors)};
-    }
-    const account=result?.data?.viewer?.accounts?.[0];
-    if(!account)return {status:'unavailable',reason:'account_unavailable'};
-    const d1Metrics=account.d1AnalyticsAdaptiveGroups||[];
-    const d1Storage=account.d1StorageAdaptiveGroups?.[0]||null;
-    const r2Storage=account.r2StorageAdaptiveGroups?.[0]||null;
-    const r2Ops=account.r2OperationsAdaptiveGroups||[];
-    const safeNumber=n=>n==null||!Number.isFinite(Number(n))?null:Number(n);
-    const total=(rows,key)=>rows.reduce((sum,row)=>sum+(safeNumber(row?.sum?.[key])||0),0);
-    const output={
-      status:'ok',sampledAt:now.toISOString(),month:now.toISOString().slice(0,7),
-      d1:{
-        sizeBytes:safeNumber(d1Storage?.max?.databaseSizeBytes),
-        storageSampleAt:d1Storage?.dimensions?.datetime||null,
-        rowsRead:d1Metrics.length?total(d1Metrics,'rowsRead'):null,
-        rowsWritten:d1Metrics.length?total(d1Metrics,'rowsWritten'):null
-      },
-      r2:{
-        sizeBytes:r2Storage?((safeNumber(r2Storage.max?.payloadSize)||0)+
-          (safeNumber(r2Storage.max?.metadataSize)||0)):null,
-        objectCount:safeNumber(r2Storage?.max?.objectCount),
-        storageSampleAt:r2Storage?.dimensions?.datetime||null,
-        operations:r2Ops.length?total(r2Ops,'requests'):null
+  async function load(spec){
+    let phase='fetch';
+    try{
+      const query='query '+spec.key+'('+spec.args+') {viewer {accounts(filter:{accountTag:$accountTag}) {data:'+spec.node+'}}}';
+      const response=await fetch('https://api.cloudflare.com/client/v4/graphql',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({query,variables:values}),signal:abort.signal
+      });
+      phase='response';
+      const result=await response.json();
+      phase='processing';
+      const errors=Array.isArray(result?.errors)?result.errors.filter(Boolean):[];
+      if(!response.ok||errors.length){
+        const reason=[401,403].includes(response.status)?'authorization':
+          response.status===429?'rate_limited':
+          errors.length?errorReason(errors):
+          response.status===400?'request_invalid':'http_error';
+        console.error('Cloudflare usage dataset failed',spec.key,reason,
+          'status',response.status,'detail',safeMessage(errors[0]?.message));
+        return {ok:false,reason};
       }
-    };
-    if(cache){
-      try{await cache.put(cacheKey,new Response(JSON.stringify(output),{
-        headers:{'Cache-Control':'public, max-age=900'}
-      }));}catch{}
+      const rows=result?.data?.viewer?.accounts?.[0]?.data;
+      if(!Array.isArray(rows)){
+        console.error('Cloudflare usage dataset failed',spec.key,'account_unavailable');
+        return {ok:false,reason:'account_unavailable'};
+      }
+      return {ok:true,rows};
+    }catch(error){
+      const reason=error?.name==='AbortError'?'timeout':
+        phase==='fetch'?'fetch_failed':phase==='response'?'invalid_response':'processing_error';
+      console.error('Cloudflare usage dataset failed',spec.key,reason,
+        error?.name||'Error','detail',safeMessage(error?.message));
+      return {ok:false,reason};
     }
-    return output;
-  }catch(error){
-    // Never send exception messages, URLs, account IDs or token values to the browser.
-    const reason=error?.name==='AbortError'?'timeout':
-      phase==='fetch'?'fetch_failed':
-      phase==='response'?'invalid_response':
-      'processing_error';
-    // Server-side diagnostics only; never include raw exception text in API responses.
-    // Defensively redact all configured credentials, URLs and identifier-shaped values.
-    function safeExceptionText(value) {
-      let clean=String(value||'');
-      for(const sensitive of [token,accountId,databaseId,bucketName].filter(Boolean))
-        clean=clean.split(sensitive).join('[redacted]');
-      return clean
-        .replace(/Bearer\s+\S+/gi,'Bearer [redacted]')
-        .replace(/https?:\/\/[^\s)]+/gi,'[URL]')
-        .replace(/\b[a-f0-9]{32}\b/gi,'[id]')
-        .replace(/\b[a-f0-9]{8}-[a-f0-9-]{27,}\b/gi,'[id]')
-        .replace(/[A-Za-z0-9_\-]{40,}/g,'[value]')
-        .slice(0,240);
+  }
+  let results;
+  try{results=await Promise.all(specs.map(load));}
+  finally{clearTimeout(timer);}
+  const [d1Rows,d1Size,r2Size,r2Ops]=results;
+  const successCount=results.filter(r=>r.ok).length;
+  const issues={
+    d1:results.slice(0,2).map((r,i)=>r.ok?null:{dataset:specs[i].key,reason:r.reason}).filter(Boolean),
+    r2:results.slice(2).map((r,i)=>r.ok?null:{dataset:specs[i+2].key,reason:r.reason}).filter(Boolean)
+  };
+  const safeNumber=n=>n==null||!Number.isFinite(Number(n))?null:Number(n);
+  const total=(rows,key)=>rows.reduce((sum,row)=>sum+(safeNumber(row?.sum?.[key])||0),0);
+  const d1Storage=d1Size.ok?d1Size.rows[0]:null;
+  const r2Storage=r2Size.ok?r2Size.rows[0]:null;
+  const output={
+    status:successCount?'ok':'unavailable',
+    reason:successCount?null:(results[0]?.reason||'graphql_error'),
+    sampledAt:now.toISOString(),month:now.toISOString().slice(0,7),issues,
+    d1:{
+      sizeBytes:safeNumber(d1Storage?.max?.databaseSizeBytes),
+      storageSampleAt:d1Storage?.dimensions?.datetime||null,
+      rowsRead:d1Rows.ok&&d1Rows.rows.length?total(d1Rows.rows,'rowsRead'):null,
+      rowsWritten:d1Rows.ok&&d1Rows.rows.length?total(d1Rows.rows,'rowsWritten'):null
+    },
+    r2:{
+      sizeBytes:r2Storage?((safeNumber(r2Storage.max?.payloadSize)||0)+
+        (safeNumber(r2Storage.max?.metadataSize)||0)):null,
+      objectCount:safeNumber(r2Storage?.max?.objectCount),
+      storageSampleAt:r2Storage?.dimensions?.datetime||null,
+      operations:r2Ops.ok&&r2Ops.rows.length?total(r2Ops.rows,'requests'):null
     }
-    const code=String(error?.cause?.code||'');
-    console.error('Cloudflare analytics unavailable',reason,error?.name||'Error',
-      'detail:',safeExceptionText(error?.message),
-      'cause:',safeExceptionText(error?.cause?.message),
-      'causeCode:',/^[A-Z0-9_]{1,40}$/.test(code)?code:'none');
-    return {status:'unavailable',reason};
-  }finally{clearTimeout(timer);}
+  };
+  // Keep only complete successful responses in cache.
+  if(successCount===specs.length&&cache){
+    try{await cache.put(cacheKey,new Response(JSON.stringify(output),{
+      headers:{'Cache-Control':'public, max-age=900'}
+    }));}catch{}
+  }
+  return output;
 }
 
 async function adminUsage(env,url) {

@@ -276,8 +276,18 @@
         :cloud.status==='unavailable'
           ?(failMessages[cloud.reason]||'Cloudflare nie zwrócił statystyk. Sprawdź token i dostęp Analytics Read.')
           :'Dane Cloudflare mogą pojawiać się z opóźnieniem.';
-    $('usageD1Note').textContent=status;
-    $('usageR2Note').textContent=status;
+    const datasetNames={d1Rows:'odczyt/zapis D1',d1Storage:'rozmiar D1',
+      r2Storage:'rozmiar R2',r2Ops:'operacje R2'};
+    const issueNote=group=>{
+      const issues=cloud.issues?.[group];
+      if(!Array.isArray(issues)||!issues.length)return status;
+      return issues.map(item=>
+        (datasetNames[item.dataset]||'Statystyki')+': '+
+        (failMessages[item.reason]||'Błąd Cloudflare GraphQL.')
+      ).join(' ');
+    };
+    $('usageD1Note').textContent=issueNote('d1');
+    $('usageR2Note').textContent=issueNote('r2');
     const photo=data?.photo;
     const bytes=Number(photo?.usedBytes);
     const max=Number(photo?.hardBytes);
