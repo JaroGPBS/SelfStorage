@@ -415,7 +415,9 @@
         row.append(td(part.warehouse_name||part.warehouse_id||'—'));
         row.append(td(formatTimestampPL(part.added_at)+' · '+(part.added_by||'—')));
       }
-      row.append(td(part.name||'—'));
+      const partName=td(part.name||'—');
+      partName.className='part-name-cell';
+      row.append(partName);
       row.append(td(part.part_number||'—'));
       row.append(td(part.sap_number||'—'));
       if(newOnly)row.append(td(Number(part.has_photo)?'Jest zdjęcie':'Brak zdjęcia'));
