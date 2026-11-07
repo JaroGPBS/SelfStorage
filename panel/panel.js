@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
@@ -13,7 +13,8 @@
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.'],
-    settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.']
+    settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.'],
+    superAdmin:['Super Admin','Hasło i wspólny PIN głównego konta właściciela.']
   };
 
   const FONT_SIZE_KEY='gpbs_admin_font_size';
@@ -71,6 +72,8 @@
     try{json=await res.json();}catch{}
     if(res.status===401){logoutLocally();throw new Error('Sesja wygasła. Zaloguj się ponownie.');}
     if(!res.ok||!json?.ok)throw new Error(json?.error||'Serwer nie odpowiedział.');
+    state.isSuperAdmin=Boolean(json.user?.superAdmin);
+    $('superAdminNav').classList.toggle('hidden',!state.isSuperAdmin);
     return json.data;
   }
 
@@ -91,6 +94,10 @@
 
   function logoutLocally() {
     state.loggedIn=false;
+    state.isSuperAdmin=false;
+    $('superAdminNav').classList.add('hidden');
+    $('superPinForm').reset();
+    $('superPasswordForm').reset();
     $('app').classList.add('hidden');
     $('loginWrap').classList.remove('hidden');
     $('panelPin').value='';
@@ -898,7 +905,7 @@
   }
 
   function showView(view) {
-    if(!defs[view])return;
+    if(!defs[view]||(view==='superAdmin'&&!state.isSuperAdmin))return;
     state.view=view;
     $('pageHeading').classList.toggle('hidden',view==='summary');
     $('pageTitle').textContent=defs[view][0];
@@ -907,10 +914,11 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
     $('settingsView').classList.toggle('hidden',view!=='settings');
+    $('superAdminView').classList.toggle('hidden',view!=='superAdmin');
     $('addUserBtn').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('showArchivedUsers').classList.toggle('hidden',view!=='users');
     $('showArchivedUsers').textContent=state.showArchives?'Wróć do użytkowników':'Pokaż archiwum';
@@ -924,10 +932,18 @@
   }
 
   async function navigate(view) {
+    if(view==='superAdmin'&&!state.isSuperAdmin)return;
     showView(view);
     closeSide();
     try {
       if(view==='security'||view==='settings') return;
+      if(view==='superAdmin'){
+        const details=await api('superAdmin');
+        $('superAdminStatus').textContent=details.unifiedPin
+          ?'Wspólny PIN D1 jest już aktywny.'
+          :'Aktualnie trwa przejście z konta FR na wspólny PIN D1.';
+        return;
+      }
       if(view==='indexMigration'){
         const result=await api('indexMigration');
         state.records=result.parts||[];
@@ -1249,28 +1265,38 @@
     }
   }
 
-  async function submitOwnerPin(event) {
+  async function submitSuperAdminCredential(event){
     event.preventDefault();
-    const save=$('ownerPinSave');
-    busy(save,true);
+    if(!state.isSuperAdmin){message('Brak dostępu do tej funkcji.','error');return;}
+    const pinMode=event.currentTarget.id==='superPinForm';
+    const button=$(pinMode?'superPinSave':'superPasswordSave');
+    busy(button,true);
     try{
-      const password=$('ownerPinPassword').value;
-      const newPin=$('ownerPinNew').value.trim();
-      const confirmPin=$('ownerPinConfirm').value.trim();
-      if(newPin!==confirmPin)throw Error('Nowe PIN-y muszą być identyczne.');
-      await post({action:'changeOwnerPin',password,newPin,confirmPin});
-      $('ownerPinForm').reset();
-      // The server also deletes this Admin cookie after changing the PIN.
+      const currentPassword=$(pinMode?'superPinPassword':'superPasswordCurrent').value;
+      const currentPin=$(pinMode?'superPinCurrent':'superPasswordPin').value.trim();
+      const payload={action:'superAdminChange',credentialType:pinMode?'pin':'password',
+        currentPassword,currentPin};
+      if(pinMode){
+        payload.newPin=$('superPinNew').value.trim();
+        payload.confirmPin=$('superPinConfirm').value.trim();
+        if(payload.newPin!==payload.confirmPin)throw Error('Nowe PIN-y nie są identyczne.');
+      }else{
+        payload.newPassword=$('superPasswordNew').value;
+        payload.confirmPassword=$('superPasswordConfirm').value;
+        if(payload.newPassword!==payload.confirmPassword)throw Error('Nowe hasła nie są identyczne.');
+      }
+      await post(payload);
       logoutLocally();
-      $('loginNotice').textContent='PIN administratora zmieniony. Zaloguj się dotychczasowym hasłem i nowym PIN-em.';
+      $('loginNotice').textContent=pinMode
+        ?'PIN zmieniony. Zaloguj się nowym PIN-em i dotychczasowym hasłem.'
+        :'Hasło zmienione. Zaloguj się nowym hasłem i dotychczasowym PIN-em.';
       $('loginNotice').classList.remove('hidden');
       setError('');
     }catch(error){
-      message(error.message||'Nie udało się zmienić PIN-u.', 'error');
-      $('ownerPinPassword').value='';
-      $('ownerPinNew').value='';
-      $('ownerPinConfirm').value='';
-    }finally{busy(save,false);}
+      $('superPinForm').reset();
+      $('superPasswordForm').reset();
+      message(error.message||'Zmiana nie została zapisana.','error');
+    }finally{busy(button,false);}
   }
 
   async function performLogin(event) {
@@ -1313,7 +1339,8 @@
       if(input.matches('input[name="adminFontSize"]'))applyFontSize(input.value);
     });
     $('loginForm').addEventListener('submit',performLogin);
-    $('ownerPinForm').addEventListener('submit',submitOwnerPin);
+    $('superPinForm').addEventListener('submit',submitSuperAdminCredential);
+    $('superPasswordForm').addEventListener('submit',submitSuperAdminCredential);
     $('logoutBtn').addEventListener('click',performLogout);
     $('newPartsAlert').addEventListener('click',()=>navigate('newParts'));
     $('mainNav').addEventListener('click',event=>{
