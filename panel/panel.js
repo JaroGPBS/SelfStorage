@@ -1249,11 +1249,36 @@
     }
   }
 
+  async function submitOwnerPin(event) {
+    event.preventDefault();
+    const save=$('ownerPinSave');
+    busy(save,true);
+    try{
+      const password=$('ownerPinPassword').value;
+      const newPin=$('ownerPinNew').value.trim();
+      const confirmPin=$('ownerPinConfirm').value.trim();
+      if(newPin!==confirmPin)throw Error('Nowe PIN-y muszą być identyczne.');
+      await post({action:'changeOwnerPin',password,newPin,confirmPin});
+      $('ownerPinForm').reset();
+      // The server also deletes this Admin cookie after changing the PIN.
+      logoutLocally();
+      $('loginNotice').textContent='PIN administratora zmieniony. Zaloguj się dotychczasowym hasłem i nowym PIN-em.';
+      $('loginNotice').classList.remove('hidden');
+      setError('');
+    }catch(error){
+      message(error.message||'Nie udało się zmienić PIN-u.', 'error');
+      $('ownerPinPassword').value='';
+      $('ownerPinNew').value='';
+      $('ownerPinConfirm').value='';
+    }finally{busy(save,false);}
+  }
+
   async function performLogin(event) {
     event.preventDefault();
     const button=$('loginButton');
     busy(button,true);
     setError('');
+    $('loginNotice').classList.add('hidden');
     try{
       const payload={
         action:'login',
@@ -1288,6 +1313,7 @@
       if(input.matches('input[name="adminFontSize"]'))applyFontSize(input.value);
     });
     $('loginForm').addEventListener('submit',performLogin);
+    $('ownerPinForm').addEventListener('submit',submitOwnerPin);
     $('logoutBtn').addEventListener('click',performLogout);
     $('newPartsAlert').addEventListener('click',()=>navigate('newParts'));
     $('mainNav').addEventListener('click',event=>{
