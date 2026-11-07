@@ -188,7 +188,7 @@ async function verifyLegacyAdmin(pin,env) {
 // Until the owner chooses a new PIN, the existing legacy login remains active.
 async function ownerPinDigest(env,pin){
   const key=await crypto.subtle.importKey('raw',
-    enc.encode('GPBS:PANEL:OWNER:PIN:SECRET:v1:'+env.PANEL_SESSION_SECRET),
+    enc.encode('GPBS:PANEL:OWNER:PIN:SECRET:v1:'+env.PIN_PEPPER),
     {name:'HMAC',hash:'SHA-256'},false,['sign']);
   const signature=await crypto.subtle.sign('HMAC',key,
     enc.encode('GPBS:PANEL:OWNER:PIN:v1:'+pin));
@@ -214,6 +214,9 @@ async function verifyOwnerLoginPin(pin,env){
   return (await verifyLegacyAdmin(pin,env))===OWNER_LEGACY_ID;
 }
 async function changeOwnerPin(env,body){
+  // Reuse the stable D1 PIN pepper; changing a session key must not invalidate the owner PIN.
+  if(typeof env.PIN_PEPPER!=='string'||env.PIN_PEPPER.length<32)
+    return fail('Najpierw skonfiguruj klucz PIN_PEPPER w Cloudflare.',503);
   const newPin=body.newPin;
   const confirm=body.confirmPin;
   if(typeof newPin!=='string'||!/^\d{4}$/.test(newPin)||
