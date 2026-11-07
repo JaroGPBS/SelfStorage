@@ -379,7 +379,7 @@
     const count=Number(summary.overissuedLines||0);
     alert.hidden=count===0;
     alert.textContent=count>0
-      ?'⚠ UWAGA: '+count+' pozycji WZ wydano ponad zapisany stan. Szczegóły: Ruchy PZ / WZ.'
+      ?'⚠ UWAGA: '+count+' pozycji wydano ponad zapisany stan.'
       :'';
   }
 
