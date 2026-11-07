@@ -12,8 +12,31 @@
     indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
-    security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.']
+    security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.'],
+    settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.']
   };
+
+  const FONT_SIZE_KEY='gpbs_admin_font_size';
+  const FONT_SIZES=new Set(['12','13','14','15']);
+
+  function storedFontSize() {
+    try {
+      const value=localStorage.getItem(FONT_SIZE_KEY);
+      return FONT_SIZES.has(value)?value:'13';
+    } catch { return '13'; }
+  }
+
+  function applyFontSize(value,save=true) {
+    if(!FONT_SIZES.has(value))return;
+    document.documentElement.dataset.adminFontSize=value;
+    document.querySelectorAll('input[name="adminFontSize"]').forEach(input=>{
+      input.checked=input.value===value;
+    });
+    if(save) {
+      try { localStorage.setItem(FONT_SIZE_KEY,value); }
+      catch { /* Private browsing / blocked storage: keep selection for this page. */ }
+    }
+  }
 
   async function api(view) {
     const url='/api/panel?view='+encodeURIComponent(view)+
@@ -415,7 +438,9 @@
         row.append(td(part.warehouse_name||part.warehouse_id||'—'));
         row.append(td(formatTimestampPL(part.added_at)+' · '+(part.added_by||'—')));
       }
-      row.append(td(part.name||'—'));
+      const partName=td(part.name||'—');
+      partName.className='part-name-cell';
+      row.append(partName);
       row.append(td(part.part_number||'—'));
       row.append(td(part.sap_number||'—'));
       if(newOnly)row.append(td(Number(part.has_photo)?'Jest zdjęcie':'Brak zdjęcia'));
@@ -791,9 +816,10 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
+    $('settingsView').classList.toggle('hidden',view!=='settings');
     $('addUserBtn').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('showArchivedUsers').classList.toggle('hidden',view!=='users');
     $('showArchivedUsers').textContent=state.showArchives?'Wróć do użytkowników':'Pokaż archiwum';
@@ -810,7 +836,7 @@
     showView(view);
     closeSide();
     try {
-      if(view==='security') return;
+      if(view==='security'||view==='settings') return;
       if(view==='indexMigration'){
         const result=await api('indexMigration');
         state.records=result.parts||[];
@@ -1155,6 +1181,11 @@
   }
 
   async function init() {
+    applyFontSize(storedFontSize(),false);
+    $('fontOptions').addEventListener('change',event=>{
+      const input=event.target;
+      if(input.matches('input[name="adminFontSize"]'))applyFontSize(input.value);
+    });
     $('loginForm').addEventListener('submit',performLogin);
     $('logoutBtn').addEventListener('click',performLogout);
     $('newPartsAlert').addEventListener('click',()=>navigate('newParts'));

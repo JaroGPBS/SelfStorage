@@ -2045,3 +2045,11 @@
   .office-new-part-form {padding:19px}
   .office-new-part-actions .btn {flex:1}
 }
+
+/* Slightly larger part names only; leave SAP, quantities, and controls unchanged. */
+.app.view-stocks:not(.view-modules) .table.part-stock-table .row-link,
+.app.view-aggregate .table.aggregate-table tbody td:nth-child(2),
+.app.view-nok .office-nok-name{
+  font-size:13px;
+  line-height:1.45;
+}
