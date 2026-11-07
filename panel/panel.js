@@ -261,8 +261,11 @@
       :'Statystyki Cloudflare';
     renderQuota('usageD1Size','usageD1SizeMeter','usageD1SizePct',
       active?cloud.d1?.sizeBytes:null,500000000,true);
-    $('usageD1Reads').textContent=active&&cloud.d1?.rowsRead!=null?formatNum(cloud.d1.rowsRead):'—';
-    $('usageD1Writes').textContent=active&&cloud.d1?.rowsWritten!=null?formatNum(cloud.d1.rowsWritten):'—';
+    // Paid monthly figures are reference included allowances, not a detected account plan.
+    renderQuota('usageD1Reads','usageD1MonthReadsMeter','usageD1MonthReadsPct',
+      active?cloud.d1?.rowsRead:null,25000000000);
+    renderQuota('usageD1Writes','usageD1MonthWritesMeter','usageD1MonthWritesPct',
+      active?cloud.d1?.rowsWritten:null,50000000);
     renderQuota('usageR2Size','usageR2SizeMeter','usageR2SizePct',
       active?cloud.r2?.sizeBytes:null,10000000000,true,'-mies.');
     renderQuota('usageD1TodayReads','usageD1ReadsMeter','usageD1ReadsPct',
@@ -273,6 +276,10 @@
       active?cloud.r2?.classA:null,1000000);
     renderQuota('usageR2ClassB','usageR2BMeter','usageR2BPct',
       active?cloud.r2?.classB:null,10000000);
+    for (const id of ['usageD1MonthReadsPct','usageD1MonthWritesPct']) {
+      const field=$(id);
+      field.textContent=field.textContent.replace('progu Free','miesięcznej puli Paid');
+    }
     $('usageR2Objects').textContent=active&&cloud.r2?.objectCount!=null
       ?formatNum(cloud.r2.objectCount):'—';
     $('usageR2Ops').textContent=active&&cloud.r2?.operations!=null?formatNum(cloud.r2.operations):'—';
