@@ -245,6 +245,7 @@ async function cloudflareUsage(env,url) {
   }
   const abort=new AbortController();
   const timer=setTimeout(()=>abort.abort(),9000);
+  let phase='fetch';
   try{
     const response=await fetch('https://api.cloudflare.com/client/v4/graphql',{
       method:'POST',
@@ -255,6 +256,7 @@ async function cloudflareUsage(env,url) {
       }}),
       signal:abort.signal
     });
+    phase='response';
     // Return safe error categories only. Never expose the token or Cloudflare's
     // raw error messages, which may contain account identifiers.
     if(!response.ok){
@@ -267,6 +269,7 @@ async function cloudflareUsage(env,url) {
       return {status:'unavailable',reason,httpStatus:response.status};
     }
     const result=await response.json();
+    phase='processing';
     if(Array.isArray(result.errors)&&result.errors.length){
       return {status:'unavailable',reason:graphqlFailureReason(result.errors)};
     }
@@ -301,8 +304,12 @@ async function cloudflareUsage(env,url) {
     }
     return output;
   }catch(error){
-    const reason=error?.name==='AbortError'?'timeout':'network_error';
-    console.error('Cloudflare analytics unavailable',reason);
+    // Never send exception messages, URLs, account IDs or token values to the browser.
+    const reason=error?.name==='AbortError'?'timeout':
+      phase==='fetch'?'fetch_failed':
+      phase==='response'?'invalid_response':
+      'processing_error';
+    console.error('Cloudflare analytics unavailable',reason,error?.name||'Error');
     return {status:'unavailable',reason};
   }finally{clearTimeout(timer);}
 }

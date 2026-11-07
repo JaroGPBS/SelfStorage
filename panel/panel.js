@@ -262,7 +262,10 @@
       graphql_error:'Cloudflare zgłosił błąd GraphQL. Wymagana dokładniejsza weryfikacja zapytania.',
       account_unavailable:'Cloudflare nie udostępnił danych wybranego konta. Sprawdź zakres dostępu tokena.',
       timeout:'Przekroczono czas oczekiwania na Cloudflare.',
-      network_error:'Nie udało się uzyskać odpowiedzi od Cloudflare.'
+      network_error:'Nie udało się uzyskać odpowiedzi od Cloudflare.',
+      fetch_failed:'Nie udało się nawiązać połączenia z API Cloudflare z poziomu aplikacji. Błąd wysłania zapytania.',
+      invalid_response:'API Cloudflare odpowiedziało, ale nie zwróciło poprawnego formatu JSON.',
+      processing_error:'Wystąpił błąd przetwarzania odpowiedzi Cloudflare w aplikacji.'
     };
     const status=cloud.status==='not_configured'
       ?(Array.isArray(cloud.missing)&&cloud.missing.length
