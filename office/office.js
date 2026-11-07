@@ -164,8 +164,21 @@ function setLoggedIn(payload){
   renderMenu();selectView('stocks',state.warehouse);
 }
 function renderMenu(){
-  $('warehouseMenu').innerHTML=state.warehouses.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+escapeHtml(w.name)+'</button>').join('')+
+  // One Office for both markets. Each user only sees warehouses granted in D1.
+  const sections=['PL','FR'].map(market=>{
+    const items=state.warehouses.filter(w=>w.country_code===market);
+    if(!items.length)return '';
+    return '<div class="office-market-label">'+(market==='FR'?'Francja':'Polska')+'</div>'+
+      items.map(w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+escapeHtml(w.name)+'</button>').join('');
+  }).join('');
+  $('warehouseMenu').innerHTML=sections+
     '<button type="button" class="subnav-btn" data-view="aggregate">Zestawienie zbiorcze</button>';
+  const french=realWarehouse(state.warehouse)?.country_code==='FR';
+  // French operational documents will be introduced with their own workflow,
+  // not erroneously pulled from Poland's PZ/WZ/inventory tables.
+  for(const el of document.querySelectorAll('#sidebar [data-view]')){
+    el.classList.toggle('hidden',french&&['pz','wz','nok','inventories','labels'].includes(el.dataset.view));
+  }
   document.querySelectorAll('[data-view],[data-warehouse]').forEach(el=>{
     el.classList.toggle('active',el.dataset.view===state.view||(state.view==='stocks'&&el.dataset.warehouse===state.warehouse));
   });
@@ -173,7 +186,7 @@ function renderMenu(){
 function setHead(title,kicker,desc){
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
-  $('newPart').classList.toggle('hidden',state.view!=='stocks');
+  $('newPart').classList.toggle('hidden',state.view!=='stocks'||realWarehouse(state.warehouse)?.country_code==='FR');
   $('stockTabs').classList.toggle('hidden',state.view!=='stocks');
   $('officeLabelsView').classList.toggle('hidden',state.view!=='labels');
   $('officeTableCard').classList.toggle('hidden',state.view==='labels');
@@ -255,12 +268,15 @@ function setModuleCategory(category){
   drawModules();
 }
 function selectView(view,warehouse,focusDocument=null){
+  const targetWarehouse=warehouse||state.warehouse;
+  if(realWarehouse(targetWarehouse)?.country_code==='FR' &&
+     !['stocks','aggregate','vehicles'].includes(view))view='stocks';
   state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
   const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.'};
-  setHead(titles[view]||'Stany magazynowe','GPBS STORAGE / POLSKA',descriptions[view]||'');
+  setHead(titles[view]||'Stany magazynowe','GPBS STORAGE / '+(realWarehouse(state.warehouse)?.country_code==='FR'?'FRANCJA':'POLSKA'),descriptions[view]||'');
   render();
 }
 function setLoading(){errorBanner('');$('tableArea').innerHTML='<div class="loading">Wczytywanie danych...</div>';$('tableFooter').textContent='';$('searchNote').classList.add('hidden');}
@@ -543,7 +559,7 @@ function syncVehicleTopScroll(){
   $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
 }
 function drawVehicles(){
-  $('tableArea').innerHTML='<div class="empty">Brak danych pojazdów. Ewidencja stanów samochodowych nie jest jeszcze podłączona do D1.</div>';
+  $('tableArea').innerHTML='<div class="empty">Brak danych pojazdów. Prawdziwe stany samochodowe będą widoczne po pierwszej inwentaryzacji ekip w D1. Dane testowe nie są przenoszone.</div>';
   $('tableFooter').textContent='0 pojazdów w ewidencji';
   noteSearch(0,0,'pojazdach');
 }
@@ -567,7 +583,9 @@ async function render(){
       if(ticket!==state.requestId)return;drawStocks(parts,state.warehouse);
       }
     }else if(state.view==='aggregate'){
-      const realSets=await Promise.all(state.warehouses.map(async w=>({name:w.name,parts:await loadStocks(w.id)})));
+      const market=realWarehouse(state.warehouse)?.country_code;
+      const scoped=state.warehouses.filter(w=>w.country_code===market);
+      const realSets=await Promise.all(scoped.map(async w=>({name:w.name,parts:await loadStocks(w.id)})));
       if(ticket!==state.requestId)return;drawAggregate(realSets);
     }else if(state.view==='vehicles'){
       if(ticket!==state.requestId)return;drawVehicles();
