@@ -21,6 +21,14 @@ async function tableExists(db,name){
   const row=await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
   return Boolean(row);
 }
+// Office-only cross-market warehouse grants; mobile PL session remains limited to PL.
+async function officeWarehouses(db,userId){
+  return selectRows(db,
+    "SELECT w.id,w.name,w.country_code FROM user_warehouse_access a "+
+    "JOIN warehouses w ON w.id=a.warehouse_id "+
+    "WHERE a.user_id=? AND w.active=1 AND w.country_code IN ('PL','FR') "+
+    "ORDER BY w.country_code,w.name",[userId]);
+}
 // The long-lived cookie is issued only after a successful normal PIN login.
 // A different cookie name and audience keep it unusable in the warehouse app.
 export async function onRequestPost({request,env}){
@@ -84,6 +92,10 @@ export async function onRequestGet({request,env}){
   if(!user)return error('Zaloguj się do panelu.',401);
   if(!ALLOWED.has(user.role))return error('Brak dostępu do panelu biurowego.',403);
   const url=new URL(request.url);
+  let authorizedWarehouses;
+  try{authorizedWarehouses=await officeWarehouses(env.DB,user.id);}
+  catch(e){console.error('Office grants lookup failed',e?.name||'Error');return error('Brak dostępu do magazynów.',503);}
+  if(!authorizedWarehouses.length)return error('Brak przypisanych magazynów Office.',403);
   const view=url.searchParams.get('view')||'warehouses';
   if(view==='warehouses'){
     // Only this authenticated employee's given name is needed for the greeting.
@@ -99,12 +111,16 @@ export async function onRequestGet({request,env}){
     }catch(err){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
-    return workerJson({ok:true,user:{...user,firstName},warehouses:user.warehouses});
+    return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
   }
   const warehouseId=url.searchParams.get('warehouse')||'';
   if(!WAREHOUSE.test(warehouseId))return error('Nieprawidłowy magazyn.');
-  if(!user.warehouses.some(w=>w.id===warehouseId))
-    return error('Brak uprawnień do tego magazynu.',403);
+  const authorizedWarehouse=authorizedWarehouses.find(w=>w.id===warehouseId);
+  if(!authorizedWarehouse)return error('Brak uprawnień do tego magazynu.',403);
+  // Do not mistake PL-specific PZ/WZ/NOK tables for French operational history.
+  if(authorizedWarehouse.country_code==='FR' &&
+     !['stocks','part','partPhoto'].includes(view))
+    return error('Moduł francuski jest przygotowywany; obecnie dostępne są stany i karty części.',409);
   try{
     if(view==='partPhoto') {
       const partId=url.searchParams.get('part')||'';
