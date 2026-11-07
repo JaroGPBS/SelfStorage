@@ -445,7 +445,7 @@
       row.append(td(user.warehouses||'—'));
       const pin=td('');pin.className='pin-cell';
       pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));
-      if(user.active&&!state.showArchives) {
+      if(user.active&&!state.showArchives&&user.role_code!=='ADMIN') {
         const pinAction=document.createElement('button');
         pinAction.className='btn mini pin-action';
         pinAction.type='button';pinAction.textContent=user.has_pin?'Reset PIN':'Generuj';
@@ -1003,12 +1003,16 @@
       $('userFirstName').value=existing?.first_name||'';
       $('userLastName').value=existing?.last_name||'';
       $('userPhone').value=existing?.phone||'';
+      const protectedAdmin=existing?.role_code==='ADMIN';
       $('userStatusRow').hidden=!existing;
       $('userStatus').value=existing?(existing.active?'1':'0'):'1';
-      $('archiveUserBtn').hidden=!existing;
+      $('userStatus').disabled=protectedAdmin;
+      $('archiveUserBtn').hidden=!existing||protectedAdmin;
+      $('protectedAdminHint').hidden=!protectedAdmin;
 
       const roleInput=$('userRole');roleInput.replaceChildren();
-      for(const role of roles) {
+      roleInput.disabled=protectedAdmin;
+      for(const role of roles.filter(item=>item.code!=='ADMIN'||protectedAdmin)) {
         const option=document.createElement('option');
         option.value=role.code;option.textContent=role.name;
         roleInput.append(option);
@@ -1025,6 +1029,7 @@
         checkbox.type='checkbox';checkbox.value=warehouse.id;
         checkbox.id='grant-'+warehouse.id;
         checkbox.checked=assigned.has(warehouse.id);
+        checkbox.disabled=protectedAdmin;
         const label=document.createElement('label');label.htmlFor=checkbox.id;
         label.textContent=warehouse.name+' ('+warehouse.country_code+')'+(warehouse.active?'':' — nieaktywny');
         row.append(checkbox,label);field.append(row);
