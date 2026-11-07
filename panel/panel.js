@@ -511,7 +511,7 @@
     const header=table.createTHead().insertRow();
     const titles=newOnly
       ?['MAGAZYN','DODANO / PRACOWNIK','NAZWA CZĘŚCI','INDEKS GPBS','SAP','ZDJĘCIE','WERYFIKACJA','']
-      :['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ILOŚĆ','WERYFIKACJA',''];
+      :['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ZDJĘCIE','WERYFIKACJA',''];
     for(const label of titles) {
       const cell=document.createElement('th');
       cell.textContent=label;
@@ -532,8 +532,11 @@
       row.append(td(part.part_number||'—'));
       row.append(td(part.sap_number||'—'));
       if(newOnly)row.append(td(Number(part.has_photo)?'Jest zdjęcie':'Brak zdjęcia'));
-      else row.append(td(part.quantity===null||part.quantity===undefined
-        ?'Nieustalony':formatNum(part.quantity)+' szt.'));
+      else {
+        const photo=td(Number(part.has_photo)?'✓ Jest zdjęcie':'—');
+        photo.title=Number(part.has_photo)?'Część posiada zdjęcie':'Brak zdjęcia';
+        row.append(photo);
+      }
       const status=td('');
       status.textContent=pending?'DO WERYFIKACJI':'—';
       status.className=pending?'part-review-status':'';
