@@ -13,6 +13,13 @@ const ALLOWED_ROLES = new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','E
 // The password and personally chosen legacy PIN remain unchanged.
 const OWNER_LEGACY_ID = 'ADMIN';
 const OWNER_ROLE = 'ADMIN';
+// A conservative guard for the owner's existing D1 Office account.
+// Keep this alias immutable in the panel until a unique D1 owner ID is configured.
+const OWNER_D1_SYMBOL = 'JJ';
+function isProtectedOwnerAccount(user){
+  return user?.role_code===OWNER_ROLE ||
+    String(user?.name||'').trim().toUpperCase()===OWNER_D1_SYMBOL;
+}
 const enc = new TextEncoder();
 
 function respond(body, status=200, extra={}) {
@@ -719,7 +726,7 @@ async function updateUser(env, body, actor) {
   }
   const existing=await env.DB.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!existing)return fail('Nie znaleziono użytkownika.',404);
-  if(existing.role_code===OWNER_ROLE||role===OWNER_ROLE)
+  if(isProtectedOwnerAccount(existing)||role===OWNER_ROLE)
     return fail('Rola ADMIN jest chroniona przed zmianami przez panel.',403);
   if(await archiveTableExists(env.DB)&&
      await env.DB.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first())
@@ -830,13 +837,13 @@ async function staffMutation(env,body,actor,edit) {
     }
     prior=(await db.prepare('SELECT warehouse_id FROM user_warehouse_access WHERE user_id=?')
       .bind(id).all()).results.map(r=>r.warehouse_id);
-    if(before.role_code===OWNER_ROLE){
-      // Allow profile/contact edits, but forbid role, active flag and grant changes.
-      // Compare sets so visual checkbox order cannot change the outcome.
+    if(isProtectedOwnerAccount(before)){
+      // Allow optional contact edits only. Owner identity, role, status, and grants stay fixed.
       const unchangedGrants=prior.length===staff.warehouses.length &&
         prior.every(w=>staff.warehouses.includes(w));
-      if(staff.role!==OWNER_ROLE||staff.active!==1||before.active!==1||!unchangedGrants)
-        return fail('Główne konto administratora: rola, status i uprawnienia są chronione.',403);
+      if(staff.nickname!==before.name||staff.role!==before.role_code||
+         staff.active!==1||before.active!==1||!unchangedGrants)
+        return fail('Konto właściciela: identyfikator, rola, status i uprawnienia są chronione.',403);
     }else if(staff.role===OWNER_ROLE){
       return fail('Nie można nadać roli głównego administratora innemu użytkownikowi.',403);
     }
@@ -897,7 +904,7 @@ async function changeStaffArchive(env,body,actor,restore) {
     return fail('Najpierw wykonaj migrację db/06-user-archive.sql w Cloudflare D1.',503);
   const user=await db.prepare('SELECT id,name,role_code,active FROM users WHERE id=?').bind(id).first();
   if(!user)return fail('Nie znaleziono użytkownika.',404);
-  if(user.role_code===OWNER_ROLE)return fail('Konta głównego administratora nie można zarchiwizować.',403);
+  if(isProtectedOwnerAccount(user))return fail('Konta właściciela nie można zarchiwizować.',403);
   const archive=await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first();
   if(restore&&!archive)return fail('To konto nie jest zarchiwizowane.',409);
   if(!restore&&archive)return fail('Konto zostało już zarchiwizowane.',409);
@@ -1009,7 +1016,7 @@ async function provisionStaffPins(env,body,actor) {
     if(role===OWNER_ROLE)return fail('PIN administratora nie jest generowany automatycznie.',403);
     const sql='SELECT u.id,u.name,u.role_code FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
-      "WHERE u.active=1 AND u.role_code<>'ADMIN' AND p.user_id IS NULL "+
+      "WHERE u.active=1 AND u.role_code<>'ADMIN' AND UPPER(TRIM(u.name))<>'JJ' AND p.user_id IS NULL "+
       (await archiveTableExists(db)?'AND NOT EXISTS (SELECT 1 FROM user_archives ar WHERE ar.user_id=u.id) ':'')+
       (role?'AND u.role_code=? ':'')+
       'ORDER BY u.created_at,u.id LIMIT ?';
@@ -1035,8 +1042,8 @@ async function provisionStaffPins(env,body,actor) {
     'SELECT id,name,role_code FROM users WHERE id=? AND active=1'
   ).bind(userId).first();
   if(!user)return fail('Nie znaleziono aktywnego użytkownika.',404);
-  if(user.role_code===OWNER_ROLE)
-    return fail('PIN administratora jest ustawiany indywidualnie, nie przez generator.',403);
+  if(isProtectedOwnerAccount(user))
+    return fail('PIN właściciela jest ustawiany indywidualnie, nie przez generator.',403);
   if(await archiveTableExists(db) &&
     await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(userId).first())
     return fail('Nie można nadać PIN-u użytkownikowi w archiwum.',409);
