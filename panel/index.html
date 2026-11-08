@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=22">
-  <script src="./panel.js?v=40" defer></script>
+  <link rel="stylesheet" href="./panel.css?v=23">
+  <script src="./panel.js?v=41" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -373,6 +373,33 @@
         <button id="archiveUserBtn" class="btn archive-danger" type="button" hidden>Usuń z listy</button>
         <button id="cancelUser" class="btn ghost" type="button">Anuluj</button>
         <button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="userPermissionsDialog" class="modal" aria-labelledby="userPermissionsTitle">
+    <form id="userPermissionsForm" class="modal-inner">
+      <div class="modal-heading">
+        <div>
+          <div class="eyebrow">GPBS STORAGE / DOSTĘP</div>
+          <h2 id="userPermissionsTitle">Uprawnienia</h2>
+          <p id="permissionsUserName"></p>
+        </div>
+        <button type="button" id="closeUserPermissions" class="icon-button" aria-label="Zamknij uprawnienia">×</button>
+      </div>
+      <input type="hidden" id="permissionsUserId">
+      <p class="hint user-rights-intro">Indywidualne ograniczenia funkcji. Dostęp do aplikacji i Office nadal wynika z roli. Dostęp PL/FR ustawiasz checkboxami w tabeli użytkowników.</p>
+      <fieldset class="user-rights-options">
+        <legend>Dozwolone funkcje</legend>
+        <label class="user-right-option"><input type="checkbox" id="right-stocks"><span>Podgląd stanów magazynowych</span></label>
+        <label class="user-right-option"><input type="checkbox" id="right-pz"><span>Przyjęcia (PZ)</span></label>
+        <label class="user-right-option"><input type="checkbox" id="right-wz"><span>Wydania (WZ)</span></label>
+        <label class="user-right-option"><input type="checkbox" id="right-inventory"><span>Inwentaryzacje</span></label>
+        <label class="user-right-option"><input type="checkbox" id="right-labels"><span>Drukowanie etykiet</span></label>
+      </fieldset>
+      <p id="permissionsOwnerHint" class="hint" hidden>Główne konto Super Admin ma stałe, pełne uprawnienia.</p>
+      <div class="dialog-actions">
+        <button id="cancelUserPermissions" class="btn ghost" type="button">Anuluj</button>
+        <button id="saveUserPermissions" class="btn primary" type="submit">Zapisz uprawnienia</button>
       </div>
     </form>
   </dialog>
