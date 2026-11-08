@@ -1,6 +1,7 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
+import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
   ensurePhotoTables,readValidatedPhoto,reservePhotoWrite,releasePhotoBytes}
   from '../../lib/pl-r2-photos.js';
@@ -676,7 +677,9 @@ async function queryPanel(env,view,url) {
       'SELECT u.id,u.name,u.role_code,u.active,u.created_at,'+
       'pr.first_name,pr.last_name,pr.phone,pr.display_code, '+
       'CASE WHEN p.user_id IS NULL THEN 0 ELSE 1 END AS has_pin, '+
-      "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses "+
+      "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses, "+
+      "COALESCE((SELECT GROUP_CONCAT(DISTINCT w.country_code) FROM user_warehouse_access a "+
+      "JOIN warehouses w ON w.id=a.warehouse_id WHERE a.user_id=u.id),'') AS warehouse_countries "+
       'FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
       'LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
@@ -686,7 +689,7 @@ async function queryPanel(env,view,url) {
         : '')+
       'ORDER BY u.active DESC,u.name COLLATE NOCASE LIMIT 500'
     ).all();
-    return rows.results||[];
+    return effectiveAccessByUsers(env.DB,rows.results||[]);
   }
   if(view==='pinStatus')return {
     available:typeof env.PIN_PEPPER==='string'&&env.PIN_PEPPER.length>=32
@@ -1295,6 +1298,54 @@ async function route(request,env) {
     }catch(error){
       console.error('Super Admin credential change failed',error?.name||'Error');
       return fail('Nie udało się zapisać zmiany danych logowania.',503);
+    }
+  }
+  if(body?.action==='setUserMarkets'||body?.action==='setUserPermissions'){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try{
+      const userId=String(body.userId||'');
+      if(!/^GPBS-U-[a-f0-9-]{36}$/.test(userId))
+        return fail('Nieprawidłowy identyfikator użytkownika.',400);
+      const user=await env.DB.prepare(
+        'SELECT id,name,role_code,active FROM users WHERE id=?'
+      ).bind(userId).first();
+      if(!user)return fail('Nie znaleziono użytkownika.',404);
+      if(await archiveTableExists(env.DB)){
+        if(await env.DB.prepare('SELECT 1 FROM user_archives WHERE user_id=?').bind(userId).first())
+          return fail('Nie można zmienić uprawnień konta w archiwum.',409);
+      }
+      if(await isProtectedOwnerRecord(env.DB,user))
+        return fail('Uprawnienia głównego administratora są niezmienne.',403);
+      const access=await readUserAccess(env.DB,user);
+      let markets=access.markets,features=access.features;
+      if(body.action==='setUserMarkets'){
+        if(!body.markets||typeof body.markets!=='object'||Array.isArray(body.markets)||
+          Object.keys(body.markets).sort().join(',')!=='FR,PL'||
+          typeof body.markets.PL!=='boolean'||typeof body.markets.FR!=='boolean')
+          return fail('Nieprawidłowe uprawnienia rynków.',400);
+        markets={PL:body.markets.PL,FR:body.markets.FR};
+      }else{
+        if(!validExtraPermissions(body.permissions))
+          return fail('Nieprawidłowe uprawnienia dodatkowe.',400);
+        features=body.permissions;
+      }
+      await ensureAccessTable(env.DB);
+      await env.DB.batch([
+        env.DB.prepare(
+          'INSERT INTO user_access_settings(user_id,pl_enabled,fr_enabled,extra_permissions) VALUES(?,?,?,?) '+
+          'ON CONFLICT(user_id) DO UPDATE SET pl_enabled=excluded.pl_enabled,'+
+          'fr_enabled=excluded.fr_enabled,extra_permissions=excluded.extra_permissions,updated_at=CURRENT_TIMESTAMP'
+        ).bind(userId,Number(markets.PL),Number(markets.FR),JSON.stringify(features)),
+        env.DB.prepare(
+          'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
+        ).bind(crypto.randomUUID(),session.id,
+          body.action==='setUserMarkets'?'USER_MARKETS_UPDATE':'USER_FEATURES_UPDATE',
+          'USER',userId,JSON.stringify(body.action==='setUserMarkets'?{markets}:{features}))
+      ]);
+      return respond({ok:true,markets,permissions:features});
+    }catch(error){
+      console.error('User access update failed',error?.name||'Error');
+      return fail('Nie udało się zapisać uprawnień użytkownika.',503);
     }
   }
   if(['pinGenerate','pinGenerateMissing','pinReset'].includes(body?.action)) {
