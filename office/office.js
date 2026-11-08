@@ -13,16 +13,14 @@ const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.i
 // Office presentation only. These locations are NOT created in D1 and no fake stock is loaded.
 const FR_LAYOUT_WAREHOUSES=[
   {key:'belleville',name:'Belleville'},
-  {key:'toulouse',name:'Tuluza'},
-  {key:'paris',name:'Paryż'},
+  {key:'toulouse',name:'Tuluza BOX',matchName:'Tuluza'},
+  {key:'paris',name:'Paryż BOX',matchName:'Paryż'},
   {key:'bovis-paris',name:'Bovis Paryż'},
   {key:'bovis-lille',name:'Bovis Lille'},
   {key:'bovis-nantes',name:'Bovis Nantes'},
   {key:'bovis-nancy',name:'Bovis Nancy'},
   {key:'bovis-marseille',name:'Bovis Marsylia'},
-  {key:'bovis-bordeaux',name:'Bovis Bordeaux'},
-  {key:'bovis-toulouse',name:'Bovis Tuluza'},
-  {key:'bovis-pescau',name:'Bovis Pescau'}
+  {key:'bovis-toulouse',name:'Bovis Tuluza'}
 ];
 const FR_LAYOUT_MODULES=[
   {key:'machines',name:'Maszyny OK / NOK',icon:'▤'},
@@ -211,10 +209,10 @@ function renderMenu(){
   if(canPreviewFrance){
     const used=new Set();
     for(const location of FR_LAYOUT_WAREHOUSES){
-      const real=fr.find(w=>normalizeWarehouseName(w.name)===normalizeWarehouseName(location.name));
+      const real=fr.find(w=>[location.name,location.matchName].some(name=>name&&normalizeWarehouseName(w.name)===normalizeWarehouseName(name)));
       if(real){
         used.add(real.id);
-        frItems.push(renderReal(real));
+        frItems.push('<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(real.id)+'">'+escapeHtml(location.name)+'</button>');
       }else{
         frItems.push('<button type="button" class="subnav-btn office-preview-link" '+
           'data-preview-warehouse="'+escapeHtml(location.key)+'" title="Układ — bez danych">'+
