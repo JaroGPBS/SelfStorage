@@ -38,7 +38,7 @@ const normalizeWarehouseName=value=>String(value||'').normalize('NFD')
   .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pl')
   .replace(/ł/g,'l').replace(/[^a-z0-9]/g,'');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'PL',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:true,FR:false},view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function dateText(raw){if(!raw)return '—';const dt=new Date(String(raw).replace(' ','T').replace(/Z?$/,'Z'));return isNaN(dt.getTime())?String(raw).slice(0,10):new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',day:'2-digit',month:'2-digit',year:'numeric'}).format(dt);}
 function isoWeek(raw){
@@ -184,8 +184,6 @@ function greetingName(user){
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;
-  if(!state.warehouses.some(w=>w.country_code===state.aggregateMarket))
-    state.aggregateMarket=state.warehouses[0]?.country_code||'PL';
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
   $('username').textContent=name?name+'!':'!';
@@ -202,15 +200,21 @@ function renderMenu(){
     String(state.user?.nickname||'').trim().toUpperCase()==='JJ';
   const renderReal=w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+
     escapeHtml(w.name)+'</button>';
-  const aggregateButton=country=>'<button type="button" class="subnav-btn office-aggregate-link" '+
-    'data-aggregate-market="'+country+'"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
+  const aggregateButton=()=>'<button type="button" class="subnav-btn office-aggregate-link" '+
+    'data-aggregate-market="FR"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
     'Zestawienie zbiorcze</button>';
-  const group=(country,items,showAggregate=true)=>'<div class="office-market-group">'+
-    '<div class="office-market-label">MAGAZYNY '+country+'</div>'+
-    '<div class="office-market-list">'+items+
-    (showAggregate?aggregateButton(country):'')+'</div></div>';
+  const group=(country,items,showAggregate=false)=>{
+    const expanded=Boolean(state.warehouseMenus[country]);
+    return '<div class="office-market-group">'+
+      '<button type="button" class="office-market-toggle" data-market-toggle="'+country+'" '+
+      'aria-expanded="'+String(expanded)+'" aria-controls="officeMarket'+country+'">'+
+      '<span class="office-market-toggle-icon" aria-hidden="true">▣</span>'+
+      '<span>MAGAZYNY '+country+'</span><span class="office-market-chevron" aria-hidden="true">⌄</span></button>'+
+      '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
+      items+(showAggregate?aggregateButton():'')+'</div></div>';
+  };
   const plSection=group('PL',pl.length?pl.map(renderReal).join(''):
-    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>',pl.length>0);
+    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>');
   let frItems=[];
   if(canPreviewFrance){
     const used=new Set();
@@ -231,7 +235,7 @@ function renderMenu(){
   }
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
-    (hasFrance?group('FR',frItems.join('')):'');
+    (hasFrance?group('FR',frItems.join(''),true):'');
   const modules=$('frModuleMenu');
   modules.classList.toggle('hidden',!hasFrance);
   modules.innerHTML=hasFrance?'<div class="nav-divider"></div>'+
@@ -244,7 +248,7 @@ function renderMenu(){
     const isPreview=state.view==='preview'&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
-    const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket===state.aggregateMarket;
+    const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket==='FR';
     const isView=state.view!=='preview'&&el.dataset.view===state.view;
     el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isView));
   }
@@ -368,7 +372,7 @@ function selectView(view,warehouse,focusDocument=null){
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
   const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.'};
-  const market=view==='aggregate'?state.aggregateMarket:realWarehouse(state.warehouse)?.country_code;
+  const market=view==='aggregate'?'FR':realWarehouse(state.warehouse)?.country_code;
   const marketName=market==='FR'?'FRANCJA':'POLSKA';
   const title=view==='aggregate'?'Zestawienie zbiorcze — '+(market==='FR'?'FR':'PL'):(titles[view]||'Stany magazynowe');
   setHead(title,'GPBS STORAGE / '+marketName,descriptions[view]||'');
@@ -693,17 +697,25 @@ async function render(){
       if(ticket!==state.requestId)return;drawStocks(parts,state.warehouse);
       }
     }else if(state.view==='aggregate'){
-      const scoped=state.warehouses.filter(w=>w.country_code===state.aggregateMarket);
-      if(!scoped.length){
-        if(ticket!==state.requestId)return;
-        $('tableArea').innerHTML='<div class="empty">Brak przypisanych magazynów z danymi dla '+(state.aggregateMarket==='FR'?'Francji':'Polski')+'. Zakładki projektowe nie są liczone jako magazyny.</div>';
-        $('tableFooter').textContent='0 magazynów z danymi';
-        noteSearch(0,0,'częściach');
-      }else{
-        const realSets=await Promise.all(scoped.map(async w=>({id:w.id,name:w.name,parts:await loadStocks(w.id)})));
-        if(ticket!==state.requestId)return;
-        drawAggregate(realSets);
-      }
+      const scoped=state.warehouses.filter(w=>w.country_code==='FR');
+      const ownerLayout=state.user?.role==='ADMIN'&&
+        String(state.user?.nickname||'').trim().toUpperCase()==='JJ';
+      const named=ownerLayout?FR_LAYOUT_WAREHOUSES.map(location=>{
+        const matched=scoped.find(w=>[location.name,location.matchName].some(
+          name=>name&&normalizeWarehouseName(name)===normalizeWarehouseName(w.name)));
+        return {id:matched?.id||null,name:location.name,source:matched||null};
+      }):[];
+      const used=new Set(named.filter(x=>x.id).map(x=>x.id));
+      const columns=ownerLayout?[
+        ...named,
+        ...scoped.filter(w=>!used.has(w.id)).map(w=>({id:w.id,name:w.name,source:w}))
+      ]:scoped.map(w=>({id:w.id,name:w.name,source:w}));
+      const loaded=await Promise.all(columns.map(async col=>({
+        id:col.id,name:col.name,parts:col.source?await loadStocks(col.id):[],
+        preview:!col.source
+      })));
+      if(ticket!==state.requestId)return;
+      drawAggregate(loaded);
     }else if(state.view==='vehicles'){
       if(ticket!==state.requestId)return;drawVehicles();
     }else if(state.view==='nok'){
@@ -875,9 +887,19 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
   const w=e.target.closest('[data-warehouse]');if(w){selectView('stocks',w.dataset.warehouse);return;}
+  const toggle=e.target.closest('[data-market-toggle]');
+  if(toggle){
+    const market=toggle.dataset.marketToggle;
+    if(market==='PL'||market==='FR'){
+      state.warehouseMenus[market]=!state.warehouseMenus[market];
+      renderMenu();
+    }
+    return;
+  }
   const aggregate=e.target.closest('[data-aggregate-market]');
-  if(aggregate){
-    state.aggregateMarket=aggregate.dataset.aggregateMarket;
+  if(aggregate&&aggregate.dataset.aggregateMarket==='FR'){
+    state.aggregateMarket='FR';
+    state.warehouseMenus.FR=true;
     selectView('aggregate');
     return;
   }
