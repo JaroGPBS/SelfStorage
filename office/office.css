@@ -2167,3 +2167,54 @@
   background:rgba(230,63,68,.13);
   box-shadow:inset 3px 0 #e63f44;
 }
+
+/* Collapsible country warehouse groups (PL and FR). */
+.office-market-toggle{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  width:100%;
+  min-height:42px;
+  padding:10px 11px;
+  border:0;
+  border-radius:8px;
+  color:#f0f2f5;
+  background:rgba(255,255,255,.045);
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.065em;
+  text-align:left;
+}
+.office-market-toggle:hover,
+.office-market-toggle:focus-visible{background:rgba(255,255,255,.105)}
+.office-market-toggle-icon{
+  display:inline-block;
+  width:17px;
+  color:#c4ccd7;
+  font-size:15px;
+  line-height:1;
+}
+.office-market-chevron{
+  display:inline-block;
+  margin-left:auto;
+  color:#b9c2d0;
+  font-size:19px;
+  line-height:1;
+  transition:transform .15s ease;
+}
+.office-market-toggle[aria-expanded="true"] .office-market-chevron{
+  transform:rotate(180deg);
+}
+.office-market-group .office-market-list{padding-top:3px}
+.app .table.aggregate-table{
+  table-layout:auto;
+}
+.app .table.aggregate-table th:nth-child(1),
+.app .table.aggregate-table td:nth-child(1){min-width:110px}
+.app .table.aggregate-table th:nth-child(2),
+.app .table.aggregate-table td:nth-child(2){min-width:235px}
+.app .table.aggregate-table th:nth-child(n+3),
+.app .table.aggregate-table td:nth-child(n+3){
+  min-width:112px;
+  white-space:nowrap;
+}
