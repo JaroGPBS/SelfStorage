@@ -212,7 +212,7 @@ function renderMenu(){
     'data-aggregate-market="FR"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
     'Zestawienie zbiorcze</button>';
   const marketOperations=country=>'<div class="office-market-operations">'+
-    '<div class="office-market-operations-label">OPERACJE '+country+'</div>'+
+    '<div class="office-market-operations-label">OPERACJE</div>'+
     OFFICE_MARKET_OPERATIONS.map(op=>
       '<button type="button" class="subnav-btn office-operation-link" '+
       'data-market-view="'+country+'" data-view="'+escapeHtml(op.view)+'">'+
