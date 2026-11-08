@@ -30,10 +30,18 @@ const FR_LAYOUT_MODULES=[
   {key:'crews',name:'Zaopatrzenie ekip',icon:'▦'}
 ];
 const OFFICE_OPERATION_PREVIEWS={
-  pz:'Przyjęcia PZ',wz:'Wydania WZ',nok:'Części niekompletne',
+  pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',
   inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',
   labels:'Drukowanie etykiet',aggregate:'Zestawienie zbiorcze'
 };
+const OFFICE_MARKET_OPERATIONS=[
+  {view:'pz',label:'Przyjęcia',icon:'↓'},
+  {view:'wz',label:'Wydania',icon:'↑'},
+  {view:'nok',label:'Części niekompletne',icon:'!'},
+  {view:'inventories',label:'Inwentaryzacje',icon:'☷'},
+  {view:'vehicles',label:'Stany samochodowe',icon:'▤'},
+  {view:'labels',label:'Drukowanie etykiet',icon:'▦'}
+];
 const normalizeWarehouseName=value=>String(value||'').normalize('NFD')
   .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pl')
   .replace(/ł/g,'l').replace(/[^a-z0-9]/g,'');
@@ -203,6 +211,14 @@ function renderMenu(){
   const aggregateButton=()=>'<button type="button" class="subnav-btn office-aggregate-link" '+
     'data-aggregate-market="FR"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
     'Zestawienie zbiorcze</button>';
+  const marketOperations=country=>'<div class="office-market-operations">'+
+    '<div class="office-market-operations-label">OPERACJE '+country+'</div>'+
+    OFFICE_MARKET_OPERATIONS.map(op=>
+      '<button type="button" class="subnav-btn office-operation-link" '+
+      'data-market-view="'+country+'" data-view="'+escapeHtml(op.view)+'">'+
+      '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(op.icon)+'</span>'+
+      escapeHtml(op.label)+'</button>'
+    ).join('')+'</div>';
   const group=(country,items,showAggregate=false)=>{
     const expanded=Boolean(state.warehouseMenus[country]);
     return '<div class="office-market-group">'+
@@ -211,10 +227,11 @@ function renderMenu(){
       '<span class="office-market-toggle-icon" aria-hidden="true">▣</span>'+
       '<span>MAGAZYNY '+country+'</span><span class="office-market-chevron" aria-hidden="true">⌄</span></button>'+
       '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
-      items+(showAggregate?aggregateButton():'')+'</div></div>';
+      items+(showAggregate?aggregateButton():'')+marketOperations(country)+'</div></div>';
   };
   const plSection=group('PL',pl.length?pl.map(renderReal).join(''):
     '<div class="office-no-warehouse">Brak przypisanych magazynów</div>');
+
   let frItems=[];
   if(canPreviewFrance){
     const used=new Set();
@@ -249,8 +266,15 @@ function renderMenu(){
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
     const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket==='FR';
-    const isView=state.view!=='preview'&&el.dataset.view===state.view;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isView));
+    const isMarketView=el.dataset.marketView==='PL'
+      ?state.view===el.dataset.view&&state.view!=='preview'&&
+        realWarehouse(state.warehouse)?.country_code==='PL'
+      :el.dataset.marketView==='FR'
+        ?state.view==='preview'&&state.preview?.type==='operation'&&
+          state.preview?.key===el.dataset.view
+        :false;
+    const isView=!el.dataset.marketView&&state.view!=='preview'&&el.dataset.view===state.view;
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView));
   }
 }
 function showOfficePreview(type,key,label){
@@ -917,6 +941,27 @@ document.addEventListener('click',e=>{
     const item=FR_LAYOUT_MODULES.find(x=>x.key===module.dataset.frModule);
     if(item)showOfficePreview('module',item.key,item.name);
     return;
+  }
+  const operation=e.target.closest('[data-market-view][data-view]');
+  if(operation){
+    const market=operation.dataset.marketView;
+    const view=operation.dataset.view;
+    if(!OFFICE_MARKET_OPERATIONS.some(op=>op.view===view))return;
+    if(market==='FR'){
+      state.warehouseMenus.FR=true;
+      showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view]);
+      return;
+    }
+    if(market==='PL'){
+      const preferred=realWarehouse(state.warehouse)?.country_code==='PL'
+        ?state.warehouse
+        :state.warehouses.find(w=>w.country_code==='PL'&&w.id==='PL-TYCHY')?.id||
+         state.warehouses.find(w=>w.country_code==='PL')?.id;
+      if(!preferred){errorBanner('Nie masz przypisanego magazynu PL.');return;}
+      state.warehouseMenus.PL=true;
+      selectView(view,preferred);
+      return;
+    }
   }
   const v=e.target.closest('[data-view]');if(v){selectView(v.dataset.view);return;}
   const part=e.target.closest('[data-part]');if(part){openPart(part.dataset.part);return;}
