@@ -219,6 +219,14 @@ function renderMenu(){
       '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(op.icon)+'</span>'+
       escapeHtml(op.label)+'</button>'
     ).join('')+'</div>';
+  const frenchModules=()=>'<div class="office-market-modules">'+
+    '<div class="office-market-operations-label">MODUŁY FR</div>'+
+    FR_LAYOUT_MODULES.map(item=>
+      '<button type="button" class="subnav-btn office-operation-link" '+
+      'data-fr-module="'+escapeHtml(item.key)+'">'+
+      '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(item.icon)+'</span>'+
+      escapeHtml(item.name)+'</button>'
+    ).join('')+'</div>';
   const group=(country,items,showAggregate=false,showOperations=true)=>{
     const expanded=Boolean(state.warehouseMenus[country]);
     return '<div class="office-market-group">'+
@@ -230,7 +238,9 @@ function renderMenu(){
       'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '+
       'stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>'+
       '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
-      items+(showAggregate?aggregateButton():'')+(showOperations?marketOperations(country):'')+'</div></div>';
+      items+(showAggregate?aggregateButton():'')+
+      (showOperations?marketOperations(country):'')+
+      (country==='FR'?frenchModules():'')+'</div></div>';
   };
   const plSection=group('PL',pl.length?pl.map(renderReal).join(''):
     '<div class="office-no-warehouse">Brak przypisanych magazynów</div>',false,pl.length>0);
@@ -256,13 +266,6 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true):'');
-  const modules=$('frModuleMenu');
-  modules.classList.toggle('hidden',!hasFrance);
-  modules.innerHTML=hasFrance?'<div class="nav-divider"></div>'+
-    '<div class="office-sidebar-section">FRANCJA — MODUŁY</div>'+
-    FR_LAYOUT_MODULES.map(item=>'<button type="button" class="nav-item" '+
-      'data-fr-module="'+escapeHtml(item.key)+'"><span class="nav-icon">'+
-      escapeHtml(item.icon)+'</span>'+escapeHtml(item.name)+'</button>').join(''):'';
   for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-module],#sidebar [data-view],#sidebar [data-aggregate-market]')){
     const isReal=state.view==='stocks'&&el.dataset.warehouse===state.warehouse;
     const isPreview=state.view==='preview'&&(
