@@ -15,7 +15,8 @@ async function authenticate(request,env){
   try{user=await verifyWorkerSession(request,env)||await verifyRememberSession(request,env);}
   catch{return {error:fail('Nie można zweryfikować sesji.',503)};}
   if(!user)return {error:fail('Sesja wygasła. Zaloguj się ponownie.',401)};
-  if(!ROLES.has(user.role))return {error:fail('Brak uprawnień do etykiet.',403)};
+  if(!ROLES.has(user.role)||user.features?.labels===false)
+    return {error:fail('Brak uprawnień do drukowania etykiet.',403)};
   return {user};
 }
 
