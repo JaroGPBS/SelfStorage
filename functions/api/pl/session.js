@@ -518,6 +518,10 @@ export async function onRequestPost({request,env}){
   try{
     const auth=await authorized(request,env,input.warehouseId);
     if(auth.error)return auth.error;
+    if(input.pz.length&&auth.user.features?.pz===false)
+      return fail('Nie masz uprawnień do przyjęć PZ.',403);
+    if(input.wz.length&&auth.user.features?.wz===false)
+      return fail('Nie masz uprawnień do wydań WZ.',403);
     if(!await schemaReady(env.DB))
       return fail('Najpierw wykonaj migrację '+MIGRATION+'.',503);
     if([...input.pz,...input.wz].some(row=>row.nok))
