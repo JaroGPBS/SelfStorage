@@ -456,10 +456,12 @@ function drawAggregate(realSets){
       '<td>'+escapeHtml(part.name)+'</td>'+values+
       '<td class="num aggregate-total">'+displayed+'</td></tr>';
   }).join('');
-  $('tableArea').innerHTML=wrapTable(headers,rows,'aggregate-table')||
-    '<div class="empty">Brak części do wyświetlenia.</div>';
+  const tableRows=rows||'<tr><td colspan="'+headers.length+'" class="office-aggregate-empty">'+
+    'Nie ma jeszcze aktualnych danych części dla tych magazynów.</td></tr>';
+  $('tableArea').innerHTML=wrapTable(headers,tableRows,'aggregate-table');
   $('tableFooter').textContent=filtered.length+' pozycji · '+realSets.length+
     (realSets.length===1?' magazyn':realSets.length>=2&&realSets.length<=4?' magazyny':' magazynów')+
+    ' · źródła D1: '+realSets.filter(store=>!store.preview).length+
     ' · „—” oznacza brak ustalonego stanu, nie zero';
   noteSearch(filtered.length,positions.size,'częściach');
 }
@@ -698,18 +700,18 @@ async function render(){
       }
     }else if(state.view==='aggregate'){
       const scoped=state.warehouses.filter(w=>w.country_code==='FR');
-      const ownerLayout=state.user?.role==='ADMIN'&&
-        String(state.user?.nickname||'').trim().toUpperCase()==='JJ';
-      const named=ownerLayout?FR_LAYOUT_WAREHOUSES.map(location=>{
+      // The FR comparison always lists all planned locations.
+      // Only stores actually granted to the signed-in user are queried.
+      const named=FR_LAYOUT_WAREHOUSES.map(location=>{
         const matched=scoped.find(w=>[location.name,location.matchName].some(
           name=>name&&normalizeWarehouseName(name)===normalizeWarehouseName(w.name)));
         return {id:matched?.id||null,name:location.name,source:matched||null};
-      }):[];
+      });
       const used=new Set(named.filter(x=>x.id).map(x=>x.id));
-      const columns=ownerLayout?[
+      const columns=[
         ...named,
         ...scoped.filter(w=>!used.has(w.id)).map(w=>({id:w.id,name:w.name,source:w}))
-      ]:scoped.map(w=>({id:w.id,name:w.name,source:w}));
+      ];
       const loaded=await Promise.all(columns.map(async col=>({
         id:col.id,name:col.name,parts:col.source?await loadStocks(col.id):[],
         preview:!col.source
@@ -892,7 +894,8 @@ document.addEventListener('click',e=>{
     const market=toggle.dataset.marketToggle;
     if(market==='PL'||market==='FR'){
       state.warehouseMenus[market]=!state.warehouseMenus[market];
-      renderMenu();
+      toggle.setAttribute('aria-expanded',String(state.warehouseMenus[market]));
+      $('officeMarket'+market)?.classList.toggle('hidden',!state.warehouseMenus[market]);
     }
     return;
   }
