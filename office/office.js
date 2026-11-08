@@ -455,7 +455,7 @@ function drawAggregate(realSets){
   $('tableArea').innerHTML=wrapTable(headers,rows,'aggregate-table')||
     '<div class="empty">Brak części do wyświetlenia.</div>';
   $('tableFooter').textContent=filtered.length+' pozycji · '+realSets.length+
-    (realSets.length===1?' magazyn':' magazynów')+
+    (realSets.length===1?' magazyn':realSets.length>=2&&realSets.length<=4?' magazyny':' magazynów')+
     ' · „—” oznacza brak ustalonego stanu, nie zero';
   noteSearch(filtered.length,positions.size,'częściach');
 }
