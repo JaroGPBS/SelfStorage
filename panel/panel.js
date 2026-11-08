@@ -425,7 +425,7 @@
     const table=document.createElement('table');
     table.className='users-table';
     const header=table.createTHead().insertRow();
-    for(const title of ['UŻYTKOWNIK','ROLA','MAGAZYNY','PIN','STATUS','']) {
+    for(const title of ['UŻYTKOWNIK','ROLA','PIN','STATUS','PL','FR','']) {
       const th=document.createElement('th');th.textContent=title;header.append(th);
     }
     const tbody=table.createTBody();
@@ -449,7 +449,6 @@
       row.append(name);
 
       const role=td('');role.append(pill(user.role_code,'blue'));row.append(role);
-      row.append(td(user.warehouses||'—'));
       const pin=td('');pin.className='pin-cell';
       pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));
       if(user.active&&!state.showArchives&&user.role_code!=='ADMIN'&&String(user.name||'').trim().toUpperCase()!=='JJ') {
@@ -465,16 +464,54 @@
       }
       row.append(pin);
       const status=td('');status.append(state.showArchives?pill('Archiwum','red'):(user.active?pill('Aktywny','green'):pill('Nieaktywny','red')));row.append(status);
-      const actions=td('');
+      for(const country of ['PL','FR']){
+        const access=td('');access.className='market-access-cell';
+        const input=document.createElement('input');
+        input.type='checkbox';input.className='market-access-check';
+        input.checked=Boolean(user[country==='PL'?'market_pl':'market_fr']);
+        input.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+        input.setAttribute('aria-label',user.name+': dostęp do rynku '+country);
+        input.title=user.owner_protected?'Główny administrator ma stały dostęp do obu rynków':
+          'Zmień dostęp do rynku '+country;
+        input.addEventListener('click',event=>event.stopPropagation());
+        input.addEventListener('change',async event=>{
+          event.stopPropagation();
+          const previous=!input.checked;
+          input.disabled=true;
+          try{
+            const markets={PL:Boolean(user.market_pl),FR:Boolean(user.market_fr)};
+            markets[country]=input.checked;
+            const result=await post({action:'setUserMarkets',userId:user.id,markets});
+            user.market_pl=Number(result.markets.PL);
+            user.market_fr=Number(result.markets.FR);
+            message('Zapisano dostęp użytkownika '+user.name+' do rynków.','info');
+          }catch(error){
+            input.checked=previous;
+            message(error.message||'Nie udało się zmienić dostępu.','error');
+          }finally{
+            input.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+          }
+        });
+        access.append(input);row.append(access);
+      }
+      const actions=td('');actions.className='user-row-actions';
       const edit=document.createElement('button');edit.type='button';
       edit.className='btn mini user-edit-button';edit.textContent=state.showArchives?'Przywróć':'Edytuj';
       edit.addEventListener('click',event=>{event.stopPropagation();
         if(state.showArchives)restoreUser(user);
         else openUserDialog(user);
       });
-      actions.append(edit);row.append(actions);
+      actions.append(edit);
+      if(!state.showArchives){
+        const rights=document.createElement('button');
+        rights.type='button';rights.className='btn mini user-rights-button';
+        rights.textContent='Uprawnienia';
+        rights.addEventListener('click',event=>{event.stopPropagation();openPermissionsDialog(user);});
+        actions.append(rights);
+      }
+      row.append(actions);
 
-      const cell=detail.insertCell();cell.colSpan=6;
+      const cell=detail.insertCell();cell.colSpan=7;
       const box=document.createElement('div');box.className='user-details-inner';
       const fields=[
         ['Imię',user.first_name||'—'],
@@ -502,8 +539,7 @@
       }
       button.addEventListener('click',event=>{event.stopPropagation();toggle();});
       row.addEventListener('click',event=>{
-        if(event.target.closest('.user-edit-button'))return;
-        if(event.target.closest('.user-expand-button'))return;
+        if(event.target.closest('button,input,label'))return;
         toggle();
       });
     }
@@ -1007,6 +1043,45 @@
     }
   }
 
+  const EXTRA_RIGHTS=[
+    {key:'stocks',label:'Podgląd stanów magazynowych'},
+    {key:'pz',label:'Przyjęcia (PZ)'},
+    {key:'wz',label:'Wydania (WZ)'},
+    {key:'inventory',label:'Inwentaryzacje'},
+    {key:'labels',label:'Drukowanie etykiet'}
+  ];
+  function openPermissionsDialog(user){
+    $('permissionsUserId').value=user.id;
+    $('permissionsUserName').textContent=user.name+' · '+user.role_code;
+    const frozen=Boolean(user.owner_protected);
+    $('permissionsOwnerHint').hidden=!frozen;
+    $('saveUserPermissions').disabled=frozen;
+    for(const right of EXTRA_RIGHTS){
+      const input=$('right-'+right.key);
+      input.checked=frozen||user.extra_permissions?.[right.key]!==false;
+      input.disabled=frozen;
+    }
+    $('userPermissionsDialog').showModal();
+  }
+  async function saveUserPermissions(event){
+    event.preventDefault();
+    const button=$('saveUserPermissions');
+    const id=$('permissionsUserId').value;
+    if(!id)return;
+    const permissions=Object.fromEntries(EXTRA_RIGHTS.map(right=>[
+      right.key,$('right-'+right.key).checked
+    ]));
+    busy(button,true);
+    try{
+      const result=await post({action:'setUserPermissions',userId:id,permissions});
+      const user=state.records.find(x=>x.id===id);
+      if(user)user.extra_permissions=result.permissions;
+      $('userPermissionsDialog').close();
+      message('Zapisano indywidualne uprawnienia użytkownika.','info');
+    }catch(error){message(error.message||'Nie udało się zapisać uprawnień.','error');}
+    finally{busy(button,false);}
+  }
+
   async function openUserDialog(existing=null) {
     try {
       const [roles,warehouses]=await Promise.all([
@@ -1381,6 +1456,9 @@
     $('closeUserDialog').addEventListener('click',()=>$('userDialog').close());
     $('cancelUser').addEventListener('click',()=>$('userDialog').close());
     $('createUserForm').addEventListener('submit',saveUser);
+    $('userPermissionsForm').addEventListener('submit',saveUserPermissions);
+    $('closeUserPermissions').addEventListener('click',()=>$('userPermissionsDialog').close());
+    $('cancelUserPermissions').addEventListener('click',()=>$('userPermissionsDialog').close());
     $('partEditForm').addEventListener('submit',savePartEditor);
     $('partEditDelete').addEventListener('click',()=>{
       const id=$('partEditId').value;
