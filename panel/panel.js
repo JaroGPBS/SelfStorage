@@ -477,7 +477,8 @@
         input.addEventListener('change',async event=>{
           event.stopPropagation();
           const previous=!input.checked;
-          input.disabled=true;
+          const controls=[...row.querySelectorAll('.market-access-check')];
+          controls.forEach(control=>{control.disabled=true;});
           try{
             const markets={PL:Boolean(user.market_pl),FR:Boolean(user.market_fr)};
             markets[country]=input.checked;
@@ -489,7 +490,9 @@
             input.checked=previous;
             message(error.message||'Nie udało się zmienić dostępu.','error');
           }finally{
-            input.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+            controls.forEach(control=>{
+              control.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+            });
           }
         });
         access.append(input);row.append(access);
@@ -516,7 +519,8 @@
       const fields=[
         ['Imię',user.first_name||'—'],
         ['Nazwisko',user.last_name||'—'],
-        ['Numer telefonu',user.phone||'—']
+        ['Numer telefonu',user.phone||'—'],
+        ['Przypisane magazyny',user.warehouses||'—']
       ];
       for(const [title,value] of fields) {
         const field=document.createElement('div');field.className='user-detail-field';
