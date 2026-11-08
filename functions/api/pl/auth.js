@@ -115,6 +115,9 @@ async function login(request,env,pin) {
   if(!user)return fail('Nieprawidłowy PIN lub brak dostępu.',401);
   const token=await createWorkerSession(env,user);
   const {pinDigest,...safeUser}=user;
+  // This endpoint is for the Polish phone interface; it must not show FR
+  // assignments even when the same account uses Office for both markets.
+  safeUser.warehouses=safeUser.warehouses.filter(w=>w.country_code==='PL');
   return workerJson({ok:true,user:safeUser,expiresInSeconds:8*60*60},200,
     {'Set-Cookie':workerCookie(token)});
 }
@@ -124,7 +127,7 @@ export async function onRequestGet({request,env}) {
   try {
     const user=await verifyWorkerSession(request,env);
     if(!user)return fail('Zaloguj się ponownie.',401);
-    return workerJson({ok:true,user});
+    return workerJson({ok:true,user:{...user,warehouses:user.warehouses.filter(w=>w.country_code==='PL')}});
   }catch(error) {
     console.error('PL worker session check failed',error?.name||'Error');
     return fail('Nie można teraz potwierdzić sesji.',503);
