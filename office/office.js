@@ -38,7 +38,7 @@ const normalizeWarehouseName=value=>String(value||'').normalize('NFD')
   .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pl')
   .replace(/ł/g,'l').replace(/[^a-z0-9]/g,'');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'PL',view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function dateText(raw){if(!raw)return '—';const dt=new Date(String(raw).replace(' ','T').replace(/Z?$/,'Z'));return isNaN(dt.getTime())?String(raw).slice(0,10):new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',day:'2-digit',month:'2-digit',year:'numeric'}).format(dt);}
 function isoWeek(raw){
@@ -184,6 +184,8 @@ function greetingName(user){
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;
+  if(!state.warehouses.some(w=>w.country_code===state.aggregateMarket))
+    state.aggregateMarket=state.warehouses[0]?.country_code||'PL';
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
   $('username').textContent=name?name+'!':'!';
@@ -200,11 +202,15 @@ function renderMenu(){
     String(state.user?.nickname||'').trim().toUpperCase()==='JJ';
   const renderReal=w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+
     escapeHtml(w.name)+'</button>';
-  const group=(country,items)=>'<div class="office-market-group">'+
+  const aggregateButton=country=>'<button type="button" class="subnav-btn office-aggregate-link" '+
+    'data-aggregate-market="'+country+'"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
+    'Zestawienie zbiorcze</button>';
+  const group=(country,items,showAggregate=true)=>'<div class="office-market-group">'+
     '<div class="office-market-label">MAGAZYNY '+country+'</div>'+
-    '<div class="office-market-list">'+items+'</div></div>';
+    '<div class="office-market-list">'+items+
+    (showAggregate?aggregateButton(country):'')+'</div></div>';
   const plSection=group('PL',pl.length?pl.map(renderReal).join(''):
-    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>');
+    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>',pl.length>0);
   let frItems=[];
   if(canPreviewFrance){
     const used=new Set();
@@ -233,13 +239,14 @@ function renderMenu(){
     FR_LAYOUT_MODULES.map(item=>'<button type="button" class="nav-item" '+
       'data-fr-module="'+escapeHtml(item.key)+'"><span class="nav-icon">'+
       escapeHtml(item.icon)+'</span>'+escapeHtml(item.name)+'</button>').join(''):'';
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-module],#sidebar [data-view]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-module],#sidebar [data-view],#sidebar [data-aggregate-market]')){
     const isReal=state.view==='stocks'&&el.dataset.warehouse===state.warehouse;
     const isPreview=state.view==='preview'&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
+    const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket===state.aggregateMarket;
     const isView=state.view!=='preview'&&el.dataset.view===state.view;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isView));
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isView));
   }
 }
 function showOfficePreview(type,key,label){
@@ -350,10 +357,10 @@ function selectView(view,warehouse,focusDocument=null){
   const targetWarehouse=warehouse||state.warehouse;
   const french=warehouse?realWarehouse(warehouse)?.country_code==='FR':
     Boolean(state.preview)||realWarehouse(targetWarehouse)?.country_code==='FR';
-  if(french&&view!=='stocks'){
+  if(french&&view!=='stocks'&&view!=='aggregate'){
     return showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view]||view);
   }
-  if(warehouse)state.preview=null;
+  if(warehouse||view==='aggregate')state.preview=null;
   $('officePreview').classList.add('hidden');
   $('pageActions').classList.remove('hidden');
   state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
@@ -361,7 +368,10 @@ function selectView(view,warehouse,focusDocument=null){
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
   const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.'};
-  setHead(titles[view]||'Stany magazynowe','GPBS STORAGE / '+(realWarehouse(state.warehouse)?.country_code==='FR'?'FRANCJA':'POLSKA'),descriptions[view]||'');
+  const market=view==='aggregate'?state.aggregateMarket:realWarehouse(state.warehouse)?.country_code;
+  const marketName=market==='FR'?'FRANCJA':'POLSKA';
+  const title=view==='aggregate'?'Zestawienie zbiorcze — '+(market==='FR'?'FR':'PL'):(titles[view]||'Stany magazynowe');
+  setHead(title,'GPBS STORAGE / '+marketName,descriptions[view]||'');
   render();
 }
 function setLoading(){errorBanner('');$('tableArea').innerHTML='<div class="loading">Wczytywanie danych...</div>';$('tableFooter').textContent='';$('searchNote').classList.add('hidden');}
@@ -409,31 +419,45 @@ function drawModules(){
   noteSearch(0,0,'modułach');
 }
 function drawAggregate(realSets){
-  const base=realSets[0]?.parts||[];
-  const filtered=sortedFiltered(base);
-  const warehouseStock=realSets.map(s=>new Map(s.parts.map(part=>[part.id,part.quantity])));
+  // Stock rows are D1 reads for *authorized* warehouses only.
+  // Union across all stores, rather than depending on first warehouse's catalog.
+  const positions=new Map();
+  const quantities=realSets.map(store=>{
+    const map=new Map();
+    for(const part of store.parts||[]){
+      if(part?.id&&!positions.has(part.id))positions.set(part.id,part);
+      if(part?.id)map.set(part.id,part.quantity);
+    }
+    return map;
+  });
+  const filtered=sortedFiltered([...positions.values()]);
   const headers=[
     {label:'Indeks SAP'},{label:'Nazwa części'},
-    ...realSets.map(p=>({label:p.name,numeric:true})),
+    ...realSets.map(store=>({label:store.name,numeric:true})),
     {label:'SUMA',numeric:true}
   ];
-  const rows=filtered.map(p=>{
-    let total=0,hasKnownState=false;
-    const realCells=warehouseStock.map(stock=>{
-      const value=stock.get(p.id);
-      if(value!==null&&value!==undefined&&Number.isFinite(Number(value))){
+  const rows=filtered.map(part=>{
+    let total=0,complete=true;
+    const values=quantities.map(stock=>{
+      const value=stock.get(part.id);
+      if(value===null||value===undefined||!Number.isFinite(Number(value))){
+        complete=false;
+      }else{
         total+=Number(value);
-        hasKnownState=true;
       }
       return '<td class="num">'+quantity(value)+'</td>';
     }).join('');
-    return '<tr><td>'+escapeHtml(p.sap_number||'—')+'</td>'+
-      '<td>'+escapeHtml(p.name)+'</td>'+realCells+
-      '<td class="num aggregate-total">'+(hasKnownState?escapeHtml(total):'—')+'</td></tr>';
+    const displayed=complete?escapeHtml(total):'<span title="Brak stanu w co najmniej jednym magazynie">—</span>';
+    return '<tr><td>'+escapeHtml(part.sap_number||'—')+'</td>'+
+      '<td>'+escapeHtml(part.name)+'</td>'+values+
+      '<td class="num aggregate-total">'+displayed+'</td></tr>';
   }).join('');
-  $('tableArea').innerHTML=wrapTable(headers,rows,'aggregate-table');
-  $('tableFooter').textContent=filtered.length+' części';
-  noteSearch(filtered.length,base.length,'częściach');
+  $('tableArea').innerHTML=wrapTable(headers,rows,'aggregate-table')||
+    '<div class="empty">Brak części do wyświetlenia.</div>';
+  $('tableFooter').textContent=filtered.length+' pozycji · '+realSets.length+
+    (realSets.length===1?' magazyn':' magazynów')+
+    ' · „—” oznacza brak ustalonego stanu, nie zero';
+  noteSearch(filtered.length,positions.size,'częściach');
 }
 // PZ/WZ: show the team or supplier first and the registration below it.
  // Older sessions kept both in the single counterparty field ("HH | REJ: SK 12345");
@@ -669,10 +693,17 @@ async function render(){
       if(ticket!==state.requestId)return;drawStocks(parts,state.warehouse);
       }
     }else if(state.view==='aggregate'){
-      const market=realWarehouse(state.warehouse)?.country_code;
-      const scoped=state.warehouses.filter(w=>w.country_code===market);
-      const realSets=await Promise.all(scoped.map(async w=>({name:w.name,parts:await loadStocks(w.id)})));
-      if(ticket!==state.requestId)return;drawAggregate(realSets);
+      const scoped=state.warehouses.filter(w=>w.country_code===state.aggregateMarket);
+      if(!scoped.length){
+        if(ticket!==state.requestId)return;
+        $('tableArea').innerHTML='<div class="empty">Brak przypisanych magazynów z danymi dla '+(state.aggregateMarket==='FR'?'Francji':'Polski')+'. Zakładki projektowe nie są liczone jako magazyny.</div>';
+        $('tableFooter').textContent='0 magazynów z danymi';
+        noteSearch(0,0,'częściach');
+      }else{
+        const realSets=await Promise.all(scoped.map(async w=>({id:w.id,name:w.name,parts:await loadStocks(w.id)})));
+        if(ticket!==state.requestId)return;
+        drawAggregate(realSets);
+      }
     }else if(state.view==='vehicles'){
       if(ticket!==state.requestId)return;drawVehicles();
     }else if(state.view==='nok'){
@@ -844,6 +875,12 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
   const w=e.target.closest('[data-warehouse]');if(w){selectView('stocks',w.dataset.warehouse);return;}
+  const aggregate=e.target.closest('[data-aggregate-market]');
+  if(aggregate){
+    state.aggregateMarket=aggregate.dataset.aggregateMarket;
+    selectView('aggregate');
+    return;
+  }
   const preview=e.target.closest('[data-preview-warehouse]');
   if(preview){
     const item=FR_LAYOUT_WAREHOUSES.find(x=>x.key===preview.dataset.previewWarehouse);
