@@ -2303,3 +2303,9 @@
 .office-market-modules{display:grid;gap:2px;margin:8px 0 4px;padding-top:4px}
 .office-market-modules .office-market-operations-label{padding-top:5px}
 .sidebar nav .nav-divider{display:none}
+
+/* Office sidebar readability: clearer menu typography, with restrained tracking. */
+.office-market-toggle{font-size:16px;letter-spacing:.11em}
+.office-market-list .subnav-btn{font-size:14px;letter-spacing:.025em;line-height:1.4;min-height:37px}
+.office-market-list .office-operation-link{font-size:14px;letter-spacing:.025em;min-height:38px}
+.office-market-operations-label{font-size:11px;letter-spacing:.12em}
