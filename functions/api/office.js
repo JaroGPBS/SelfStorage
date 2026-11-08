@@ -22,12 +22,13 @@ async function tableExists(db,name){
   return Boolean(row);
 }
 // Office-only cross-market warehouse grants; mobile PL session remains limited to PL.
-async function officeWarehouses(db,userId){
-  return selectRows(db,
+async function officeWarehouses(db,userId,markets){
+  const rows=await selectRows(db,
     "SELECT w.id,w.name,w.country_code FROM user_warehouse_access a "+
     "JOIN warehouses w ON w.id=a.warehouse_id "+
     "WHERE a.user_id=? AND w.active=1 AND w.country_code IN ('PL','FR') "+
     "ORDER BY w.country_code,w.name",[userId]);
+  return rows.filter(row=>Boolean(markets?.[row.country_code]));
 }
 // The long-lived cookie is issued only after a successful normal PIN login.
 // A different cookie name and audience keep it unusable in the warehouse app.
@@ -53,7 +54,8 @@ export async function onRequestPost({request,env}){
       const user=await verifyWorkerSession(request,env) ||
         await verifyRememberSession(request,env);
       if(!user)return error('Zaloguj się ponownie.',401);
-      if(!ALLOWED.has(user.role))return error('Brak dostępu do katalogu.',403);
+      if(!ALLOWED.has(user.role)||user.features?.stocks===false)
+        return error('Brak uprawnień do katalogu.',403);
       if(!user.warehouses.some(w=>w.id===warehouseId))
         return error('Brak uprawnień do wybranego magazynu.',403);
       const warehouse=await env.DB.prepare(
@@ -93,10 +95,22 @@ export async function onRequestGet({request,env}){
   if(!ALLOWED.has(user.role))return error('Brak dostępu do panelu biurowego.',403);
   const url=new URL(request.url);
   let authorizedWarehouses;
-  try{authorizedWarehouses=await officeWarehouses(env.DB,user.id);}
+  try{authorizedWarehouses=await officeWarehouses(env.DB,user.id,user.markets);}
   catch(e){console.error('Office grants lookup failed',e?.name||'Error');return error('Brak dostępu do magazynów.',503);}
   if(!authorizedWarehouses.length)return error('Brak przypisanych magazynów Office.',403);
   const view=url.searchParams.get('view')||'warehouses';
+  const permissions=user.features||{};
+  const needed={
+    stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
+    inventories:'inventory',inventoryLines:'inventory'
+  }[view];
+  if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
+  if(view==='documents'){
+    const direction=url.searchParams.get('direction');
+    if(direction==='PZ'&&permissions.pz===false||
+       direction==='WZ'&&permissions.wz===false)
+      return error('Brak uprawnień do tej operacji.',403);
+  }
   if(view==='warehouses'){
     // Only this authenticated employee's given name is needed for the greeting.
     // No surname, phone, or other private profile data leaves the server.
