@@ -2220,3 +2220,10 @@
 }
 
 .office-aggregate-empty{padding:35px 18px!important;text-align:center!important;color:#89939e!important;white-space:normal!important;font-weight:500}
+
+/* Six operational sections belong to each market, not the global sidebar. */
+.office-market-operations{display:grid;gap:2px;margin:9px 0 4px;padding:9px 0 1px;border-top:1px solid rgba(255,255,255,.13)}
+.office-market-operations-label{padding:2px 11px 5px 22px;font-size:9px;font-weight:850;letter-spacing:.1em;color:#9faab7}
+.office-market-list .office-operation-link{display:flex;align-items:center;gap:9px;min-height:34px;padding:7px 10px 7px 20px;color:#dce2e9;font-weight:600}
+.office-operation-icon{width:18px;flex:0 0 18px;text-align:center;font-size:15px;color:#c4cbd5;line-height:1}
+.office-market-list .office-operation-link.active{background:rgba(230,63,68,.13);box-shadow:inset 3px 0 #e63f44;color:#fff}
