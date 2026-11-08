@@ -2150,3 +2150,20 @@
   font-size:12px;
   line-height:1.6;
 }
+
+/* Aggregate appears within each market, not as one ambiguous global view. */
+.office-market-list .office-aggregate-link{
+  margin:5px 0 2px 10px;
+  width:calc(100% - 10px);
+  min-height:33px;
+  padding-left:14px;
+  border-top:1px solid rgba(255,255,255,.10);
+  border-radius:6px;
+  font-weight:750;
+  color:#f0f2f5;
+}
+.office-aggregate-symbol{font-size:14px;color:#e98289;width:18px;display:inline-block}
+.office-market-list .office-aggregate-link.active{
+  background:rgba(230,63,68,.13);
+  box-shadow:inset 3px 0 #e63f44;
+}
