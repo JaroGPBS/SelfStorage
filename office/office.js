@@ -213,7 +213,11 @@ function renderMenu(){
     'Zestawienie zbiorcze</button>';
   const marketOperations=country=>'<div class="office-market-operations">'+
     '<div class="office-market-operations-label">OPERACJE</div>'+
-    OFFICE_MARKET_OPERATIONS.map(op=>
+    OFFICE_MARKET_OPERATIONS.filter(op=>{
+      const key={pz:'pz',wz:'wz',nok:'stocks',inventories:'inventory',
+        vehicles:'stocks',labels:'labels'}[op.view];
+      return state.user?.features?.[key]!==false;
+    }).map(op=>
       '<button type="button" class="subnav-btn office-operation-link" '+
       'data-market-view="'+country+'" data-view="'+escapeHtml(op.view)+'">'+
       '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(op.icon)+'</span>'+
