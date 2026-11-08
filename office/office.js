@@ -242,8 +242,9 @@ function renderMenu(){
       (showOperations?marketOperations(country):'')+
       (country==='FR'?frenchModules():'')+'</div></div>';
   };
-  const plSection=group('PL',pl.length?pl.map(renderReal).join(''):
-    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>',false,pl.length>0);
+  // Do not reveal the Poland section to FR-only users. The server already
+  // filtered state.warehouses by live per-user market settings.
+  const plSection=pl.length?group('PL',pl.map(renderReal).join(''),false,true):'';
 
   let frItems=[];
   if(canPreviewFrance){
