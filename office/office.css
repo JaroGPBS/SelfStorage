@@ -2227,3 +2227,65 @@
 .office-market-list .office-operation-link{display:flex;align-items:center;gap:9px;min-height:34px;padding:7px 10px 7px 20px;color:#dce2e9;font-weight:600}
 .office-operation-icon{width:18px;flex:0 0 18px;text-align:center;font-size:15px;color:#c4cbd5;line-height:1}
 .office-market-list .office-operation-link.active{background:rgba(230,63,68,.13);box-shadow:inset 3px 0 #e63f44;color:#fff}
+
+/* Office markets: compact, typographic accordion headings (no button tiles). */
+.office-market-group+.office-market-group{
+  border-top:0;
+  padding-top:8px;
+}
+.office-market-toggle{
+  min-height:49px;
+  padding:11px 8px 11px 9px;
+  gap:12px;
+  border:0;
+  border-bottom:1px solid rgba(255,255,255,.19);
+  border-radius:0;
+  background:transparent;
+  font-size:15px;
+  font-weight:850;
+  letter-spacing:.095em;
+  color:#f3f5f7;
+  transition:color .15s,border-color .15s;
+}
+.office-market-toggle:hover,
+.office-market-toggle:focus-visible{
+  background:transparent;
+  color:#fff;
+  border-bottom-color:rgba(236,100,106,.62);
+}
+.office-market-toggle:focus-visible{
+  outline:2px solid #e98289;
+  outline-offset:2px;
+}
+.office-market-name{flex:1;line-height:1.2}
+.office-market-flag{
+  display:inline-block;
+  flex:0 0 19px;
+  width:19px;
+  height:19px;
+  border:1px solid rgba(255,255,255,.36);
+  border-radius:50%;
+  box-shadow:0 1px 4px rgba(0,0,0,.22);
+}
+.office-market-flag-pl{
+  background:linear-gradient(to bottom,#fff 0 50%,#dc143c 50% 100%);
+}
+.office-market-flag-fr{
+  background:linear-gradient(to right,#173f94 0 33.333%,#fff 33.333% 66.667%,#ed2939 66.667% 100%);
+}
+.office-market-chevron{
+  flex:0 0 18px;
+  width:18px;
+  height:18px;
+  margin-left:auto;
+  color:#aeb8c7;
+  transform:rotate(0);
+  transition:transform .18s ease,color .18s;
+}
+.office-market-toggle[aria-expanded="true"] .office-market-chevron{
+  transform:rotate(180deg);
+  color:#f1b2b5;
+}
+@media(prefers-reduced-motion:reduce){
+  .office-market-chevron{transition:none}
+}
