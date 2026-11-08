@@ -836,3 +836,62 @@ tr:hover td{background:#ffffff04}
 .owner-pin-form .hint{line-height:1.5;margin:5px 0}
 .owner-pin-form .security-actions{margin-top:5px}
 .login-notice{margin:12px 0;font-size:13px;font-weight:650;color:#92d8ba}
+
+/* Users permissions: minimal PL/FR columns and a separate details window. */
+.users-table th:nth-child(5),.users-table th:nth-child(6),
+.users-table .market-access-cell{text-align:center}
+.users-table th:nth-child(5),.users-table th:nth-child(6){
+  min-width:66px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.users-table .market-access-cell{padding-inline:14px}
+.market-access-check{
+  appearance:none;
+  width:20px;
+  height:20px;
+  display:inline-grid;
+  place-items:center;
+  vertical-align:middle;
+  margin:0;
+  border:1.5px solid #72839a;
+  border-radius:5px;
+  background:#fff;
+  cursor:pointer;
+  transition:border-color .12s,background .12s;
+}
+.market-access-check:checked{background:#1975e9;border-color:#1975e9}
+.market-access-check:checked:after{
+  content:'';
+  width:10px;
+  height:6px;
+  border-left:2px solid white;
+  border-bottom:2px solid white;
+  transform:translateY(-1px) rotate(-45deg);
+}
+.market-access-check:disabled{opacity:.64;cursor:not-allowed}
+.market-access-check:focus-visible{outline:2px solid #e3474c;outline-offset:3px}
+.users-table .user-row-actions{white-space:nowrap;text-align:right}
+.users-table .user-row-actions .btn{margin-left:6px}
+#userPermissionsDialog{width:min(calc(100% - 30px),540px)}
+#userPermissionsDialog .hint{margin:13px 0}
+.user-rights-options{display:grid;gap:4px}
+.user-right-option{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-height:42px;
+  padding:8px 10px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.user-right-option:hover{background:#ffffff0b}
+.user-right-option input{height:18px;width:18px;accent-color:#1975e9}
+.user-right-option input:disabled{cursor:not-allowed}
+.user-right-option span{font-size:13px}
+@media(max-width:900px){
+  .users-table{min-width:790px}
+  .users-table td,.users-table th{padding:12px 10px}
+  .users-table .user-row-actions{display:flex;gap:5px;align-items:center}
+  .users-table .user-row-actions .btn{margin:0}
+}
