@@ -224,8 +224,11 @@ function renderMenu(){
     return '<div class="office-market-group">'+
       '<button type="button" class="office-market-toggle" data-market-toggle="'+country+'" '+
       'aria-expanded="'+String(expanded)+'" aria-controls="officeMarket'+country+'">'+
-      '<span class="office-market-toggle-icon" aria-hidden="true">▣</span>'+
-      '<span>MAGAZYNY '+country+'</span><span class="office-market-chevron" aria-hidden="true">⌄</span></button>'+
+      '<span class="office-market-flag office-market-flag-'+country.toLowerCase()+'" aria-hidden="true"></span>'+
+      '<span class="office-market-name">'+(country==='PL'?'POLSKA':'FRANCJA')+'</span>'+
+      '<svg class="office-market-chevron" width="18" height="18" viewBox="0 0 24 24" '+
+      'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '+
+      'stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>'+
       '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
       items+(showAggregate?aggregateButton():'')+(showOperations?marketOperations(country):'')+'</div></div>';
   };
