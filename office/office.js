@@ -219,7 +219,7 @@ function renderMenu(){
       '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(op.icon)+'</span>'+
       escapeHtml(op.label)+'</button>'
     ).join('')+'</div>';
-  const group=(country,items,showAggregate=false)=>{
+  const group=(country,items,showAggregate=false,showOperations=true)=>{
     const expanded=Boolean(state.warehouseMenus[country]);
     return '<div class="office-market-group">'+
       '<button type="button" class="office-market-toggle" data-market-toggle="'+country+'" '+
@@ -227,10 +227,10 @@ function renderMenu(){
       '<span class="office-market-toggle-icon" aria-hidden="true">▣</span>'+
       '<span>MAGAZYNY '+country+'</span><span class="office-market-chevron" aria-hidden="true">⌄</span></button>'+
       '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
-      items+(showAggregate?aggregateButton():'')+marketOperations(country)+'</div></div>';
+      items+(showAggregate?aggregateButton():'')+(showOperations?marketOperations(country):'')+'</div></div>';
   };
   const plSection=group('PL',pl.length?pl.map(renderReal).join(''):
-    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>');
+    '<div class="office-no-warehouse">Brak przypisanych magazynów</div>',false,pl.length>0);
 
   let frItems=[];
   if(canPreviewFrance){
