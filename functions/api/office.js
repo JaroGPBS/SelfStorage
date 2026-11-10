@@ -3,6 +3,7 @@
 import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worker-auth.js';
 import {createRememberToken,verifyRememberSession,officeRememberCookie} from '../../lib/pl-office-remember.js';
 import {createUnverifiedPart} from '../../lib/pl-part-create.js';
+import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
@@ -36,6 +37,43 @@ export async function onRequestPost({request,env}){
   if(!workerAuthReady(env))return error('Panel biurowy nie jest skonfigurowany.',503);
   const url=new URL(request.url);
   if(request.headers.get('Origin')!==url.origin)return error('Niedozwolona domena.',403);
+  if((request.headers.get('Content-Type')||'').toLowerCase().startsWith('multipart/form-data;')){
+    if(url.searchParams.get('action')!=='createFrenchCatalogPart')
+      return error('Nieznana operacja.',400);
+    if(Number(request.headers.get('Content-Length')||0)>22*1024*1024)
+      return error('Zdjęcie przekracza 20 MB.',413);
+    try{
+      const user=await verifyWorkerSession(request,env)||
+        await verifyRememberSession(request,env);
+      if(!user)return error('Zaloguj się ponownie.',401);
+      if(!ALLOWED.has(user.role)||user.features?.stocks===false)
+        return error('Brak uprawnień do katalogu.',403);
+      const form=await request.formData();
+      const key=String(form.get('warehouseKey')||'');
+      const id=String(form.get('warehouseId')||'');
+      if(!['belleville','toulouse','paris'].includes(key))
+        return error('Nieprawidłowy magazyn.',400);
+      const isOwner=user.role==='ADMIN'&&String(user.nickname||'').trim().toUpperCase()==='JJ';
+      if(id){
+        const grants=await officeWarehouses(env.DB,user.id,user.markets);
+        const warehouse=grants.find(w=>w.id===id&&w.country_code==='FR');
+        const norm=String(warehouse?.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .toLowerCase().replace(/ł/g,'l').replace(/[^a-z0-9]/g,'').replace(/^magazyn/,'');
+        const permitted={
+          belleville:['belleville'],
+          toulouse:['toulouse','toulosebox','toulousebox','boxtoulouse','tuluza','tuluzabox','boxtuluza'],
+          paris:['paris','parisbox','boxparis','paryz','paryzbox','boxparyz']
+        }[key];
+        if(!warehouse||!permitted.includes(norm))
+          return error('Brak dostępu do wybranego magazynu.',403);
+      }else if(!isOwner)return error('Brak dostępu do wybranego magazynu.',403);
+      const part=await createSharedCataloguePart(env,form);
+      return workerJson({ok:true,part});
+    }catch(err){
+      console.error('French Office catalogue create failed',err?.name||'Error');
+      return error(err?.status?err.message:'Nie udało się dodać części.',err?.status||503);
+    }
+  }
   if(!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
     return error('Wymagany format JSON.',415);
   let body;
