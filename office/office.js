@@ -749,7 +749,7 @@ function syncVehicleTopScroll(){
   $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
 }
 function drawVehicles(){
-  $('tableArea').innerHTML='<div class="empty">Brak danych pojazdów. Prawdziwe stany samochodowe będą widoczne po pierwszej inwentaryzacji ekip w D1. Dane testowe nie są przenoszone.</div>';
+  $('tableArea').innerHTML='<div class="empty">Brak danych. Stany samochodowe będą widoczne po pierwszej inwentaryzacji samochodów.</div>';
   $('tableFooter').textContent='0 pojazdów w ewidencji';
   noteSearch(0,0,'pojazdach');
   syncVehicleTopScroll();
