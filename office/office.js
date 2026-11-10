@@ -24,13 +24,8 @@ const FR_LAYOUT_WAREHOUSES=[
   {key:'bovis-marseille',name:'Bovis Marsylia',aliases:['Bovis Marseille']},
   {key:'bovis-toulouse',name:'Bovis Tuluza',aliases:['Bovis Toulouse']}
 ];
-const FR_LAYOUT_MODULES=[
-  {key:'machines',name:'Maszyny OK / NOK',icon:'▤'},
-  {key:'scanning',name:'Skanowanie S/N',icon:'⌗'},
-  {key:'service',name:'Serwisy',icon:'⚙'},
-  {key:'deliveries',name:'Dostawy',icon:'↓'},
-  {key:'crews',name:'Zaopatrzenie ekip',icon:'▦'}
-];
+const BELLEVILLE_SERVICE={key:'service',name:'Serwisy',icon:'⚙'};
+const FR_EQUIPMENT={key:'crews',name:'Zaopatrzenie ekip',icon:'▦'};
 const OFFICE_OPERATION_PREVIEWS={
   pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',
   inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',
@@ -242,6 +237,10 @@ function renderMenu(){
   const aggregateButton=()=>'<button type="button" class="subnav-btn office-aggregate-link" '+
     'data-aggregate-market="FR"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
     'Zestawienie zbiorcze</button>';
+  const equipmentButton=()=>'<button type="button" class="subnav-btn office-operation-link office-equipment-link" '+
+    'data-fr-module="'+FR_EQUIPMENT.key+'">'+
+    '<span class="office-operation-icon" aria-hidden="true">'+FR_EQUIPMENT.icon+'</span>'+
+    FR_EQUIPMENT.name+'</button>';
   const permittedOperations=country=>OFFICE_MARKET_OPERATIONS.filter(op=>{
     // In Poland, NOK is already a stock tab rather than a sidebar operation.
     if(country==='PL'&&op.view==='nok')return false;
@@ -270,7 +269,11 @@ function renderMenu(){
         'data-fr-warehouse-name="'+escapeHtml(label)+'" data-view="'+escapeHtml(op.view)+'">'+
         '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(op.icon)+'</span>'+
         escapeHtml(op.label)+'</button>'
-    ).join('');
+    ).join('')+(key==='belleville'
+      ?'<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
+        'data-belleville-service="1" data-fr-warehouse-name="'+escapeHtml(label)+'">'+
+        '<span class="office-operation-icon" aria-hidden="true">'+BELLEVILLE_SERVICE.icon+'</span>'+
+        BELLEVILLE_SERVICE.name+'</button>':'');
     return '<div class="office-fr-warehouse">'+
       '<button type="button" class="subnav-btn office-fr-warehouse-toggle" '+
         'data-fr-warehouse-toggle="'+escapeHtml(key)+'" '+
@@ -294,14 +297,6 @@ function renderMenu(){
       '<div id="officeBovisEntries" class="office-bovis-entries'+(state.bovisExpanded?'':' hidden')+'">'+
         items.join('')+'</div></div>';
   };
-  const frenchModules=()=>'<div class="office-market-modules">'+
-    '<div class="office-market-operations-label">MODUŁY FR</div>'+
-    FR_LAYOUT_MODULES.map(item=>
-      '<button type="button" class="subnav-btn office-operation-link" '+
-      'data-fr-module="'+escapeHtml(item.key)+'">'+
-      '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(item.icon)+'</span>'+
-      escapeHtml(item.name)+'</button>'
-    ).join('')+'</div>';
   const group=(country,items,showAggregate=false,showOperations=true)=>{
     const expanded=Boolean(state.warehouseMenus[country]);
     return '<div class="office-market-group">'+
@@ -313,9 +308,8 @@ function renderMenu(){
       'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '+
       'stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>'+
       '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
-      items+(showAggregate?aggregateButton():'')+
-      (showOperations?marketOperations(country):'')+
-      (country==='FR'?frenchModules():'')+'</div></div>';
+      items+(showAggregate?aggregateButton()+equipmentButton():'')+
+      (showOperations?marketOperations(country):'')+'</div></div>';
   };
   // Do not reveal the Poland section to FR-only users. The server already
   // filtered state.warehouses by live per-user market settings.
@@ -353,7 +347,7 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-operation],#sidebar [data-fr-module],#sidebar [data-view],#sidebar [data-aggregate-market]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-fr-module],#sidebar [data-view],#sidebar [data-aggregate-market]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
@@ -375,7 +369,10 @@ function renderMenu(){
     const isFrOperation=Boolean(el.dataset.frOperation)&&
       state.preview?.type==='operation'&&state.preview.warehouseKey===el.dataset.frOperation&&
       state.preview.key===el.dataset.view;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation));
+    const isService=Boolean(el.dataset.bellevilleService)&&
+      state.preview?.type==='module'&&state.preview?.key===BELLEVILLE_SERVICE.key&&
+      state.preview?.warehouseKey==='belleville';
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService));
   }
 }
 function showOfficePreview(type,key,label,warehouseContext=null){
@@ -1217,11 +1214,19 @@ document.addEventListener('click',e=>{
     });
     return;
   }
+  const service=e.target.closest('[data-belleville-service]');
+  if(service){
+    state.frExpanded='belleville';state.bovisExpanded=false;
+    showOfficePreview('module',BELLEVILLE_SERVICE.key,BELLEVILLE_SERVICE.name,{
+      warehouseKey:'belleville',warehouseName:service.dataset.frWarehouseName||'Belleville'
+    });
+    return;
+  }
   const module=e.target.closest('[data-fr-module]');
   if(module){
     state.frExpanded=null;state.bovisExpanded=false;
-    const item=FR_LAYOUT_MODULES.find(x=>x.key===module.dataset.frModule);
-    if(item)showOfficePreview('module',item.key,item.name);
+    if(module.dataset.frModule===FR_EQUIPMENT.key)
+      showOfficePreview('module',FR_EQUIPMENT.key,FR_EQUIPMENT.name);
     return;
   }
   const operation=e.target.closest('[data-market-view][data-view]');
