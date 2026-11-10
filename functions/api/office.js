@@ -102,6 +102,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
+    frCatalog:'stocks',frCatalogPhoto:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
@@ -126,6 +127,65 @@ export async function onRequestGet({request,env}){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
+  }
+  // An authorized Office administrator can view the common parts catalogue in
+  // French layout-only warehouses. No warehouse inventory is created or inferred.
+  if(view==='frCatalog'||view==='frCatalogPhoto'){
+    if(user.role!=='ADMIN'||String(user.nickname||'').trim().toUpperCase()!=='JJ')
+      return error('Brak uprawnień do katalogu.',403);
+    const partId=url.searchParams.get('part')||'';
+    if(partId&&!PART.test(partId))return error('Nieprawidłowa część.',400);
+    try{
+      if(view==='frCatalogPhoto'){
+        if(!partId)return error('Nieprawidłowa część.',400);
+        if(await tableExists(env.DB,'pl_part_photo_objects')){
+          const ref=await getPhotoObject(env.DB,partId);
+          if(ref){
+            if(!env.PART_PHOTOS)return error('Zdjęcie jest niedostępne.',503);
+            return await readPhotoResponse(env,ref)||
+              error('Nie znaleziono zdjęcia.',404);
+          }
+        }
+        if(!await tableExists(env.DB,'pl_part_photos'))
+          return error('Nie znaleziono zdjęcia.',404);
+        const photo=await env.DB.prepare(
+          'SELECT ph.mime_type,ph.photo_base64 FROM pl_part_photos ph '+
+          'JOIN parts p ON p.id=ph.part_id AND p.active=1 WHERE ph.part_id=?'
+        ).bind(partId).first();
+        if(!photo)return error('Nie znaleziono zdjęcia.',404);
+        return new Response(Uint8Array.from(atob(photo.photo_base64),c=>c.charCodeAt(0)),{
+          status:200,headers:{'Content-Type':photo.mime_type,
+            'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}
+        });
+      }
+      const hasIndices=await tableExists(env.DB,'pl_part_index_migrations');
+      const indexJoin=hasIndices
+        ?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'';
+      const indexColumn=hasIndices?'COALESCE(ix.new_index,p.part_number)':'p.part_number';
+      if(partId){
+        const hasPhotos=await tableExists(env.DB,'pl_part_photos');
+        const hasR2=await tableExists(env.DB,'pl_part_photo_objects');
+        const photoTest=[
+          hasR2?'EXISTS(SELECT 1 FROM pl_part_photo_objects r2 WHERE r2.part_id=p.id)':null,
+          hasPhotos?'EXISTS(SELECT 1 FROM pl_part_photos ph WHERE ph.part_id=p.id)':null
+        ].filter(Boolean).join(' OR ');
+        const part=await env.DB.prepare(
+          'SELECT p.id,'+indexColumn+' AS part_number,p.name,p.sap_number,'+
+          'NULL AS quantity,'+(photoTest?'('+photoTest+')':'0')+' AS has_photo '+
+          'FROM parts p '+indexJoin+'WHERE p.id=? AND p.active=1'
+        ).bind(partId).first();
+        if(!part)return error('Nie znaleziono części.',404);
+        return workerJson({ok:true,part,delivery:null,inventory:null});
+      }
+      const parts=await selectRows(env.DB,
+        'SELECT p.id,'+indexColumn+' AS part_number,p.name,p.sap_number,'+
+        'NULL AS quantity FROM parts p '+indexJoin+
+        'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE,p.id LIMIT 3000');
+      return workerJson({ok:true,parts});
+    }catch(ex){
+      console.error('French shared catalogue read failed',ex?.name||'Error');
+      return error('Nie można pobrać katalogu części.',503);
+    }
   }
   const warehouseId=url.searchParams.get('warehouse')||'';
   if(!WAREHOUSE.test(warehouseId))return error('Nieprawidłowy magazyn.');
