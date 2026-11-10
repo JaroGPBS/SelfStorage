@@ -349,7 +349,7 @@ function renderMenu(){
         warehouse.id);
     }
   }
-  frItems.push(bovisMenu(bovisItems));
+  if(bovisItems.length)frItems.push(bovisMenu(bovisItems));
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
