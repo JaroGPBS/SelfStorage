@@ -773,6 +773,7 @@
     const save=$('partCreateSave'),cancel=$('partCreateCancel');
     save.disabled=true;cancel.disabled=true;
     $('partCreateError').classList.add('hidden');
+    let created=false;
     try{
       const photoFile=$('partCreatePhoto').files?.[0]||null;
       validateEditorPhoto(photoFile);
@@ -788,6 +789,7 @@
       const result=await response.json().catch(()=>({}));
       if(!response.ok||!result.ok)
         throw Error(result.error||'Nie udało się dodać części.');
+      created=true;
       $('partCreateDialog').close();
       if(state.view==='parts'){
         const refreshed=await api('parts');
@@ -795,8 +797,12 @@
         renderList();
       }
     }catch(error){
-      $('partCreateError').textContent=error.message||'Nie udało się dodać części.';
-      $('partCreateError').classList.remove('hidden');
+      if(created){
+        message('Część została dodana, ale nie udało się odświeżyć katalogu. Odśwież stronę.','error');
+      }else{
+        $('partCreateError').textContent=error.message||'Nie udało się dodać części.';
+        $('partCreateError').classList.remove('hidden');
+      }
     }finally{
       save.disabled=false;cancel.disabled=false;
     }
@@ -992,6 +998,8 @@
     $('pageHeading').classList.toggle('hidden',view==='summary');
     $('pageTitle').textContent=defs[view][0];
     $('pageSubtitle').textContent=defs[view][1];
+    $('adminPageEyebrow').textContent=view==='parts'
+      ?'GPBS STORAGE / WSPÓLNY KATALOG':'GPBS STORAGE';
     $('breadcrumbCurrent').textContent=defs[view][0];
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
