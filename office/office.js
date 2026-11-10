@@ -54,7 +54,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:true,FR:false},frExpanded:null,view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:true,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function dateText(raw){if(!raw)return '—';const dt=new Date(String(raw).replace(' ','T').replace(/Z?$/,'Z'));return isNaN(dt.getTime())?String(raw).slice(0,10):new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',day:'2-digit',month:'2-digit',year:'numeric'}).format(dt);}
 function isoWeek(raw){
@@ -199,7 +199,7 @@ function greetingName(user){
 }
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
-  state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;
+  state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
   $('username').textContent=name?name+'!':'!';
@@ -260,6 +260,17 @@ function renderMenu(){
       '<div id="fr-ops-'+escapeHtml(key)+'" class="office-fr-warehouse-operations'+(open?'':' hidden')+'">'+
         children+'</div></div>';
   };
+  const bovisMenu=items=>{
+    if(!items.length)return '';
+    return '<div class="office-bovis-group">'+
+      '<button type="button" class="subnav-btn office-fr-warehouse-toggle office-bovis-toggle" '+
+        'data-bovis-toggle="1" aria-expanded="'+String(state.bovisExpanded)+'" '+
+        'aria-controls="officeBovisEntries">'+
+        '<span>Bovis</span><span class="office-fr-warehouse-chevron" aria-hidden="true">⌄</span>'+
+      '</button>'+
+      '<div id="officeBovisEntries" class="office-bovis-entries'+(state.bovisExpanded?'':' hidden')+'">'+
+        items.join('')+'</div></div>';
+  };
   const frenchModules=()=>'<div class="office-market-modules">'+
     '<div class="office-market-operations-label">MODUŁY FR</div>'+
     FR_LAYOUT_MODULES.map(item=>
@@ -287,24 +298,35 @@ function renderMenu(){
   // filtered state.warehouses by live per-user market settings.
   const plSection=pl.length?group('PL',pl.map(renderReal).join(''),false,true):'';
 
-  let frItems=[];
+  const frItems=[],bovisItems=[];
+  const pushFrench=(label,key,realId='')=>{
+    if(isBovisWarehouse(label)){
+      const city=label.replace(/^Bovis\s+/i,'');
+      const item=realId
+        ?'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(realId)+'">'+escapeHtml(city)+'</button>'
+        :'<button type="button" class="subnav-btn office-preview-link" '+
+          'data-preview-warehouse="'+escapeHtml(key)+'">'+escapeHtml(city)+'</button>';
+      bovisItems.push(item);
+    }else frItems.push(frenchWarehouse(label,key,realId,true));
+  };
   if(canPreviewFrance){
     const used=new Set();
     for(const location of FR_LAYOUT_WAREHOUSES){
       const real=fr.find(w=>matchesFrenchWarehouse(w,location));
       if(real)used.add(real.id);
-      frItems.push(frenchWarehouse(location.name,location.key,real?.id||'',
-        !isBovisWarehouse(location.name)));
+      pushFrench(location.name,location.key,real?.id||'');
     }
-    frItems.push(...fr.filter(w=>!used.has(w.id)).map(w=>
-      frenchWarehouse(w.name,'real-'+w.id,w.id,!isBovisWarehouse(w.name))));
+    for(const warehouse of fr.filter(w=>!used.has(w.id))){
+      pushFrench(warehouse.name,'real-'+warehouse.id,warehouse.id);
+    }
   }else{
-    frItems=fr.map(w=>{
-      const location=FR_LAYOUT_WAREHOUSES.find(item=>matchesFrenchWarehouse(w,item));
-      return frenchWarehouse(location?.name||w.name,location?.key||'real-'+w.id,
-        w.id,!isBovisWarehouse(w.name));
-    });
+    for(const warehouse of fr){
+      const location=FR_LAYOUT_WAREHOUSES.find(item=>matchesFrenchWarehouse(warehouse,item));
+      pushFrench(location?.name||warehouse.name,location?.key||'real-'+warehouse.id,
+        warehouse.id);
+    }
   }
+  frItems.push(bovisMenu(bovisItems));
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
@@ -1106,6 +1128,13 @@ document.addEventListener('click',e=>{
   const moduleCategory=e.target.closest('[data-module-category]');if(moduleCategory){setModuleCategory(moduleCategory.dataset.moduleCategory);return;}
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
+  const bovisToggle=e.target.closest('[data-bovis-toggle]');
+  if(bovisToggle){
+    state.bovisExpanded=!state.bovisExpanded;
+    state.frExpanded=null;
+    renderMenu();
+    return;
+  }
   const frWarehouse=e.target.closest('[data-fr-warehouse-toggle]');
   if(frWarehouse){
     const key=frWarehouse.dataset.frWarehouseToggle;
@@ -1114,6 +1143,7 @@ document.addEventListener('click',e=>{
       renderMenu();
     }else{
       state.frExpanded=key;
+      state.bovisExpanded=false;
       const realId=frWarehouse.dataset.frRealId;
       if(realId)selectView('stocks',realId);
       else showOfficePreview('warehouse',key,frWarehouse.dataset.frWarehouseName);
@@ -1121,7 +1151,11 @@ document.addEventListener('click',e=>{
     return;
   }
   const w=e.target.closest('[data-warehouse]');
-  if(w){state.frExpanded=null;selectView('stocks',w.dataset.warehouse);return;}
+  if(w){
+    state.frExpanded=null;
+    if(!w.closest('.office-bovis-entries'))state.bovisExpanded=false;
+    selectView('stocks',w.dataset.warehouse);return;
+  }
   const toggle=e.target.closest('[data-market-toggle]');
   if(toggle){
     const market=toggle.dataset.marketToggle;
@@ -1134,7 +1168,7 @@ document.addEventListener('click',e=>{
   }
   const aggregate=e.target.closest('[data-aggregate-market]');
   if(aggregate&&aggregate.dataset.aggregateMarket==='FR'){
-    state.frExpanded=null;
+    state.frExpanded=null;state.bovisExpanded=false;
     state.aggregateMarket='FR';
     state.warehouseMenus.FR=true;
     selectView('aggregate');
@@ -1143,6 +1177,7 @@ document.addEventListener('click',e=>{
   const preview=e.target.closest('[data-preview-warehouse]');
   if(preview){
     state.frExpanded=null;
+    if(!preview.closest('.office-bovis-entries'))state.bovisExpanded=false;
     const item=FR_LAYOUT_WAREHOUSES.find(x=>x.key===preview.dataset.previewWarehouse);
     if(item)showOfficePreview('warehouse',item.key,item.name);
     return;
@@ -1152,7 +1187,7 @@ document.addEventListener('click',e=>{
     const key=frOperation.dataset.frOperation;
     const view=frOperation.dataset.view;
     if(!OFFICE_MARKET_OPERATIONS.some(op=>op.view===view))return;
-    state.frExpanded=key;
+    state.frExpanded=key;state.bovisExpanded=false;
     const realId=frOperation.dataset.frRealId;
     if(realId&&realWarehouse(realId)?.country_code==='FR')state.warehouse=realId;
     showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view],{
@@ -1162,7 +1197,7 @@ document.addEventListener('click',e=>{
   }
   const module=e.target.closest('[data-fr-module]');
   if(module){
-    state.frExpanded=null;
+    state.frExpanded=null;state.bovisExpanded=false;
     const item=FR_LAYOUT_MODULES.find(x=>x.key===module.dataset.frModule);
     if(item)showOfficePreview('module',item.key,item.name);
     return;
