@@ -534,11 +534,7 @@ async function queryPanel(env,view,url) {
     return rows.results||[];
   }
   if(view==='parts') {
-    const warehouse=url.searchParams.get('warehouse')||'PL-TYCHY';
-    const allowed=await env.DB.prepare(
-      "SELECT id FROM warehouses WHERE id=? AND country_code='PL'"
-    ).bind(warehouse).first();
-    if(!allowed) throw new Error('Nieprawidłowy magazyn.');
+    // A single catalogue is shared by every market; stock belongs to warehouses.
     const verification=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
     ).first();
@@ -559,16 +555,16 @@ async function queryPanel(env,view,url) {
       'SELECT p.id,'+
       (hasIndices?'COALESCE(ix.new_index,p.part_number) AS part_number,ix.old_index,'
         :'p.part_number,NULL AS old_index,')+
-      'p.name,p.sap_number,s.quantity '+
+      'p.name,p.sap_number '+
       (verification?' ,v.status AS verification_status ':' ,NULL AS verification_status ')+
       (photoFlags?' ,('+photoFlags+') AS has_photo ':
         ' ,0 AS has_photo ')+
-      'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
+      'FROM parts p '+
       (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
       (verification?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
-      'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE LIMIT 1000'
-    ).bind(warehouse).all();
-    return {warehouse,parts:rows.results||[]};
+      'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE LIMIT 3000'
+    ).all();
+    return {parts:rows.results||[]};
   }
   if(view==='newParts') {
     const ready=await env.DB.prepare(
