@@ -357,7 +357,9 @@ function setHead(title,kicker,desc){
   $('app').classList.toggle('view-labels',state.view==='labels');
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView);
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
-  $('vehicleTopScroll').classList.toggle('hidden',!vehicleView);
+  // The fleet scroll track is useful only when a real crew-stock table exists.
+  // Do not show an empty horizontal strip above the no-data message.
+  $('vehicleTopScroll').classList.add('hidden');
   if(compactView){
     $('receiptToolbarInfo').querySelector('strong').textContent=aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':inventoriesView?'Inwentaryzacje':state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
     $('receiptToolbarInfo').querySelector('span').textContent=aggregateView
@@ -730,9 +732,15 @@ function drawInventoryLines(lines){
     '<p class="placeholder-note" style="margin-top:12px">Pozycji: '+filtered.length+' z '+lines.length+'. Nieustalony wcześniejszy stan oznaczono „—”.</p>';
 }
 function syncVehicleTopScroll(){
-  if(state.view!=='vehicles')return;
-  const content=$('tableArea').querySelector('.vehicle-stock-table');
-  if(!content)return;
+  const scroller=$('vehicleTopScroll');
+  const content=state.view==='vehicles'
+    ?$('tableArea').querySelector('.vehicle-stock-table'):null;
+  if(!content){
+    scroller.classList.add('hidden');
+    $('vehicleScrollWidth').style.width='0px';
+    return;
+  }
+  scroller.classList.remove('hidden');
   // The top scrollbar starts at the first crew, not at the frozen SAP/name
   // columns. Match its scroll range to the inner table's horizontal range.
   const narrow=window.matchMedia('(max-width:690px)').matches;
@@ -744,6 +752,7 @@ function drawVehicles(){
   $('tableArea').innerHTML='<div class="empty">Brak danych pojazdów. Prawdziwe stany samochodowe będą widoczne po pierwszej inwentaryzacji ekip w D1. Dane testowe nie są przenoszone.</div>';
   $('tableFooter').textContent='0 pojazdów w ewidencji';
   noteSearch(0,0,'pojazdach');
+  syncVehicleTopScroll();
 }
 async function render(){
   if(state.view==='preview')return;
