@@ -17,12 +17,12 @@ const FR_LAYOUT_WAREHOUSES=[
     aliases:['Toulouse','Toulouse Box','Tuluza BOX','Box Tuluza']},
   {key:'paris',name:'Box Paryż',matchName:'Paryż',
     aliases:['Paris','Paris Box','Paryż BOX','Box Paris']},
-  {key:'bovis-paris',name:'Bovis Paryż'},
+  {key:'bovis-paris',name:'Bovis Paryż',aliases:['Bovis Paris']},
   {key:'bovis-lille',name:'Bovis Lille'},
   {key:'bovis-nantes',name:'Bovis Nantes'},
   {key:'bovis-nancy',name:'Bovis Nancy'},
-  {key:'bovis-marseille',name:'Bovis Marsylia'},
-  {key:'bovis-toulouse',name:'Bovis Tuluza'}
+  {key:'bovis-marseille',name:'Bovis Marsylia',aliases:['Bovis Marseille']},
+  {key:'bovis-toulouse',name:'Bovis Tuluza',aliases:['Bovis Toulouse']}
 ];
 const FR_LAYOUT_MODULES=[
   {key:'machines',name:'Maszyny OK / NOK',icon:'▤'},
