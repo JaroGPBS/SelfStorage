@@ -428,7 +428,7 @@ function setHead(title,kicker,desc){
     $('pageActions').insertBefore($('syncTime'),$('newPart'));
     $('pageActions').insertBefore($('refresh'),$('newPart'));
   }
-  $('warehouseCrumb').classList.toggle('hidden',!stockView&&!frEmpty);
+  $('warehouseCrumb').classList.toggle('hidden',!stockView&&!Boolean(state.preview?.warehouseName));
   $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
