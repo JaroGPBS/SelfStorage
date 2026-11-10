@@ -2318,34 +2318,35 @@
 .app.view-stocks .stock-tab[data-stock-tab="nok"]{min-width:184px}
 @media(max-width:760px){.app.view-stocks .stock-tab[data-stock-tab="nok"]{max-width:none;flex:1.5}}
 
-/* Warehouse selection: quiet red neon glow extending right from the active rail. */
-.office-market-list .subnav-btn[data-warehouse].active,
-.office-market-list .subnav-btn[data-preview-warehouse].active{
+/* Consistent, restrained neon highlight for the active warehouse and every active operation. */
+.office-market-list .subnav-btn.active{
   position:relative;
+  overflow:hidden;
   isolation:isolate;
-  background:linear-gradient(90deg,rgba(230,63,68,.23) 0%,rgba(230,63,68,.13) 38%,rgba(230,63,68,.045) 75%,transparent 100%);
-  box-shadow:inset 3px 0 #e63f44;
-  transition:background .2s ease;
+  color:#fff;
+  background:
+    radial-gradient(ellipse 110px 48px at 0% 50%,rgba(255,86,104,.29),transparent 97%),
+    linear-gradient(90deg,rgba(230,63,68,.23) 0%,rgba(230,63,68,.14) 40%,rgba(230,63,68,.035) 100%);
+  box-shadow:inset 3px 0 #fb5365,inset 13px 0 18px -15px rgba(255,85,105,.7);
+  transition:background .2s ease,box-shadow .2s ease;
 }
-.office-market-list .subnav-btn[data-warehouse].active::before,
-.office-market-list .subnav-btn[data-preview-warehouse].active::before{
+.office-market-list .subnav-btn.active::before{
   content:"";
   position:absolute;
-  top:4px;
-  bottom:4px;
-  left:3px;
-  width:41px;
-  border-radius:0 18px 18px 0;
-  background:linear-gradient(90deg,rgba(240,65,80,.37),rgba(240,65,80,0));
-  filter:blur(8px);
+  left:2px;
+  top:6px;
+  bottom:6px;
+  width:2px;
+  border-radius:3px;
+  background:#ff8a96;
+  box-shadow:0 0 7px 1px rgba(255,92,113,.8),9px 0 19px rgba(255,73,95,.44),25px 0 30px rgba(255,73,95,.16);
   pointer-events:none;
-  z-index:-1;
 }
-.office-market-list .subnav-btn[data-warehouse].active:hover,
-.office-market-list .subnav-btn[data-preview-warehouse].active:hover{
-  background:linear-gradient(90deg,rgba(230,63,68,.31) 0%,rgba(230,63,68,.16) 42%,rgba(230,63,68,.06) 78%,transparent 100%);
+.office-market-list .subnav-btn.active:hover{
+  background:
+    radial-gradient(ellipse 120px 48px at 0% 50%,rgba(255,86,104,.38),transparent 98%),
+    linear-gradient(90deg,rgba(230,63,68,.29) 0%,rgba(230,63,68,.18) 45%,rgba(230,63,68,.055) 100%);
 }
 @media(prefers-reduced-motion:reduce){
-  .office-market-list .subnav-btn[data-warehouse].active,
-  .office-market-list .subnav-btn[data-preview-warehouse].active{transition:none}
+  .office-market-list .subnav-btn.active{transition:none}
 }
