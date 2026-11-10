@@ -2312,3 +2312,7 @@
 
 /* Unconnected French warehouse: same compact table surface as Tychy, no placeholder card. */
 .office-stock-empty-note{padding:20px 16px;margin:0;text-align:center;color:#7a8490;font-size:12px;border-top:1px solid var(--line)}
+
+/* The Polish second stock tab has a longer, explicit NOK label. */
+.app.view-stocks .stock-tab[data-stock-tab="nok"]{min-width:184px}
+@media(max-width:760px){.app.view-stocks .stock-tab[data-stock-tab="nok"]{max-width:none;flex:1.5}}
