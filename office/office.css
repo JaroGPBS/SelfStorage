@@ -2350,3 +2350,50 @@
 @media(prefers-reduced-motion:reduce){
   .office-market-list .subnav-btn.active{transition:none}
 }
+
+
+/* French warehouses: one-click accordion; operation buttons belong to the warehouse above. */
+.office-fr-warehouse{display:grid;gap:1px;min-width:0}
+.office-market-list .office-fr-warehouse-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+  padding-right:10px;
+}
+.office-fr-warehouse-toggle>span:first-child{min-width:0}
+.office-fr-warehouse-chevron{
+  flex:0 0 16px;
+  text-align:center;
+  color:#9ca9b9;
+  font-size:17px;
+  line-height:1;
+  transform:rotate(0);
+  transition:transform .18s ease,color .18s ease;
+}
+.office-fr-warehouse-toggle[aria-expanded="true"] .office-fr-warehouse-chevron{
+  transform:rotate(180deg);
+  color:#f1b2b5;
+}
+.office-fr-warehouse-operations{
+  display:grid;
+  gap:1px;
+  min-width:0;
+  margin:2px 0 7px 13px;
+  padding-left:9px;
+  border-left:1px solid rgba(255,255,255,.1);
+}
+.office-market-list .office-fr-warehouse-operations .office-fr-operation{
+  min-width:0;
+  min-height:33px;
+  padding:6px 7px 6px 9px;
+  gap:7px;
+  font-size:12px;
+  line-height:1.35;
+}
+.office-fr-warehouse-operations .office-operation-icon{flex:0 0 15px;width:15px;font-size:13px}
+.office-scoped-operation{min-height:230px;padding:28px}
+.office-scoped-operation .office-placeholder-icon,
+.office-scoped-operation .office-placeholder-eyebrow,
+.office-scoped-operation .office-placeholder-note{display:none}
+@media(prefers-reduced-motion:reduce){.office-fr-warehouse-chevron{transition:none}}
