@@ -2309,3 +2309,6 @@
 .office-market-list .subnav-btn{font-size:14px;letter-spacing:.025em;line-height:1.4;min-height:37px}
 .office-market-list .office-operation-link{font-size:14px;letter-spacing:.025em;min-height:38px}
 .office-market-operations-label{font-size:11px;letter-spacing:.12em}
+
+/* Unconnected French warehouse: same compact table surface as Tychy, no placeholder card. */
+.office-stock-empty-note{padding:20px 16px;margin:0;text-align:center;color:#7a8490;font-size:12px;border-top:1px solid var(--line)}
