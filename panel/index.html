@@ -78,6 +78,7 @@
           </div>
           <div class="heading-actions">
             <select id="warehouseFilter" class="select hidden" aria-label="Wybierz magazyn"></select>
+            <button id="addPartBtn" class="btn primary hidden" type="button">+ Dodaj część</button>
             <select id="pinRoleFilter" class="select hidden" aria-label="Rola dla zbiorczego generatora PIN-ów">
               <option value="">Wszystkie role</option>
               <option value="ADMIN">Admin</option>
@@ -400,6 +401,37 @@
       <div class="dialog-actions">
         <button id="cancelUserPermissions" class="btn ghost" type="button">Anuluj</button>
         <button id="saveUserPermissions" class="btn primary" type="submit">Zapisz uprawnienia</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="partCreateDialog" class="modal confirm-dialog" aria-labelledby="partCreateTitle">
+    <form id="partCreateForm" class="modal-inner">
+      <div class="eyebrow">GPBS STORAGE / KATALOG CZĘŚCI</div>
+      <h2 id="partCreateTitle">Dodaj część</h2>
+      <label for="partCreateName">Nazwa części</label>
+      <input id="partCreateName" type="text" required minlength="2" maxlength="120"
+        autocomplete="off" placeholder="Nazwa części">
+      <label for="partCreateSap">Indeks SAP (opcjonalnie)</label>
+      <input id="partCreateSap" type="text" maxlength="100" autocomplete="off"
+        placeholder="Możesz uzupełnić później">
+      <label for="partCreatePhoto">Zdjęcie części (opcjonalnie)</label>
+      <input id="partCreatePhoto" type="file"
+        accept=".jpg,.jpeg,.jpe,.png,.bmp,.webp,.avif,image/jpeg,image/png,image/bmp,image/webp,image/avif">
+      <fieldset class="part-photo-modes">
+        <legend>Sposób zapisu zdjęcia</legend>
+        <label for="partCreateOptimized">
+          <input type="radio" id="partCreateOptimized" name="partCreateMode" value="optimized" checked>
+          <span><strong>Zoptymalizowane (zalecane)</strong><small>JPG, maks. 1600 px.</small></span>
+        </label>
+        <label for="partCreateOriginal">
+          <input type="radio" id="partCreateOriginal" name="partCreateMode" value="original">
+          <span><strong>Oryginalne</strong><small>Bez zmiany jakości i rozmiaru.</small></span>
+        </label>
+      </fieldset>
+      <p id="partCreateError" class="message error hidden" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="partCreateCancel" class="btn ghost" type="button">Anuluj</button>
+        <button id="partCreateSave" class="btn primary" type="submit">Zapisz część</button>
       </div>
     </form>
   </dialog>
