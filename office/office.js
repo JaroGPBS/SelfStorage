@@ -214,6 +214,8 @@ function renderMenu(){
   const marketOperations=country=>'<div class="office-market-operations">'+
     '<div class="office-market-operations-label">OPERACJE</div>'+
     OFFICE_MARKET_OPERATIONS.filter(op=>{
+      // Polish NOK belongs to the second stock tab, not the sidebar.
+      if(country==='PL'&&op.view==='nok')return false;
       const key={pz:'pz',wz:'wz',nok:'stocks',inventories:'inventory',
         vehicles:'stocks',labels:'labels'}[op.view];
       return state.user?.features?.[key]!==false;
@@ -332,6 +334,9 @@ function setHead(title,kicker,desc){
   $('crumb').textContent=title;
   $('newPart').classList.toggle('hidden',state.view!=='stocks'||Boolean(state.preview)||realWarehouse(state.warehouse)?.country_code==='FR');
   $('stockTabs').classList.toggle('hidden',state.view!=='stocks');
+  const polishStocks=state.view==='stocks'&&!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
+  $('modulesTab').dataset.stockTab=polishStocks?'nok':'modules';
+  $('modulesTab').textContent=polishStocks?'CZĘŚCI NIEKOMPLETNE':'MODUŁY';
   $('officeLabelsView').classList.toggle('hidden',state.view!=='labels');
   $('officeTableCard').classList.toggle('hidden',state.view==='labels');
   syncStockTabUI();
@@ -378,18 +383,20 @@ function setHead(title,kicker,desc){
 }
 function syncStockTabUI(){
   const modules=state.view==='stocks'&&state.stockTab==='modules';
+  const nok=state.view==='stocks'&&state.stockTab==='nok';
+  const secondary=modules||nok;
   $('app').classList.toggle('view-modules',modules);
   $('moduleCategories').classList.toggle('hidden',!modules);
-  for(const [id,active] of [['partsTab',!modules],['modulesTab',modules]]){
+  for(const [id,active] of [['partsTab',!secondary],['modulesTab',secondary]]){
     $(id).classList.toggle('active',active);
     $(id).setAttribute('aria-selected',String(active));
   }
   $('newPart').textContent=modules?'+ Dodaj moduł':'+ Dodaj część';
-  const canAdd=state.view==='stocks'&&!modules&&!!realWarehouse(state.warehouse);
+  const canAdd=state.view==='stocks'&&!secondary&&!!realWarehouse(state.warehouse);
   $('newPart').disabled=!canAdd;
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
     modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
-  $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':'Aktualne stany części w magazynie';
+  $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
   $('search').placeholder=modules?'Wyszukaj po numerze seryjnym':'Szukaj po SAP lub nazwie części';
   $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   document.querySelectorAll('[data-module-category]').forEach(btn=>{
@@ -399,7 +406,8 @@ function syncStockTabUI(){
   });
 }
 function setStockTab(tab){
-  if(!['parts','modules'].includes(tab)||state.view!=='stocks'||state.stockTab===tab)return;
+  const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
+  if(!['parts',polish?'nok':'modules'].includes(tab)||state.view!=='stocks'||state.stockTab===tab)return;
   state.stockTab=tab;state.moduleCategory='all';state.search='';state.expanded=null;
   $('search').value='';
   syncStockTabUI();render();
@@ -760,6 +768,11 @@ async function render(){
       if(state.stockTab==='modules'){
         if(ticket!==state.requestId)return;
         drawModules();
+      }else if(state.stockTab==='nok'){
+        const payload=await api('nokStock',params);
+        if(ticket!==state.requestId)return;
+        state.nokParts=payload.parts||[];
+        drawNokStock();
       }else{
       const parts=await loadStocks(state.warehouse);
       if(ticket!==state.requestId)return;drawStocks(parts,state.warehouse);
@@ -835,6 +848,7 @@ function filterCurrent(){
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){render();return;}
   if(state.view==='stocks'){
     if(state.stockTab==='modules')drawModules();
+    else if(state.stockTab==='nok')drawNokStock();
     else{
       const parts=state.partsCache.get(state.warehouse)||state.partsCache.get(state.warehouses[0]?.id)||[];
       drawStocks(parts,state.warehouse);
