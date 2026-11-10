@@ -582,8 +582,7 @@ function drawAggregate(realSets){
   $('tableArea').innerHTML=wrapTable(headers,tableRows,'aggregate-table');
   $('tableFooter').textContent=filtered.length+' pozycji · '+realSets.length+
     (realSets.length===1?' magazyn':realSets.length>=2&&realSets.length<=4?' magazyny':' magazynów')+
-    ' · źródła D1: '+realSets.filter(store=>!store.preview).length+
-    ' · „—” oznacza brak ustalonego stanu, nie zero';
+    ' · „—” oznacza nieustalony stan';
   noteSearch(filtered.length,positions.size,'częściach');
 }
 // PZ/WZ: show the team or supplier first and the registration below it.
@@ -901,8 +900,21 @@ async function render(){
         ...named,
         ...scoped.filter(w=>!used.has(w.id)).map(w=>({id:w.id,name:w.name,source:w}))
       ];
+      // Missing warehouse inventory must not hide shared catalogue entries.
+      // The same part list is used for all unconnected locations, with unknown quantities.
+      let sharedParts=[];
+      if(columns.some(col=>!col.source)&&state.user?.role==='ADMIN'&&
+         String(state.user?.nickname||'').trim().toUpperCase()==='JJ'){
+        const cacheKey='FR-COMMON-CATALOG';
+        if(!state.partsCache.has(cacheKey)){
+          const response=await api('frCatalog');
+          if(ticket!==state.requestId)return;
+          state.partsCache.set(cacheKey,response.parts||[]);
+        }
+        sharedParts=state.partsCache.get(cacheKey)||[];
+      }
       const loaded=await Promise.all(columns.map(async col=>({
-        id:col.id,name:col.name,parts:col.source?await loadStocks(col.id):[],
+        id:col.id,name:col.name,parts:col.source?await loadStocks(col.id):sharedParts,
         preview:!col.source
       })));
       if(ticket!==state.requestId)return;
