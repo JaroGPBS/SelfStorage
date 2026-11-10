@@ -2444,3 +2444,22 @@
   }
   .app.view-fr-empty .office-fr-empty-table .office-fr-empty-cell{padding:25px 10px}
 }
+
+/* Bovis: compact nested list of cities, no warehouse operations. */
+.office-bovis-group{display:grid;gap:1px}
+.office-bovis-entries{
+  display:grid;
+  gap:1px;
+  margin:2px 0 7px 13px;
+  padding-left:9px;
+  border-left:1px solid rgba(255,255,255,.1);
+}
+.office-market-list .office-bovis-entries .subnav-btn{
+  min-height:33px;
+  padding:6px 9px;
+  font-size:13px;
+}
+.office-bovis-toggle[aria-expanded="true"] .office-fr-warehouse-chevron{
+  transform:rotate(180deg);
+  color:#f1b2b5;
+}
