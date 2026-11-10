@@ -2260,12 +2260,13 @@
 .office-market-name{flex:1;line-height:1.2}
 .office-market-flag{
   display:inline-block;
-  flex:0 0 19px;
-  width:19px;
-  height:19px;
-  border:1px solid rgba(255,255,255,.36);
+  flex:0 0 23px;
+  width:23px;
+  height:23px;
+  border:0;
   border-radius:50%;
-  box-shadow:0 1px 4px rgba(0,0,0,.22);
+  overflow:hidden;
+  box-shadow:0 1px 4px rgba(0,0,0,.25),inset 0 0 0 1px rgba(255,255,255,.09);
 }
 .office-market-flag-pl{
   background:linear-gradient(to bottom,#fff 0 50%,#dc143c 50% 100%);
@@ -2316,3 +2317,35 @@
 /* The Polish second stock tab has a longer, explicit NOK label. */
 .app.view-stocks .stock-tab[data-stock-tab="nok"]{min-width:184px}
 @media(max-width:760px){.app.view-stocks .stock-tab[data-stock-tab="nok"]{max-width:none;flex:1.5}}
+
+/* Warehouse selection: quiet red neon glow extending right from the active rail. */
+.office-market-list .subnav-btn[data-warehouse].active,
+.office-market-list .subnav-btn[data-preview-warehouse].active{
+  position:relative;
+  isolation:isolate;
+  background:linear-gradient(90deg,rgba(230,63,68,.23) 0%,rgba(230,63,68,.13) 38%,rgba(230,63,68,.045) 75%,transparent 100%);
+  box-shadow:inset 3px 0 #e63f44;
+  transition:background .2s ease;
+}
+.office-market-list .subnav-btn[data-warehouse].active::before,
+.office-market-list .subnav-btn[data-preview-warehouse].active::before{
+  content:"";
+  position:absolute;
+  top:4px;
+  bottom:4px;
+  left:3px;
+  width:41px;
+  border-radius:0 18px 18px 0;
+  background:linear-gradient(90deg,rgba(240,65,80,.37),rgba(240,65,80,0));
+  filter:blur(8px);
+  pointer-events:none;
+  z-index:-1;
+}
+.office-market-list .subnav-btn[data-warehouse].active:hover,
+.office-market-list .subnav-btn[data-preview-warehouse].active:hover{
+  background:linear-gradient(90deg,rgba(230,63,68,.31) 0%,rgba(230,63,68,.16) 42%,rgba(230,63,68,.06) 78%,transparent 100%);
+}
+@media(prefers-reduced-motion:reduce){
+  .office-market-list .subnav-btn[data-warehouse].active,
+  .office-market-list .subnav-btn[data-preview-warehouse].active{transition:none}
+}
