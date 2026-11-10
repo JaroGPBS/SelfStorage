@@ -839,11 +839,29 @@ async function render(){
   if(state.view==='preview')return;
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){
     errorBanner('');
-    if(state.stockTab==='modules')drawModules();
-    else{
-      drawStocks([],null);
-      $('tableArea').insertAdjacentHTML('beforeend',
-        '<p class="office-stock-empty-note">Brak podłączonych danych dla tego magazynu.</p>');
+    if(state.stockTab==='modules'){
+      $('tableArea').innerHTML='<div class="empty">Brak danych.</div>';
+      $('tableFooter').textContent='';
+      return;
+    }
+    const ticket=++state.requestId;
+    const cacheKey='FR-COMMON-CATALOG';
+    try{
+      if(!state.partsCache.has(cacheKey)){
+        setLoading();
+        const response=await api('frCatalog');
+        if(ticket!==state.requestId)return;
+        state.partsCache.set(cacheKey,response.parts||[]);
+      }
+      if(ticket!==state.requestId)return;
+      drawStocks(state.partsCache.get(cacheKey)||[],null);
+      markSynced();
+    }catch(ex){
+      if(ticket!==state.requestId)return;
+      errorBanner(ex.message||'Nie można pobrać katalogu części.');
+      $('tableArea').innerHTML='<div class="empty">Brak danych.</div>';
+      $('tableFooter').textContent='';
+      if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
     }
     return;
   }
@@ -940,7 +958,11 @@ function filterCurrent(){
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
     drawFrenchEmptyView();return;
   }
-  if(state.preview?.type==='warehouse'&&state.view==='stocks'){render();return;}
+  if(state.preview?.type==='warehouse'&&state.view==='stocks'){
+    if(state.stockTab==='modules')render();
+    else drawStocks(state.partsCache.get('FR-COMMON-CATALOG')||[],null);
+    return;
+  }
   if(state.view==='stocks'){
     if(state.stockTab==='modules')drawModules();
     else if(state.stockTab==='nok')drawNokStock();
@@ -973,14 +995,19 @@ async function openPart(id){
   body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><div class="loading">Wczytywanie...</div>';
   try{
     const warehouse=state.warehouse;
-    const payload=await api('part',{warehouse,part:id});
+    const virtualFrench=state.preview?.type==='warehouse';
+    const payload=virtualFrench
+      ?await api('frCatalog',{part:id})
+      :await api('part',{warehouse,part:id});
     if(modal.classList.contains('hidden'))return;
     const p=payload.part;
     state.labelPart=p;
     const amount=p.quantity;
     const uploadedPhoto=Boolean(Number(p.has_photo));
-    const photoSrc='/api/office?view=partPhoto&warehouse='+encodeURIComponent(warehouse)+
-      '&part='+encodeURIComponent(p.id);
+    const photoSrc=virtualFrench
+      ?'/api/office?view=frCatalogPhoto&part='+encodeURIComponent(p.id)
+      :'/api/office?view=partPhoto&warehouse='+encodeURIComponent(warehouse)+
+        '&part='+encodeURIComponent(p.id);
     const photo=uploadedPhoto
       ? '<button type="button" class="part-photo-zoom" data-photo-open="1" aria-label="Powiększ zdjęcie części '+escapeHtml(p.name)+'">'+
         '<img src="'+escapeHtml(photoSrc)+'" alt="'+escapeHtml(p.name)+' — zdjęcie części" loading="lazy">'+
@@ -994,15 +1021,18 @@ async function openPart(id){
       '<div class="part-detail-layout">'+
         '<div class="part-photo-section">'+photo+'</div>'+
         '<div class="part-detail-data">'+
-          '<div class="part-stock-block"><small>AKTUALNY STAN</small><strong>'+quantity(amount)+' <span>szt.</span></strong></div>'+
+          '<div class="part-stock-block"><small>AKTUALNY STAN</small><strong>'+quantity(amount)+
+            (amount===null||amount===undefined?'':' <span>szt.</span>')+'</strong></div>'+
           '<div class="part-meta-item"><small>Identyfikator magazynowy</small><strong>'+escapeHtml(p.part_number||'—')+'</strong></div>'+
-          '<div class="part-meta-item"><small>Ostatnia dostawa</small><strong>'+dateText(payload.delivery?.date)+'</strong><p>'+deliveryQuantity+'</p></div>'+
-          '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>'+dateText(payload.inventory?.date)+'</strong></div>'+
+          (virtualFrench?'':(
+            '<div class="part-meta-item"><small>Ostatnia dostawa</small><strong>'+dateText(payload.delivery?.date)+'</strong><p>'+deliveryQuantity+'</p></div>'+
+            '<div class="part-meta-item"><small>Ostatnia inwentaryzacja</small><strong>'+dateText(payload.inventory?.date)+'</strong></div>'
+          ))+
         '</div>'+
       '</div>'+
-      '<div class="modal-actions">'+
+      (virtualFrench?'':'<div class="modal-actions">'+
         '<button type="button" class="btn dark" data-label-add-current="1">Drukuj etykietę</button>'+
-      '</div>';
+      '</div>');
     // A saved photo can exist in the catalogue even if the browser cannot decode it.
     // Show a readable error instead of a broken or invisible image.
     const partImage=body.querySelector('.part-photo-zoom img');
