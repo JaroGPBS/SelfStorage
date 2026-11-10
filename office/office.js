@@ -56,6 +56,23 @@ const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'')
 
 const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:true,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
+function partCreationTarget(){
+  if(state.view!=='stocks'||state.stockTab!=='parts')return null;
+  if(state.preview?.type==='warehouse'){
+    const location=FR_LAYOUT_WAREHOUSES.slice(0,3).find(x=>x.key===state.preview.key);
+    return location?{fr:true,warehouseKey:location.key,warehouseId:'',label:location.name}:null;
+  }
+  if(state.preview)return null;
+  const real=realWarehouse(state.warehouse);
+  if(!real)return null;
+  if(real.country_code==='PL')
+    return {fr:false,warehouseKey:'',warehouseId:real.id,label:real.name};
+  if(real.country_code==='FR'){
+    const location=FR_LAYOUT_WAREHOUSES.slice(0,3).find(x=>matchesFrenchWarehouse(real,x));
+    return location?{fr:true,warehouseKey:location.key,warehouseId:real.id,label:location.name}:null;
+  }
+  return null;
+}
 function dateText(raw){if(!raw)return '—';const dt=new Date(String(raw).replace(' ','T').replace(/Z?$/,'Z'));return isNaN(dt.getTime())?String(raw).slice(0,10):new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',day:'2-digit',month:'2-digit',year:'numeric'}).format(dt);}
 function isoWeek(raw){
   const date=new Date(String(raw||'').replace(' ','T').replace(/Z?$/,'Z'));
@@ -89,12 +106,12 @@ function clearNewPartPreview(){
   $('officeNewPartPreview').hidden=true;
 }
 function openOfficeNewPart(){
-  if(state.view!=='stocks'||state.stockTab!=='parts'||
-     !realWarehouse(state.warehouse)||newPartBusy)return;
+  const target=partCreationTarget();
+  if(!target||newPartBusy)return;
   $('officeNewPartForm').reset();
   newPartError('');
   clearNewPartPreview();
-  $('officeNewPartWarehouse').textContent='Magazyn: '+realWarehouse(state.warehouse).name;
+  $('officeNewPartWarehouse').textContent='Magazyn: '+target.label;
   $('officeNewPartDialog').showModal();
   $('officeNewPartName').focus();
 }
@@ -139,9 +156,8 @@ const ext=filename.includes('.')?filename.split('.').pop().toLowerCase():'';
 
 async function saveOfficeNewPart(event){
   event.preventDefault();
-  if(newPartBusy||state.view!=='stocks'||state.stockTab!=='parts'||
-     !realWarehouse(state.warehouse))return;
-  const warehouseId=state.warehouse;
+  const target=partCreationTarget();
+  if(newPartBusy||!target)return;
   const name=$('officeNewPartName').value.trim().replace(/\s+/g,' ');
   const sap=$('officeNewPartSap').value.trim().toUpperCase();
   if(name.length<2){newPartError('Wpisz nazwę części.');return;}
@@ -152,14 +168,18 @@ async function saveOfficeNewPart(event){
   try{
     const file=$('officeNewPartPhoto').files?.[0]||null;
     if(file)await validatePartPhotoFile(file);
-    if(state.warehouse!==warehouseId)
+    const now=partCreationTarget();
+    if(!now||now.warehouseId!==target.warehouseId||
+       now.warehouseKey!==target.warehouseKey)
       throw Error('Wybrano inny magazyn. Otwórz formularz ponownie.');
     const form=new FormData();
-    form.set('warehouseId',warehouseId);
+    form.set('warehouseId',target.warehouseId);
+    if(target.fr)form.set('warehouseKey',target.warehouseKey);
     form.set('name',name);
     form.set('sap',sap);
     if(file)form.set('photo',file,file.name);
-    const response=await fetch('/api/pl/new-part',{
+    const response=await fetch(target.fr
+      ?'/api/office?action=createFrenchCatalogPart':'/api/pl/new-part',{
       method:'POST',
       credentials:'same-origin',
       cache:'no-store',
@@ -171,8 +191,11 @@ async function saveOfficeNewPart(event){
     state.partsCache.clear();
     state.detailCache.clear();
     await render();
-    $('officeNewPartNotice').textContent='Dodano „'+name+'” do katalogu. Część oczekuje na weryfikację.';
-    $('officeNewPartNotice').classList.remove('hidden');
+    // A visible new catalogue row is sufficient confirmation.
+    if(!target.fr){
+      $('officeNewPartNotice').textContent='Dodano „'+name+'” do katalogu. Część oczekuje na weryfikację.';
+      $('officeNewPartNotice').classList.remove('hidden');
+    }
   }catch(ex){
     newPartError(ex.message||'Nie udało się dodać części.');
   }finally{
@@ -367,7 +390,6 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     $('pageActions').classList.remove('hidden');
     setHead('Stany magazynowe','', '');
     $('warehouseCrumb').textContent=label.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
-    $('newPart').classList.add('hidden');
     $('refresh').classList.add('hidden');
     $('syncTime').textContent='';
     renderMenu();
@@ -396,7 +418,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
 function setHead(title,kicker,desc){
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
-  $('newPart').classList.toggle('hidden',state.view!=='stocks'||Boolean(state.preview)||realWarehouse(state.warehouse)?.country_code==='FR');
+  $('newPart').classList.toggle('hidden',!partCreationTarget());
   $('stockTabs').classList.toggle('hidden',state.view!=='stocks');
   const polishStocks=state.view==='stocks'&&!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
   $('modulesTab').dataset.stockTab=polishStocks?'nok':'modules';
@@ -457,7 +479,7 @@ function setHead(title,kicker,desc){
   $('refresh').classList.toggle('hidden',Boolean(state.preview?.type==='warehouse'));
   $('refresh').disabled=Boolean(frEmpty);
   $('refresh').title=frEmpty?'Brak danych do synchronizacji':'Odśwież dane';
-  if(state.preview?.type==='warehouse')$('newPart').classList.add('hidden');
+  // French catalogue views can add shared parts, without creating stock.
 }
 function syncStockTabUI(){
   const modules=state.view==='stocks'&&state.stockTab==='modules';
@@ -470,9 +492,9 @@ function syncStockTabUI(){
     $(id).setAttribute('aria-selected',String(active));
   }
   $('newPart').textContent=modules?'+ Dodaj moduł':'+ Dodaj część';
-  const canAdd=state.view==='stocks'&&!secondary&&!!realWarehouse(state.warehouse);
+  const canAdd=!secondary&&Boolean(partCreationTarget());
   $('newPart').disabled=!canAdd;
-  $('newPart').classList.toggle('hidden',modules||nok||Boolean(state.preview)||realWarehouse(state.warehouse)?.country_code==='FR');
+  $('newPart').classList.toggle('hidden',!canAdd);
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
     modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
   $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
