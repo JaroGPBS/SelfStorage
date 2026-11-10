@@ -321,7 +321,8 @@ function renderMenu(){
         ?state.view==='preview'&&state.preview?.type==='operation'&&
           state.preview?.key===el.dataset.view
         :false;
-    const isView=!el.dataset.marketView&&state.view!=='preview'&&el.dataset.view===state.view;
+    const isView=!el.dataset.marketView&&!el.dataset.frOperation&&
+      state.view!=='preview'&&el.dataset.view===state.view;
     const isFrStock=Boolean(el.dataset.frWarehouseToggle)&&state.view==='stocks'&&(
       state.preview?.type==='warehouse'
         ?state.preview.key===el.dataset.frWarehouseToggle
@@ -351,27 +352,24 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     render();
     return;
   }
-  $('refresh').classList.remove('hidden');
-  // Abort stale data paints if an earlier real warehouse request was in flight.
+  // French operations and modules share the real Office window layout.
+  // Until their data sources are connected, render empty content without warehouse API calls.
   ++state.requestId;
-  state.view='preview';
+  state.view=type==='operation'?key:'preview';
   state.preview={type,key,label,...(warehouseContext||{})};
-  state.stockTab='parts';state.search='';state.focusDocument=null;
+  state.stockTab='parts';state.moduleCategory='all';state.search='';
+  state.focusDocument=null;state.expanded=null;
   $('sidebar').classList.remove('open');
+  $('officePreview').classList.add('hidden');
+  $('pageActions').classList.remove('hidden');
+  setHead(label,'','');
+  if(warehouseContext?.warehouseName){
+    $('warehouseCrumb').textContent=warehouseContext.warehouseName.toLocaleUpperCase('pl');
+    $('warehouseCrumb').classList.remove('hidden');
+  }
+  $('syncTime').textContent='';
   renderMenu();
-  setHead(label,'GPBS STORAGE / FRANCJA','Układ przygotowany do podłączenia danych.');
-  $('pageKicker').textContent='FRANCJA / UKŁAD OFFICE';
-  $('officePreviewTitle').textContent=warehouseContext?.warehouseName
-    ?label+' — '+warehouseContext.warehouseName:label;
-  $('officePreviewDescription').textContent=warehouseContext?.warehouseName
-    ?'Brak danych.'
-    :type==='warehouse'?'Brak danych.':'Funkcja nie jest jeszcze dostępna.';
-  $('officePreview').classList.toggle('office-scoped-operation',Boolean(warehouseContext?.warehouseName));
-  $('officePreview').classList.remove('hidden');
-  $('officeTableCard').classList.add('hidden');
-  $('pageActions').classList.add('hidden');
-  $('warehouseCrumb').classList.add('hidden');
-  errorBanner('');
+  render();
 }
 function setHead(title,kicker,desc){
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
@@ -381,8 +379,10 @@ function setHead(title,kicker,desc){
   const polishStocks=state.view==='stocks'&&!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
   $('modulesTab').dataset.stockTab=polishStocks?'nok':'modules';
   $('modulesTab').textContent=polishStocks?'CZĘŚCI NIEKOMPLETNE':'MODUŁY';
-  $('officeLabelsView').classList.toggle('hidden',state.view!=='labels');
-  $('officeTableCard').classList.toggle('hidden',state.view==='labels');
+  const frEmpty=state.preview?.type==='operation'||state.preview?.type==='module';
+  const workingLabels=state.view==='labels'&&!frEmpty;
+  $('officeLabelsView').classList.toggle('hidden',!workingLabels);
+  $('officeTableCard').classList.toggle('hidden',workingLabels);
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate','vehicles'].includes(state.view));
   $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
@@ -393,21 +393,27 @@ function setHead(title,kicker,desc){
   const vehicleView=state.view==='vehicles';
   const aggregateView=state.view==='aggregate';
   const inventoriesView=state.view==='inventories';
-  const compactView=documentsView||vehicleView||aggregateView||inventoriesView||state.view==='nok';
+  const compactView=documentsView||vehicleView||aggregateView||inventoriesView||
+    state.view==='nok'||frEmpty;
   $('app').classList.toggle('view-stocks',stockView);
   $('app').classList.toggle('view-receipts',compactView);
   $('app').classList.toggle('view-vehicles',vehicleView);
   $('app').classList.toggle('view-aggregate',aggregateView);
-  $('app').classList.toggle('view-labels',state.view==='labels');
+  $('app').classList.toggle('view-labels',workingLabels);
+  $('app').classList.toggle('view-fr-empty',frEmpty);
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView);
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
   // The fleet scroll track is useful only when a real crew-stock table exists.
   // Do not show an empty horizontal strip above the no-data message.
   $('vehicleTopScroll').classList.add('hidden');
   if(compactView){
-    $('receiptToolbarInfo').querySelector('strong').textContent=aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':inventoriesView?'Inwentaryzacje':state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
-    $('receiptToolbarInfo').querySelector('span').textContent=aggregateView
-      ?'Porównanie stanów części pomiędzy magazynami.'
+    $('receiptToolbarInfo').querySelector('strong').textContent=state.preview?.type==='module'
+      ?state.preview.label:aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':
+      inventoriesView?'Inwentaryzacje':state.view==='labels'?'Drukowanie etykiet':
+      state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
+    $('receiptToolbarInfo').querySelector('span').textContent=state.preview?.type==='module'
+      ?'':state.view==='labels'?'Lista części i etykiet.'
+      :aggregateView?'Porównanie stanów części pomiędzy magazynami.'
       :vehicleView?'Ewidencja części na samochodach serwisowych.'
       :inventoriesView?'Historia inwentaryzacji i bilanse.'
       :state.view==='nok'?'Oddzielna ewidencja NOK — nie powiększa stanu pełnowartościowego.'
@@ -422,11 +428,13 @@ function setHead(title,kicker,desc){
     $('pageActions').insertBefore($('syncTime'),$('newPart'));
     $('pageActions').insertBefore($('refresh'),$('newPart'));
   }
-  $('warehouseCrumb').classList.toggle('hidden',!stockView);
+  $('warehouseCrumb').classList.toggle('hidden',!stockView&&!frEmpty);
   $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
   $('refresh').classList.toggle('hidden',Boolean(state.preview?.type==='warehouse'));
+  $('refresh').disabled=Boolean(frEmpty);
+  $('refresh').title=frEmpty?'Brak danych do synchronizacji':'Odśwież dane';
   if(state.preview?.type==='warehouse')$('newPart').classList.add('hidden');
 }
 function syncStockTabUI(){
@@ -798,7 +806,36 @@ function drawVehicles(){
   noteSearch(0,0,'pojazdach');
   syncVehicleTopScroll();
 }
+function drawFrenchEmptyView(){
+  const view=state.view;
+  const headers={
+    pz:[{label:'Data'},{label:'Tydz.'},{label:'Dostawca / Ekipa'},
+      {label:'Przyjmował'},{label:''}],
+    wz:[{label:'Data'},{label:'Tydz.'},{label:'Odbiorca'},
+      {label:'Wydawał'},{label:''}],
+    nok:[{label:'Indeks SAP'},{label:'Nazwa części'},
+      {label:'Indeks magazynowy'},{label:'Stan NOK',numeric:true}],
+    inventories:[{label:'Data'},{label:'Tydz.'},{label:'Liczył'},
+      {label:'Pozycji',numeric:true},{label:''}],
+    vehicles:[{label:'Indeks SAP'},{label:'Nazwa części'}],
+    labels:[{label:'Nazwa części'},{label:'Indeks GPBS'},
+      {label:'Ostatni wydruk'},{label:'Do wydruku'}]
+  }[view]||[{label:'Nazwa'},{label:'Stan',numeric:true}];
+  const message=view==='vehicles'
+    ?'Brak danych. Stany samochodowe będą widoczne po pierwszej inwentaryzacji samochodów.'
+    :'Brak danych.';
+  errorBanner('');
+  $('tableArea').innerHTML=wrapTable(headers,
+    '<tr><td colspan="'+headers.length+'" class="office-fr-empty-cell">'+
+      escapeHtml(message)+'</td></tr>','office-fr-empty-table');
+  $('tableFooter').textContent='';
+  $('searchNote').classList.add('hidden');
+  $('vehicleTopScroll').classList.add('hidden');
+}
 async function render(){
+  if(state.preview?.type==='operation'||state.preview?.type==='module'){
+    drawFrenchEmptyView();return;
+  }
   if(state.view==='preview')return;
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){
     errorBanner('');
@@ -900,6 +937,9 @@ async function render(){
   }
 }
 function filterCurrent(){
+  if(state.preview?.type==='operation'||state.preview?.type==='module'){
+    drawFrenchEmptyView();return;
+  }
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){render();return;}
   if(state.view==='stocks'){
     if(state.stockTab==='modules')drawModules();
@@ -1176,6 +1216,9 @@ $('search').addEventListener('input',e=>{
 });
 $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';filterCurrent();});
 $('refresh').addEventListener('click',()=>{
+  if(state.preview?.type==='operation'||state.preview?.type==='module'){
+    render();return;
+  }
   if(state.view==='labels'){window.GPBSOfficeLabels?.refresh();return;}
   state.partsCache.clear();state.detailCache.clear();render();
 });
