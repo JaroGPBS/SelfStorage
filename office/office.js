@@ -394,6 +394,7 @@ function syncStockTabUI(){
   $('newPart').textContent=modules?'+ Dodaj moduł':'+ Dodaj część';
   const canAdd=state.view==='stocks'&&!secondary&&!!realWarehouse(state.warehouse);
   $('newPart').disabled=!canAdd;
+  $('newPart').classList.toggle('hidden',modules||nok||Boolean(state.preview)||realWarehouse(state.warehouse)?.country_code==='FR');
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
     modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
   $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
