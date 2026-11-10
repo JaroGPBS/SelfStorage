@@ -1,5 +1,6 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
+import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
@@ -1162,6 +1163,27 @@ async function replacePartPhoto(request,env){
   }
 }
 
+async function createAdminCataloguePart(request,env){
+  const session=await readSession(request,env);
+  if(!session||session.role!=='ADMIN')return fail('Zaloguj się jako administrator.',401);
+  if(Number(request.headers.get('Content-Length')||0)>22*1024*1024)
+    return fail('Zdjęcie przekracza 20 MB.',413);
+  try{
+    const form=await request.formData();
+    const part=await createSharedCataloguePart(env,form);
+    await env.DB.prepare(
+      'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
+      'VALUES (?,?,?,?,?,?)'
+    ).bind(crypto.randomUUID(),session.id,'PART_CREATE','PART',part.id,
+      JSON.stringify({name:part.name,number:part.number,sap:part.sap,photo:part.hasPhoto}))
+      .run().catch(error=>console.error('Catalogue part audit unavailable',error?.name||'Error'));
+    return respond({ok:true,part});
+  }catch(error){
+    console.error('Admin catalogue create failed',error?.name||'Error');
+    return fail(error?.status?error.message:'Nie udało się dodać części.',error?.status||503);
+  }
+}
+
 async function route(request,env) {
   if(!ready(env)) return fail('Panel nie jest jeszcze aktywowany przez administratora.',503);
   const url=new URL(request.url);
@@ -1226,7 +1248,8 @@ async function route(request,env) {
   const origin=request.headers.get('Origin');
   if(!origin||origin!==url.origin) return fail('Niedozwolona domena.',403);
   if((request.headers.get('Content-Type')||'').toLowerCase().startsWith('multipart/form-data;'))
-    return replacePartPhoto(request,env);
+    return url.searchParams.get('action')==='createPart'
+      ?createAdminCataloguePart(request,env):replacePartPhoto(request,env);
   if(!(request.headers.get('Content-Type')||'').toLowerCase().startsWith('application/json'))
     return fail('Wymagany format JSON.',415);
   let body;
