@@ -226,7 +226,6 @@
       if(model.warehouse===job.warehouse){
         model.queue.clear();
         await load();
-        notice('Zapisano datę ostatniego wydruku dla '+job.ids.length+' części.');
       }
     }catch(error){notice('Okno drukowania zostało zamknięte, ale '+error.message,true);}
   }
