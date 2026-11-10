@@ -7,7 +7,7 @@
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
-    parts:['Katalog części','Pełny katalog i stany części w wybranym magazynie.'],
+    parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
     newParts:['Nowe części','Nowe części zgłoszone przez magazynierów — do weryfikacji.'],
     indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
@@ -65,7 +65,6 @@
 
   async function api(view) {
     const url='/api/panel?view='+encodeURIComponent(view)+
-      (view==='parts'?'&warehouse='+encodeURIComponent(state.currentPartsWarehouse):'')+
       (view==='users'&&state.showArchives?'&archived=1':'');
     const res=await fetch(url,{cache:'no-store',credentials:'same-origin'});
     let json=null;
@@ -760,6 +759,49 @@
     } finally {URL.revokeObjectURL(previewUrl);}
   }
 
+  function openPartCreate(){
+    $('partCreateForm').reset();
+    $('partCreateOptimized').checked=true;
+    $('partCreateError').textContent='';
+    $('partCreateError').classList.add('hidden');
+    $('partCreateDialog').showModal();
+    $('partCreateName').focus();
+  }
+
+  async function savePartCreate(event){
+    event.preventDefault();
+    const save=$('partCreateSave'),cancel=$('partCreateCancel');
+    save.disabled=true;cancel.disabled=true;
+    $('partCreateError').classList.add('hidden');
+    try{
+      const photoFile=$('partCreatePhoto').files?.[0]||null;
+      validateEditorPhoto(photoFile);
+      const photo=photoFile&&$('partCreateOptimized').checked
+        ?await optimizeEditorPhoto(photoFile):photoFile;
+      const form=new FormData();
+      form.set('name',$('partCreateName').value.trim());
+      form.set('sap',$('partCreateSap').value.trim());
+      if(photo)form.set('photo',photo,photo.name);
+      const response=await fetch('/api/panel?action=createPart',{
+        method:'POST',credentials:'same-origin',cache:'no-store',body:form
+      });
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok||!result.ok)
+        throw Error(result.error||'Nie udało się dodać części.');
+      $('partCreateDialog').close();
+      if(state.view==='parts'){
+        const refreshed=await api('parts');
+        state.records=refreshed.parts||[];
+        renderList();
+      }
+    }catch(error){
+      $('partCreateError').textContent=error.message||'Nie udało się dodać części.';
+      $('partCreateError').classList.remove('hidden');
+    }finally{
+      save.disabled=false;cancel.disabled=false;
+    }
+  }
+
   async function savePartEditor(event) {
     event.preventDefault();
     const button=$('partEditSave');
@@ -964,7 +1006,8 @@
     $('showArchivedUsers').textContent=state.showArchives?'Wróć do użytkowników':'Pokaż archiwum';
     $('generateMissingPins').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('pinRoleFilter').classList.toggle('hidden',view!=='users'||state.showArchives);
-    $('warehouseFilter').classList.toggle('hidden',view!=='parts');
+    $('warehouseFilter').classList.add('hidden');
+    $('addPartBtn').classList.toggle('hidden',view!=='parts');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
     $('tableDescription').textContent=defs[view][1];
@@ -999,7 +1042,6 @@
           renderUsage(usage);
         }
       } else {
-        if(view==='parts')await loadWarehouses();
         if(view==='users') {
           const [users,setup]=await Promise.all([api('users'),api('pinStatus')]);
           state.records=users;
@@ -1463,6 +1505,9 @@
     $('userPermissionsForm').addEventListener('submit',saveUserPermissions);
     $('closeUserPermissions').addEventListener('click',()=>$('userPermissionsDialog').close());
     $('cancelUserPermissions').addEventListener('click',()=>$('userPermissionsDialog').close());
+    $('addPartBtn').addEventListener('click',openPartCreate);
+    $('partCreateForm').addEventListener('submit',savePartCreate);
+    $('partCreateCancel').addEventListener('click',()=>$('partCreateDialog').close());
     $('partEditForm').addEventListener('submit',savePartEditor);
     $('partEditDelete').addEventListener('click',()=>{
       const id=$('partEditId').value;
