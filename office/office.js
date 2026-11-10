@@ -348,7 +348,8 @@ function setHead(title,kicker,desc){
   const documentsView=state.view==='pz'||state.view==='wz';
   const vehicleView=state.view==='vehicles';
   const aggregateView=state.view==='aggregate';
-  const compactView=documentsView||vehicleView||aggregateView||state.view==='nok';
+  const inventoriesView=state.view==='inventories';
+  const compactView=documentsView||vehicleView||aggregateView||inventoriesView||state.view==='nok';
   $('app').classList.toggle('view-stocks',stockView);
   $('app').classList.toggle('view-receipts',compactView);
   $('app').classList.toggle('view-vehicles',vehicleView);
@@ -358,10 +359,11 @@ function setHead(title,kicker,desc){
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
   $('vehicleTopScroll').classList.toggle('hidden',!vehicleView);
   if(compactView){
-    $('receiptToolbarInfo').querySelector('strong').textContent=aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
+    $('receiptToolbarInfo').querySelector('strong').textContent=aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':inventoriesView?'Inwentaryzacje':state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
     $('receiptToolbarInfo').querySelector('span').textContent=aggregateView
       ?'Porównanie stanów części pomiędzy magazynami.'
       :vehicleView?'Ewidencja części na samochodach serwisowych.'
+      :inventoriesView?'Historia inwentaryzacji i bilanse.'
       :state.view==='nok'?'Oddzielna ewidencja NOK — nie powiększa stanu pełnowartościowego.'
       :state.view==='pz'?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
   }
