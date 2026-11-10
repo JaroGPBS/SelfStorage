@@ -315,7 +315,7 @@ function renderMenu(){
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
     const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket==='FR';
     const isMarketView=el.dataset.marketView==='PL'
-      ?state.view===el.dataset.view&&state.view!=='preview'&&
+      ?!state.preview&&state.view===el.dataset.view&&state.view!=='preview'&&
         realWarehouse(state.warehouse)?.country_code==='PL'
       :el.dataset.marketView==='FR'
         ?state.view==='preview'&&state.preview?.type==='operation'&&
