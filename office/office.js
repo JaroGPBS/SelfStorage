@@ -272,8 +272,8 @@ function renderMenu(){
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true):'');
   for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-module],#sidebar [data-view],#sidebar [data-aggregate-market]')){
-    const isReal=state.view==='stocks'&&el.dataset.warehouse===state.warehouse;
-    const isPreview=state.view==='preview'&&(
+    const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
+    const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
     const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket==='FR';
@@ -289,6 +289,25 @@ function renderMenu(){
   }
 }
 function showOfficePreview(type,key,label){
+  if(type==='warehouse'){
+    // Unconnected French warehouses use exactly the same stock layout as Tychy.
+    // No D1 request or invented stock quantities are made for a layout-only entry.
+    ++state.requestId;
+    state.view='stocks';state.preview={type,key,label};
+    state.stockTab='parts';state.moduleCategory='all';state.search='';state.focusDocument=null;
+    $('sidebar').classList.remove('open');
+    $('officePreview').classList.add('hidden');
+    $('pageActions').classList.remove('hidden');
+    setHead('Stany magazynowe','', '');
+    $('warehouseCrumb').textContent=label.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
+    $('newPart').classList.add('hidden');
+    $('refresh').classList.add('hidden');
+    $('syncTime').textContent='';
+    renderMenu();
+    render();
+    return;
+  }
+  $('refresh').classList.remove('hidden');
   // Abort stale data paints if an earlier real warehouse request was in flight.
   ++state.requestId;
   state.view='preview';
@@ -311,7 +330,7 @@ function showOfficePreview(type,key,label){
 function setHead(title,kicker,desc){
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
-  $('newPart').classList.toggle('hidden',state.view!=='stocks'||realWarehouse(state.warehouse)?.country_code==='FR');
+  $('newPart').classList.toggle('hidden',state.view!=='stocks'||Boolean(state.preview)||realWarehouse(state.warehouse)?.country_code==='FR');
   $('stockTabs').classList.toggle('hidden',state.view!=='stocks');
   $('officeLabelsView').classList.toggle('hidden',state.view!=='labels');
   $('officeTableCard').classList.toggle('hidden',state.view==='labels');
@@ -354,6 +373,8 @@ function setHead(title,kicker,desc){
   $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
+  $('refresh').classList.toggle('hidden',Boolean(state.preview?.type==='warehouse'));
+  if(state.preview?.type==='warehouse')$('newPart').classList.add('hidden');
 }
 function syncStockTabUI(){
   const modules=state.view==='stocks'&&state.stockTab==='modules';
@@ -399,7 +420,7 @@ function selectView(view,warehouse,focusDocument=null){
   if(french&&view!=='stocks'&&view!=='aggregate'){
     return showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view]||view);
   }
-  if(warehouse||view==='aggregate')state.preview=null;
+  if(warehouse||view==='aggregate'||state.preview?.type==='warehouse')state.preview=null;
   $('officePreview').classList.add('hidden');
   $('pageActions').classList.remove('hidden');
   state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
@@ -715,6 +736,16 @@ function drawVehicles(){
 }
 async function render(){
   if(state.view==='preview')return;
+  if(state.preview?.type==='warehouse'&&state.view==='stocks'){
+    errorBanner('');
+    if(state.stockTab==='modules')drawModules();
+    else{
+      drawStocks([],null);
+      $('tableArea').insertAdjacentHTML('beforeend',
+        '<p class="office-stock-empty-note">Brak podłączonych danych dla tego magazynu.</p>');
+    }
+    return;
+  }
   const ticket=++state.requestId;
   if(state.view==='labels'){
     errorBanner('');
@@ -801,6 +832,7 @@ async function render(){
   }
 }
 function filterCurrent(){
+  if(state.preview?.type==='warehouse'&&state.view==='stocks'){render();return;}
   if(state.view==='stocks'){
     if(state.stockTab==='modules')drawModules();
     else{
