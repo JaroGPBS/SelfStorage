@@ -2543,3 +2543,97 @@
   .app.view-vehicles .vehicle-setup-tab{padding:8px 9px;font-size:12px}
   .app.view-vehicles .vehicle-setup-meta span{font-size:10px}
 }
+
+
+/* Temporary Poland-only vehicle-stock preview; remove together with
+   PL_VEHICLE_TEST_PREVIEW and drawPolishVehiclePreview from office.js. */
+.app.view-vehicles .vehicle-preview-banner{
+  display:flex;
+  gap:9px 15px;
+  align-items:center;
+  flex-wrap:wrap;
+  padding:10px 14px;
+  border:1px solid #efc0c3;
+  background:#fff6f6;
+  border-radius:7px;
+  color:#8d3740;
+  font-size:12px;
+}
+.app.view-vehicles .vehicle-preview-banner strong{
+  font-size:11px;
+  letter-spacing:.04em;
+  font-weight:850;
+}
+.app.view-vehicles .vehicle-preview-teams{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+}
+.app.view-vehicles .vehicle-preview-team-btn{
+  border:1px solid #d8dfe5;
+  background:#fff;
+  color:#34404b;
+  border-radius:7px;
+  min-width:154px;
+  padding:9px 13px;
+  text-align:left;
+  font-size:13px;
+  font-weight:800;
+}
+.app.view-vehicles .vehicle-preview-team-btn small{
+  display:block;
+  color:#798492;
+  font-size:11px;
+  font-weight:600;
+  margin-top:3px;
+}
+.app.view-vehicles .vehicle-preview-team-btn.active{
+  border-color:#d45860;
+  background:#fff6f6;
+  box-shadow:inset 3px 0 #cc3744;
+}
+.app.view-vehicles .vehicle-preview-detail td,
+.app.view-vehicles .vehicle-preview-summary td{
+  font-size:12px;
+  padding:12px 13px;
+}
+.app.view-vehicles .vehicle-preview-shortage{
+  color:#bd3341;
+  font-weight:800;
+}
+.app.view-vehicles .vehicle-preview-shortage small{
+  display:block;
+  font-size:10px;
+  font-weight:650;
+}
+.app.view-vehicles .vehicle-preview-column{
+  min-width:156px;
+  text-align:center;
+}
+.app.view-vehicles .vehicle-preview-car-header{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  white-space:normal;
+}
+.app.view-vehicles .vehicle-preview-car-header strong{
+  color:#35404b;
+  font-size:12px;
+  font-weight:800;
+}
+.app.view-vehicles .vehicle-preview-car-header small{
+  color:#737f8b;
+  font-size:11px;
+  font-weight:700;
+}
+.app.view-vehicles .vehicle-preview-car-header span{
+  color:#929ba5;
+  font-size:10px;
+  letter-spacing:0;
+  font-weight:500;
+}
+.app.view-vehicles .vehicle-preview-sum{
+  color:#303b46;
+  font-weight:850;
+  background:#f6f8fa;
+}
