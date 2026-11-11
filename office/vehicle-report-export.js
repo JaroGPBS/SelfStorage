@@ -53,7 +53,10 @@
       const ref=excelColumn(col)+(row+1);
       // Normal Excel cells; only report title and column labels are bold.
       const bold=row===0||row===5;
-      const style=(bold?' s="1"':col===6&&row>5?' s="2"':'');
+      // Part rows: index/name vertically centered; quantities centered both ways.
+      // Column G keeps line breaks and vertical centering.
+      const styleId=bold?1:row>5?(col>=3&&col<=5?4:col===6?2:3):0;
+      const style=styleId?' s="'+styleId+'"':'';
       if(typeof value==='number'&&Number.isFinite(value))
         return '<c r="'+ref+'"'+style+'><v>'+value+'</v></c>';
       return '<c r="'+ref+'"'+style+' t="inlineStr"><is><t xml:space="preserve">'+
@@ -91,11 +94,15 @@
     '</fills>'+
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-    '<cellXfs count="3">'+
+    '<cellXfs count="5">'+
       '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
       '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+
       '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">'+
         '<alignment wrapText="1" vertical="center"/></xf>'+
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">'+
+        '<alignment vertical="center"/></xf>'+
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">'+
+        '<alignment horizontal="center" vertical="center"/></xf>'+
     '</cellXfs>'+
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
     '</styleSheet>';
