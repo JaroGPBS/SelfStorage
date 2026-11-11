@@ -26,6 +26,27 @@ const FR_LAYOUT_WAREHOUSES=[
 ];
 const BELLEVILLE_SERVICE={key:'service',name:'Serwisy',icon:'⚙'};
 const FR_EQUIPMENT={key:'crews',name:'Zaopatrzenie ekip',icon:'▦'};
+// TEMPORARY POLISH OFFICE PREVIEW ONLY. These two imaginary crews and all
+// quantities exist only in client-side JavaScript. Never write them into D1.
+// Delete this block and drawPolishVehiclePreview when the layout is approved.
+const PL_VEHICLE_TEST_PREVIEW={
+  crews:[
+    {id:'demo-a',team:'TEST-A',plate:'TEST 001',inventory:'05.11.2026',frequency:'Co 7 dni'},
+    {id:'demo-b',team:'TEST-B',plate:'TEST 002',inventory:'07.11.2026',frequency:'Co 7 dni'}
+  ],
+  parts:[
+    {index:'MG-999-901',name:'Adapter oświetlenia LED',external:'10-51-000596',required:4,
+      stock:{'demo-a':{previous:3,current:4},'demo-b':{previous:2,current:2}}},
+    {index:'MG-999-902',name:'Antena outdoor',external:'10-21-000623',required:1,
+      stock:{'demo-a':{previous:1,current:1},'demo-b':{previous:1,current:0}}},
+    {index:'MG-999-903',name:'Daszek LED',external:'11-50-000240',required:1,
+      stock:{'demo-a':{previous:0,current:1},'demo-b':{previous:1,current:1}}},
+    {index:'MG-999-904',name:'Ekspander standard',external:'10-21-000056',required:2,
+      stock:{'demo-a':{previous:3,current:2},'demo-b':{previous:2,current:3}}},
+    {index:'MG-999-905',name:'Ceownik dachu długi (Hokejka)',external:'11-50-000077',required:4,
+      stock:{'demo-a':{previous:4,current:3},'demo-b':{previous:4,current:4}}}
+  ]
+};
 const OFFICE_OPERATION_PREVIEWS={
   pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',
   inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',
@@ -49,7 +70,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:true,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:true,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -315,9 +336,10 @@ function renderMenu(){
       'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '+
       'stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>'+
       '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
-      items+(country==='PL'?vehicleButton('PL'):'')+
+      items+
       (showAggregate?aggregateButton()+vehicleButton('FR')+equipmentButton():'')+
-      (showOperations?marketOperations(country):'')+'</div></div>';
+      (showOperations?marketOperations(country):'')+
+      (country==='PL'?vehicleButton('PL'):'')+'</div></div>';
   };
   // Do not reveal the Poland section to FR-only users. The server already
   // filtered state.warehouses by live per-user market settings.
@@ -856,9 +878,86 @@ function syncVehicleTopScroll(){
   $('vehicleScrollWidth').style.width=width+'px';
   $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
 }
+function drawPolishVehiclePreview(){
+  const {crews,parts}=PL_VEHICLE_TEST_PREVIEW;
+  const crew=crews.find(c=>c.id===state.vehiclePreviewCrew)||crews[0];
+  const summary=state.vehicleTab==='summary';
+  const tabs='<div class="vehicle-setup-tabs" role="tablist" aria-label="Widok stanów samochodowych">'+
+    [['detail','Samochód'],['summary','Zestawienie zbiorcze']].map(([id,label])=>
+      '<button type="button" role="tab" data-vehicle-tab="'+id+'" '+
+      'aria-selected="'+String((summary?'summary':'detail')===id)+'" '+
+      'class="vehicle-setup-tab'+((summary?'summary':'detail')===id?' active':'')+'">'+label+'</button>'
+    ).join('')+'</div>';
+  const banner='<div class="vehicle-preview-banner" role="status">'+
+    '<strong>TEST — PRZYKŁADOWE DANE</strong>'+
+    '<span>Dwie fikcyjne ekipy i fikcyjne ilości. Nic nie zapisano do D1.</span>'+
+    '</div>';
+  const teamSelector=summary?'':('<div class="vehicle-preview-teams" aria-label="Wybierz samochód">'+
+    crews.map(c=>'<button type="button" data-vehicle-crew="'+escapeHtml(c.id)+'" '+
+      'class="vehicle-preview-team-btn'+(c.id===crew.id?' active':'')+'" '+
+      'aria-pressed="'+String(c.id===crew.id)+'">'+
+      escapeHtml(c.team)+' <small>'+escapeHtml(c.plate)+'</small></button>').join('')+
+    '</div>');
+  const meta=summary?'':('<div class="vehicle-setup-meta">'+
+    [['Ekipa',crew.team],['Tablica rejestracyjna',crew.plate],
+     ['Wymagana inwentaryzacja',crew.frequency],
+     ['Ostatnia inwentaryzacja',crew.inventory]].map(([key,value])=>
+      '<div><span>'+escapeHtml(key)+'</span><strong>'+escapeHtml(value)+'</strong></div>').join('')+
+    '</div>');
+  let table='';
+  if(summary){
+    const heads='<tr><th>Indeks GPBS</th><th>Nazwa części</th>'+
+      crews.map(c=>'<th class="vehicle-preview-column"><div class="vehicle-preview-car-header">'+
+        '<strong>'+escapeHtml(c.team)+'</strong>'+
+        '<small>'+escapeHtml(c.plate)+'</small>'+
+        '<span>Inwent. '+escapeHtml(c.inventory)+'</span>'+
+        '</div></th>').join('')+
+      '<th class="num">Suma</th></tr>';
+    const rows=parts.map(p=>{
+      const values=crews.map(c=>p.stock[c.id]?.current??null);
+      const sum=values.every(v=>v!==null)?values.reduce((acc,v)=>acc+v,0):null;
+      return '<tr><td>'+escapeHtml(p.index)+'</td><td>'+escapeHtml(p.name)+'</td>'+
+        values.map(v=>'<td class="num">'+quantity(v)+'</td>').join('')+
+        '<td class="num vehicle-preview-sum">'+quantity(sum)+'</td></tr>';
+    }).join('');
+    table='<table class="table vehicle-setup-table vehicle-preview-summary"><thead>'+
+      heads+'</thead><tbody>'+rows+'</tbody></table>';
+  }else{
+    const rows=parts.map(p=>{
+      const stock=p.stock[crew.id];
+      const shortage=stock.current<p.required;
+      return '<tr>'+
+        '<td>'+escapeHtml(p.index)+'</td>'+
+        '<td>'+escapeHtml(p.name)+'</td>'+
+        '<td>'+escapeHtml(p.external)+'</td>'+
+        '<td class="num">'+escapeHtml(p.required)+'</td>'+
+        '<td class="num">'+escapeHtml(stock.previous)+'</td>'+
+        '<td class="num'+(shortage?' vehicle-preview-shortage':'')+'">'+
+        escapeHtml(stock.current)+(shortage
+          ?'<small>Brakuje '+escapeHtml(p.required-stock.current)+'</small>':'')+
+        '</td></tr>';
+    }).join('');
+    table=wrapTable([
+      {label:'Indeks GPBS'},{label:'Nazwa części'},{label:'Indeks z arkusza'},
+      {label:'Wymagane',numeric:true},{label:'Poprzedni stan',numeric:true},
+      {label:'Aktualny stan',numeric:true}
+    ],rows,'vehicle-setup-table vehicle-preview-detail');
+  }
+  $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
+    banner+tabs+teamSelector+meta+
+    '<div class="vehicle-setup-table-wrap">'+table+'</div></div>';
+  $('tableFooter').textContent=summary
+    ?'TEST · 2 fikcyjne samochody · 5 przykładowych części · suma dla obu ekip'
+    :'TEST · '+crew.team+' · '+crew.plate+' · 5 przykładowych części';
+  $('searchNote').classList.add('hidden');
+  $('vehicleTopScroll').classList.add('hidden');
+}
 function drawVehicles(){
-  // Identical Poland/France layout; no test vehicles, fake quantities, or
-  // legacy Google Apps Script synchronization data are imported here.
+  // Show temporary example in Poland only. France still has an empty D1-ready layout.
+  if(!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL'){
+    drawPolishVehiclePreview();return;
+  }
+  // Identical production layout; no real or fake data are imported into D1.
   const summary=state.vehicleTab==='summary';
   const tabs='<div class="vehicle-setup-tabs" role="tablist" aria-label="Widok stanów samochodowych">'+
     [['detail','Samochód'],['summary','Zestawienie zbiorcze']].map(([id,label])=>
@@ -1190,6 +1289,15 @@ document.addEventListener('click',e=>{
   if(vehicleTab&&state.view==='vehicles'){
     const next=vehicleTab.dataset.vehicleTab;
     if(next==='detail'||next==='summary'){state.vehicleTab=next;drawVehicles();}
+    return;
+  }
+  const vehicleCrew=e.target.closest('[data-vehicle-crew]');
+  if(vehicleCrew&&state.view==='vehicles'&&!state.preview&&
+     realWarehouse(state.warehouse)?.country_code==='PL'){
+    const id=vehicleCrew.dataset.vehicleCrew;
+    if(PL_VEHICLE_TEST_PREVIEW.crews.some(c=>c.id===id)){
+      state.vehiclePreviewCrew=id;drawVehicles();
+    }
     return;
   }
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
