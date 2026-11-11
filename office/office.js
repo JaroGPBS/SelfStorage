@@ -1087,8 +1087,10 @@ function drawPolishVehiclePreview(){
         (i===selectedInventory?' is-selected':'')+
         '"'+(i===selectedInventory?' colspan="2"':' rowspan="2"')+'>'+
         vehicleInventoryButton(h,i)+'</th>').join('')+
-      '</tr><tr><th class="vehicle-preview-inventory-subhead">SUMA</th>'+
-      '<th class="vehicle-preview-inventory-subhead">Różnica</th></tr>';
+      '</tr><tr><th class="vehicle-preview-inventory-subhead'+
+      (selectedInventory===0?' vehicle-preview-latest-sum-subhead':'')+'">SUMA</th>'+
+      '<th class="vehicle-preview-inventory-subhead'+
+      (selectedInventory===0?' vehicle-preview-latest-diff-subhead':'')+'">Różnica</th></tr>';
     const columns='<colgroup>'+
       [gpbsWidth,sapWidth,minWidth,nameWidth,currentWidth].map(w=>
         '<col style="width:'+w+'px">').join('')+
