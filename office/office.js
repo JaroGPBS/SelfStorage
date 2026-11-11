@@ -1111,8 +1111,12 @@ function vehicleInventoryButton(h,index){
   const history=PL_VEHICLE_TEST_HISTORY[state.vehiclePreviewCrew]||[];
   const movements=vehicleDemoMovementsFor(
     state.vehiclePreviewCrew,h.date,history[index+1]?.date);
-  const markers=(movements.length
-    ?'<span title="Ruchy części w tym okresie" class="vehicle-inventory-marker">⇄</span>':'')+
+  const markers=(movements.some(move=>move.kind==='transfer')
+    ?'<span title="Transfery" class="vehicle-inventory-marker">⇄</span>':'')+
+    (movements.some(move=>move.kind==='usage')
+    ?'<span title="Zużycia części" class="vehicle-inventory-marker">⚒</span>':'')+
+    (movements.some(move=>move.kind==='warehouse_in'||move.kind==='warehouse_out')
+    ?'<span title="Pobrania i zwroty" class="vehicle-inventory-marker">↓</span>':'')+
     (h.note?'<span title="Komentarz do inwentaryzacji" class="vehicle-inventory-marker">✎</span>':'');
   return '<button type="button" class="vehicle-inventory-button" '+
     'data-vehicle-inventory-index="'+index+'" '+
