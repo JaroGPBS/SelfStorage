@@ -12,19 +12,20 @@
     for(let i=n+1;i>0;i=Math.floor((i-1)/26))name=String.fromCharCode(65+(i-1)%26)+name;
     return name;
   };
-  function makeWorksheet(lines,widths,headingRows=[0]){
+  function makeWorksheet(lines,widths,headingRows=[0],movementRows=[]){
     const rows=lines.map((cells,r)=>{
       if(!cells.length)return '<row r="'+(r+1)+'"/>';
       const values=cells.map((value,c)=>{
         if(value===null||value===undefined||value==='')return '';
         const ref=excelColumn(c)+(r+1);
-        const style=headingRows.includes(r)?' s="1"':'';
+        const style=headingRows.includes(r)?' s="1"':movementRows.includes(r)?' s="2"':'';
         if(typeof value==='number'&&Number.isFinite(value))
           return '<c r="'+ref+'"'+style+'><v>'+value+'</v></c>';
         return '<c r="'+ref+'"'+style+' t="inlineStr"><is><t>'+
           xml(value)+'</t></is></c>';
       }).join('');
-      return '<row r="'+(r+1)+'">'+values+'</row>';
+      const height=movementRows.includes(r)?' ht="30" customHeight="1"':'';
+      return '<row r="'+(r+1)+'"'+height+'>'+values+'</row>';
     }).join('');
     const columns=widths.map((width,index)=>
       '<col min="'+(index+1)+'" max="'+(index+1)+'" width="'+width+
@@ -42,51 +43,49 @@
       ['RAPORT INWENTARYZACJI SAMOCHODU'],
       ['Data',report.date||'—','Godzina',report.time||'—'],
       ['Ekipa',report.team||'—','Tablica rejestracyjna',report.plate||'—'],
-      ['Wykonał',report.by||'—'],
-      [],
-      ['Indeks GPBS','Indeks SAP','Nazwa części','Stan przed','Policzono','Różnica']
+      ['Wykonał',report.by||'—']
     ];
-    for(const item of report.items||[])
+    if(report.note)lines.push(['Komentarz do inwentaryzacji',report.note]);
+    lines.push([]);
+    const headersAt=lines.length;
+    lines.push(['Indeks GPBS','Indeks SAP','Nazwa części',
+      'Stan przed','Policzono','Różnica']);
+    const movementRows=[];
+    const names={usage:'Zużycie',warehouse_in:'Pobranie',
+      warehouse_out:'Zwrot',transfer:'Transfer'};
+    // Movement records follow the corresponding item, never a second sheet.
+    for(const item of report.items||[]){
       lines.push([item.index||'',item.sap||'',item.name||'',
         item.before,item.counted,item.difference]);
-    if(report.note)lines.push([],['Komentarz do inwentaryzacji',report.note]);
-    return makeWorksheet(lines,[19,19,46,16,16,16],[0,5]);
-  }
-  function makeMovementSheet(report){
-    const lines=[
-      ['RUCHY CZĘŚCI OD POPRZEDNIEJ INWENTARYZACJI'],
-      ['Ekipa',report.team||'—'],
-      ['Okres od',report.periodStart||'—','Do',report.date||'—'],
-      [],
-      ['Data','Godzina','Rodzaj ruchu','Maszyna / źródło / odbiorca',
-       'Indeks GPBS','Indeks SAP','Nazwa części','Ilość','Status','Zgłosił']
-    ];
-    const kinds={usage:'Zużycie',warehouse_in:'Pobranie z magazynu',
-      warehouse_out:'Zwrot do magazynu',transfer:'Transfer'};
-    for(const item of report.items||[]){
-      for(const movement of item.movements||[]){
+      for(const move of item.movements||[]){
+        const sending=move.kind==='usage'||move.kind==='warehouse_out'||
+          (move.kind==='transfer'&&String(move.description||'').startsWith('Przekazanie'));
+        const qty=Number(move.quantity);
+        const amount=Number.isFinite(qty)?(sending?'−':'+')+qty+' szt.':'—';
+        movementRows.push(lines.length);
         lines.push([
-          movement.date||'',movement.time||'',
-          kinds[movement.kind]||'Ruch części',movement.description||'',
-          item.index||'',item.sap||'',item.name||'',
-          Number(movement.quantity)||0,movement.status||'',movement.actor||''
+          '↳ '+(names[move.kind]||'Ruch'),
+          [move.date,move.time].filter(Boolean).join(' '),
+          move.description||'',amount,move.status||'',move.actor||''
         ]);
       }
     }
-    if(lines.length===5)lines.push(['Brak ruchów w tym okresie']);
-    return makeWorksheet(lines,[16,10,24,39,18,18,43,12,38,20],[0,4]);
+    return makeWorksheet(lines,[20,21,52,17,34,20],[0,headersAt],movementRows);
   }
   const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>'+
-    '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'+
-    '<fills count="2"><fill><patternFill patternType="none"/></fill>'+
-      '<fill><patternFill patternType="gray125"/></fill></fills>'+
+    '<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font>'+
+    '<font><b/><sz val="11"/><name val="Calibri"/></font>'+
+    '<font><i/><sz val="10"/><color rgb="FF536172"/><name val="Calibri"/></font></fonts>'+
+    '<fills count="3"><fill><patternFill patternType="none"/></fill>'+
+      '<fill><patternFill patternType="gray125"/></fill>'+
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFF3F6F9"/><bgColor indexed="64"/></patternFill></fill></fills>'+
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-    '<cellXfs count="2">'+
+    '<cellXfs count="3">'+
       '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
       '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+
+      '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment wrapText="1" vertical="center"/></xf>'+
     '</cellXfs><cellStyles count="1">'+
       '<cellStyle name="Normal" xfId="0" builtinId="0"/>'+
     '</cellStyles></styleSheet>';
@@ -98,8 +97,7 @@
         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
         '<Default Extension="xml" ContentType="application/xml"/>'+
         '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
-        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'+ 
-        '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'+
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'+
         '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
         '</Types>'],
       ['_rels/.rels',
@@ -111,17 +109,14 @@
         '<?xml version="1.0" encoding="UTF-8"?>'+
         '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
         'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
-        '<sheets><sheet name="Raport inwentaryzacji" sheetId="1" r:id="rId1"/>'+ 
-        '<sheet name="Ruchy części" sheetId="2" r:id="rId2"/></sheets></workbook>'],
+        '<sheets><sheet name="Raport inwentaryzacji" sheetId="1" r:id="rId1"/></sheets></workbook>'],
       ['xl/_rels/workbook.xml.rels',
         '<?xml version="1.0" encoding="UTF-8"?>'+
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'+
-        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'+ 
-        '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
         '</Relationships>'],
       ['xl/worksheets/sheet1.xml',makeSheet(report)],
-      ['xl/worksheets/sheet2.xml',makeMovementSheet(report)],
       ['xl/styles.xml',styles]
     ];
   }
