@@ -2637,3 +2637,223 @@
   font-weight:850;
   background:#f6f8fa;
 }
+
+
+/* Compact, single-line fleet prototype with subtle vertical column separators. */
+.app.view-vehicles .vehicle-preview{
+  padding:8px 12px 10px;
+  gap:9px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-tabs{
+  gap:3px;
+  padding-bottom:4px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-tab{
+  padding:7px 12px;
+}
+.app.view-vehicles .vehicle-preview-banner{
+  padding:5px 9px;
+  gap:7px;
+  font-size:10px;
+  line-height:1.2;
+  background:#fffafa;
+}
+.app.view-vehicles .vehicle-preview-banner strong{
+  font-size:10px;
+  color:#b32e3d;
+}
+.app.view-vehicles .vehicle-preview-teams{gap:6px}
+.app.view-vehicles .vehicle-preview-team-btn{
+  min-width:146px;
+  padding:6px 10px;
+  font-size:12px;
+}
+.app.view-vehicles .vehicle-preview-team-btn small{
+  font-size:10px;
+  margin-top:1px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-meta{
+  gap:8px;
+  padding:2px 2px 4px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-meta>div{
+  min-width:0;
+  padding-right:9px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-meta span{
+  font-size:10px;
+  margin-bottom:2px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-meta strong{
+  font-size:12px;
+}
+.app.view-vehicles .vehicle-preview-meta-value{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+.app.view-vehicles .vehicle-preview-history-btn{
+  border:1px solid #d1d8df;
+  border-radius:5px;
+  padding:4px 8px;
+  min-height:25px;
+  font-weight:750;
+  font-size:10px;
+  background:#fff;
+  color:#9e2b37;
+}
+.app.view-vehicles .vehicle-preview-history-btn:hover{
+  border-color:#cc5761;
+  background:#fff6f6;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-table-wrap{
+  border-radius:6px;
+}
+.app.view-vehicles .vehicle-preview-detail,
+.app.view-vehicles .vehicle-preview-summary{
+  width:100%;
+  min-width:max-content;
+  border-spacing:0;
+  border-collapse:separate;
+  table-layout:auto;
+}
+.app.view-vehicles .vehicle-preview-detail th,
+.app.view-vehicles .vehicle-preview-detail td,
+.app.view-vehicles .vehicle-preview-summary th,
+.app.view-vehicles .vehicle-preview-summary td{
+  border-right:1px solid #e1e5ea;
+  border-bottom:1px solid #edf0f3;
+  font-size:11px;
+  white-space:nowrap;
+  padding:9px 10px;
+  vertical-align:middle;
+}
+.app.view-vehicles .vehicle-preview-detail th:last-child,
+.app.view-vehicles .vehicle-preview-detail td:last-child,
+.app.view-vehicles .vehicle-preview-summary th:last-child,
+.app.view-vehicles .vehicle-preview-summary td:last-child{
+  border-right:0;
+}
+.app.view-vehicles .vehicle-preview-detail th{
+  font-size:10px;
+  padding:8px 10px;
+  line-height:1.25;
+}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(1),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(1){min-width:105px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(2),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(2){min-width:113px}
+.app.view-vehicles .vehicle-preview-detail .vehicle-preview-part-name{
+  min-width:var(--vehicle-name-width,315px);
+  width:var(--vehicle-name-width,315px);
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+  text-overflow:clip;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-part-name{
+  min-width:var(--vehicle-name-width,315px);
+  white-space:nowrap;
+  overflow-wrap:normal;
+}
+.app.view-vehicles .vehicle-preview-detail .vehicle-preview-num,
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-num{
+  min-width:89px;
+  text-align:center!important;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-vehicles .vehicle-preview-detail th.vehicle-preview-inventory-col{
+  min-width:112px;
+  font-weight:750;
+}
+.app.view-vehicles .vehicle-preview-inventory-col small{
+  display:block;
+  margin-top:3px;
+  font-size:10px;
+  font-weight:650;
+  color:#737f8d;
+}
+.app.view-vehicles .vehicle-preview-current strong{
+  font-size:12px;
+}
+.app.view-vehicles .vehicle-preview-current small{
+  display:block;
+  margin-top:1px;
+  font-size:9px;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-column{min-width:145px}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-sum{
+  background:#f6f8fa;
+  font-weight:850;
+}
+.app .modal-card.vehicle-history-card{
+  width:min(96vw,1190px);
+  max-height:88dvh;
+  padding:24px;
+}
+.vehicle-history-top h2{font-size:21px;margin:7px 40px 5px 0}
+.vehicle-history-top p{font-size:12px;color:#75818f;margin:0 0 16px}
+.vehicle-history-test{
+  color:#b63240;
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.vehicle-history-table-wrap{
+  width:100%;
+  overflow-x:auto;
+  border:1px solid #e3e7ec;
+  border-radius:6px;
+}
+.vehicle-preview-history-table{
+  min-width:max-content;
+  width:100%;
+  border-spacing:0;
+  border-collapse:separate;
+}
+.vehicle-preview-history-table th,
+.vehicle-preview-history-table td{
+  padding:10px 12px;
+  white-space:nowrap;
+  border-right:1px solid #e1e5ea;
+  border-bottom:1px solid #edf0f3;
+}
+.vehicle-preview-history-table th:last-child,
+.vehicle-preview-history-table td:last-child{border-right:0}
+.vehicle-preview-history-table .vehicle-preview-part-name{
+  min-width:315px;
+  white-space:nowrap;
+}
+.vehicle-preview-history-table .vehicle-preview-num{
+  min-width:125px;
+  text-align:center!important;
+  font-variant-numeric:tabular-nums;
+}
+.vehicle-preview-history-table th.vehicle-preview-num strong{
+  display:block;
+  font-size:11px;
+  color:#394755;
+}
+.vehicle-preview-history-table th.vehicle-preview-num small{
+  display:block;
+  margin-top:4px;
+  font-size:10px;
+  font-weight:550;
+  color:#798593;
+  text-transform:none;
+  letter-spacing:0;
+}
+.vehicle-history-note{
+  font-size:11px;
+  color:#7a8692;
+  margin-top:14px;
+  line-height:1.55;
+}
+@media(max-width:690px){
+  .app.view-vehicles .vehicle-preview{padding:8px;gap:8px}
+  .app.view-vehicles .vehicle-preview-detail th,
+  .app.view-vehicles .vehicle-preview-detail td{padding:8px 7px}
+  .app .modal-card.vehicle-history-card{padding:17px}
+}
