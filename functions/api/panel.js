@@ -1661,6 +1661,43 @@ async function route(request,env) {
       return fail('Nie udało się zakończyć usuwania części. Jeśli zdjęcie było w R2, ponów usunięcie z katalogu.',503);
     }
   }
+  if(body?.action==='setVehicleRequirement') {
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    const row=Number(body.sourceRow);
+    const source=VEHICLE_CATALOG_SNAPSHOT.find(item=>item.source_row===row);
+    const number=body.requiredQuantity;
+    const required=number===null?null:Number(number);
+    if(!source||!Number.isSafeInteger(row)||(
+      required!==null&&(!Number.isSafeInteger(required)||required<0||required>100000)
+    ))return fail('Nieprawidłowa część lub wymagana ilość.',400);
+    try{
+      await env.DB.prepare(
+        'CREATE TABLE IF NOT EXISTS vehicle_catalog_requirements ('+
+        'source_row INTEGER PRIMARY KEY,'+
+        'required_quantity INTEGER CHECK(required_quantity IS NULL OR '+
+          '(required_quantity>=0 AND required_quantity<=100000)),'+
+        'updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)'
+      ).run();
+      await env.DB.batch([
+        env.DB.prepare(
+          'INSERT INTO vehicle_catalog_requirements(source_row,required_quantity) VALUES(?,?) '+
+          'ON CONFLICT(source_row) DO UPDATE SET required_quantity=excluded.required_quantity,'+
+          'updated_at=CURRENT_TIMESTAMP'
+        ).bind(row,required),
+        env.DB.prepare(
+          'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
+          'VALUES(?,?,?,?,?,?)'
+        ).bind(crypto.randomUUID(),session.id,'VEHICLE_REQUIREMENT_UPDATE',
+          'VEHICLE_CATALOG',String(row),JSON.stringify({
+            name:source.source_name,required_quantity:required
+          }))
+      ]);
+      return respond({ok:true,required_quantity:required});
+    }catch(error){
+      console.error('Vehicle catalogue minimum update',error?.name||'Error');
+      return fail('Nie udało się zapisać wymaganej ilości.',503);
+    }
+  }
   if(body?.action==='updatePart') {
     try {
       const id=String(body.partId||'');
