@@ -65,6 +65,11 @@ CREATE TABLE IF NOT EXISTS fr_vehicle_event_lines (
   PRIMARY KEY(event_id,part_id)
 );
 
+CREATE TABLE IF NOT EXISTS fr_vehicle_event_fingerprints (
+  event_id TEXT PRIMARY KEY REFERENCES fr_vehicle_events(id),
+  content_hash TEXT NOT NULL
+);
+
 -- Diagnostic (should show two rows; existing quantities remain untouched):
 SELECT w.id,w.name,q.code,COUNT(s.part_id) AS positions,
        COALESCE(SUM(s.quantity),0) AS units
