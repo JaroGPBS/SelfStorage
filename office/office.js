@@ -1153,6 +1153,33 @@ function setupVehicleHistoryRail(){
     if(rail.scrollLeft!==wrap.scrollLeft)rail.scrollLeft=wrap.scrollLeft;
   },{passive:true});
 }
+// The fixed stock columns and scrolling inventories are separate tables.
+// Mirror the hovered row across them so one part highlights end to end.
+function setupVehiclePairedRowHover(){
+  const split=$('tableArea').querySelector('.vehicle-preview-split-table');
+  if(!split)return;
+  const fixed=[...split.querySelectorAll('.vehicle-split-fixed-table tbody tr')];
+  const history=[...split.querySelectorAll('.vehicle-split-history-table tbody tr')];
+  let active=-1;
+  const clear=()=>{
+    if(active<0)return;
+    fixed[active]?.classList.remove('vehicle-paired-hover');
+    history[active]?.classList.remove('vehicle-paired-hover');
+    active=-1;
+  };
+  split.addEventListener('mouseover',event=>{
+    const row=event.target.closest('tbody tr');
+    const index=row?.sectionRowIndex;
+    if(index===active)return;
+    clear();
+    if(!Number.isInteger(index)||index<0||
+       (fixed[index]!==row&&history[index]!==row))return;
+    fixed[index]?.classList.add('vehicle-paired-hover');
+    history[index]?.classList.add('vehicle-paired-hover');
+    active=index;
+  });
+  split.addEventListener('mouseleave',clear);
+}
 function drawPolishVehiclePreview(){
   const {crews,parts}=PL_VEHICLE_TEST_PREVIEW;
   const crew=crews.find(c=>c.id===state.vehiclePreviewCrew)||crews[0];
@@ -1312,7 +1339,10 @@ function drawPolishVehiclePreview(){
       ' części · '+history.length+' przykładowych inwentaryzacji';
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
-  if(!summary)requestAnimationFrame(setupVehicleHistoryRail);
+  if(!summary){
+    setupVehiclePairedRowHover();
+    requestAnimationFrame(setupVehicleHistoryRail);
+  }
 }
 function openVehicleInventoryReport(report){
   if(!report||!Array.isArray(report.items))return;
