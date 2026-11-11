@@ -977,7 +977,7 @@ async function staffMutation(env,body,actor,edit) {
 // operational history. Never touch warehouse_stock, movements or inventories.
 async function permanentlyDeleteUnusedCrew(env,body) {
   const id=String(body?.userId||'');
-  if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Nieprawidłowy identyfikator ekipy.',400);
+  if(!id||id.length>150||/[\u0000-\u001f]/.test(id))return fail('Nieprawidłowy identyfikator ekipy.',400);
   const db=env.DB;
   const user=await db.prepare('SELECT id,name,role_code FROM users WHERE id=?').bind(id).first();
   if(!user)return fail('Nie znaleziono ekipy. Odśwież listę użytkowników.',404);
