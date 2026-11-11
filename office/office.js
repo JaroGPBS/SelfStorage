@@ -1171,12 +1171,21 @@ function downloadVehicleInventoryReport(){
     }
   }
 }
+function clearVehicleInventoryPrintStyle(){
+  document.body.classList.remove('vehicle-inventory-print-active');
+  document.getElementById('vehicleReportPrintPage')?.remove();
+}
 function printVehicleInventoryReport(){
   if(!state.vehicleReportContext||$('modal').classList.contains('hidden'))return;
+  clearVehicleInventoryPrintStyle();
+  const sheet=document.createElement('style');
+  sheet.id='vehicleReportPrintPage';
+  sheet.textContent='@page { size: A4 landscape; margin: 11mm; }';
+  document.head.append(sheet);
   document.body.classList.add('vehicle-inventory-print-active');
   try{window.print();}
   catch(error){
-    document.body.classList.remove('vehicle-inventory-print-active');
+    clearVehicleInventoryPrintStyle();
     const field=$('vehicleReportActionError');
     if(field){
       field.textContent='Nie udało się otworzyć okna drukowania.';
@@ -1505,7 +1514,7 @@ function closePhotoViewer(){
 }
 function closeModal(){
   state.vehicleReportContext=null;
-  document.body.classList.remove('vehicle-inventory-print-active');
+  clearVehicleInventoryPrintStyle();
   if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
   $('modal').classList.add('hidden');
   $('modal').querySelector('.modal-card').classList.remove('part-detail-card','vehicle-history-card');
@@ -1735,9 +1744,7 @@ $('officeNewPartPhoto').addEventListener('change',async()=>{
 $('modalClose').addEventListener('click',closeModal);
 $('docPrintButton').addEventListener('click',printOfficeDocument);
 window.addEventListener('afterprint',clearOfficePrintStyle);
-window.addEventListener('afterprint',()=>{
-  document.body.classList.remove('vehicle-inventory-print-active');
-});
+window.addEventListener('afterprint',clearVehicleInventoryPrintStyle);
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(!$('docPrintModal').classList.contains('hidden'))closeDocumentPrint();
