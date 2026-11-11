@@ -3717,3 +3717,81 @@
   body.vehicle-inventory-print-active #modal .vehicle-preview-history-table th:nth-child(n+4),
   body.vehicle-inventory-print-active #modal .vehicle-preview-history-table td:nth-child(n+4){width:11%!important;min-width:0!important}
 }
+
+
+/* Fleet header refinement: fixed-size crew buttons measured against ST 7486W. */
+.app.view-vehicles .vehicle-preview-team-btn{
+  flex:0 0 86px;
+  width:86px;
+  min-width:86px;
+  max-width:86px;
+  padding:5px 6px;
+}
+.app.view-vehicles .vehicle-tabs-row{
+  display:flex;
+  align-items:center;
+  position:relative;
+  gap:15px;
+  border-bottom:1px solid #e9edf1;
+  min-height:42px;
+}
+.app.view-vehicles .vehicle-tabs-row .vehicle-setup-tabs{
+  border:0;
+  padding-bottom:5px;
+  flex:0 0 auto;
+}
+.app.view-vehicles .vehicle-tabs-hint{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 9px;
+  font-size:10px;
+  font-weight:650;
+  color:#a7672e;
+  background:#fffaf3;
+  border:1px solid #f1e1ca;
+  border-radius:6px;
+  white-space:nowrap;
+}
+.app.view-vehicles .vehicle-tabs-hint>span{font-size:13px}
+.app.view-vehicles .vehicle-meta-history-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  min-width:0;
+}
+.app.view-vehicles .vehicle-meta-history-row .vehicle-setup-meta{
+  flex:0 0 auto;
+  margin:0;
+}
+.app.view-vehicles .vehicle-meta-history-row .vehicle-history-scrollbar{
+  flex:1 1 180px;
+  width:auto;
+  min-width:90px;
+  margin:0;
+  height:18px;
+  align-self:center;
+}
+@media(max-width:1100px){
+  .app.view-vehicles .vehicle-tabs-row{
+    justify-content:space-between;
+  }
+  .app.view-vehicles .vehicle-tabs-hint{
+    position:static;
+    transform:none;
+    white-space:normal;
+  }
+}
+@media(max-width:800px){
+  .app.view-vehicles .vehicle-meta-history-row{
+    flex-wrap:wrap;
+  }
+  .app.view-vehicles .vehicle-meta-history-row .vehicle-history-scrollbar{
+    flex-basis:100%;
+    min-width:0;
+  }
+}
