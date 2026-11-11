@@ -3865,3 +3865,19 @@
     left:calc(var(--vehicle-fixed-width) + var(--vehicle-selected-sub-width))!important;
   }
 }
+
+@media(min-width:1171px){
+  /* When the newest audit is expanded, both small column headers must
+     stick with its two fixed values while older history slides beneath. */
+  .app.view-vehicles .vehicle-preview-detail-v2 thead tr:nth-child(2) th.vehicle-preview-latest-sum-subhead{
+    position:sticky!important;
+    left:var(--vehicle-fixed-width)!important;
+    z-index:8!important;
+  }
+  .app.view-vehicles .vehicle-preview-detail-v2 thead tr:nth-child(2) th.vehicle-preview-latest-diff-subhead{
+    position:sticky!important;
+    left:calc(var(--vehicle-fixed-width) + var(--vehicle-selected-sub-width))!important;
+    z-index:8!important;
+    border-right:2px solid #c0cad5!important;
+  }
+}
