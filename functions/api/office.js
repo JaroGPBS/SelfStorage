@@ -223,7 +223,7 @@ export async function onRequestGet({request,env}){
     try{
       const scope=privileged?'':(' AND s.warehouse_id IN ('+frIds.map(()=>'?').join(',')+')');
       const rows=await selectRows(env.DB,
-        'SELECT s.created_at,s.id AS session_id,u.name AS team,w.name AS warehouse,'+
+        'SELECT s.created_at,s.id AS session_id,s.warehouse_id,u.name AS team,w.name AS warehouse,'+
         'v.registration_number AS plate,l.direction,p.name AS part_name,'+
         'p.part_number,l.quantity FROM fr_mobile_session_lines l '+
         'JOIN fr_mobile_sessions s ON s.id=l.session_id '+
