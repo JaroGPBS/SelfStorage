@@ -4839,3 +4839,13 @@
   height:20px;
   box-sizing:border-box;
 }
+
+
+/* One continuous part-row highlight across the fixed columns and the
+   horizontally scrolling inventory history. */
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-fixed-table tbody tr.vehicle-paired-hover > td,
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-history-table tbody tr.vehicle-paired-hover > td{
+  background-color:#f9f5f6 !important;
+}
