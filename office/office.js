@@ -1329,17 +1329,37 @@ function openVehicleInventoryReport(report){
   const modal=$('modal'),body=$('modalBody');
   modal.querySelector('.modal-card').classList.remove('part-detail-card');
   modal.querySelector('.modal-card').classList.add('vehicle-history-card');
-  const rows=report.items.map(item=>{
+  const rows=report.items.map((item,index)=>{
     const diff=item.difference;
     const sign=diff===null||diff===undefined?'—':diff>0?'+'+diff:String(diff);
     const color=diff>0?' is-positive':diff<0?' is-negative':'';
-    return '<tr><td>'+escapeHtml(item.index||'—')+'</td>'+
+    const moves=Array.isArray(item.movements)?item.movements:[];
+    const toggle=moves.length?'<button type="button" class="vehicle-report-expand" '+
+      'data-vehicle-report-expand="'+index+'" aria-expanded="false" '+
+      'title="Pokaż ruchy tej części w okresie inwentaryzacji">'+
+      '<span class="vehicle-report-expand-icon" aria-hidden="true">⌄</span> '+
+      moves.length+' '+(moves.length===1?'ruch':'ruchy')+'</button>':'';
+    const normal='<tr><td>'+escapeHtml(item.index||'—')+'</td>'+
       '<td>'+escapeHtml(item.sap||'—')+'</td>'+
-      '<td class="vehicle-preview-part-name">'+escapeHtml(item.name||'—')+'</td>'+
+      '<td class="vehicle-preview-part-name">'+escapeHtml(item.name||'—')+toggle+'</td>'+
       '<td class="vehicle-preview-num">'+quantity(item.before)+'</td>'+
       '<td class="vehicle-preview-num">'+quantity(item.counted)+'</td>'+
       '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
         escapeHtml(sign)+'</td></tr>';
+    if(!moves.length)return normal;
+    const detail='<tr class="vehicle-report-movement-row hidden" '+
+      'data-vehicle-report-detail="'+index+'"><td colspan="6">'+
+      '<div class="vehicle-report-movement-list">'+moves.map(move=>
+        '<div class="vehicle-report-movement'+escapeHtml(move.statusClass||'')+'">'+
+          '<div class="vehicle-report-movement-info">'+
+            '<strong>'+escapeHtml(move.date)+' · '+escapeHtml(move.time)+
+            ' · '+escapeHtml(move.description)+'</strong>'+
+            '<small>'+escapeHtml(move.status||'Zapisano')+
+            (move.actor?' · '+escapeHtml(move.actor):'')+'</small>'+
+          '</div>'+
+          '<span>'+escapeHtml(move.quantity)+' szt.</span>'+
+        '</div>').join('')+'</div></td></tr>';
+    return normal+detail;
   }).join('');
   const field=(label,value)=>'<div><span>'+escapeHtml(label)+'</span>'+
     '<strong>'+escapeHtml(value||'—')+'</strong></div>';
@@ -1348,6 +1368,7 @@ function openVehicleInventoryReport(report){
     else if(item.difference<0)totals.minus++;
     return totals;
   },{plus:0,minus:0});
+  const movesCount=report.items.reduce((n,item)=>n+(item.movements?.length||0),0);
   body.innerHTML=
     '<div class="vehicle-report-heading">'+
       '<div class="vehicle-history-top">'+
@@ -1367,11 +1388,16 @@ function openVehicleInventoryReport(report){
       field('Ekipa',report.team)+field('Tablica rejestracyjna',report.plate)+
       field('Inwentaryzację wykonał',report.by)+
     '</div>'+
+    (report.note?'<p class="vehicle-report-general-note"><strong>Komentarz:</strong> '+
+      escapeHtml(report.note)+'</p>':'')+
     '<div class="vehicle-report-section-heading">'+
       '<strong>Porównanie stanów części</strong>'+
       '<span>Pozycji: '+report.items.length+
         ' · Nadwyżki: '+totalDiff.plus+' · Niedobory: '+totalDiff.minus+'</span>'+
     '</div>'+
+    (movesCount?'<p class="vehicle-report-period">Ruchy części od poprzedniej inwentaryzacji'+
+      (report.periodStart?' ('+escapeHtml(report.periodStart)+'–'+escapeHtml(report.date)+')':'')+
+      ' — kliknij „ruchy” pod wybraną częścią. Na wydruku pokażą się wszystkie.</p>':'')+
     '<div class="vehicle-history-table-wrap">'+
       '<table class="table vehicle-preview-history-table">'+
         '<thead><tr><th>Indeks GPBS</th><th>Indeks SAP</th><th>Nazwa części</th>'+
@@ -1380,7 +1406,7 @@ function openVehicleInventoryReport(report){
         '<th class="vehicle-preview-num">Różnica</th></tr></thead>'+
         '<tbody>'+rows+'</tbody></table>'+
     '</div>'+
-    (report.preview?'<p class="vehicle-history-note">Dane przykładowe do oceny wyglądu. '+
+    (report.preview?'<p class="vehicle-history-note">Dane fikcyjne do oceny wyglądu. '+
       'Nie pochodzą z inwentaryzacji ani z bazy D1.</p>':'')+
     '<p id="vehicleReportActionError" class="vehicle-report-error hidden" role="alert"></p>';
   modal.classList.remove('hidden');
