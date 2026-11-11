@@ -51,6 +51,24 @@ const PL_VEHICLE_TEST_PREVIEW={
       stock:{'demo-a':{previous:1,current:1},'demo-b':{previous:0,current:1}}}
   ]
 };
+// Only the aggregate comparison needs 14 fictional crews.
+// Keep the polished "Ekipy" selector at its original three sample crews.
+const PL_VEHICLE_SUMMARY_CREWS=[
+  ...PL_VEHICLE_TEST_PREVIEW.crews,
+  ...Array.from({length:11},(_,i)=>{
+    const n=String(i+4).padStart(2,'0');
+    return {id:'demo-'+n,team:'TEST-'+n,
+      plate:'DEMO '+String(i+4).padStart(3,'0'),
+      inventory:String(4+i%7).padStart(2,'0')+'.11.2026',
+      frequency:'Co 7 dni'};
+  })
+];
+function vehicleSummaryStock(part,partIndex,crew,crewIndex){
+  // Retain familiar demo-team numbers. Additional crews only exist here.
+  if(crewIndex<PL_VEHICLE_TEST_PREVIEW.crews.length)
+    return vehicleDemoStockFor(part,partIndex,crew.id).current;
+  return Math.max(0,part.required+((crewIndex*3+partIndex*2)%7)-3);
+}
 // The third imaginary crew is for testing the width of "ST 7486W" only.
 for(const p of PL_VEHICLE_TEST_PREVIEW.parts){
   p.stock['demo-tw']={...p.stock['demo-b']};
@@ -1250,24 +1268,70 @@ function drawPolishVehiclePreview(){
     '--vehicle-table-width:'+(fixedWidth+historyWidth)+'px"';
   let table='';
   if(summary){
-    const head='<tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
-      '<th>Stock<br>min.</th><th>Nazwa części</th>'+
-      crews.map(c=>'<th class="vehicle-preview-num vehicle-preview-column">'+
-        '<div class="vehicle-preview-car-header"><strong>'+escapeHtml(c.team)+'</strong>'+
-        '<small>'+escapeHtml(c.plate)+'</small>'+
-        '<span>Inwent. '+escapeHtml(c.inventory)+'</span></div></th>').join('')+
-      '<th class="vehicle-preview-num">Suma</th></tr>';
-    const rows=parts.map((p,index)=>{
-      const values=crews.map(c=>vehicleDemoStockFor(p,index,c.id).current);
-      const sum=values.every(x=>x!==null)?values.reduce((a,x)=>a+x,0):null;
-      return '<tr><td>'+escapeHtml(p.index)+'</td><td>'+escapeHtml(p.external)+'</td>'+
-        '<td class="vehicle-preview-num">'+quantity(p.required)+'</td>'+
-        '<td class="vehicle-preview-part-name" title="'+escapeHtml(p.name)+'">'+escapeHtml(p.name)+'</td>'+
-        values.map(v=>'<td class="vehicle-preview-num">'+quantity(v)+'</td>').join('')+
-        '<td class="vehicle-preview-num vehicle-preview-sum">'+quantity(sum)+'</td></tr>';
+    // Compact fixed columns on the left; only the 14 crew columns scroll.
+    const teams=PL_VEHICLE_SUMMARY_CREWS;
+    const summarySapWidth=Math.max(78,Math.ceil(
+      Math.max(...parts.map(p=>measureCode(p.external||'')))+11));
+    const summaryMinWidth=46;
+    const summaryNameWidth=Math.max(180,Math.ceil(maxMeasured+14));
+    const summarySumWidth=52;
+    const summaryCrewWidth=81;
+    const summaryFixedWidth=summarySapWidth+summaryMinWidth+
+      summaryNameWidth+summarySumWidth;
+    const cols=width=>'<col style="width:'+width+'px">';
+    const fixedCols='<colgroup>'+
+      [summarySapWidth,summaryMinWidth,summaryNameWidth,summarySumWidth]
+        .map(cols).join('')+'</colgroup>';
+    const crewCols='<colgroup>'+teams.map(()=>cols(summaryCrewWidth))
+      .join('')+'</colgroup>';
+    const headFixed='<thead><tr>'+
+      '<th>Indeks<br>SAP</th><th>Stock<br>min.</th>'+
+      '<th>Nazwa części</th><th class="vehicle-preview-num">Suma</th>'+
+      '</tr></thead>';
+    const headCrews='<thead><tr>'+teams.map(team=>
+      '<th class="vehicle-preview-column" title="Ekipa '+
+        escapeHtml(team.team)+' · '+escapeHtml(team.plate)+
+        ' · Ostatnia inwentaryzacja: '+escapeHtml(team.inventory)+'">'+
+        '<div class="vehicle-preview-car-header"><strong>'+escapeHtml(team.team)+
+        '</strong><small>'+escapeHtml(team.plate)+'</small>'+
+        '<span>'+escapeHtml(team.inventory)+'</span></div></th>'
+    ).join('')+'</tr></thead>';
+    const fixedRows=parts.map((part,index)=>{
+      const values=teams.map((team,i)=>vehicleSummaryStock(part,index,team,i));
+      const total=values.reduce((a,b)=>a+b,0);
+      return '<tr>'+
+        '<td title="'+escapeHtml(part.external||'—')+'">'+
+          escapeHtml(part.external||'—')+'</td>'+
+        '<td class="vehicle-preview-num">'+quantity(part.required)+'</td>'+
+        '<td class="vehicle-split-part-name" title="'+escapeHtml(part.name)+'">'+
+          escapeHtml(part.name)+'</td>'+
+        '<td class="vehicle-preview-num vehicle-preview-sum">'+
+          quantity(total)+'</td></tr>';
     }).join('');
-    table='<table class="table vehicle-setup-table vehicle-preview-summary">'+
-      '<thead>'+head+'</thead><tbody>'+rows+'</tbody></table>';
+    const crewRows=parts.map((part,index)=>'<tr>'+teams.map((team,i)=>{
+      const qty=vehicleSummaryStock(part,index,team,i);
+      const missing=qty<part.required;
+      return '<td class="vehicle-preview-num'+
+        (missing?' vehicle-summary-shortage':'')+'" title="'+
+        escapeHtml(team.team)+': '+qty+' szt.'+
+        (missing?' · brakuje '+(part.required-qty)+' szt.':'')+'">'+
+        quantity(qty)+'</td>';
+    }).join('')+'</tr>').join('');
+    const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
+      summaryFixedWidth+'px">'+fixedCols+headFixed+
+      '<tbody>'+fixedRows+'</tbody></table>';
+    const teamTable='<table class="table vehicle-split-history-table" style="width:'+
+      (teams.length*summaryCrewWidth)+'px">'+crewCols+headCrews+
+      '<tbody>'+crewRows+'</tbody></table>';
+    const rail='<div class="vehicle-history-scrollbar" role="region" tabindex="0" '+
+      'aria-label="Przewijanie kolumn ekip w zestawieniu zbiorczym">'+
+      '<div class="vehicle-history-scrollbar-track"></div></div>';
+    table='<div class="vehicle-preview-split-table vehicle-summary-split">'+
+      '<div class="vehicle-split-fixed" style="width:'+summaryFixedWidth+'px">'+
+        fixedTable+'</div>'+
+      '<div class="vehicle-split-history">'+rail+
+        '<div class="vehicle-history-table-wrap">'+teamTable+'</div></div>'+
+      '</div>';
   }else{
     // Fixed left pane: part indexes, stock and the newest inventory.
     // Only the separate right-hand table with older audits can scroll.
@@ -1340,15 +1404,14 @@ function drawPolishVehiclePreview(){
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview"'+layout+'>'+
     tabs+teamSelector+meta+table+'</div>';
   $('tableFooter').textContent=summary
-    ?'Podgląd · '+crews.length+' samochody · '+parts.length+' przykładowych części'
+    ?'Dane fikcyjne · '+PL_VEHICLE_SUMMARY_CREWS.length+
+      ' ekip · '+parts.length+' przykładowych części'
     :'Podgląd · '+crew.team+' · '+crew.plate+' · '+parts.length+
       ' części · '+history.length+' przykładowych inwentaryzacji';
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
-  if(!summary){
-    setupVehiclePairedRowHover();
-    requestAnimationFrame(setupVehicleHistoryRail);
-  }
+  setupVehiclePairedRowHover();
+  requestAnimationFrame(setupVehicleHistoryRail);
 }
 function openVehicleInventoryReport(report){
   if(!report||!Array.isArray(report.items))return;
