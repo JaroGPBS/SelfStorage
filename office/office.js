@@ -1300,8 +1300,17 @@ function setupVehicleHistoryRail(){
   if(!slider)return;
   const update=()=>{
     const max=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
+    const trackWidth=slider.clientWidth;
+    // Like a real scrollbar, the thumb represents the visible fraction
+    // of the inventory/crew columns, rather than always being 38px wide.
+    if(trackWidth>0){
+      const ratio=wrap.scrollWidth>0?Math.min(1,wrap.clientWidth/wrap.scrollWidth):1;
+      const thumbWidth=max<1?trackWidth:
+        Math.min(trackWidth,Math.max(56,Math.round(trackWidth*ratio)));
+      slider.style.setProperty('--vehicle-rail-thumb-width',thumbWidth+'px');
+    }
     slider.max=String(Math.ceil(max));
-    slider.value=String(Math.min(max,wrap.scrollLeft));
+    slider.value=String(Math.round(Math.min(max,wrap.scrollLeft)));
     slider.disabled=max<1;
     rail.querySelectorAll('[data-vehicle-rail-step]').forEach(btn=>{btn.disabled=max<1;});
   };
@@ -1312,14 +1321,17 @@ function setupVehicleHistoryRail(){
   rail.addEventListener('click',event=>{
     const button=event.target.closest('[data-vehicle-rail-step]');
     if(button&&!button.disabled){
-      wrap.scrollLeft+=Number(button.dataset.vehicleRailStep)*88;
-      slider.value=String(wrap.scrollLeft);
+      const firstCol=wrap.querySelector('col');
+      const columnWidth=Number.parseFloat(firstCol?.style.width)||88;
+      wrap.scrollLeft+=Number(button.dataset.vehicleRailStep)*columnWidth;
+      slider.value=String(Math.round(wrap.scrollLeft));
     }
   });
-  wrap.addEventListener('scroll',()=>{slider.value=String(wrap.scrollLeft);},{passive:true});
+  wrap.addEventListener('scroll',()=>{slider.value=String(Math.round(wrap.scrollLeft));},{passive:true});
   if(typeof ResizeObserver==='function'){
     const observer=new ResizeObserver(update);
     observer.observe(wrap);
+    observer.observe(rail);
   }
 }
 // The fixed stock columns and scrolling inventories are separate tables.
