@@ -180,14 +180,16 @@ export async function onRequestGet({request,env}){
       const scope=privileged?'':(
         ' AND w.id IN ('+frIds.map(()=>'?').join(',')+')'
       );
-      const result=await env.DB.prepare(
-        'SELECT DISTINCT u.id,u.name FROM users u '+
+      const statement=env.DB.prepare(
+        'SELECT u.id,u.name FROM users u '+
         'JOIN user_warehouse_access a ON a.user_id=u.id '+
         'JOIN warehouses w ON w.id=a.warehouse_id '+
         "WHERE u.active=1 AND u.role_code='EKIPA' "+
         "AND w.active=1 AND w.country_code='FR'"+scope+
-        ' ORDER BY u.name COLLATE NOCASE LIMIT 250'
-      ).bind(...(privileged?[]:frIds)).all();
+        ' GROUP BY u.id,u.name ORDER BY u.name COLLATE NOCASE LIMIT 250'
+      );
+      const result=privileged?await statement.all():
+        await statement.bind(...frIds).all();
       return workerJson({ok:true,crews:(result.results||[]).map(row=>({
         id:row.id,team:row.name
       }))});
