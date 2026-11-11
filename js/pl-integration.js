@@ -124,7 +124,10 @@ export async function tryPolishLogin(pin) {
   }
 
   // FR-only crews share the D1 PIN session but use the French mobile UI.
-  if (body.user?.markets?.FR && !body.user?.markets?.PL) return false;
+  if (body.user?.markets?.FR && !body.user?.markets?.PL) {
+    setMarket(null);
+    return false;
+  }
   await activatePolishWorkspace();
   setMarket('PL');
   return true;
@@ -141,6 +144,10 @@ export async function resumePolishSession() {
     return false;
   }
   if (!result.response.ok || !result.body?.ok) return false;
+  if (!result.body.user?.markets?.PL) {
+    setMarket(null);
+    return false;
+  }
   await activatePolishWorkspace();
   return true;
 }
