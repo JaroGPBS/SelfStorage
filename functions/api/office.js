@@ -168,34 +168,81 @@ export async function onRequestGet({request,env}){
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
   }
   if(view==='vehicleCrews'){
-    // Teams come exclusively from active Admin user accounts (role EKIPA)
-    // assigned to active French warehouses. No synthetic vehicle records.
+    // A crew belongs to a market, not permanently to an outsourced warehouse.
     const privileged=user.role==='ADMIN'&&
       String(user.nickname||'').trim().toUpperCase()==='JJ';
-    const frIds=authorizedWarehouses
-      .filter(w=>w.country_code==='FR').map(w=>w.id);
-    if(!privileged&&!frIds.length)
+    const frAccess=authorizedWarehouses.filter(w=>w.country_code==='FR');
+    if(!privileged&&!frAccess.length)
       return error('Brak dostępu do ekip francuskich.',403);
     try{
-      const scope=privileged?'':(
-        ' AND w.id IN ('+frIds.map(()=>'?').join(',')+')'
-      );
-      const statement=env.DB.prepare(
+      const settingsExist=await tableExists(env.DB,'user_access_settings');
+      const accessFilter=settingsExist
+        ?("EXISTS(SELECT 1 FROM user_access_settings s "+
+          "WHERE s.user_id=u.id AND s.fr_enabled=1) OR "+
+          "(NOT EXISTS(SELECT 1 FROM user_access_settings s WHERE s.user_id=u.id) "+
+          "AND EXISTS(SELECT 1 FROM user_warehouse_access a JOIN warehouses w "+
+          "ON w.id=a.warehouse_id WHERE a.user_id=u.id AND w.country_code='FR'))")
+        :("EXISTS(SELECT 1 FROM user_warehouse_access a JOIN warehouses w "+
+          "ON w.id=a.warehouse_id WHERE a.user_id=u.id AND w.country_code='FR')");
+      const rows=await env.DB.prepare(
         'SELECT u.id,u.name FROM users u '+
-        'JOIN user_warehouse_access a ON a.user_id=u.id '+
-        'JOIN warehouses w ON w.id=a.warehouse_id '+
-        "WHERE u.active=1 AND u.role_code='EKIPA' "+
-        "AND w.active=1 AND w.country_code='FR'"+scope+
-        ' GROUP BY u.id,u.name ORDER BY u.name COLLATE NOCASE LIMIT 250'
-      );
-      const result=privileged?await statement.all():
-        await statement.bind(...frIds).all();
-      return workerJson({ok:true,crews:(result.results||[]).map(row=>({
-        id:row.id,team:row.name
-      }))});
+        "WHERE u.active=1 AND u.role_code='EKIPA' AND ("+accessFilter+") "+
+        'ORDER BY u.name COLLATE NOCASE LIMIT 250'
+      ).all();
+      const crews=(rows.results||[]).map(x=>({
+        id:x.id,team:x.name,plate:null,vehicleId:null,stock:{},
+        inventory:false,lastInventory:null
+      }));
+      const hasUsage=await tableExists(env.DB,'fr_vehicle_usage');
+      const hasEvents=await tableExists(env.DB,'fr_vehicle_events');
+      const hasSessions=await tableExists(env.DB,'fr_sessions');
+      if(hasUsage&&crews.length){
+        const usage=(await env.DB.prepare(
+          'SELECT a.user_id,a.vehicle_id,v.registration_number '+
+          'FROM fr_vehicle_usage a JOIN vehicles v ON v.id=a.vehicle_id AND v.active=1'
+        ).all()).results||[];
+        const byUser=new Map(usage.map(x=>[x.user_id,x]));
+        for(const crew of crews){
+          const record=byUser.get(crew.id);
+          if(record){crew.plate=record.registration_number;crew.vehicleId=record.vehicle_id;}
+        }
+        const balances=(await env.DB.prepare(
+          'SELECT vehicle_id,part_id,quantity FROM vehicle_stock'
+        ).all()).results||[];
+        const stocks=new Map();
+        for(const item of balances){
+          if(!stocks.has(item.vehicle_id))stocks.set(item.vehicle_id,{});
+          stocks.get(item.vehicle_id)[item.part_id]=Number(item.quantity);
+        }
+        for(const crew of crews)if(crew.vehicleId)crew.stock=stocks.get(crew.vehicleId)||{};
+        if(hasEvents){
+          const events=(await env.DB.prepare(
+            "SELECT vehicle_id,MAX(event_at) AS last_at FROM fr_vehicle_events "+
+            "WHERE type='INWENTARYZACJA' GROUP BY vehicle_id"
+          ).all()).results||[];
+          const last=new Map(events.map(x=>[x.vehicle_id,x.last_at]));
+          for(const crew of crews)if(crew.vehicleId){
+            crew.lastInventory=last.get(crew.vehicleId)||null;
+            crew.inventory=Boolean(crew.lastInventory);
+          }
+        }
+      }
+      let history=[];
+      if(hasSessions&&await tableExists(env.DB,'fr_session_lines')){
+        history=(await env.DB.prepare(
+          'SELECT s.id AS sessionId,s.user_id AS userId,s.vehicle_id AS vehicleId,'+
+          's.warehouse_id AS warehouseId,w.name AS warehouseName,s.saved_at AS date,'+
+          'l.direction,l.quantity,p.id AS partId,p.name AS partName '+
+          'FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
+          'JOIN parts p ON p.id=l.part_id '+
+          'JOIN warehouses w ON w.id=s.warehouse_id '+
+          'ORDER BY s.saved_at DESC,s.id DESC LIMIT 250'
+        ).all()).results||[];
+      }
+      return workerJson({ok:true,crews,history});
     }catch(err){
-      console.error('French crew list lookup',err?.name||'Error');
-      return error('Nie udało się pobrać ekip francuskich.',503);
+      console.error('French D1 crew stock lookup',err?.name||'Error');
+      return error('Nie udało się pobrać ekip i stanów francuskich.',503);
     }
   }
   if(view==='vehicleCatalog'){
