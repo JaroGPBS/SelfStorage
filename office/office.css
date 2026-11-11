@@ -4849,3 +4849,35 @@
   .vehicle-split-history-table tbody tr.vehicle-paired-hover > td{
   background-color:#f9f5f6 !important;
 }
+
+
+/* Two-line label for fictional fleet data, centered in the top-bar space
+   indicated in the Office screenshot. Keep it quiet, but unmistakable. */
+.app.view-vehicles .vehicle-demo-top-notice{
+  display:flex;
+  flex:1 1 auto;
+  min-width:0;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  text-align:center;
+  line-height:1.15;
+}
+.app.view-vehicles .vehicle-demo-top-notice strong{
+  font-size:13px;
+  font-weight:800;
+  color:#98434b;
+}
+.app.view-vehicles .vehicle-demo-top-notice small{
+  font-size:10px;
+  font-weight:500;
+  color:#74808c;
+  line-height:1.25;
+}
+@media(max-width:1160px){
+  .app.view-vehicles .vehicle-demo-top-notice small{
+    max-width:260px;
+    white-space:normal;
+  }
+}
