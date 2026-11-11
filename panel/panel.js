@@ -1345,6 +1345,7 @@
       $('userStatus').value=existing?(existing.active?'1':'0'):'1';
       $('userStatus').disabled=protectedAdmin;
       $('archiveUserBtn').hidden=!existing||protectedAdmin;
+      $('deleteCrewBtn').hidden=!existing||protectedAdmin||existing.role_code!=='EKIPA';
       $('protectedAdminHint').hidden=!protectedAdmin;
 
       const roleInput=$('userRole');roleInput.replaceChildren();
@@ -1418,6 +1419,27 @@
       if(state.view==='users')renderList();
       message('Użytkownik '+nickname+' jest w archiwum. Zachowano ID i historię.','info');
     } catch(error) {message(error.message,'error');}
+    finally{busy(button,false);}
+  }
+
+  async function deleteUnusedCrew() {
+    const id=$('editUserId').value;
+    const nickname=$('userName').value;
+    if(!id)return;
+    if(!await confirmAction({
+      title:'Trwale usunąć ekipę '+nickname+'?',
+      description:'Usunięcie konta, jego PIN-u i przypisań jest nieodwracalne. Jeśli ekipa ma zapisane operacje, system odmówi usunięcia, aby nie uszkodzić stanów i historii.',
+      confirmLabel:'Usuń na stałe',danger:true
+    }))return;
+    const button=$('deleteCrewBtn');busy(button,true);
+    try{
+      await post({action:'deleteUnusedCrew',userId:id});
+      $('userDialog').close();
+      state.expandedUserId=null;
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      message('Ekipa '+nickname+' została usunięta na stałe.','info');
+    }catch(error){message(error.message||'Nie udało się usunąć ekipy.','error');}
     finally{busy(button,false);}
   }
 
@@ -1688,6 +1710,7 @@
       await navigate('users');
     });
     $('archiveUserBtn').addEventListener('click',archiveCurrentUser);
+  $('deleteCrewBtn').addEventListener('click',deleteUnusedCrew);
     $('generateMissingPins').addEventListener('click',generateMissingPins);
     $('generatePinPepper').addEventListener('click',generatePepper);
     $('copyPinPepper').addEventListener('click',copyPepper);
