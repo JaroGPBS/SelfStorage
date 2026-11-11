@@ -999,6 +999,7 @@ function drawPolishVehiclePreview(){
   const olderCount=Math.max(0,history.length-1);
   const layout=' style="--vehicle-name-width:'+nameWidth+'px;'+
     '--vehicle-fixed-width:'+fixedWidth+'px;'+
+    '--vehicle-table-width:'+(fixedWidth+olderCount*112)+'px;'+
     '--vehicle-history-count:'+olderCount+'"';
   let table='';
   if(summary){
