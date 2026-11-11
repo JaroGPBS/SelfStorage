@@ -32,7 +32,8 @@ const FR_EQUIPMENT={key:'crews',name:'Zaopatrzenie ekip',icon:'▦'};
 const PL_VEHICLE_TEST_PREVIEW={
   crews:[
     {id:'demo-a',team:'TEST-A',plate:'TEST 001',inventory:'05.11.2026',frequency:'Co 7 dni'},
-    {id:'demo-b',team:'TEST-B',plate:'TEST 002',inventory:'07.11.2026',frequency:'Co 7 dni'}
+    {id:'demo-b',team:'TEST-B',plate:'TEST 002',inventory:'07.11.2026',frequency:'Co 7 dni'},
+    {id:'demo-tw',team:'TW',plate:'ST 7486W',inventory:'07.11.2026',frequency:'W każdy piątek'}
   ],
   parts:[
     {index:'MG-999-901',name:'Adapter oświetlenia LED',external:'10-51-000596',required:4,
@@ -50,6 +51,10 @@ const PL_VEHICLE_TEST_PREVIEW={
       stock:{'demo-a':{previous:1,current:1},'demo-b':{previous:0,current:1}}}
   ]
 };
+// The third imaginary crew is for testing the width of "ST 7486W" only.
+for(const p of PL_VEHICLE_TEST_PREVIEW.parts){
+  p.stock['demo-tw']={...p.stock['demo-b']};
+}
 // Invented dated snapshots for the temporary Office preview, not actual audits.
 // Temporary, wholly invented inventory snapshots for visual approval.
 // 'before' records the stock in the vehicle ledger immediately before counting;
@@ -75,6 +80,8 @@ const PL_VEHICLE_TEST_HISTORY={
     {date:'27.09.2026',time:'08:55',by:'TEST-B',before:[2,1,0,2,4,0],counts:[2,1,1,2,4,0]}
   ]
 };
+PL_VEHICLE_TEST_HISTORY['demo-tw']=
+  PL_VEHICLE_TEST_HISTORY['demo-b'].map(h=>({...h,by:'TW'}));
 // More fake weekly snapshots to exercise the narrow scrolling history UI.
 // They exist ONLY in the Polish Office preview, never in the D1 database.
 for(const [crewId,history] of Object.entries(PL_VEHICLE_TEST_HISTORY)){
@@ -937,11 +944,13 @@ function syncVehicleTopScroll(){
 }
 function vehicleViewTabs(tab){
   const tabs=[['detail','Samochód'],['summary','Zestawienie zbiorcze'],['transfers','Transfery']];
-  return '<nav class="vehicle-setup-tabs" role="tablist" aria-label="Widoki stanów samochodowych">'+
+  return '<div class="vehicle-tabs-row"><nav class="vehicle-setup-tabs" role="tablist" aria-label="Widoki stanów samochodowych">'+
     tabs.map(([id,label])=>'<button type="button" role="tab" data-vehicle-tab="'+id+'" '+
       'aria-selected="'+String(tab===id)+'" '+
       'class="vehicle-setup-tab'+(tab===id?' active':'')+'">'+label+'</button>'
-    ).join('')+'</nav>';
+    ).join('')+'</nav>'+
+    (tab==='detail'?'<span class="vehicle-tabs-hint"><span aria-hidden="true">ⓘ</span> Kliknij nagłówek inwentaryzacji, aby otworzyć jej raport</span>':'')+
+    '</div>';
 }
 function fleetTransfersPlaceholder(){
   return '<div class="vehicle-transfer-empty">'+
@@ -962,16 +971,13 @@ function setupVehicleHistoryRail(){
   const wrap=$('tableArea').querySelector('.vehicle-setup-table-wrap');
   const preview=$('tableArea').querySelector('.vehicle-preview');
   if(!rail||!wrap||!preview)return;
-  const fixed=Number.parseFloat(preview.style.getPropertyValue('--vehicle-fixed-width'))||0;
-  const available=wrap.clientWidth-fixed;
+  const available=rail.clientWidth;
   const overflow=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
-  if(available<105||overflow<2){
+  if(available<75||overflow<2){
     rail.classList.add('hidden');
     return;
   }
   rail.classList.remove('hidden');
-  rail.style.marginLeft=fixed+'px';
-  rail.style.width=available+'px';
   rail.querySelector('.vehicle-history-scrollbar-track').style.width=
     Math.ceil(available+overflow)+'px';
   if(rail.dataset.linked==='1')return;
@@ -1005,7 +1011,7 @@ function drawPolishVehiclePreview(){
     '</div>');
   const meta=summary?'':('<div class="vehicle-setup-meta">'+
     [['Ekipa',crew.team],['Tablica rejestracyjna',crew.plate],
-     ['Wymagana inwentaryzacja',crew.frequency],
+     ['Inwentaryzacja',crew.frequency],
      ['Ostatnia inwentaryzacja',crew.inventory]].map(([key,value])=>
       '<div><span>'+escapeHtml(key)+'</span>'+
       '<div class="vehicle-preview-meta-value"><strong>'+escapeHtml(value)+'</strong>'+
@@ -1120,10 +1126,11 @@ function drawPolishVehiclePreview(){
       'aria-label="Przewijanie starszych inwentaryzacji">'+
       '<div class="vehicle-history-scrollbar-track"></div></div>');
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview"'+layout+'>'+
-    tabs+teamSelector+meta+scrollbar+
+    tabs+teamSelector+
+    (summary?'':'<div class="vehicle-meta-history-row">'+meta+scrollbar+'</div>')+
     '<div class="vehicle-setup-table-wrap">'+table+'</div></div>';
   $('tableFooter').textContent=summary
-    ?'Podgląd · 2 samochody · 6 przykładowych części'
+    ?'Podgląd · '+crews.length+' samochody · '+parts.length+' przykładowych części'
     :'Podgląd · '+crew.team+' · '+crew.plate+' · '+parts.length+
       ' części · '+history.length+' przykładowych inwentaryzacji';
   $('searchNote').classList.add('hidden');
@@ -1262,7 +1269,7 @@ function drawVehicles(){
   const meta=summary?'':(
     '<div class="vehicle-setup-meta">'+
     [['Ekipa','—'],['Tablica rejestracyjna','—'],
-     ['Wymagana inwentaryzacja','—'],['Ostatnia inwentaryzacja','—']]
+     ['Inwentaryzacja','—'],['Ostatnia inwentaryzacja','—']]
       .map(([label,value])=>'<div><span>'+label+'</span>'+
         '<strong>'+value+'</strong></div>').join('')+'</div>');
   const headers=summary?[
