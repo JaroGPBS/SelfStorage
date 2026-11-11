@@ -1348,10 +1348,12 @@ function openVehicleInventoryReport(report){
       'data-vehicle-report-expand="'+index+'" aria-expanded="false" '+
       'title="Pokaż ruchy tej części w okresie inwentaryzacji">'+
       '<span class="vehicle-report-expand-icon" aria-hidden="true">⌄</span> '+
-      moves.length+' '+(moves.length===1?'ruch':'ruchy')+'</button>':'';
+      'Ruchy <strong>'+moves.length+'</strong></button>':'';
     const normal='<tr><td>'+escapeHtml(item.index||'—')+'</td>'+
       '<td>'+escapeHtml(item.sap||'—')+'</td>'+
-      '<td class="vehicle-preview-part-name">'+escapeHtml(item.name||'—')+toggle+'</td>'+
+      '<td class="vehicle-preview-part-name"><div class="vehicle-report-part-line">'+
+        '<span class="vehicle-report-part-label" title="'+escapeHtml(item.name||'—')+'">'+
+          escapeHtml(item.name||'—')+'</span>'+toggle+'</div></td>'+
       '<td class="vehicle-preview-num">'+quantity(item.before)+'</td>'+
       '<td class="vehicle-preview-num">'+quantity(item.counted)+'</td>'+
       '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
