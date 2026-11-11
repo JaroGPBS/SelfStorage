@@ -332,7 +332,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -746,7 +746,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
   ++state.requestId;
   state.view=type==='operation'?key:'preview';
   state.preview={type,key,label,...(warehouseContext||{})};
-  if(key==='vehicles')state.vehicleTab='detail';
+  if(key==='vehicles'){state.vehicleTab='detail';state.frVehicleCrew=null;state.frVehicleData=null;}
   state.stockTab='parts';state.moduleCategory='all';state.search='';
   state.focusDocument=null;state.expanded=null;
   $('sidebar').classList.remove('open');
@@ -1204,14 +1204,14 @@ function syncVehicleTopScroll(){
   $('vehicleScrollWidth').style.width=width+'px';
   $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
 }
-function vehicleViewTabs(tab){
+function vehicleViewTabs(tab,hasInventories=true){
   const tabs=[['detail','Ekipy'],['summary','Zestawienie zbiorcze'],['transfers','Transfery']];
   return '<div class="vehicle-tabs-row"><nav class="vehicle-setup-tabs" role="tablist" aria-label="Widoki stanów samochodowych">'+
     tabs.map(([id,label])=>'<button type="button" role="tab" data-vehicle-tab="'+id+'" '+
       'aria-selected="'+String(tab===id)+'" '+
       'class="vehicle-setup-tab'+(tab===id?' active':'')+'">'+label+'</button>'
     ).join('')+'</nav>'+
-    (tab==='detail'?'<span class="vehicle-tabs-hint"><span aria-hidden="true">ⓘ</span> Kliknij nagłówek inwentaryzacji, aby otworzyć jej raport</span>':'')+
+    (tab==='detail'&&hasInventories?'<span class="vehicle-tabs-hint"><span aria-hidden="true">ⓘ</span> Kliknij nagłówek inwentaryzacji, aby otworzyć jej raport</span>':'')+
     '</div>';
 }
 function fleetTransfersPlaceholder(){
@@ -1740,6 +1740,133 @@ function drawFrenchVehicleCatalogue(parts){
     ' pozycji. Zmiany nazw i indeksów są pobierane z głównego katalogu D1.';
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
+}
+// France: identical fleet table design, but only canonical D1 catalogue and
+// active EKIPA users granted an FR warehouse. No sample balances or audits.
+function drawFrenchVehicleFleet(parts,crews){
+  const entries=Array.isArray(parts)?parts:[];
+  const teams=Array.isArray(crews)?crews:[];
+  if(!teams.some(c=>c.id===state.frVehicleCrew))
+    state.frVehicleCrew=teams[0]?.id||null;
+  const chosen=teams.find(c=>c.id===state.frVehicleCrew)||null;
+  const summary=state.vehicleTab==='summary';
+  const tabs=vehicleViewTabs(state.vehicleTab,false);
+  if(state.vehicleTab==='transfers'){
+    $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+tabs+
+      fleetTransfersPlaceholder()+'</div>';
+    $('tableFooter').textContent='Transfery francuskie — brak zapisanych operacji.';
+    $('searchNote').classList.add('hidden');
+    $('vehicleTopScroll').classList.add('hidden');
+    return;
+  }
+  const selection=summary?'':(
+    '<div class="vehicle-preview-teams" aria-label="Ekipy francuskie">'+
+    teams.map(team=>'<button type="button" data-fr-vehicle-crew="'+
+      escapeHtml(team.id)+'" class="vehicle-preview-team-btn'+
+      (chosen?.id===team.id?' active':'')+'" aria-pressed="'+
+      String(chosen?.id===team.id)+'">'+
+      '<span class="vehicle-team-caption">Ekipa</span>'+
+      '<span class="vehicle-team-name">'+escapeHtml(team.team)+'</span>'+
+      '<small>Bez inwentaryzacji</small></button>').join('')+
+    '</div>');
+  const meta=summary?'':(chosen
+    ?'<div class="vehicle-setup-meta">'+
+      [['Ekipa',chosen.team],['Tablica rejestracyjna','—'],
+       ['Inwentaryzacja','Wymagana inwentaryzacja'],
+       ['Ostatnia inwentaryzacja','Brak']]
+      .map(([label,value])=>'<div><span>'+escapeHtml(label)+'</span>'+
+        '<div class="vehicle-preview-meta-value"><strong>'+
+          escapeHtml(value)+'</strong></div></div>').join('')+'</div>'
+    :'<p class="vehicle-fr-no-teams">Brak ekip francuskich. '+
+      'Dodaj konto z rolą EKIPA i przypisz mu magazyn we Francji w panelu Admin.</p>');
+  const ctx=document.createElement('canvas').getContext('2d');
+  if(ctx)ctx.font='11px Inter, "Segoe UI", system-ui, sans-serif';
+  const widthText=v=>ctx?ctx.measureText(String(v||'')).width:String(v||'').length*6.5;
+  const nameWidth=Math.max(summary?180:210,
+    Math.ceil(Math.max(0,...entries.map(p=>widthText(p.name)))+18));
+  const sapWidth=Math.max(78,
+    Math.ceil(Math.max(0,...entries.map(p=>widthText(p.sap_number||p.source_sap)))+14));
+  const indexWidth=Math.max(80,
+    Math.ceil(Math.max(0,...entries.map(p=>widthText(p.part_number)))+16));
+  const minWidth=46, currentWidth=88, sumWidth=52, teamWidth=81;
+  const col=width=>'<col style="width:'+width+'px">';
+  const needed=p=>p.required_quantity==null?'—':String(p.required_quantity);
+  const partsHead='<thead><tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
+    '<th>Stock<br>min.</th><th>Nazwa części</th>'+
+    '<th>Aktualny<br>stan</th></tr></thead>';
+  let table;
+  if(summary){
+    const fixedWidth=sapWidth+minWidth+nameWidth+sumWidth;
+    const fixedCols='<colgroup>'+[sapWidth,minWidth,nameWidth,sumWidth]
+      .map(col).join('')+'</colgroup>';
+    const fixedHead='<thead><tr><th>Indeks<br>SAP</th>'+
+      '<th>Stock<br>min.</th><th>Nazwa części</th>'+
+      '<th class="vehicle-preview-num">Suma</th></tr></thead>';
+    const fixedBody=entries.map(p=>'<tr>'+
+      '<td title="'+escapeHtml(p.sap_number||p.source_sap||'')+'">'+
+        escapeHtml(p.sap_number||p.source_sap||'—')+'</td>'+
+      '<td class="vehicle-preview-num">'+escapeHtml(needed(p))+'</td>'+
+      '<td class="vehicle-split-part-name" title="'+escapeHtml(p.name)+'">'+
+        escapeHtml(p.name)+'</td>'+
+      '<td class="vehicle-preview-num vehicle-preview-sum">—</td></tr>').join('');
+    const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
+      fixedWidth+'px">'+fixedCols+fixedHead+'<tbody>'+fixedBody+'</tbody></table>';
+    const teamTable='<table class="table vehicle-split-history-table" style="width:'+
+      Math.max(1,teams.length*teamWidth)+'px"><colgroup>'+
+      teams.map(()=>col(teamWidth)).join('')+'</colgroup>'+
+      '<thead><tr>'+teams.map(c=>
+        '<th class="vehicle-preview-column" title="'+escapeHtml(c.team)+'">'+
+        '<div class="vehicle-preview-car-header"><strong>'+escapeHtml(c.team)+
+        '</strong><small>Brak</small><span>inwentaryzacji</span></div></th>'
+      ).join('')+'</tr></thead><tbody>'+
+      entries.map(()=>'<tr>'+teams.map(()=>
+        '<td class="vehicle-preview-num">—</td>').join('')+'</tr>').join('')+
+      '</tbody></table>';
+    table='<div class="vehicle-preview-split-table vehicle-summary-split vehicle-fr-split">'+
+      '<div class="vehicle-split-fixed" style="width:'+fixedWidth+'px">'+fixedTable+'</div>'+
+      (teams.length
+        ?'<div class="vehicle-split-history">'+
+          vehicleHistoryRail('Przewijanie ekip francuskich')+
+          '<div class="vehicle-history-table-wrap">'+teamTable+'</div></div>'
+        :'<div class="vehicle-split-history vehicle-fr-empty-history">'+
+          '<strong>Brak ekip</strong><span>Po dodaniu ekipy w Adminie '+
+          'pojawi się tutaj jej kolumna.</span></div>')+
+      '</div>';
+  }else{
+    const fixedWidth=indexWidth+sapWidth+minWidth+nameWidth+currentWidth;
+    const fixedCols='<colgroup>'+[indexWidth,sapWidth,minWidth,nameWidth,currentWidth]
+      .map(col).join('')+'</colgroup>';
+    const fixedBody=entries.map(p=>'<tr>'+
+      '<td title="'+escapeHtml(p.part_number||'')+'">'+
+        escapeHtml(p.part_number||'—')+'</td>'+
+      '<td title="'+escapeHtml(p.sap_number||p.source_sap||'')+'">'+
+        escapeHtml(p.sap_number||p.source_sap||'—')+'</td>'+
+      '<td class="vehicle-preview-num">'+escapeHtml(needed(p))+'</td>'+
+      '<td class="vehicle-split-part-name" title="'+escapeHtml(p.name)+'">'+
+        escapeHtml(p.name)+'</td>'+
+      '<td class="vehicle-preview-num" title="Nie przeprowadzono inwentaryzacji">—</td>'+
+      '</tr>').join('');
+    const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
+      fixedWidth+'px">'+fixedCols+partsHead+'<tbody>'+fixedBody+'</tbody></table>';
+    table='<div class="vehicle-preview-split-table vehicle-fr-split">'+
+      '<div class="vehicle-split-fixed" style="width:'+fixedWidth+'px">'+fixedTable+'</div>'+
+      '<div class="vehicle-split-history vehicle-fr-empty-history">'+
+      '<strong>'+(chosen?'Wymagana inwentaryzacja':'Brak ekip')+'</strong>'+
+      '<span>'+(chosen?'Nie ma jeszcze pierwszej inwentaryzacji tej ekipy. '+
+        'Stan pozostaje nieustalony.':'Po dodaniu ekipy w panelu Admin '+
+        'pojawi się możliwość wyboru samochodu.')+'</span>'+
+      '</div></div>';
+  }
+  $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
+    tabs+selection+meta+table+'</div>';
+  $('tableFooter').textContent='Francja · '+entries.length+
+    ' części · '+teams.length+' ekip · brak inwentaryzacji i stanów samochodowych.';
+  $('searchNote').classList.add('hidden');
+  $('vehicleTopScroll').classList.add('hidden');
+  if(summary&&teams.length){
+    setupVehiclePairedRowHover();
+    requestAnimationFrame(setupVehicleHistoryRail);
+  }
 }
 function drawVehicles(){
   // Temporary example remains only in Poland. The French UI stays empty.
