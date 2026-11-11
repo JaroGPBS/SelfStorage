@@ -520,6 +520,18 @@
         else openUserDialog(user);
       });
       actions.append(edit);
+      if(!state.showArchives && user.role_code==='EKIPA' && !user.owner_protected){
+        const remove=document.createElement('button');
+        remove.type='button';
+        remove.className='btn mini archive-danger';
+        remove.textContent='Usuń na stałe';
+        remove.setAttribute('aria-label','Usuń na stałe ekipę '+user.name);
+        remove.addEventListener('click',event=>{
+          event.stopPropagation();
+          deleteUnusedCrew(user,remove);
+        });
+        actions.append(remove);
+      }
       if(!state.showArchives){
         const rights=document.createElement('button');
         rights.type='button';rights.className='btn mini user-rights-button';
@@ -1345,7 +1357,7 @@
       $('userStatus').value=existing?(existing.active?'1':'0'):'1';
       $('userStatus').disabled=protectedAdmin;
       $('archiveUserBtn').hidden=!existing||protectedAdmin;
-      $('deleteCrewBtn').hidden=!existing||protectedAdmin||existing.role_code!=='EKIPA';
+
       $('protectedAdminHint').hidden=!protectedAdmin;
 
       const roleInput=$('userRole');roleInput.replaceChildren();
@@ -1430,25 +1442,34 @@
     finally{busy(button,false);}
   }
 
-  async function deleteUnusedCrew() {
-    const id=$('editUserId').value;
-    const nickname=$('userName').value;
-    if(!id)return;
+  async function deleteUnusedCrew(user,button) {
+    if(!user?.id||user.role_code!=='EKIPA'||user.owner_protected)return;
     if(!await confirmAction({
-      title:'Trwale usunąć ekipę '+nickname+'?',
-      description:'Usunięcie konta, jego PIN-u i przypisań jest nieodwracalne. Jeśli ekipa ma zapisane operacje, system odmówi usunięcia, aby nie uszkodzić stanów i historii.',
+      title:'Trwale usunąć ekipę '+user.name+'?',
+      description:'Konto, PIN i przypisania zostaną usunięte. Jeśli ekipa ma operacje zmieniające stany, usuwanie zostanie zablokowane. Stany magazynowe pozostają bez zmian.',
       confirmLabel:'Usuń na stałe',danger:true
     }))return;
-    const button=$('deleteCrewBtn');busy(button,true);
-    try{
-      await post({action:'deleteUnusedCrew',userId:id});
-      $('userDialog').close();
+    busy(button,true);
+    const parent=button.parentElement;
+    parent?.querySelector('.crew-delete-error')?.remove();
+    try {
+      await post({action:'deleteUnusedCrew',userId:user.id});
       state.expandedUserId=null;
-      state.records=await api('users');
+      state.records=state.records.filter(item=>item.id!==user.id);
       if(state.view==='users')renderList();
-      message('Ekipa '+nickname+' została usunięta na stałe.','info');
-    }catch(error){message(error.message||'Nie udało się usunąć ekipy.','error');}
-    finally{busy(button,false);}
+      message('Ekipa '+user.name+' została trwale usunięta z D1.','info');
+    }catch(error){
+      const content=error.message||'Nie udało się usunąć ekipy.';
+      message(content,'error');
+      if(parent){
+        const note=document.createElement('span');
+        note.className='crew-delete-error';
+        note.setAttribute('role','alert');
+        note.style.cssText='display:block;color:#d9534f;font-size:12px;margin-top:5px;max-width:280px;white-space:normal';
+        note.textContent=content;
+        parent.append(note);
+      }
+    }finally{busy(button,false);}
   }
 
   async function restoreUser(user) {
@@ -1718,7 +1739,7 @@
       await navigate('users');
     });
     $('archiveUserBtn').addEventListener('click',archiveCurrentUser);
-  $('deleteCrewBtn').addEventListener('click',deleteUnusedCrew);
+
     $('generateMissingPins').addEventListener('click',generateMissingPins);
     $('generatePinPepper').addEventListener('click',generatePepper);
     $('copyPinPepper').addEventListener('click',copyPepper);
