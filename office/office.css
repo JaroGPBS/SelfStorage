@@ -2765,7 +2765,7 @@
   font-variant-numeric:tabular-nums;
 }
 .app.view-vehicles .vehicle-preview-detail th.vehicle-preview-inventory-col{
-  min-width:112px;
+  min-width:var(--vehicle-inventory-width,96px);
   font-weight:750;
 }
 .app.view-vehicles .vehicle-preview-inventory-col small{
@@ -2946,7 +2946,8 @@
 .app.view-vehicles .vehicle-preview-team-btn{min-height:35px}
 
 /* Fixed GPBS/SAP/minimum/name/current/difference/latest columns.
-   ONLY older inventory columns move under the top history scrollbar. */
+   Use widths computed from the real displayed index strings. Only older
+   inventory columns move on the independent top scrollbar. */
 .app.view-vehicles .vehicle-preview-detail{
   table-layout:fixed;
   width:var(--vehicle-table-width);
@@ -2959,31 +2960,55 @@
 .app.view-vehicles .vehicle-preview-detail td{
   box-sizing:border-box;
   height:41px;
-  padding:7px 7px;
+  padding:7px 5px;
   border-right:1px solid #e1e5ea;
   border-bottom:1px solid #edf0f3;
 }
-.app.view-vehicles .vehicle-preview-detail thead th{height:48px;line-height:1.25}
+.app.view-vehicles .vehicle-preview-detail thead th{height:55px;line-height:1.25}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(1),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(1){width:104px;min-width:104px;max-width:104px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(1){
+  width:var(--vehicle-gpbs-width,80px);
+  min-width:var(--vehicle-gpbs-width,80px);
+  max-width:var(--vehicle-gpbs-width,80px);
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(2),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(2){width:122px;min-width:122px;max-width:122px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(2){
+  width:var(--vehicle-sap-width,88px);
+  min-width:var(--vehicle-sap-width,88px);
+  max-width:var(--vehicle-sap-width,88px);
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(3),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(3){width:88px;min-width:88px;max-width:88px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(3){
+  width:var(--vehicle-min-width,76px);
+  min-width:var(--vehicle-min-width,76px);
+  max-width:var(--vehicle-min-width,76px);
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(4),
 .app.view-vehicles .vehicle-preview-detail td:nth-child(4){
-  width:var(--vehicle-name-width);min-width:var(--vehicle-name-width);
+  width:var(--vehicle-name-width);
+  min-width:var(--vehicle-name-width);
   max-width:var(--vehicle-name-width);
-  white-space:nowrap;overflow:visible;overflow-wrap:normal;
+  white-space:nowrap;
+  overflow-wrap:normal;
 }
 .app.view-vehicles .vehicle-preview-detail th:nth-child(5),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(5){width:102px;min-width:102px;max-width:102px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(5){
+  width:var(--vehicle-current-width,88px);
+  min-width:var(--vehicle-current-width,88px);
+  max-width:var(--vehicle-current-width,88px);
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(6),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(6){width:112px;min-width:112px;max-width:112px}
-.app.view-vehicles .vehicle-preview-detail th:nth-child(7),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(7){width:126px;min-width:126px;max-width:126px}
-.app.view-vehicles .vehicle-preview-detail th:nth-child(n+8),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(n+8){width:112px;min-width:112px;max-width:112px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(6){
+  width:var(--vehicle-diff-width,104px);
+  min-width:var(--vehicle-diff-width,104px);
+  max-width:var(--vehicle-diff-width,104px);
+}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(n+7),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(n+7){
+  width:var(--vehicle-inventory-width,96px);
+  min-width:var(--vehicle-inventory-width,96px);
+  max-width:var(--vehicle-inventory-width,96px);
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(-n+7),
 .app.view-vehicles .vehicle-preview-detail td:nth-child(-n+7){
   position:sticky;
@@ -2997,22 +3022,28 @@
 .app.view-vehicles .vehicle-preview-detail th:nth-child(1),
 .app.view-vehicles .vehicle-preview-detail td:nth-child(1){left:0}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(2),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(2){left:104px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(2){
+  left:var(--vehicle-gpbs-width,80px);
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(3),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(3){left:226px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(3){
+  left:calc(var(--vehicle-gpbs-width,80px) + var(--vehicle-sap-width,88px));
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(4),
-.app.view-vehicles .vehicle-preview-detail td:nth-child(4){left:314px}
+.app.view-vehicles .vehicle-preview-detail td:nth-child(4){
+  left:calc(var(--vehicle-gpbs-width,80px) + var(--vehicle-sap-width,88px) + var(--vehicle-min-width,76px));
+}
 .app.view-vehicles .vehicle-preview-detail th:nth-child(5),
 .app.view-vehicles .vehicle-preview-detail td:nth-child(5){
-  left:calc(314px + var(--vehicle-name-width))
+  left:calc(var(--vehicle-gpbs-width,80px) + var(--vehicle-sap-width,88px) + var(--vehicle-min-width,76px) + var(--vehicle-name-width));
 }
 .app.view-vehicles .vehicle-preview-detail th:nth-child(6),
 .app.view-vehicles .vehicle-preview-detail td:nth-child(6){
-  left:calc(416px + var(--vehicle-name-width))
+  left:calc(var(--vehicle-gpbs-width,80px) + var(--vehicle-sap-width,88px) + var(--vehicle-min-width,76px) + var(--vehicle-name-width) + var(--vehicle-current-width,88px));
 }
 .app.view-vehicles .vehicle-preview-detail th:nth-child(7),
 .app.view-vehicles .vehicle-preview-detail td:nth-child(7){
-  left:calc(528px + var(--vehicle-name-width))
+  left:calc(var(--vehicle-gpbs-width,80px) + var(--vehicle-sap-width,88px) + var(--vehicle-min-width,76px) + var(--vehicle-name-width) + var(--vehicle-current-width,88px) + var(--vehicle-diff-width,104px));
 }
 .app.view-vehicles .vehicle-preview-detail th:nth-child(7),
 .app.view-vehicles .vehicle-preview-detail td:nth-child(7){
@@ -3055,7 +3086,7 @@
   cursor:pointer;
 }
 .app.view-vehicles .vehicle-inventory-button span{
-  font-size:10px;
+  font-size:9px;
   line-height:1.2;
   font-weight:750;
 }
