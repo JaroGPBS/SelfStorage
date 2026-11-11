@@ -9,6 +9,7 @@
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
     parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
     boxParts:['Katalog części Boxy','Wyłącznie części dla Box Toulouse i Box Paris. Stany obu magazynów są rozdzielone.'],
+    vehicleParts:['Katalog części Samochody','Wyposażenie aut: te same części co w głównym katalogu, z osobną wymaganą ilością na samochód.'],
     newParts:['Nowe części','Nowe części zgłoszone przez magazynierów — do weryfikacji.'],
     indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
@@ -621,6 +622,77 @@
     return table;
   }
 
+  function renderVehiclePartsTable(items) {
+    const table=document.createElement('table');
+    table.className='parts-review-table vehicle-catalogue-table';
+    const header=table.createTHead().insertRow();
+    for(const title of [
+      'NAZWA CZĘŚCI','INDEKS GPBS','STARY MAC','SAP Z ARKUSZA',
+      'SAP W KATALOGU','WYMAGANE / AUTO','STATUS',''
+    ]){
+      const th=document.createElement('th');th.textContent=title;header.append(th);
+    }
+    const tbody=table.createTBody();
+    for(const part of items){
+      const tr=tbody.insertRow();
+      if(!part.part_found||!part.index_assigned)tr.classList.add('part-pending-verification');
+      tr.append(td(part.name||'—','part-name-cell'));
+      tr.append(td(part.part_number||'—'));
+      tr.append(td(part.source_code||'—'));
+      tr.append(td(part.source_sap&&part.source_sap!=='-'?part.source_sap:'—'));
+      tr.append(td(part.sap_number||'—'));
+      const required=td('');
+      required.className='vehicle-requirement-cell';
+      const field=document.createElement('input');
+      field.type='number';field.min='0';field.max='100000';field.step='1';
+      field.inputMode='numeric';
+      field.className='vehicle-requirement-input';
+      field.setAttribute('aria-label','Wymagana ilość części '+part.name);
+      field.value=part.required_quantity===null||part.required_quantity===undefined
+        ?'':String(part.required_quantity);
+      field.placeholder='—';
+      const save=document.createElement('button');
+      save.type='button';save.className='btn mini';
+      save.textContent='Zapisz';
+      save.title='Zapisz wymaganą ilość tej części na jednym samochodzie';
+      save.addEventListener('click',async()=>{
+        const value=field.value.trim();
+        const quantity=value===''?null:Number(value);
+        if(quantity!==null&&(!Number.isSafeInteger(quantity)||quantity<0||quantity>100000)){
+          message('Podaj całkowitą ilość od 0 do 100000 lub pozostaw pole puste.','error');
+          return;
+        }
+        field.disabled=true;save.disabled=true;
+        try{
+          const result=await post({action:'setVehicleRequirement',
+            sourceRow:part.source_row,requiredQuantity:quantity});
+          part.required_quantity=result.required_quantity;
+          message('Zapisano ilość wymaganą na samochodzie.','success');
+        }catch(error){
+          message(error.message||'Nie udało się zapisać ilości.','error');
+        }finally{field.disabled=false;save.disabled=false;}
+      });
+      required.append(field,save);tr.append(required);
+      const status=td('');
+      status.append(pill(!part.part_found?'DO DOPASOWANIA'
+        :!part.index_assigned?'BRAK NOWEGO MG':'POŁĄCZONA',
+        part.part_found&&part.index_assigned?'green':'red'));
+      tr.append(status);
+      const actions=td('');actions.className='part-row-actions';
+      if(part.part_found&&part.id){
+        const edit=document.createElement('button');
+        edit.type='button';edit.className='btn mini';edit.textContent='Edytuj';
+        edit.title='Edytuj tę samą część co w katalogu głównym';
+        edit.addEventListener('click',()=>openPartEditor(part));
+        actions.append(edit);
+      }else{
+        actions.textContent='Do weryfikacji';
+      }
+      tr.append(actions);
+    }
+    return table;
+  }
+
   async function removePart(part) {
     if(!part?.id)return;
     const accepted=await confirmAction({
@@ -857,7 +929,7 @@
       $('partEditDialog').close();
       message(file?'Zapisano dane i zdjęcie części.':(result.message||'Zapisano dane części.'),'success');
       const current=state.view;
-      if(current==='parts'||current==='newParts') {
+      if(current==='parts'||current==='newParts'||current==='vehicleParts') {
         const response=await api(current);
         state.records=response.parts||[];
         renderList();
@@ -988,8 +1060,10 @@
       $('tableResults').append(empty);
     }else $('tableResults').append(state.view==='users'?renderUsersTable(matching)
       :state.view==='parts'||state.view==='newParts'
-        ?renderPartsTable(matching,state.view==='newParts'):buildTable(columns,rows,
-        state.view==='movements'?matching.map(m=>overissueAmount(m)>0):[]));
+        ?renderPartsTable(matching,state.view==='newParts')
+        :state.view==='vehicleParts'?renderVehiclePartsTable(matching)
+        :buildTable(columns,rows,
+          state.view==='movements'?matching.map(m=>overissueAmount(m)>0):[]));
     $('tableFooter').textContent='Wyświetlono '+matching.length+' z '+state.records.length+' pozycji';
   }
 
@@ -1015,7 +1089,8 @@
     $('pageSubtitle').textContent=defs[view][1];
     $('adminPageEyebrow').textContent=view==='parts'
       ?'GPBS STORAGE / WSPÓLNY KATALOG'
-      :view==='boxParts'?'GPBS STORAGE / KATALOG BOXY':'GPBS STORAGE';
+      :view==='boxParts'?'GPBS STORAGE / KATALOG BOXY'
+      :view==='vehicleParts'?'GPBS STORAGE / KATALOG SAMOCHODY':'GPBS STORAGE';
     $('breadcrumbCurrent').textContent=defs[view][0];
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
@@ -1073,9 +1148,15 @@
           $('generateMissingPins').textContent=state.pinReady?'Generuj brakujące PIN-y':'Skonfiguruj generator PIN-ów';
         } else {
           const response=await api(view);
-          state.records=(view==='parts'||view==='newParts'||view==='boxParts')
+          state.records=(view==='parts'||view==='newParts'||view==='boxParts'||view==='vehicleParts')
             ?response.parts:response;
           if(view==='newParts')setNewPartsBadge(state.records.length);
+          if(view==='vehicleParts'&&state.view===view){
+            $('tableDescription').textContent=
+              'Źródło: Stock FR GPBS → Samochody · '+response.parts.length+
+              ' pozycji · '+response.matchedParts+' powiązanych z katalogiem D1 · '+
+              response.unresolved+' do dopasowania. Ilości wymagane dotyczą jednego auta.';
+          }
           if(view==='boxParts'){
             state.boxPartsSource=response;
             if(state.view===view){
