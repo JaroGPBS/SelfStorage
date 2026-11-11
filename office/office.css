@@ -4399,3 +4399,35 @@
     display:inline!important;
   }
 }
+
+
+/* Final vehicle inventory header refinement: readable titles without
+   widening every dated history column. */
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table thead th:nth-child(3){
+  white-space:normal;
+  line-height:1.12;
+  padding-inline:2px;
+  font-size:10px;
+  text-align:center;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button{
+  padding:3px 1px;
+  gap:0;
+  box-sizing:border-box;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button span{
+  font-size:10px;
+  font-weight:750;
+  line-height:1.15;
+  letter-spacing:-.025em;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button small{
+  margin-top:2px;
+  font-size:9.5px;
+  line-height:1.15;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table thead th,
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table thead th.vehicle-split-newest-head{
+  padding-left:0;
+  padding-right:0;
+}
