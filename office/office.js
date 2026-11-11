@@ -2106,9 +2106,23 @@ document.addEventListener('click',e=>{
   if(toggle){
     const market=toggle.dataset.marketToggle;
     if(market==='PL'||market==='FR'){
-      state.warehouseMenus[market]=!state.warehouseMenus[market];
-      toggle.setAttribute('aria-expanded',String(state.warehouseMenus[market]));
-      $('officeMarket'+market)?.classList.toggle('hidden',!state.warehouseMenus[market]);
+      const opening=!state.warehouseMenus[market];
+      state.warehouseMenus[market]=opening;
+      if(opening)state.warehouseMenus[market==='PL'?'FR':'PL']=false;
+      if(!opening){renderMenu();return;}
+      if(market==='PL'){
+        const w=state.warehouses.find(x=>x.country_code==='PL'&&
+          (x.id==='PL-TYCHY'||/tychy/i.test(x.name)))||
+          state.warehouses.find(x=>x.country_code==='PL');
+        if(w){selectView('stocks',w.id);return;}
+      }else{
+        const w=state.warehouses.find(x=>x.country_code==='FR');
+        if(w){selectView('stocks',w.id);return;}
+        const layout=FR_LAYOUT_WAREHOUSES.find(x=>x.key==='belleville')||
+          FR_LAYOUT_WAREHOUSES[0];
+        if(layout){showOfficePreview('warehouse',layout.key,layout.name);return;}
+      }
+      renderMenu();
     }
     return;
   }
@@ -2170,6 +2184,15 @@ document.addEventListener('click',e=>{
     state.frExpanded=null;state.bovisExpanded=false;
     if(module.dataset.frModule===FR_EQUIPMENT.key)
       showOfficePreview('module',FR_EQUIPMENT.key,FR_EQUIPMENT.name);
+    return;
+  }
+  const plScoped=e.target.closest('[data-pl-warehouse][data-view]');
+  if(plScoped){
+    const warehouse=realWarehouse(plScoped.dataset.plWarehouse);
+    if(warehouse?.country_code==='PL'){
+      state.warehouseMenus.PL=true;
+      selectView(plScoped.dataset.view,warehouse.id);
+    }
     return;
   }
   const operation=e.target.closest('[data-market-view][data-view]');
