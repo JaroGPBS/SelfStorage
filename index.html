@@ -193,6 +193,12 @@
 
         <div class="warehouse-scan-area">
           <h2 class="warehouse-scan-title">Zeskanuj kod magazynu aby rozpocząć wizytę</h2>
+          <label for="frVehiclePlate" style="display:block;margin:10px 0 4px;font-size:14px;font-weight:600">Numer rejestracyjny samochodu</label>
+          <input id="frVehiclePlate" class="text-input" type="text" autocapitalize="characters"
+                 autocomplete="off" spellcheck="false" maxlength="24"
+                 placeholder="Wpisz numer auta" style="width:100%;margin-bottom:12px">
+          <button id="frVehicleAssignBtn" class="btn btn-secondary" type="button"
+                  style="margin-bottom:12px">Potwierdź samochód</button>
           <button id="openWarehouseScannerBtn" class="btn btn-primary warehouse-scan-btn">Otwórz skaner</button>
           <button id="vehicleStatePreBtn" class="btn btn-secondary vehicle-entry-btn hidden" type="button">Stan auta</button>
 
