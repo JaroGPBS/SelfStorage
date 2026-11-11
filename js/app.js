@@ -1,4 +1,4 @@
-import { api } from './api.js?v=2';
+import { api } from './api.js?v=3';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
@@ -1778,7 +1778,7 @@ async function login() {
 
     let loginResult;
     try {
-      loginResult = await api.login(pin);
+      loginResult = await api.login(pin, $('frRegistrationInput')?.value || '');
     } catch (frenchLoginError) {
       // If D1 was unavailable or couldn't load the PL workspace, tell the
       // worker what actually failed instead of reporting a bad French PIN.
@@ -1786,17 +1786,15 @@ async function login() {
       throw frenchLoginError;
     }
     const team = loginResult.ekipa;
+    if(team?.rejestracja)team.vehiclePlate=team.rejestracja;
     const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
 
     let startData = null;
 
-    if (adminLogin) {
-      setLoading(true, 'Pobieranie aktualnych danych administratora…');
-      startData = await api.getStartData(team.id, true);
-      saveCachedStartData(team.id, startData);
-    } else {
-      startData = loadCachedStartData(team.id);
-    }
+    // Always load fresh D1 part codes on first FR login, never a stale Google list.
+    setLoading(true, 'Pobieranie katalogu D1…');
+    startData = await api.getStartData(team.id, true);
+    saveCachedStartData(team.id, startData);
 
     state.team = team;
     state.startData = startData;
@@ -1809,6 +1807,7 @@ async function login() {
     persist();
 
     $('pinInput').value = '';
+    if($('frRegistrationInput'))$('frRegistrationInput').value = '';
     $('loginBtn').disabled = true;
     renderWarehouse();
 
@@ -2078,7 +2077,7 @@ function findPart(value) {
   const normalizedCandidates = new Set(chunks.map(normalizeText).filter(Boolean));
 
   const exactCodeMatches = parts.filter(part =>
-    normalizedCandidates.has(normalizeText(part.kod))
+    [part.kod,...(part.aliases||[])].some(code => normalizedCandidates.has(normalizeText(code)))
   );
 
   if (exactCodeMatches.length === 1) {
@@ -2089,8 +2088,10 @@ function findPart(value) {
   }
 
   const containedCodeMatches = parts.filter(part => {
-    const code = normalizeText(part.kod);
-    return code.length >= 6 && normalizedRaw.includes(code);
+    return [part.kod,...(part.aliases||[])].some(value => {
+      const code=normalizeText(value);
+      return code.length>=6 && normalizedRaw.includes(code);
+    });
   });
 
   if (containedCodeMatches.length === 1) {
