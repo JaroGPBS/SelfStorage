@@ -1284,27 +1284,43 @@ function vehicleInventoryButton(h,index){
     (markers?'<span class="vehicle-inventory-markers" aria-hidden="true">'+markers+'</span>':'')+
     '</button>';
 }
+// Stable custom slider: no dependence on OS auto-hidden scrollbars.
+function vehicleHistoryRail(label){
+  return '<div class="vehicle-history-scrollbar" role="group" aria-label="'+escapeHtml(label)+'">'+
+    '<button type="button" class="vehicle-history-rail-arrow" data-vehicle-rail-step="-1" aria-label="W lewo">‹</button>'+
+    '<input type="range" class="vehicle-history-rail-range" min="0" max="0" value="0" aria-label="Przewijanie poziome"/>'+
+    '<button type="button" class="vehicle-history-rail-arrow" data-vehicle-rail-step="1" aria-label="W prawo">›</button></div>';
+}
 function setupVehicleHistoryRail(){
-  const rail=$('tableArea').querySelector('.vehicle-split-history .vehicle-history-scrollbar');
-  const wrap=$('tableArea').querySelector('.vehicle-history-table-wrap');
+  const area=$('tableArea');
+  const rail=area.querySelector('.vehicle-preview-split-table .vehicle-history-scrollbar');
+  const wrap=area.querySelector('.vehicle-preview-split-table .vehicle-history-table-wrap');
   if(!rail||!wrap)return;
-  const available=rail.clientWidth;
-  const overflow=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
-  if(available<70||overflow<2){
-    rail.style.visibility='hidden';
-    return;
-  }
-  rail.style.visibility='visible';
-  rail.querySelector('.vehicle-history-scrollbar-track').style.width=
-    Math.ceil(available+overflow)+'px';
+  const slider=rail.querySelector('.vehicle-history-rail-range');
+  if(!slider)return;
+  const update=()=>{
+    const max=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
+    slider.max=String(Math.ceil(max));
+    slider.value=String(Math.min(max,wrap.scrollLeft));
+    slider.disabled=max<1;
+    rail.querySelectorAll('[data-vehicle-rail-step]').forEach(btn=>{btn.disabled=max<1;});
+  };
+  update();
   if(rail.dataset.linked==='1')return;
   rail.dataset.linked='1';
-  rail.addEventListener('scroll',()=>{
-    if(wrap.scrollLeft!==rail.scrollLeft)wrap.scrollLeft=rail.scrollLeft;
-  },{passive:true});
-  wrap.addEventListener('scroll',()=>{
-    if(rail.scrollLeft!==wrap.scrollLeft)rail.scrollLeft=wrap.scrollLeft;
-  },{passive:true});
+  slider.addEventListener('input',()=>{wrap.scrollLeft=Number(slider.value);});
+  rail.addEventListener('click',event=>{
+    const button=event.target.closest('[data-vehicle-rail-step]');
+    if(button&&!button.disabled){
+      wrap.scrollLeft+=Number(button.dataset.vehicleRailStep)*88;
+      slider.value=String(wrap.scrollLeft);
+    }
+  });
+  wrap.addEventListener('scroll',()=>{slider.value=String(wrap.scrollLeft);},{passive:true});
+  if(typeof ResizeObserver==='function'){
+    const observer=new ResizeObserver(update);
+    observer.observe(wrap);
+  }
 }
 // The fixed stock columns and scrolling inventories are separate tables.
 // Mirror the hovered row across them so one part highlights end to end.
@@ -1454,9 +1470,7 @@ function drawPolishVehiclePreview(){
     const teamTable='<table class="table vehicle-split-history-table" style="width:'+
       (teams.length*summaryCrewWidth)+'px">'+crewCols+headCrews+
       '<tbody>'+crewRows+'</tbody></table>';
-    const rail='<div class="vehicle-history-scrollbar" role="region" tabindex="0" '+
-      'aria-label="Przewijanie kolumn ekip w zestawieniu zbiorczym">'+
-      '<div class="vehicle-history-scrollbar-track"></div></div>';
+    const rail=vehicleHistoryRail('Przewijanie ekip w zestawieniu zbiorczym');
     table='<div class="vehicle-preview-split-table vehicle-summary-split">'+
       '<div class="vehicle-split-fixed" style="width:'+summaryFixedWidth+'px">'+
         fixedTable+'</div>'+
@@ -1522,9 +1536,7 @@ function drawPolishVehiclePreview(){
     const pastTable='<table class="table vehicle-split-history-table" style="width:'+
       Math.max(1,pastWidth)+'px">'+pastCols+pastHead+
       '<tbody>'+pastBody+'</tbody></table>';
-    const rail='<div class="vehicle-history-scrollbar" role="region" tabindex="0" '+
-      'aria-label="Przewijanie starszych inwentaryzacji">'+
-      '<div class="vehicle-history-scrollbar-track"></div></div>';
+    const rail=vehicleHistoryRail('Przewijanie starszych inwentaryzacji');
     table='<div class="vehicle-preview-split-table">'+
       '<div class="vehicle-split-fixed" style="width:'+(fixedWidth+newestWidth)+'px">'+
         fixedTable+'</div>'+
