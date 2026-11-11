@@ -15,134 +15,87 @@
   // One clear Excel report: each part is followed immediately by its activity.
   // The export uses merged, lightly shaded detail rows instead of mixing
   // unrelated fields under the 'Stan przed / Policzono / Różnica' headers.
+  // Plain, editable spreadsheet based on the original TEST-A report.
+  // No coloured backgrounds, no merged cells and visible Excel gridlines.
   function makeSheet(report){
-    const rows=[],merged=[];
-    let tableHeaderRow=0;
-    const line=(cells,height=23)=>{
-      const n=rows.length+1;
-      rows.push({cells,height});
-      return n;
-    };
-    const mergedLine=(value,style,height)=>{
-      const cells=Array.from({length:7},(_,i)=>({value:i===0?value:null,style}));
-      const n=line(cells,height);
-      merged.push('A'+n+':G'+n);
-      return n;
-    };
+    const rows=[
+      ['RAPORT INWENTARYZACJI SAMOCHODU'],
+      ['Data',report.date||'—','Godzina',report.time||'—'],
+      ['Ekipa',report.team||'—','Tablica rejestracyjna',report.plate||'—'],
+      ['Wykonał',report.by||'—'],
+      [],
+      ['Indeks GPBS','Indeks SAP','Nazwa części',
+       'Stan przed','Policzono','Różnica','Ruchy części']
+    ];
+    if(report.note)rows[4]=['Komentarz',report.note];
     const when=(date,time)=>[date,time].filter(Boolean).join(' ');
-    mergedLine('RAPORT INWENTARYZACJI SAMOCHODU',1,37);
-    mergedLine('EKIPA: '+(report.team||'—')+'     •     REJESTRACJA: '+
-      (report.plate||'—')+'     •     DATA: '+when(report.date,report.time),2,27);
-    mergedLine('INWENTARYZACJĘ WYKONAŁ: '+(report.by||'—')+
-      (report.periodStart?'     •     POPRZEDNIA INWENTARYZACJA: '+
-       report.periodStart:''),2,26);
-    if(report.note)mergedLine('KOMENTARZ: '+report.note,8,40);
-    line([],12);
-    tableHeaderRow=line([
-      {value:'Indeks GPBS',style:3},{value:'Indeks SAP',style:3},
-      {value:'Nazwa części',style:3},{value:'Stan przed',style:3},
-      {value:'Policzono',style:3},{value:'Różnica',style:3},
-      {value:'Ruchy części w okresie',style:3}
-    ],31);
-    let partCount=0;
     for(const part of report.items||[]){
       const movements=Array.isArray(part.movements)?part.movements:[];
-      const moveText=movements.map(move=>{
+      const movementText=movements.map(move=>{
         const outgoing=move.kind==='usage'||move.kind==='warehouse_out'||
           (move.kind==='transfer'&&String(move.description||'').startsWith('Przekazanie'));
-        const qty=Number(move.quantity);
-        const amount=Number.isFinite(qty)
-          ?(outgoing?'−':'+')+qty+' szt.':'—';
-        const top=when(move.date,move.time)+' · '+(move.description||'Ruch części')+
-          ' · '+amount;
-        const bottom='Status: '+(move.status||'Zapisano')+
-          (move.actor?' · '+move.actor:'');
-        return top+'\n'+bottom;
+        const q=Number(move.quantity);
+        const amount=Number.isFinite(q)?(outgoing?'−':'+')+q+' szt.':'—';
+        return when(move.date,move.time)+' — '+(move.description||'Ruch części')+
+          ' — '+amount+'\n'+(move.status||'Zapisano')+
+          (move.actor?' — '+move.actor:'');
       }).join('\n\n');
-      const hasPending=movements.some(move=>/oczekuje/i.test(move.status||''));
-      const height=movements.length?Math.min(390,Math.max(46,
-        24+movements.length*44+Math.max(0,movements.length-1)*9)):32;
-      line([
-        {value:part.index||'—',style:4},
-        {value:part.sap||'—',style:4},
-        {value:part.name||'—',style:4},
-        ...[part.before,part.counted,part.difference]
-          .map(n=>({value:n==null?'—':n,style:5})),
-        {value:moveText||null,style:moveText?(hasPending?7:6):4}
-      ],height);
-      partCount++;
+      rows.push([
+        part.index||'',part.sap||'',part.name||'',
+        part.before==null?'':part.before,
+        part.counted==null?'':part.counted,
+        part.difference==null?'':part.difference,
+        movementText
+      ]);
     }
-    if(!partCount)mergedLine('Brak części w tym raporcie.',8,30);
-
-    const cellXml=(value,r,c)=>{
-      if(value===undefined||value===null)return '';
-      const info=typeof value==='object'?value:{value,style:0};
-      const ref=excelColumn(c)+(r+1),style=' s="'+(info.style||0)+'"';
-      if(info.value===undefined||info.value===null)
-        return '<c r="'+ref+'"'+style+'/>';
-      if(typeof info.value==='number'&&Number.isFinite(info.value))
-        return '<c r="'+ref+'"'+style+'><v>'+info.value+'</v></c>';
+    const cellXml=(value,row,col)=>{
+      if(value===undefined||value===null||value==='')return '';
+      const ref=excelColumn(col)+(row+1);
+      // Normal Excel cells; only report title and column labels are bold.
+      const bold=row===0||row===5;
+      const style=(bold?' s="1"':col===6&&row>5?' s="2"':'');
+      if(typeof value==='number'&&Number.isFinite(value))
+        return '<c r="'+ref+'"'+style+'><v>'+value+'</v></c>';
       return '<c r="'+ref+'"'+style+' t="inlineStr"><is><t xml:space="preserve">'+
-        xml(info.value)+'</t></is></c>';
+        xml(value)+'</t></is></c>';
     };
-    const rowXml=rows.map((row,index)=>
-      '<row r="'+(index+1)+'" ht="'+row.height+'" customHeight="1">'+
-      row.cells.map((v,c)=>cellXml(v,index,c)).join('')+'</row>'
-    ).join('');
-    const widths=[19,19,43,15,15,15,85];
-    const columns=widths.map((width,i)=>'<col min="'+(i+1)+
-      '" max="'+(i+1)+'" width="'+width+'" customWidth="1"/>').join('');
-    const mergedXml='<mergeCells count="'+merged.length+'">'+
-      merged.map(r=>'<mergeCell ref="'+r+'"/>').join('')+'</mergeCells>';
+    const content=rows.map((cells,r)=>{
+      const value=cells.map((v,c)=>cellXml(v,r,c)).join('');
+      if(!cells.length)return '<row r="'+(r+1)+'"/>';
+      const moves=r>5?String(cells[6]||''):'';
+      const numberOfLines=moves?moves.split('\n').length:0;
+      const height=numberOfLines?Math.min(390,Math.max(30,numberOfLines*15+8)):null;
+      return '<row r="'+(r+1)+'"'+
+        (height?' ht="'+height+'" customHeight="1"':'')+'>'+value+'</row>';
+    }).join('');
+    const widths=[19,19,46,16,16,16,80];
+    const columns=widths.map((width,i)=>
+      '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+width+
+        '" customWidth="1"/>').join('');
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-      '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'+
       '<dimension ref="A1:G'+rows.length+'"/>'+
-      '<sheetViews><sheetView workbookViewId="0" showGridLines="0">'+
-      '<pane ySplit="'+tableHeaderRow+'" topLeftCell="A'+(tableHeaderRow+1)+
-        '" activePane="bottomLeft" state="frozen"/>'+
-      '</sheetView></sheetViews>'+
-      '<sheetFormatPr defaultRowHeight="22"/>'+
-      '<cols>'+columns+'</cols><sheetData>'+rowXml+'</sheetData>'+
-      mergedXml+
-      '<printOptions horizontalCentered="1"/>'+
-      '<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'+
-      '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>'+
-      '</worksheet>';
+      '<sheetViews><sheetView workbookViewId="0" showGridLines="1"/></sheetViews>'+
+      '<sheetFormatPr defaultRowHeight="17"/>'+
+      '<cols>'+columns+'</cols><sheetData>'+content+'</sheetData></worksheet>';
   }
   const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-    '<fonts count="5">'+
+    '<fonts count="2">'+
       '<font><sz val="11"/><name val="Calibri"/></font>'+
-      '<font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'+
-      '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'+
-      '<font><b/><sz val="10"/><color rgb="FF445468"/><name val="Calibri"/></font>'+
-      '<font><sz val="10"/><color rgb="FF344C62"/><name val="Calibri"/></font>'+
+      '<font><b/><sz val="11"/><name val="Calibri"/></font>'+
     '</fonts>'+
-    '<fills count="7">'+
+    '<fills count="2">'+
       '<fill><patternFill patternType="none"/></fill>'+
       '<fill><patternFill patternType="gray125"/></fill>'+
-      '<fill><patternFill patternType="solid"><fgColor rgb="FF283846"/></patternFill></fill>'+
-      '<fill><patternFill patternType="solid"><fgColor rgb="FF465B6D"/></patternFill></fill>'+
-      '<fill><patternFill patternType="solid"><fgColor rgb="FFF6F8FA"/></patternFill></fill>'+
-      '<fill><patternFill patternType="solid"><fgColor rgb="FFECF3F9"/></patternFill></fill>'+
-      '<fill><patternFill patternType="solid"><fgColor rgb="FFFFF4DF"/></patternFill></fill>'+
     '</fills>'+
-    '<borders count="2">'+
-      '<border><left/><right/><top/><bottom/><diagonal/></border>'+
-      '<border><left/><right/><top/><bottom style="thin"><color rgb="FFDEE5EC"/></bottom><diagonal/></border>'+
-    '</borders>'+
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-    '<cellXfs count="9">'+
+    '<cellXfs count="3">'+
       '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
-      '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" indent="1"/></xf>'+
-      '<xf numFmtId="0" fontId="3" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
-      '<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'+
-      '<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'+
-      '<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'+
-      '<xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
-      '<xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
-      '<xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
+      '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">'+
+        '<alignment wrapText="1" vertical="center"/></xf>'+
     '</cellXfs>'+
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
     '</styleSheet>';
