@@ -1788,6 +1788,11 @@ async function login() {
       saveCachedStartData(team.id, startData);
     } else {
       startData = loadCachedStartData(team.id);
+      if(!startData){
+        setLoading(true,'Pobieranie części i magazynów z D1…');
+        startData=await api.getStartData(team.id,true);
+        saveCachedStartData(team.id,startData);
+      }
     }
 
     state.team = team;
