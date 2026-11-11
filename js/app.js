@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=7';
 
-const APP_VERSION = '0.53';
+const APP_VERSION = '0.54';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -2654,6 +2654,16 @@ function updateAppVersionBadge() {
 }
 
 async function init() {
+  // Old Apps Script visits are fictional and have no D1 records.
+  // One-time migration avoids resuming a stale Google visit on this device.
+  try{
+    if(localStorage.getItem('gpbs_fr_d1_cutover_v1')!=='1'){
+      clearState();
+      localStorage.removeItem(START_DATA_CACHE_KEY);
+      localStorage.removeItem(VEHICLE_STOCK_CACHE_KEY);
+      localStorage.setItem('gpbs_fr_d1_cutover_v1','1');
+    }
+  }catch(error){console.warn('Nie udało się wyczyścić starej sesji.',error);}
   updateAppVersionBadge();
 
   sessionStorage.removeItem('selfstorage_reload_for_update');
