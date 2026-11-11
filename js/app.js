@@ -2661,6 +2661,9 @@ async function init() {
       clearState();
       localStorage.removeItem(START_DATA_CACHE_KEY);
       localStorage.removeItem(VEHICLE_STOCK_CACHE_KEY);
+      // All pre-cutover French sessions were fictional; never replay them into D1.
+      localStorage.removeItem('selfstorage_offline_queue_v1');
+      localStorage.removeItem('selfstorage_pending_finish_v1');
       localStorage.setItem('gpbs_fr_d1_cutover_v1','1');
     }
   }catch(error){console.warn('Nie udało się wyczyścić starej sesji.',error);}
