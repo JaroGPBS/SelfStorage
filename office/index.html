@@ -183,7 +183,12 @@
       <header class="topbar">
         <button class="icon-btn mobile-menu" id="mobileMenu" aria-label="Pokaż menu">☰</button>
         <div class="breadcrumbs">GPBS Storage <span>/</span> <strong id="crumb">Stany magazynowe</strong><span id="warehouseCrumb" class="warehouse-crumb hidden">TYCHY</span></div>
-        <div class="top-status"><span class="status-dot"></span><span>D1</span></div>
+        <div id="vehicleTopContext" class="vehicle-top-context hidden">
+          <span class="vehicle-top-description">Ewidencja części na samochodach serwisowych</span>
+          <span class="vehicle-top-hint"><span aria-hidden="true">ⓘ</span> Kliknij nagłówek inwentaryzacji, aby otworzyć jej raport</span>
+        </div>
+        <div id="vehicleTopExportHost" class="vehicle-top-export-host hidden"></div>
+        <div class="top-status"><span class="status-dot"></span><span>Online</span></div>
       </header>
       <div class="content">
         <div class="page-head">
@@ -266,7 +271,7 @@
               <strong>Aktualne stany części w magazynie</strong>
             </div>
             <div id="receiptToolbarActions" class="receipt-toolbar-actions hidden"></div>
-            <div class="tools-right">
+            <div class="tools-right" id="tableToolbarTools">
               <button class="btn subtle" id="sort" type="button">Nazwa A–Z</button>
               <button class="btn subtle" id="export" type="button" disabled title="Eksport Excel przygotujemy w kolejnym etapie">⇩ Eksport</button>
             </div>
