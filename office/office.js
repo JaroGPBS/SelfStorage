@@ -1076,21 +1076,44 @@ function drawPolishVehiclePreview(){
   }else{
     // The selected inventory displays SUMA/Różnica. Others stay narrow.
     // Each difference is against the saved count *before that audit*.
-    const head='<tr>'+
-      '<th rowspan="2">Indeks GPBS</th><th rowspan="2">Indeks SAP</th>'+
-      '<th rowspan="2" class="vehicle-preview-num">Wymagane<br>min.</th>'+
-      '<th rowspan="2" class="vehicle-preview-part-name">Nazwa części</th>'+
-      '<th rowspan="2" class="vehicle-preview-num">Aktualny<br>stan</th>'+
-      history.map((h,i)=>
-        '<th class="vehicle-preview-inventory-col'+
-        (i===0?' vehicle-preview-latest-header':'')+
-        (i===selectedInventory?' is-selected':'')+
-        '"'+(i===selectedInventory?' colspan="2"':' rowspan="2"')+'>'+
-        vehicleInventoryButton(h,i)+'</th>').join('')+
-      '</tr><tr><th class="vehicle-preview-inventory-subhead'+
-      (selectedInventory===0?' vehicle-preview-latest-sum-subhead':'')+'">SUMA</th>'+
-      '<th class="vehicle-preview-inventory-subhead'+
-      (selectedInventory===0?' vehicle-preview-latest-diff-subhead':'')+'">Różnica</th></tr>';
+    // The scrollbar lives in the first (17px) row of the inventory
+    // TABLE header. The newest audit remains fixed to the left of it.
+    const latestAudit=history[0]||null;
+    const latestSelected=Boolean(latestAudit)&&selectedInventory===0;
+    const oldAudits=history.slice(1);
+    const olderColumns=oldAudits.length+(selectedInventory>0?1:0);
+    const fixedHead=
+      '<th rowspan="3">Indeks GPBS</th><th rowspan="3">Indeks SAP</th>'+
+      '<th rowspan="3" class="vehicle-preview-num">Wymagane<br>min.</th>'+
+      '<th rowspan="3" class="vehicle-preview-part-name">Nazwa części</th>'+
+      '<th rowspan="3" class="vehicle-preview-num">Aktualny<br>stan</th>';
+    const latestHead=latestAudit
+      ?'<th class="vehicle-preview-inventory-col vehicle-preview-latest-header'+
+        (latestSelected?' is-selected':'')+'" '+
+        (latestSelected?'colspan="2" rowspan="2"':'rowspan="3"')+'>'+
+        vehicleInventoryButton(latestAudit,0)+'</th>'
+      :'';
+    const railHead=olderColumns
+      ?'<th class="vehicle-preview-rail-head-cell" colspan="'+olderColumns+
+        '" aria-hidden="true"></th>'
+      :'';
+    const olderHead=oldAudits.map((h,i)=>{
+      const selected=i+1===selectedInventory;
+      return '<th class="vehicle-preview-inventory-col'+
+        (selected?' is-selected':'')+'" '+
+        (selected?'colspan="2"':'rowspan="2"')+'>'+
+        vehicleInventoryButton(h,i+1)+'</th>';
+    }).join('');
+    const subHead=latestAudit
+      ?'<th class="vehicle-preview-inventory-subhead'+
+        (latestSelected?' vehicle-preview-latest-sum-subhead':'')+'">SUMA</th>'+
+        '<th class="vehicle-preview-inventory-subhead'+
+        (latestSelected?' vehicle-preview-latest-diff-subhead':'')+'">Różnica</th>'
+      :'';
+    const head='<tr class="vehicle-preview-rail-head-row">'+
+      fixedHead+latestHead+railHead+'</tr>'+
+      '<tr class="vehicle-preview-dates-head-row">'+olderHead+'</tr>'+
+      '<tr class="vehicle-preview-subhead-row">'+subHead+'</tr>';
     const columns='<colgroup>'+
       [gpbsWidth,sapWidth,minWidth,nameWidth,currentWidth].map(w=>
         '<col style="width:'+w+'px">').join('')+
