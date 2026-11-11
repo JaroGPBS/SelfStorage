@@ -4881,3 +4881,52 @@
     white-space:normal;
   }
 }
+
+
+/* Keep fixed stock rows exactly aligned with scrolling inventory history,
+   including when a second line says "Brakuje X". */
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-fixed-table tbody tr,
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-history-table tbody tr{
+  height:41px;
+}
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-fixed-table tbody td.vehicle-preview-current{
+  padding:0 2px !important;
+  height:41px;
+  min-height:41px;
+  max-height:41px;
+  vertical-align:middle;
+  overflow:hidden;
+}
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-fixed-table .vehicle-current-compact{
+  height:29px;
+  min-height:29px;
+  max-height:29px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:0;
+  line-height:1;
+  white-space:nowrap;
+}
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-fixed-table .vehicle-current-compact strong{
+  display:block;
+  margin:0;
+  padding:0;
+  font-size:12px;
+  line-height:14px;
+}
+.app.view-vehicles .vehicle-preview-split-table
+  .vehicle-split-fixed-table .vehicle-current-compact small{
+  display:block;
+  margin:0 !important;
+  padding:0;
+  font-size:9px;
+  font-weight:650;
+  line-height:10px;
+}
