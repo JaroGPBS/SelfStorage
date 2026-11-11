@@ -3795,3 +3795,73 @@
     min-width:0;
   }
 }
+
+
+/* Fleet detail: narrower centered crew buttons and scrollbar directly above
+   historical inventory headers (not beside crew metadata). */
+.app.view-vehicles .vehicle-preview .vehicle-preview-team-btn{
+  box-sizing:border-box;
+  flex:0 0 80px;
+  width:80px;
+  min-width:80px;
+  max-width:80px;
+  padding:5px 4px;
+  text-align:center;
+}
+.app.view-vehicles .vehicle-preview .vehicle-preview-team-btn small{
+  display:block;
+  text-align:center;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.app.view-vehicles .vehicle-preview-table-zone{
+  position:relative;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+}
+.app.view-vehicles .vehicle-preview-table-zone.vehicle-has-history-rail{
+  padding-top:18px;
+}
+.app.view-vehicles .vehicle-preview-table-zone>.vehicle-history-scrollbar{
+  position:absolute;
+  top:0;
+  left:var(--vehicle-history-rail-start);
+  right:0;
+  width:auto;
+  height:17px;
+  min-width:0;
+  margin:0;
+  z-index:9;
+}
+.app.view-vehicles .vehicle-preview-detail-v2 thead tr:first-child th:nth-child(7),
+.app.view-vehicles .vehicle-preview-detail-v2 tbody td:nth-child(7){
+  border-right:1px solid #e1e5ea;
+}
+.app.view-vehicles .vehicle-preview-detail-v2 tbody td.vehicle-inventory-selected-diff:not(.vehicle-preview-latest-end){
+  border-right:1px solid #e1e5ea;
+}
+/* The divider always ends the newest inventory, even if the user has
+   selected an older audit to expand its SUMA and Różnica. */
+.app.view-vehicles .vehicle-preview-detail-v2 thead tr:first-child th.vehicle-preview-latest-header,
+.app.view-vehicles .vehicle-preview-detail-v2 tbody td.vehicle-preview-latest-end{
+  border-right:2px solid #c0cad5!important;
+}
+@media(min-width:1171px){
+  .app.view-vehicles .vehicle-preview-detail-v2 thead tr:first-child th.vehicle-preview-latest-header{
+    position:sticky!important;
+    left:var(--vehicle-fixed-width)!important;
+    z-index:7!important;
+    background:#f0f4f8!important;
+  }
+  .app.view-vehicles .vehicle-preview-detail-v2 tbody td.vehicle-preview-latest-audit{
+    position:sticky!important;
+    left:var(--vehicle-fixed-width)!important;
+    z-index:4!important;
+    background:#fbfcfe!important;
+  }
+  .app.view-vehicles .vehicle-preview-detail-v2 tbody td.vehicle-preview-latest-subdiff{
+    left:calc(var(--vehicle-fixed-width) + var(--vehicle-selected-sub-width))!important;
+  }
+}
