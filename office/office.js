@@ -992,9 +992,13 @@ function drawPolishVehiclePreview(){
       '<div class="vehicle-preview-meta-value"><strong>'+escapeHtml(value)+'</strong>'+
       '</div></div>').join('')+
     '</div>');
-  // Fixed widths include the real longest part name. One line, no ellipsis.
-  const maxNameChars=Math.max(0,...parts.map(p=>Array.from(p.name).length));
-  const nameWidth=Math.max(315,Math.ceil(maxNameChars*7.7+28));
+  // Measure actual labels instead of allocating extra room by character count.
+  // A one-line name stays visible without wasting horizontal space.
+  const measure=document.createElement('canvas').getContext('2d');
+  if(measure)measure.font='11px Inter, "Segoe UI", system-ui, sans-serif';
+  const maxMeasured=Math.max(0,...parts.map(p=>measure
+    ?measure.measureText(p.name).width:Array.from(p.name).length*6.2));
+  const nameWidth=Math.max(210,Math.ceil(maxMeasured+22));
   const fixedWidth=104+122+88+nameWidth+102+112+126;
   const olderCount=Math.max(0,history.length-1);
   const layout=' style="--vehicle-name-width:'+nameWidth+'px;'+
