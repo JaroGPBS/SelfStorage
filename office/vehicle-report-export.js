@@ -132,7 +132,7 @@
     '</fills>'+
     '<borders count="2">'+
       '<border><left/><right/><top/><bottom/><diagonal/></border>'+
-      '<border><left/><right/><top/><bottom style="thin"><color rgb="FFDEE5EC"/></bottom/><diagonal/></border>'+
+      '<border><left/><right/><top/><bottom style="thin"><color rgb="FFDEE5EC"/></bottom><diagonal/></border>'+
     '</borders>'+
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
     '<cellXfs count="9">'+
