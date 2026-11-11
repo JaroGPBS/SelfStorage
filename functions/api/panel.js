@@ -1235,6 +1235,15 @@ async function createAdminCataloguePart(request,env){
   }
 }
 
+async function ensureVehicleCategoryLinks(db){
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS vehicle_catalog_links ('+
+    'source_row INTEGER PRIMARY KEY,'+
+    'part_id TEXT REFERENCES parts(id),'+
+    'excluded INTEGER NOT NULL DEFAULT 0 CHECK(excluded IN (0,1)),'+
+    'updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)'
+  ).run();
+}
 async function route(request,env) {
   if(!ready(env)) return fail('Panel nie jest jeszcze aktywowany przez administratora.',503);
   const url=new URL(request.url);
@@ -1595,10 +1604,70 @@ async function route(request,env) {
       return fail('Nie udało się zakończyć usuwania części. Jeśli zdjęcie było w R2, ponów usunięcie z katalogu.',503);
     }
   }
+  if(['linkVehiclePart','removeVehiclePart','addVehiclePart'].includes(body?.action)){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    const action=body.action,sourceRow=Number(body.sourceRow);
+    const partId=String(body.partId||'').trim();
+    if(action!=='removeVehiclePart'&&
+      !/^[A-Za-z0-9_-]{1,100}$/.test(partId))
+      return fail('Wskaż istniejącą część z katalogu głównego.',400);
+    try{
+      await ensureVehicleCategoryLinks(env.DB);
+      const catalogue=await getVehicleCatalogue(env.DB);
+      const current=action==='addVehiclePart'?null:
+        catalogue.parts.find(item=>item.source_row===sourceRow);
+      if(action!=='addVehiclePart'&&(!Number.isSafeInteger(sourceRow)||!current))
+        return fail('Nie znaleziono części w katalogu samochodowym.',404);
+      if(action!=='removeVehiclePart'){
+        const part=await env.DB.prepare('SELECT id FROM parts WHERE id=? AND active=1')
+          .bind(partId).first();
+        if(!part)return fail('Wybrana część nie istnieje w katalogu głównym.',404);
+        if(catalogue.parts.some(p=>p.id===partId&&p.source_row!==sourceRow))
+          return fail('Ta część jest już przypisana do samochodów.',409);
+      }
+      let targetRow=sourceRow;
+      let stmt;
+      if(action==='addVehiclePart'){
+        const last=await env.DB.prepare(
+          'SELECT MAX(source_row) AS last FROM vehicle_catalog_links WHERE source_row>=10000'
+        ).first();
+        targetRow=Math.max(9999,Number(last?.last||9999))+1;
+        stmt=env.DB.prepare(
+          'INSERT INTO vehicle_catalog_links(source_row,part_id,excluded) VALUES(?,?,0)'
+        ).bind(targetRow,partId);
+      }else if(action==='removeVehiclePart'){
+        stmt=env.DB.prepare(
+          'INSERT INTO vehicle_catalog_links(source_row,excluded) VALUES(?,1) '+
+          'ON CONFLICT(source_row) DO UPDATE SET excluded=1,updated_at=CURRENT_TIMESTAMP'
+        ).bind(targetRow);
+      }else{
+        stmt=env.DB.prepare(
+          'INSERT INTO vehicle_catalog_links(source_row,part_id,excluded) VALUES(?,?,0) '+
+          'ON CONFLICT(source_row) DO UPDATE SET part_id=excluded.part_id,'+
+          'excluded=0,updated_at=CURRENT_TIMESTAMP'
+        ).bind(targetRow,partId);
+      }
+      await env.DB.batch([stmt,env.DB.prepare(
+        'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
+        'VALUES(?,?,?,?,?,?)'
+      ).bind(crypto.randomUUID(),session.id,action.toUpperCase(),
+        'VEHICLE_CATALOG',String(targetRow),JSON.stringify({
+          partId:action==='removeVehiclePart'?current?.id:partId,
+          sourceName:current?.name||''
+        }))]);
+      return respond({ok:true,source_row:targetRow});
+    }catch(error){
+      const msg=String(error?.message||'').toLowerCase();
+      if(msg.includes('unique'))return fail('Ta część już należy do katalogu samochodowego.',409);
+      console.error('Vehicle category membership update',error?.name||'Error');
+      return fail('Nie udało się zaktualizować katalogu samochodowego.',503);
+    }
+  }
   if(body?.action==='setVehicleRequirement') {
     if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
     const row=Number(body.sourceRow);
-    const source=VEHICLE_CATALOG_SNAPSHOT.find(item=>item.source_row===row);
+    const visible=(await getVehicleCatalogue(env.DB)).parts;
+    const source=visible.find(item=>item.source_row===row);
     const number=body.requiredQuantity;
     const required=number===null?null:Number(number);
     if(!source||!Number.isSafeInteger(row)||(
