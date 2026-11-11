@@ -311,6 +311,7 @@
           <div class="table-panel">
             <div class="table-title">
               <div><h2 id="tableTitle"></h2><p id="tableDescription"></p></div>
+              <button id="vehicleAddPartBtn" class="btn mini hidden" type="button">+ Dodaj część do samochodów</button>
               <input id="tableSearch" class="search-input" type="search" autocomplete="off" placeholder="Szukaj w tabeli…">
             </div>
             <div id="tableResults" class="table-scroll"></div>
@@ -322,6 +323,22 @@
     </div>
   </div>
 
+  <dialog id="vehiclePartSelectDialog" class="modal" aria-labelledby="vehiclePartSelectTitle">
+    <form method="dialog" class="modal-inner">
+      <div class="modal-heading">
+        <div><div class="eyebrow">KATALOG SAMOCHODÓW</div>
+          <h2 id="vehiclePartSelectTitle">Wybierz istniejącą część</h2>
+          <p>Wybór łączy pozycję ze wspólnym katalogiem, nie tworzy drugiej części.</p></div>
+      </div>
+      <label for="vehiclePartSelect">Część z głównego katalogu</label>
+      <select id="vehiclePartSelect" required style="display:block;width:100%;min-height:42px;margin:9px 0 16px"></select>
+      <p id="vehiclePartSelectError" class="error hidden" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="vehiclePartSelectCancel" type="button" class="btn subtle">Anuluj</button>
+        <button id="vehiclePartSelectSave" type="submit" class="btn primary">Zapisz powiązanie</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="generatedPinsDialog" class="modal" aria-labelledby="generatedPinsTitle">
     <div class="modal-inner">
       <div class="modal-heading">
