@@ -236,7 +236,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:true,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -405,12 +405,27 @@ function greetingName(user){
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
+  state.warehouseMenus={PL:false,FR:false};
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
   $('username').textContent=name?name+'!':'!';
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
   renderMenu();selectView('stocks',state.warehouse);
+}
+function officeMenuIcon(view){
+  const paths={
+    stocks:'<path d="m3 10 9-7 9 7v11H3z"/><path d="M9 21v-7h6v7"/>',
+    pz:'<path d="m4 9 8-5 8 5v10l-8 4-8-4z"/><path d="m4 9 8 5 8-5"/><path d="M12 2v8m-3-3 3 3 3-3"/>',
+    wz:'<path d="m4 9 8-5 8 5v10l-8 4-8-4z"/><path d="m4 9 8 5 8-5"/><path d="M12 10V2m-3 3 3-3 3 3"/>',
+    inventories:'<rect x="5" y="4" width="14" height="18" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="m9 13 2 2 4-4M9 19h6"/>',
+    labels:'<path d="M3 3h7v7H3zM5 5h3v3H5zM14 3h7v7h-7zM16 5h3v3h-3zM3 14h7v7H3zM5 16h3v3H5zM14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/><path d="M12 23h10"/>',
+    vehicles:'<path d="M3 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11"/><path d="M17 9h2l3 4v4h-5M3 17h19"/><path d="M17 10v4h4"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>'
+  };
+  if(!paths[view])return '';
+  return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" '+
+    'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" '+
+    'stroke-linejoin="round" aria-hidden="true">'+paths[view]+'</svg>';
 }
 function renderMenu(){
   // Real warehouses obey D1 grants. Other FR entries are layout-only placeholders
@@ -421,6 +436,24 @@ function renderMenu(){
     String(state.user?.nickname||'').trim().toUpperCase()==='JJ';
   const renderReal=w=>'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(w.id)+'">'+
     escapeHtml(w.name)+'</button>';
+  const renderPolishWarehouse=w=>{
+    const title=String(w.name||'').replace(/^magazyn\\s+/i,'').trim()||'Tychy';
+    const ops=[
+      {view:'stocks',label:'Stany magazynowe',right:'stocks'},
+      {view:'pz',label:'Przyjęcia',right:'pz'},
+      {view:'wz',label:'Wydania',right:'wz'},
+      {view:'inventories',label:'Inwentaryzacja',right:'inventory'},
+      {view:'labels',label:'Drukowanie etykiet',right:'labels'}
+    ].filter(op=>state.user?.features?.[op.right]!==false);
+    return '<div class="office-pl-warehouse-group">'+
+      '<button type="button" class="subnav-btn office-pl-warehouse" '+
+      'data-warehouse="'+escapeHtml(w.id)+'">'+escapeHtml(title)+'</button>'+
+      '<div class="office-pl-operations">'+ops.map(op=>
+        '<button type="button" class="subnav-btn office-operation-link office-pl-operation" '+
+        'data-pl-warehouse="'+escapeHtml(w.id)+'" data-view="'+op.view+'">'+
+        '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon(op.view)+'</span>'+
+        escapeHtml(op.label)+'</button>').join('')+'</div></div>';
+  };
   const aggregateButton=()=>'<button type="button" class="subnav-btn office-aggregate-link" '+
     'data-aggregate-market="FR"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
     'Zestawienie zbiorcze</button>';
@@ -431,7 +464,7 @@ function renderMenu(){
   const vehicleButton=country=>state.user?.features?.stocks===false?'':(
     '<button type="button" class="subnav-btn office-operation-link office-vehicle-link" '+
     'data-market-vehicles="'+country+'">'+
-    '<span class="office-operation-icon" aria-hidden="true">▤</span>'+
+    '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('vehicles')+'</span>'+
     'Stany samochodowe</button>');
   const permittedOperations=country=>OFFICE_MARKET_OPERATIONS.filter(op=>{
     // In Poland, NOK is already a stock tab rather than a sidebar operation.
@@ -447,7 +480,7 @@ function renderMenu(){
     permittedOperations(country).map(op=>
       '<button type="button" class="subnav-btn office-operation-link" '+
       'data-market-view="'+country+'" data-view="'+escapeHtml(op.view)+'">'+
-      '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(op.icon)+'</span>'+
+      '<span class="office-operation-icon" aria-hidden="true">'+(officeMenuIcon(op.view)||escapeHtml(op.icon))+'</span>'+
       escapeHtml(op.label)+'</button>'
     ).join('')+'</div>';
   // French operational menu is scoped to one warehouse, never to the whole country.
@@ -461,13 +494,13 @@ function renderMenu(){
       '<button type="button" class="subnav-btn office-operation-link office-fr-operation office-fr-stock-link" '+
         'data-fr-stock="'+escapeHtml(key)+'" data-fr-real-id="'+escapeHtml(realId)+'" '+
         'data-fr-warehouse-name="'+escapeHtml(label)+'">'+
-        '<span class="office-operation-icon" aria-hidden="true">▤</span>'+
+        '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('vehicles')+'</span>'+
         'Stany magazynowe</button>');
     const children=stockButton+permittedOperations('FR').map(op=>
       '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
         'data-fr-operation="'+escapeHtml(key)+'" data-fr-real-id="'+escapeHtml(realId)+'" '+
         'data-fr-warehouse-name="'+escapeHtml(label)+'" data-view="'+escapeHtml(op.view)+'">'+
-        '<span class="office-operation-icon" aria-hidden="true">'+escapeHtml(op.icon)+'</span>'+
+        '<span class="office-operation-icon" aria-hidden="true">'+(officeMenuIcon(op.view)||escapeHtml(op.icon))+'</span>'+
         escapeHtml(op.label)+'</button>'
     ).join('')+(key==='belleville'
       ?'<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
@@ -517,11 +550,11 @@ function renderMenu(){
       items+
       (showAggregate?aggregateButton()+vehicleButton('FR')+equipmentButton():'')+
       (showOperations?marketOperations(country):'')+
-      (country==='PL'?vehicleButton('PL'):'')+'</div></div>';
+      (country==='PL'?'<div class="office-pl-country-actions">'+vehicleButton('PL')+'</div>':'')+'</div></div>';
   };
   // Do not reveal the Poland section to FR-only users. The server already
   // filtered state.warehouses by live per-user market settings.
-  const plSection=pl.length?group('PL',pl.map(renderReal).join(''),false,true):'';
+  const plSection=pl.length?group('PL',pl.map(renderPolishWarehouse).join(''),false,false):'';
 
   const frItems=[],bovisItems=[];
   const pushFrench=(label,key,realId='')=>{
@@ -555,12 +588,14 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-fr-module],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-aggregate-market]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-fr-module],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
     const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket==='FR';
+    const isPolishScoped=Boolean(el.dataset.plWarehouse)&&!state.preview&&
+      el.dataset.plWarehouse===state.warehouse&&state.view===el.dataset.view;
     const isMarketView=el.dataset.marketView==='PL'
       ?!state.preview&&state.view===el.dataset.view&&state.view!=='preview'&&
         realWarehouse(state.warehouse)?.country_code==='PL'
@@ -588,7 +623,7 @@ function renderMenu(){
       :el.dataset.marketVehicles==='PL'
         ?!state.preview&&state.view==='vehicles'&&
           realWarehouse(state.warehouse)?.country_code==='PL':false;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles));
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped));
     if(el.dataset.frWarehouseToggle)el.classList.toggle('is-expanded',isFrWarehouseExpanded);
   }
 }
