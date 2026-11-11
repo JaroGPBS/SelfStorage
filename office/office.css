@@ -3947,3 +3947,261 @@
 .app.view-vehicles .vehicle-preview-detail-v2 thead tr.vehicle-preview-rail-head-row th.vehicle-preview-latest-header{
   border-right:2px solid #c0cad5!important;
 }
+
+
+/* French warehouse navigation: separate return-to-stock action and clean chevrons. */
+.office-market-list .office-fr-warehouse-toggle .office-fr-warehouse-chevron{
+  width:17px;
+  height:17px;
+  flex:0 0 17px;
+  display:block;
+  padding:2px;
+  box-sizing:border-box;
+  color:#b9c5d1;
+  border-radius:5px;
+  background:rgba(255,255,255,.06);
+  transition:transform .18s ease,color .18s ease,background-color .18s ease;
+}
+.office-market-list .office-fr-warehouse-toggle:hover .office-fr-warehouse-chevron{
+  color:#fff;
+  background:rgba(255,255,255,.13);
+}
+.office-market-list .office-fr-warehouse-toggle[aria-expanded="true"] .office-fr-warehouse-chevron{
+  transform:rotate(180deg);
+  color:#f0b7bd;
+  background:rgba(255,255,255,.09);
+}
+.office-market-list .office-fr-warehouse-operations .office-fr-stock-link.active{
+  color:#fff;
+  background:rgba(200,56,68,.2);
+  border-left:2px solid #e26c74;
+  font-weight:800;
+}
+
+/* Vehicle table V3: two independent side-by-side tables.
+   This makes it impossible for scrolling audit headings to overlap fixed
+   GPBS/SAP/name/quantity columns or the newest inventory. */
+.app.view-vehicles .vehicle-preview-split-table{
+  display:flex;
+  align-items:stretch;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  border:1px solid #dce3e9;
+  border-radius:5px;
+  box-sizing:border-box;
+  background:#fff;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed{
+  flex:0 0 auto;
+  align-self:stretch;
+  min-width:0;
+  overflow:hidden;
+  border-right:2px solid #bec9d4;
+  box-sizing:content-box;
+  background:#fff;
+  z-index:1;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history{
+  flex:1 1 auto;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  background:#fff;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-table-wrap{
+  width:100%;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  box-sizing:border-box;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-table-wrap::-webkit-scrollbar{
+  display:none;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-scrollbar{
+  display:block;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  height:17px;
+  margin:0;
+  border-top:0;
+  border-bottom:1px solid #e0e6ec;
+  background:#f2f4f7;
+  overflow-x:scroll;
+  overflow-y:hidden;
+  scrollbar-width:auto;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-scrollbar-track{
+  display:block;
+  height:1px;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table,
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table{
+  table-layout:fixed;
+  max-width:none;
+  min-width:0;
+  border-spacing:0;
+  border-collapse:separate;
+  margin:0;
+  color:#34404b;
+  background:#fff;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table th,
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table td,
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table th,
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table td{
+  box-sizing:border-box;
+  padding:7px 4px;
+  height:41px;
+  min-height:41px;
+  max-height:41px;
+  font-size:11px;
+  line-height:1.25;
+  border-right:1px solid #e1e6eb;
+  border-bottom:1px solid #edf0f3;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  vertical-align:middle;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table thead th{
+  height:71px;
+  min-height:71px;
+  max-height:71px;
+  padding:5px 3px;
+  font-size:10px;
+  text-transform:uppercase;
+  font-weight:800;
+  text-align:center;
+  background:#f5f7fa;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table thead th{
+  height:54px;
+  min-height:54px;
+  max-height:54px;
+  padding:0;
+  font-size:10px;
+  text-align:center;
+  background:#f5f7fa;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table td.vehicle-split-part-name{
+  text-align:left;
+  font-size:11px;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table td.vehicle-preview-num,
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table td.vehicle-preview-num{
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table td.vehicle-preview-current small{
+  display:block;
+  margin-top:2px;
+  font-size:9px;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table thead th.vehicle-split-newest-head{
+  background:#f0f4f8;
+  border-right:0;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table th.vehicle-split-selected-head{
+  background:#f0f4f8;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button{
+  min-height:33px;
+  height:33px;
+  padding:3px 2px;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button span{
+  font-size:9px;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button small{
+  margin-top:2px;
+  font-size:9px;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-subhead{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:center;
+  height:20px;
+  margin:0;
+  padding:0;
+  border-top:1px solid #dce3e9;
+  background:#f0f3f6;
+  font-size:9px;
+  font-weight:750;
+  color:#667383;
+  text-transform:none;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-subhead span{
+  min-width:0;
+  text-align:center;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-subhead span+span{
+  border-left:1px solid #dce3e9;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-preview-difference.is-positive{
+  color:#168654;
+  font-weight:850;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-preview-difference.is-negative{
+  color:#bd3341;
+  font-weight:850;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table th:nth-child(3){
+  font-size:10px;
+  text-transform:none;
+  white-space:nowrap;
+}
+
+/* Small label/name/plate in the vehicle selector, centered and tightly stacked. */
+.app.view-vehicles .vehicle-preview .vehicle-preview-team-btn{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  min-height:46px;
+  padding:4px 3px;
+  line-height:1.08;
+  text-align:center;
+}
+.app.view-vehicles .vehicle-preview-team-btn .vehicle-team-caption{
+  display:block;
+  width:100%;
+  font-size:8px;
+  line-height:1.1;
+  font-weight:500;
+  color:#8794a2;
+  text-align:center;
+  text-transform:none;
+}
+.app.view-vehicles .vehicle-preview-team-btn .vehicle-team-name{
+  display:block;
+  width:100%;
+  font-size:11px;
+  line-height:1.12;
+  font-weight:850;
+  color:inherit;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  text-align:center;
+}
+.app.view-vehicles .vehicle-preview .vehicle-preview-team-btn small{
+  margin:0;
+  font-size:9px;
+  line-height:1.1;
+}
+@media(max-width:1050px){
+  .app.view-vehicles .vehicle-preview-split-table{
+    overflow-x:auto;
+    scrollbar-width:auto;
+  }
+  .app.view-vehicles .vehicle-preview-split-table .vehicle-split-history{
+    flex:1 0 250px;
+    min-width:250px;
+  }
+}
