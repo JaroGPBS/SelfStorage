@@ -1201,12 +1201,11 @@ function drawPolishVehiclePreview(){
   const minWidth=Math.max(46,Math.ceil(Math.max(measureCode('Stock'),measureCode('min.'))+12));
   const currentWidth=88;
   const inventoryWidth=88,selectedSubWidth=49;
-  const selectedInventory=Math.min(Math.max(
-    Number.isInteger(state.vehicleSelectedInventory)?state.vehicleSelectedInventory:0,0),
-    Math.max(0,history.length-1));
+  // Newest audit is permanently split into Suma / Różnica.
+  // Opening any historical report must not modify visible table columns.
+  const newestWidth=history.length?2*selectedSubWidth:0;
   const fixedWidth=gpbsWidth+sapWidth+minWidth+nameWidth+currentWidth;
-  const historyWidth=history.length*inventoryWidth+
-    (history.length?selectedSubWidth*2-inventoryWidth:0);
+  const historyWidth=newestWidth+Math.max(0,history.length-1)*inventoryWidth;
   const layout=' style="--vehicle-name-width:'+nameWidth+'px;'+
     '--vehicle-gpbs-width:'+gpbsWidth+'px;'+
     '--vehicle-sap-width:'+sapWidth+'px;'+
@@ -1216,7 +1215,7 @@ function drawPolishVehiclePreview(){
     '--vehicle-fixed-width:'+fixedWidth+'px;'+
     '--vehicle-selected-sub-width:'+selectedSubWidth+'px;'+
     '--vehicle-history-rail-start:'+
-      (fixedWidth+(selectedInventory===0?selectedSubWidth*2:inventoryWidth))+'px;'+
+      (fixedWidth+newestWidth)+'px;'+
     '--vehicle-table-width:'+(fixedWidth+historyWidth)+'px"';
   let table='';
   if(summary){
@@ -1242,37 +1241,31 @@ function drawPolishVehiclePreview(){
     // Fixed left pane: part indexes, stock and the newest inventory.
     // Only the separate right-hand table with older audits can scroll.
     const newest=history[0]||null;
-    const newestExpanded=Boolean(newest)&&selectedInventory===0;
-    const newestWidth=newestExpanded?2*selectedSubWidth:inventoryWidth;
     const past=history.slice(1);
-    const pastWidth=past.length*inventoryWidth+
-      (selectedInventory>0?selectedSubWidth*2-inventoryWidth:0);
+    const pastWidth=past.length*inventoryWidth;
     const subhead='<div class="vehicle-split-subhead"><span>SUMA</span><span>Różnica</span></div>';
     const col=(width)=>'<col style="width:'+width+'px">';
     const fixedCols='<colgroup>'+
       [gpbsWidth,sapWidth,minWidth,nameWidth,currentWidth,
-       ...(newestExpanded?[selectedSubWidth,selectedSubWidth]:newest?[inventoryWidth]:[])]
+       ...(newest?[selectedSubWidth,selectedSubWidth]:[])]
       .map(col).join('')+'</colgroup>';
     const fixedHead='<thead><tr>'+
       '<th>Indeks GPBS</th><th>Indeks SAP</th>'+
       '<th>Stock<br>min.</th><th>Nazwa części</th><th>Aktualny<br>stan</th>'+
-      (newest?'<th class="vehicle-split-newest-head" colspan="'+
-        (newestExpanded?2:1)+'">'+vehicleInventoryButton(newest,0)+
-        (newestExpanded?subhead:'')+'</th>':'')+'</tr></thead>';
+      (newest?'<th class="vehicle-split-newest-head" colspan="2">'+
+        vehicleInventoryButton(newest,0)+subhead+'</th>':'')+'</tr></thead>';
     const fixedBody=parts.map((p,index)=>{
       const stock=vehicleDemoStockFor(p,index,crew.id),shortage=stock.current<p.required;
       let latestCells='';
       if(newest){
         const sum=newest.counts[index];
-        if(newestExpanded){
-          const before=newest.before[index];
-          const d=sum==null||before==null?null:sum-before;
-          const diff=d==null?'—':d>0?'+'+d:String(d);
-          const color=d>0?' is-positive':d<0?' is-negative':'';
-          latestCells='<td class="vehicle-preview-num">'+quantity(sum)+'</td>'+
-            '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
-            escapeHtml(diff)+'</td>';
-        }else latestCells='<td class="vehicle-preview-num">'+quantity(sum)+'</td>';
+        const before=newest.before[index];
+        const d=sum==null||before==null?null:sum-before;
+        const diff=d==null?'—':d>0?'+'+d:String(d);
+        const color=d>0?' is-positive':d<0?' is-negative':'';
+        latestCells='<td class="vehicle-preview-num">'+quantity(sum)+'</td>'+
+          '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
+          escapeHtml(diff)+'</td>';
       }
       return '<tr>'+
         '<td>'+escapeHtml(p.index)+'</td>'+
@@ -1289,27 +1282,15 @@ function drawPolishVehiclePreview(){
     const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
       (fixedWidth+newestWidth)+'px">'+fixedCols+fixedHead+
       '<tbody>'+fixedBody+'</tbody></table>';
-    const pastCols='<colgroup>'+past.map((h,i)=>i+1===selectedInventory
-      ?col(selectedSubWidth)+col(selectedSubWidth):col(inventoryWidth))
+    // Older audits stay single-column: detail/differences live in their reports.
+    const pastCols='<colgroup>'+past.map(()=>col(inventoryWidth))
       .join('')+'</colgroup>';
-    const pastHead='<thead><tr>'+past.map((h,i)=>{
-      const expanded=i+1===selectedInventory;
-      return '<th colspan="'+(expanded?2:1)+'"'+
-        (expanded?' class="vehicle-split-selected-head"':'')+'>'+
-        vehicleInventoryButton(h,i+1)+(expanded?subhead:'')+'</th>';
-    }).join('')+'</tr></thead>';
-    const pastBody=parts.map((p,index)=>'<tr>'+past.map((h,i)=>{
-      const sum=h.counts[index];
-      if(i+1!==selectedInventory)
-        return '<td class="vehicle-preview-num">'+quantity(sum)+'</td>';
-      const before=h.before[index];
-      const d=sum==null||before==null?null:sum-before;
-      const diff=d==null?'—':d>0?'+'+d:String(d);
-      const color=d>0?' is-positive':d<0?' is-negative':'';
-      return '<td class="vehicle-preview-num">'+quantity(sum)+'</td>'+
-        '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
-        escapeHtml(diff)+'</td>';
-    }).join('')+'</tr>').join('');
+    const pastHead='<thead><tr>'+past.map((h,i)=>
+      '<th>'+vehicleInventoryButton(h,i+1)+'</th>'
+    ).join('')+'</tr></thead>';
+    const pastBody=parts.map((p,index)=>'<tr>'+past.map(h=>
+      '<td class="vehicle-preview-num">'+quantity(h.counts[index])+'</td>'
+    ).join('')+'</tr>').join('');
     const pastTable='<table class="table vehicle-split-history-table" style="width:'+
       Math.max(1,pastWidth)+'px">'+pastCols+pastHead+
       '<tbody>'+pastBody+'</tbody></table>';
@@ -1874,8 +1855,7 @@ document.addEventListener('click',e=>{
   if(inventoryButton&&state.view==='vehicles'){
     const index=Number(inventoryButton.dataset.vehicleInventoryIndex);
     if(Number.isInteger(index)&&index>=0){
-      state.vehicleSelectedInventory=index;
-      drawVehicles();
+      // Opening a report does not shift Suma/Różnica or reset scroll position.
       openPolishVehicleInventory(index);
     }
     return;
