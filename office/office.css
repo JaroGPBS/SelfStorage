@@ -4431,3 +4431,285 @@
   padding-left:0;
   padding-right:0;
 }
+
+
+/* Fleet workflow preview: keep the familiar three-tab layout uncluttered. */
+.app.view-vehicles .vehicle-demo-transfers{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:7px 3px 12px;
+}
+.app.view-vehicles .vehicle-demo-transfers-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:15px;
+}
+.app.view-vehicles .vehicle-demo-transfers-head h3{
+  font-size:16px;
+  font-weight:800;
+  color:#303b46;
+  margin-bottom:4px;
+}
+.app.view-vehicles .vehicle-demo-transfers-head p{
+  font-size:12px;
+  color:#7d8997;
+  line-height:1.5;
+}
+.app.view-vehicles .vehicle-demo-label{
+  flex:none;
+  align-self:flex-start;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.065em;
+  color:#a45e65;
+  background:#fff6f7;
+  border:1px solid #edcfd1;
+  border-radius:5px;
+  padding:6px 9px;
+}
+.app.view-vehicles .vehicle-demo-transfers-list{
+  display:grid;
+  gap:7px;
+}
+.app.view-vehicles .vehicle-demo-transfer-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:12px 14px;
+  border:1px solid #e1e6ea;
+  border-radius:7px;
+  background:#fff;
+}
+.app.view-vehicles .vehicle-demo-transfer-card.is-pending{
+  border-left:3px solid #d4a44c;
+  background:#fffdfa;
+}
+.app.view-vehicles .vehicle-demo-transfer-card.is-complete{
+  border-left:3px solid #6aa98d;
+}
+.app.view-vehicles .vehicle-demo-transfer-card.is-rejected{
+  border-left:3px solid #c35a62;
+}
+.app.view-vehicles .vehicle-demo-transfer-title{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:5px;
+}
+.app.view-vehicles .vehicle-demo-transfer-title strong{
+  font-size:13px;
+  font-weight:800;
+  color:#35414f;
+}
+.app.view-vehicles .vehicle-demo-transfer-title strong span{color:#a1aab5}
+.app.view-vehicles .vehicle-demo-transfer-status{
+  color:#4b876a;
+  font-size:10px;
+  font-weight:700;
+}
+.app.view-vehicles .is-pending .vehicle-demo-transfer-status{color:#a07933}
+.app.view-vehicles .is-rejected .vehicle-demo-transfer-status{color:#bc4856}
+.app.view-vehicles .vehicle-demo-transfer-main{min-width:0}
+.app.view-vehicles .vehicle-demo-transfer-main p{
+  color:#495564;
+  font-size:12px;
+  margin-bottom:4px;
+}
+.app.view-vehicles .vehicle-demo-transfer-main p b{font-weight:800}
+.app.view-vehicles .vehicle-demo-transfer-main small{font-size:10px;color:#939da8}
+.app.view-vehicles .vehicle-demo-approve{
+  flex:none;
+  padding:7px 10px;
+  font-size:11px;
+  white-space:nowrap;
+}
+.app.view-vehicles .vehicle-demo-transfers-foot{
+  font-size:11px;
+  color:#788593;
+  line-height:1.5;
+}
+.app.view-vehicles .vehicle-preview-summary{
+  width:max-content;
+  min-width:100%;
+  table-layout:auto;
+}
+.app.view-vehicles .vehicle-preview-summary th,
+.app.view-vehicles .vehicle-preview-summary td{
+  padding:7px 7px!important;
+  font-size:11px;
+}
+.app.view-vehicles .vehicle-preview-summary th.vehicle-preview-column{
+  min-width:96px;
+  max-width:120px;
+  width:auto;
+  text-align:center;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-column .vehicle-preview-car-header{
+  align-items:center;
+  gap:1px;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-column .vehicle-preview-car-header strong{
+  font-size:11px;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-column .vehicle-preview-car-header small{
+  font-size:10px;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-column .vehicle-preview-car-header span{
+  font-size:9px;
+}
+.app.view-vehicles .vehicle-preview-summary td.vehicle-preview-part-name{
+  min-width:var(--vehicle-name-width,210px);
+  font-size:11px;
+}
+.app.view-vehicles .vehicle-preview-summary td.vehicle-preview-num,
+.app.view-vehicles .vehicle-preview-summary th.vehicle-preview-num{
+  text-align:center!important;
+  width:1%;
+  white-space:nowrap;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button{
+  position:relative;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button .vehicle-inventory-markers{
+  position:absolute;
+  top:1px;
+  right:2px;
+  display:flex;
+  align-items:center;
+  gap:1px;
+  font-size:9px;
+  line-height:1;
+  color:#bd4550;
+  pointer-events:none;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button .vehicle-inventory-marker{
+  font-size:9px;
+  line-height:1;
+  font-weight:850;
+  color:#bd4550;
+}
+@media(max-width:720px){
+  .app.view-vehicles .vehicle-demo-transfer-card{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .app.view-vehicles .vehicle-demo-transfers-head{
+    flex-wrap:wrap;
+  }
+}
+/* Contextual movement details in the compact inventory report. */
+#modal .vehicle-report-general-note{
+  margin:0;
+  padding:8px 11px;
+  background:#f8fafc;
+  border:1px solid #e5eaf0;
+  border-radius:6px;
+  color:#515d6c;
+  font-size:11px;
+}
+#modal .vehicle-report-period{
+  margin:0;
+  font-size:10px;
+  color:#84909c;
+  line-height:1.3;
+}
+#modal .vehicle-history-card .vehicle-preview-history-table .vehicle-report-expand{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:2px 5px;
+  margin-left:6px;
+  border:1px solid #dce3ea;
+  border-radius:4px;
+  color:#546474;
+  background:#f6f8fa;
+  font-size:9px;
+  line-height:1.15;
+  font-weight:750;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+#modal .vehicle-history-card .vehicle-preview-history-table .vehicle-report-expand:hover{
+  border-color:#a9bac7;
+  background:#edf2f7;
+}
+#modal .vehicle-preview-history-table tr.vehicle-report-movement-row td{
+  height:auto;
+  padding:3px 10px 9px!important;
+  background:#f8fafc;
+  white-space:normal;
+}
+#modal .vehicle-report-movement-list{
+  display:grid;
+  gap:4px;
+  border-left:2px solid #bbcbd8;
+  padding:2px 8px;
+  font-size:10px;
+}
+#modal .vehicle-report-movement{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+  padding:5px 7px;
+  background:#fff;
+  border:1px solid #e8edf1;
+  border-radius:4px;
+}
+#modal .vehicle-report-movement-info{
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+#modal .vehicle-report-movement-info strong{
+  font-size:10px;
+  font-weight:750;
+  color:#465564;
+}
+#modal .vehicle-report-movement-info small{
+  color:#7c8895;
+  font-size:9px;
+}
+#modal .vehicle-report-movement>span{
+  color:#334a5d;
+  font-size:10px;
+  font-weight:850;
+  white-space:nowrap;
+}
+#modal .vehicle-report-movement.is-pending{
+  border-left:2px solid #d5aa53;
+}
+@media print{
+  body.vehicle-inventory-print-active #modal .vehicle-report-movement-row.hidden{
+    display:table-row!important;
+  }
+  body.vehicle-inventory-print-active #modal .vehicle-report-expand{
+    display:none!important;
+  }
+  body.vehicle-inventory-print-active #modal .vehicle-report-period{
+    display:none!important;
+  }
+  body.vehicle-inventory-print-active #modal .vehicle-report-general-note{
+    margin:0 0 4mm!important;
+    padding:2mm!important;
+    font-size:8pt!important;
+    break-inside:avoid;
+  }
+  body.vehicle-inventory-print-active #modal .vehicle-report-movement-row{
+    break-inside:avoid;
+  }
+  body.vehicle-inventory-print-active #modal .vehicle-report-movement{
+    break-inside:avoid;
+    border:0!important;
+    border-bottom:1px solid #d6dce3!important;
+    padding:1mm 2mm!important;
+  }
+  body.vehicle-inventory-print-active #modal .vehicle-report-movement-info strong,
+  body.vehicle-inventory-print-active #modal .vehicle-report-movement-info small{
+    font-size:7.5pt!important;
+  }
+}
