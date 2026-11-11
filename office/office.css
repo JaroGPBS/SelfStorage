@@ -4930,3 +4930,42 @@
   font-weight:650;
   line-height:10px;
 }
+
+
+/* FR fleet catalogue reads the same D1 records as Admin; no fake stock. */
+.app.view-vehicles .vehicle-catalogue-info{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:8px 18px;
+  padding:9px 3px 7px;
+  font-size:12px;
+  color:#364452;
+}
+.app.view-vehicles .vehicle-catalogue-info strong{
+  font-size:13px;
+  font-weight:800;
+}
+.app.view-vehicles .vehicle-catalogue-info span{
+  font-size:11px;
+  color:#768391;
+}
+.app.view-vehicles .vehicle-catalogue-live{
+  width:100%;
+  min-width:760px;
+  table-layout:auto;
+}
+.app.view-vehicles .vehicle-catalogue-live th,
+.app.view-vehicles .vehicle-catalogue-live td{
+  padding:10px 12px;
+  height:39px;
+  font-size:11px;
+}
+.app.view-vehicles .vehicle-catalogue-live th{
+  font-size:10px;
+}
+.app.view-vehicles .vehicle-catalogue-live td.vehicle-split-part-name{
+  min-width:230px;
+  white-space:normal;
+}
