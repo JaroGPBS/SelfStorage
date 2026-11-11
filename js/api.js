@@ -69,8 +69,8 @@ async function request(action, payload = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
 }
 
 export const api = {
-  login(pin) {
-    return request('LOGIN', { pin });
+  login(pin, registration = '') {
+    return request('LOGIN', { pin, rejestracja: registration });
   },
 
   getStartData(idEkipy, fresh = false) {
