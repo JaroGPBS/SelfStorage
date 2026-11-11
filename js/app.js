@@ -23,6 +23,8 @@ let scannerMode = null;
 let quantityTarget = null;
 let vehicleStockRequest = null;
 let vehicleManualDraft = {};
+let pendingManualSave = null;
+let pendingWeeklySave = null;
 let vehicleManualPart = null;
 let vehicleInventoryParts = [];
 
@@ -296,6 +298,8 @@ function resetState() {
   state.vehicleStockCache = null;
   vehicleStockRequest = null;
   vehicleManualDraft = {};
+  pendingManualSave = null;
+  pendingWeeklySave = null;
   vehicleManualPart = null;
   vehicleInventoryParts = [];
   clearState();
@@ -1172,6 +1176,10 @@ async function saveVehicleManualChanges() {
     }));
 
   const snapshot = { ...vehicleManualDraft };
+  const fingerprint=JSON.stringify(changes);
+  if(!pendingManualSave || pendingManualSave.fingerprint!==fingerprint){
+    pendingManualSave={fingerprint,id:makeVehicleChangeId('RECZNA')};
+  }
   setLoading(true, 'Zapisywanie stanu auta…');
 
   try {
@@ -1179,7 +1187,7 @@ async function saveVehicleManualChanges() {
       idEkipy: state.team.id,
       nazwaEkipy: state.team?.nazwa || '',
       idUrzadzenia: DEVICE_ID,
-      idZmiany: makeVehicleChangeId('RECZNA'),
+      idZmiany: pendingManualSave.id,
       typZmiany: 'RĘCZNA ZMIANA',
       zmiany: changes
     });
@@ -1192,6 +1200,7 @@ async function saveVehicleManualChanges() {
     );
 
     vehicleManualDraft = {};
+    pendingManualSave = null;
 
     if (localData) {
       storeVehicleStockCache(localData);
@@ -1395,6 +1404,10 @@ async function saveWeeklyReport() {
     };
   });
 
+  const fingerprint=JSON.stringify(changes);
+  if(!pendingWeeklySave || pendingWeeklySave.fingerprint!==fingerprint){
+    pendingWeeklySave={fingerprint,id:makeVehicleChangeId('INW')};
+  }
   setLoading(true, 'Zapisywanie cotygodniowego raportu…');
 
   try {
@@ -1402,7 +1415,7 @@ async function saveWeeklyReport() {
       idEkipy: state.team.id,
       nazwaEkipy: state.team?.nazwa || '',
       idUrzadzenia: DEVICE_ID,
-      idZmiany: makeVehicleChangeId('INW'),
+      idZmiany: pendingWeeklySave.id,
       typZmiany: 'INWENTARYZACJA',
       zmiany: changes
     });
@@ -1416,6 +1429,7 @@ async function saveWeeklyReport() {
 
     vehicleInventoryParts = [];
     vehicleManualDraft = {};
+    pendingWeeklySave = null;
 
     if (localData) {
       storeVehicleStockCache(localData);
