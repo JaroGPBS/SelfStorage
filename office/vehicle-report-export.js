@@ -57,8 +57,8 @@
           ' · '+amount;
         const bottom='Status: '+(move.status||'Zapisano')+
           (move.actor?' · '+move.actor:'');
-        return top+'\\n'+bottom;
-      }).join('\\n\\n');
+        return top+'\n'+bottom;
+      }).join('\n\n');
       const hasPending=movements.some(move=>/oczekuje/i.test(move.status||''));
       const height=movements.length?Math.min(390,Math.max(46,
         24+movements.length*44+Math.max(0,movements.length-1)*9)):32;
