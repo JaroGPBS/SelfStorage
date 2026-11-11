@@ -1220,7 +1220,10 @@ function openVehicleInventoryReport(report){
       '</div>'+
     '</div>'+
     '<div class="vehicle-report-meta">'+
-      field('Data',report.date)+field('Godzina',report.time)+
+      '<div class="vehicle-report-date-time">'+
+        '<div><span>Data</span><strong>'+escapeHtml(report.date||'—')+'</strong></div>'+
+        '<div><span>Godzina</span><strong>'+escapeHtml(report.time||'—')+'</strong></div>'+
+      '</div>'+
       field('Ekipa',report.team)+field('Tablica rejestracyjna',report.plate)+
       field('Inwentaryzację wykonał',report.by)+
     '</div>'+
