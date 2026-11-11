@@ -1941,19 +1941,24 @@ async function render(){
   if(state.view==='vehicles'){
     errorBanner('');
     const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
-    const french=state.preview?.type==='operation'&&
-      state.preview.key==='vehicles'&&state.vehicleTab==='detail';
+    const french=state.preview?.type==='operation'&&state.preview.key==='vehicles';
     if(polish||french){
       const ticket=++state.requestId;
       $('tableArea').innerHTML='<div class="loading">Wczytywanie katalogu samochodowego…</div>';
       try{
-        const response=await api('vehicleCatalog');
+        // French team membership is reloaded on entering each fleet tab,
+        // so a newly created Admin EKIPA appears without a second registry.
+        const [response,teamResponse]=await Promise.all([
+          api('vehicleCatalog'),
+          french?api('vehicleCrews'):Promise.resolve({crews:[]})
+        ]);
         if(ticket!==state.requestId)return;
         if(polish&&OFFICE_VEHICLE_DEMO_ENABLED){
           useVehicleCatalogueInDemo(response.parts||[]);
           drawPolishVehiclePreview();
         }else if(french){
-          drawFrenchVehicleCatalogue(response.parts||[]);
+          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[]};
+          drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews);
         }else drawVehicles();
       }catch(ex){
         if(ticket!==state.requestId)return;
@@ -2284,6 +2289,16 @@ document.addEventListener('click',e=>{
     if(Number.isInteger(index)&&index>=0){
       // Opening a report does not shift Suma/Różnica or reset scroll position.
       openPolishVehicleInventory(index);
+    }
+    return;
+  }
+  const frenchCrew=e.target.closest('[data-fr-vehicle-crew]');
+  if(frenchCrew&&state.view==='vehicles'&&
+     state.preview?.type==='operation'&&state.preview.key==='vehicles'){
+    const id=frenchCrew.dataset.frVehicleCrew;
+    if(state.frVehicleData?.crews?.some(c=>c.id===id)){
+      state.frVehicleCrew=id;
+      drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews);
     }
     return;
   }
