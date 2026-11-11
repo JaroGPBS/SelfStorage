@@ -895,3 +895,45 @@ tr:hover td{background:#ffffff04}
   .users-table .user-row-actions{display:flex;gap:5px;align-items:center}
   .users-table .user-row-actions .btn{margin:0}
 }
+
+
+/* Vehicle parts are a filtered view of the shared catalogue (never duplicates).
+   Keep editing controls compact and let long legacy index lists scroll normally. */
+.main-layout .vehicle-catalogue-table th,
+.main-layout .vehicle-catalogue-table td{
+  padding:10px 12px;
+  vertical-align:middle;
+}
+.main-layout .vehicle-catalogue-table .part-name-cell{
+  min-width:235px;
+  white-space:normal;
+}
+.main-layout .vehicle-catalogue-table .vehicle-requirement-cell{
+  white-space:nowrap;
+  min-width:160px;
+}
+.main-layout .vehicle-requirement-input{
+  width:68px;
+  min-width:68px;
+  max-width:68px;
+  height:32px;
+  padding:5px 6px;
+  margin:0 7px 0 0;
+  border:1px solid var(--edge2);
+  background:var(--surface2);
+  border-radius:6px;
+  color:var(--white);
+  font:inherit;
+  text-align:center;
+  vertical-align:middle;
+}
+.main-layout .vehicle-requirement-input:focus-visible{
+  outline:2px solid #aabed5;
+  outline-offset:1px;
+}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"])
+  .main-layout .vehicle-requirement-input{
+  background:var(--admin-theme-card);
+  border-color:var(--admin-theme-line);
+  color:var(--admin-theme-ink);
+}
