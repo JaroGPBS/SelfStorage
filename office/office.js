@@ -53,7 +53,7 @@ const PL_VEHICLE_TEST_PREVIEW={
 };
 // Only the aggregate comparison needs 14 fictional crews.
 // Ekipy shows nine demo teams; aggregate has eighteen.
-const PL_VEHICLE_SUMMARY_CREWS=[
+let PL_VEHICLE_SUMMARY_CREWS=[
   ...PL_VEHICLE_TEST_PREVIEW.crews,
   ...Array.from({length:15},(_,i)=>{
     const n=String(i+4).padStart(2,'0');
@@ -204,7 +204,7 @@ function vehicleDemoStockFor(part,partIndex,crewId){
     // Only approvals made now in the preview affect example balances.
     if(movement.kind!=='transfer'||movement.status!=='pending'||
        vehicleDemoTransferStatus(movement)!=='approved')continue;
-    const units=movement.items.find(item=>item.i===partIndex)?.qty||0;
+    const units=vehicleDemoItems(movement).find(item=>item.i===partIndex)?.qty||0;
     if(movement.crew===crewId)current-=units;
     if(movement.peer===crewId)current+=units;
   }
@@ -259,6 +259,100 @@ PL_VEHICLE_TEST_HISTORY['demo-b'][0].note=
   'Przegląd wyposażenia po serwisie. Zweryfikować brakującą antenę.';
 PL_VEHICLE_TEST_HISTORY['demo-tw'][0].note=
   'Sprawdzono kompletność wyposażenia samochodu.';
+// All invented Office activity lives in this section, not in D1.
+// Turning this off later removes fake balances, crews, audits and transfers
+// without deleting the shared catalogue (or any real warehouse records).
+const OFFICE_VEHICLE_DEMO_ENABLED=true;
+const PL_VEHICLE_BASE_PARTS=PL_VEHICLE_TEST_PREVIEW.parts.map(p=>({...p}));
+const PL_VEHICLE_BASE_HISTORIES=Object.fromEntries(
+  Object.entries(PL_VEHICLE_TEST_HISTORY).map(([id,hist])=>[
+    id,hist.map(h=>({...h,before:[...h.before],counts:[...h.counts]}))
+  ])
+);
+// Six extra presentation crews only in Office.
+for(let n=4;n<=9;n++){
+  const digits=String(n).padStart(2,'0');
+  const id='demo-'+digits,team='TEST-'+digits;
+  const demoHistory=PL_VEHICLE_BASE_HISTORIES['demo-b'].map((h,i)=>({
+    ...h,by:team,
+    before:h.before.map((v,j)=>Math.max(0,v+((n+i+j)%3)-1)),
+    counts:h.counts.map((v,j)=>Math.max(0,v+((n*2+i+j)%3)-1))
+  }));
+  PL_VEHICLE_TEST_PREVIEW.crews.push({
+    id,team,plate:'DEMO '+String(n).padStart(3,'0'),
+    inventory:'07.11.2026',frequency:'Co 7 dni'
+  });
+  PL_VEHICLE_BASE_HISTORIES[id]=demoHistory;
+}
+PL_VEHICLE_SUMMARY_CREWS=[
+  ...PL_VEHICLE_TEST_PREVIEW.crews,
+  ...Array.from({length:9},(_,i)=>{
+    const n=i+10;
+    return {id:'demo-'+n,team:'TEST-'+n,
+      plate:'DEMO '+String(n).padStart(3,'0'),
+      inventory:String(3+i%7).padStart(2,'0')+'.11.2026',
+      frequency:'Co 7 dni'};
+  })
+];
+// Resolve the old sample movement references against the REAL catalogue.
+// This prevents an Admin reordering or removing a part from shifting movements
+// onto a different part merely because its row number changed.
+const DEMO_SOURCE_ROWS=[4,7,10,12,8,34];
+function vehicleDemoItems(movement){
+  return movement.items.flatMap(line=>{
+    const row=DEMO_SOURCE_ROWS[line.i];
+    const index=PL_VEHICLE_TEST_PREVIEW.parts.findIndex(p=>p.sourceRow===row);
+    return index<0?[]:[{i:index,qty:line.qty}];
+  });
+}
+function useVehicleCatalogueInDemo(catalogue){
+  if(!OFFICE_VEHICLE_DEMO_ENABLED)return;
+  const rows=Array.isArray(catalogue)?catalogue:[];
+  const primary=DEMO_SOURCE_ROWS.map(id=>rows.find(p=>p.source_row===id))
+    .filter(Boolean);
+  const seen=new Set(primary.map(p=>p.source_row));
+  const ordered=[...primary,...rows.filter(p=>!seen.has(p.source_row))];
+  const crews=PL_VEHICLE_TEST_PREVIEW.crews;
+  const originalByRow=new Map(DEMO_SOURCE_ROWS.map((id,i)=>[id,i]));
+  PL_VEHICLE_TEST_PREVIEW.parts=ordered.map((p,index)=>{
+    const originalIndex=originalByRow.get(p.source_row);
+    const old=originalIndex===undefined?null:PL_VEHICLE_BASE_PARTS[originalIndex];
+    const required=p.required_quantity==null?null:Number(p.required_quantity);
+    const stock={};
+    for(const [crewNo,crew] of crews.entries()){
+      if(old?.stock[crew.id]){
+        stock[crew.id]={...old.stock[crew.id]};
+      }else{
+        const baseline=required==null?2:required;
+        const current=Math.max(0,baseline+((p.source_row+crewNo*3)%5)-2);
+        stock[crew.id]={previous:Math.max(0,current+((index+crewNo)%3)-1),current};
+      }
+    }
+    return {
+      sourceRow:p.source_row,index:p.part_number||'—',
+      external:p.sap_number||p.source_sap||'',
+      name:p.name,required,stock
+    };
+  });
+  for(const [crewNo,crew] of crews.entries()){
+    PL_VEHICLE_TEST_HISTORY[crew.id]=(PL_VEHICLE_BASE_HISTORIES[crew.id]||[])
+      .map((h,week)=>({
+        ...h,by:crew.team,
+        before:ordered.map((p,index)=>{
+          const old=originalByRow.get(p.source_row);
+          if(old!==undefined)return h.before[old]??0;
+          const baseline=p.required_quantity==null?2:Number(p.required_quantity);
+          return Math.max(0,baseline+((p.source_row+crewNo+week*2)%5)-2);
+        }),
+        counts:ordered.map((p,index)=>{
+          const old=originalByRow.get(p.source_row);
+          if(old!==undefined)return h.counts[old]??0;
+          const baseline=p.required_quantity==null?2:Number(p.required_quantity);
+          return Math.max(0,baseline+((p.source_row+crewNo*2+week)%6)-3);
+        })
+      }));
+  }
+}
 const OFFICE_OPERATION_PREVIEWS={
   pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',
   inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',
@@ -1184,7 +1278,7 @@ function vehicleDemoTransfersView(){
       '<span class="vehicle-demo-label">DANE FIKCYJNE · PODGLĄD</span></div>'+
     '<div class="vehicle-demo-transfers-list">'+rows.map(t=>{
       const status=vehicleDemoTransferStatus(t);
-      const itemList=t.items.map(item=>{
+      const itemList=vehicleDemoItems(t).map(item=>{
         const p=PL_VEHICLE_TEST_PREVIEW.parts[item.i];
         return escapeHtml(p?.name||'Część')+' <b>'+escapeHtml(item.qty)+' szt.</b>';
       }).join(' · ');
@@ -1597,7 +1691,7 @@ function openPolishVehicleInventory(index){
   const items=parts.map((p,i)=>{
     const before=h.before[i],counted=h.counts[i];
     const partMoves=moves.flatMap(move=>
-      move.items.filter(line=>line.i===i).map(line=>({
+      vehicleDemoItems(move).filter(line=>line.i===i).map(line=>({
         id:move.id,kind:move.kind,date:move.date,time:move.time,
         description:vehicleDemoMoveLabel(move,crew.id),status:vehicleDemoStatusText(move),
         statusClass:vehicleDemoStatusClass(move),quantity:line.qty,
