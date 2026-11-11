@@ -969,15 +969,17 @@ function vehicleInventoryButton(h,index){
 function setupVehicleHistoryRail(){
   const rail=$('tableArea').querySelector('.vehicle-history-scrollbar');
   const wrap=$('tableArea').querySelector('.vehicle-setup-table-wrap');
-  const preview=$('tableArea').querySelector('.vehicle-preview');
-  if(!rail||!wrap||!preview)return;
+  const zone=$('tableArea').querySelector('.vehicle-preview-table-zone');
+  if(!rail||!wrap||!zone)return;
   rail.classList.remove('hidden');
   const available=rail.clientWidth;
   const overflow=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
   if(available<75||overflow<2){
     rail.classList.add('hidden');
+    zone.classList.remove('vehicle-has-history-rail');
     return;
   }
+  zone.classList.add('vehicle-has-history-rail');
   rail.querySelector('.vehicle-history-scrollbar-track').style.width=
     Math.ceil(available+overflow)+'px';
   if(rail.dataset.linked==='1')return;
@@ -1047,6 +1049,9 @@ function drawPolishVehiclePreview(){
     '--vehicle-current-width:'+currentWidth+'px;'+
     '--vehicle-inventory-width:'+inventoryWidth+'px;'+
     '--vehicle-fixed-width:'+fixedWidth+'px;'+
+    '--vehicle-selected-sub-width:'+selectedSubWidth+'px;'+
+    '--vehicle-history-rail-start:'+
+      (fixedWidth+(selectedInventory===0?selectedSubWidth*2:inventoryWidth))+'px;'+
     '--vehicle-table-width:'+(fixedWidth+historyWidth)+'px"';
   let table='';
   if(summary){
@@ -1078,6 +1083,7 @@ function drawPolishVehiclePreview(){
       '<th rowspan="2" class="vehicle-preview-num">Aktualny<br>stan</th>'+
       history.map((h,i)=>
         '<th class="vehicle-preview-inventory-col'+
+        (i===0?' vehicle-preview-latest-header':'')+
         (i===selectedInventory?' is-selected':'')+
         '"'+(i===selectedInventory?' colspan="2"':' rowspan="2"')+'>'+
         vehicleInventoryButton(h,i)+'</th>').join('')+
@@ -1097,16 +1103,21 @@ function drawPolishVehiclePreview(){
       const historical=history.map((h,i)=>{
         const amount=h.counts[index];
         if(i!==selectedInventory){
-          return '<td class="vehicle-preview-num">'+quantity(amount)+'</td>';
+          return '<td class="vehicle-preview-num'+
+            (i===0?' vehicle-preview-latest-audit vehicle-preview-latest-end':'')+
+            '">'+quantity(amount)+'</td>';
         }
         const before=h.before[index];
         const delta=amount==null||before==null?null:amount-before;
         const diff=delta==null?'—':delta>0?'+'+delta:String(delta);
         const color=delta>0?' is-positive':delta<0?' is-negative':'';
-        return '<td class="vehicle-preview-num vehicle-inventory-selected-sum">'+
+        return '<td class="vehicle-preview-num vehicle-inventory-selected-sum'+
+          (i===0?' vehicle-preview-latest-audit':'')+'">'+
           quantity(amount)+'</td>'+
           '<td class="vehicle-preview-num vehicle-preview-difference'+color+
-          ' vehicle-inventory-selected-diff">'+escapeHtml(diff)+'</td>';
+          ' vehicle-inventory-selected-diff'+
+          (i===0?' vehicle-preview-latest-audit vehicle-preview-latest-subdiff vehicle-preview-latest-end':'')+
+          '">'+escapeHtml(diff)+'</td>';
       }).join('');
       return '<tr>'+
         '<td>'+escapeHtml(p.index)+'</td>'+
@@ -1126,9 +1137,9 @@ function drawPolishVehiclePreview(){
       'aria-label="Przewijanie starszych inwentaryzacji">'+
       '<div class="vehicle-history-scrollbar-track"></div></div>');
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview"'+layout+'>'+
-    tabs+teamSelector+
-    (summary?'':'<div class="vehicle-meta-history-row">'+meta+scrollbar+'</div>')+
-    '<div class="vehicle-setup-table-wrap">'+table+'</div></div>';
+    tabs+teamSelector+meta+
+    '<div class="vehicle-preview-table-zone">'+scrollbar+
+      '<div class="vehicle-setup-table-wrap">'+table+'</div></div></div>';
   $('tableFooter').textContent=summary
     ?'Podgląd · '+crews.length+' samochody · '+parts.length+' przykładowych części'
     :'Podgląd · '+crew.team+' · '+crew.plate+' · '+parts.length+
