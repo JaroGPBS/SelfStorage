@@ -112,7 +112,8 @@ async function login(request,env,pin) {
 
   // Current activation, archives and PL warehouse grants are mandatory.
   const user=await loadActiveWorker(env,existing.user_id);
-  if(!user)return fail('Nieprawidłowy PIN lub brak dostępu.',401);
+  if(!user || !user.markets.PL || !user.warehouses.length)
+    return fail('Nieprawidłowy PIN lub brak dostępu.',401);
   const token=await createWorkerSession(env,user);
   const {pinDigest,...safeUser}=user;
   // This endpoint is for the Polish phone interface; it must not show FR
