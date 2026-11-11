@@ -644,6 +644,10 @@ function setHead(title,kicker,desc){
   $('app').classList.toggle('view-labels',workingLabels);
   $('app').classList.toggle('view-fr-empty',frEmpty);
   $('vehicleTopContext').classList.toggle('hidden',!vehicleView);
+  // Show this warning only where fictional fleet data are rendered.
+  const fictionalFleet=vehicleView&&!state.preview&&
+    realWarehouse(state.warehouse)?.country_code==='PL';
+  $('vehicleDemoBanner').classList.toggle('hidden',!fictionalFleet);
   $('vehicleTopExportHost').classList.toggle('hidden',!vehicleView);
   $('officeTableCard').querySelector('.table-toolbar').classList.toggle('hidden',vehicleView);
   if(vehicleView)$('vehicleTopExportHost').append($('export'));
