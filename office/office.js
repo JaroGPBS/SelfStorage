@@ -1048,7 +1048,7 @@ function drawPolishVehiclePreview(){
     Math.max(...parts.map(p=>measureCode(p.index||'')))+20));
   const sapWidth=Math.max(88,Math.ceil(
     Math.max(...parts.map(p=>measureCode(p.external||'')))+20));
-  const minWidth=Math.max(56,Math.ceil(measureCode('Stock min.')+12));
+  const minWidth=Math.max(46,Math.ceil(Math.max(measureCode('Stock'),measureCode('min.'))+12));
   const currentWidth=88;
   const inventoryWidth=88,selectedSubWidth=49;
   const selectedInventory=Math.min(Math.max(
@@ -1071,7 +1071,7 @@ function drawPolishVehiclePreview(){
   let table='';
   if(summary){
     const head='<tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
-      '<th>Stock min.</th><th>Nazwa części</th>'+
+      '<th>Stock<br>min.</th><th>Nazwa części</th>'+
       crews.map(c=>'<th class="vehicle-preview-num vehicle-preview-column">'+
         '<div class="vehicle-preview-car-header"><strong>'+escapeHtml(c.team)+'</strong>'+
         '<small>'+escapeHtml(c.plate)+'</small>'+
@@ -1105,7 +1105,7 @@ function drawPolishVehiclePreview(){
       .map(col).join('')+'</colgroup>';
     const fixedHead='<thead><tr>'+
       '<th>Indeks GPBS</th><th>Indeks SAP</th>'+
-      '<th>Stock min.</th><th>Nazwa części</th><th>Aktualny<br>stan</th>'+
+      '<th>Stock<br>min.</th><th>Nazwa części</th><th>Aktualny<br>stan</th>'+
       (newest?'<th class="vehicle-split-newest-head" colspan="'+
         (newestExpanded?2:1)+'">'+vehicleInventoryButton(newest,0)+
         (newestExpanded?subhead:'')+'</th>':'')+'</tr></thead>';
