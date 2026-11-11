@@ -5056,3 +5056,50 @@
     min-width:0;
   }
 }
+
+
+/* Polish Office navigation: static warehouse name, indented operations,
+   country-wide vehicle stocks remain on the outer indentation level. */
+.office-market-list .office-pl-warehouse-group{display:grid;gap:1px;margin:3px 0 7px}
+.office-market-list .office-pl-warehouse{
+  margin:3px 0 0;
+  padding:7px 9px 6px 12px;
+  min-height:32px;
+  font-size:13px;
+  font-weight:850;
+  letter-spacing:.03em;
+  color:#e6ebf3;
+}
+.office-market-list .office-pl-operations{
+  display:grid;
+  gap:1px;
+  margin:1px 0 0 13px;
+  padding:0 0 0 7px;
+  border-left:1px solid rgba(205,218,236,.14);
+}
+.office-market-list .office-pl-operation{
+  padding:7px 6px;
+  min-height:34px;
+}
+.office-market-list .office-pl-country-actions{
+  padding-top:4px;
+  margin-top:4px;
+  border-top:1px solid rgba(205,218,236,.12);
+}
+.office-market-list .office-pl-country-actions .office-vehicle-link{
+  padding-left:12px;
+}
+.office-market-list .office-operation-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:20px;
+  height:20px;
+  flex:0 0 20px;
+}
+.office-market-list .office-operation-icon svg{
+  display:block;
+  width:18px;
+  height:18px;
+  stroke:currentColor;
+}
