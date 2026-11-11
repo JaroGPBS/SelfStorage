@@ -1079,6 +1079,66 @@ function drawPolishVehiclePreview(){
   $('vehicleTopScroll').classList.add('hidden');
   if(!summary)requestAnimationFrame(setupVehicleHistoryRail);
 }
+function openVehicleInventoryReport(report){
+  if(!report||!Array.isArray(report.items))return;
+  state.vehicleReportContext=report;
+  const modal=$('modal'),body=$('modalBody');
+  modal.querySelector('.modal-card').classList.remove('part-detail-card');
+  modal.querySelector('.modal-card').classList.add('vehicle-history-card');
+  const rows=report.items.map(item=>{
+    const diff=item.difference;
+    const sign=diff===null||diff===undefined?'—':diff>0?'+'+diff:String(diff);
+    const color=diff>0?' is-positive':diff<0?' is-negative':'';
+    return '<tr><td>'+escapeHtml(item.index||'—')+'</td>'+
+      '<td>'+escapeHtml(item.sap||'—')+'</td>'+
+      '<td class="vehicle-preview-part-name">'+escapeHtml(item.name||'—')+'</td>'+
+      '<td class="vehicle-preview-num">'+quantity(item.before)+'</td>'+
+      '<td class="vehicle-preview-num">'+quantity(item.counted)+'</td>'+
+      '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
+        escapeHtml(sign)+'</td></tr>';
+  }).join('');
+  const field=(label,value)=>'<div><span>'+escapeHtml(label)+'</span>'+
+    '<strong>'+escapeHtml(value||'—')+'</strong></div>';
+  const totalDiff=report.items.reduce((totals,item)=>{
+    if(item.difference>0)totals.plus++;
+    else if(item.difference<0)totals.minus++;
+    return totals;
+  },{plus:0,minus:0});
+  body.innerHTML=
+    '<div class="vehicle-report-heading">'+
+      '<div class="vehicle-history-top">'+
+        '<span class="vehicle-report-eyebrow">GPBS STORAGE / RAPORT</span>'+
+        '<h2 id="modalTitle">Raport inwentaryzacji samochodu</h2>'+
+      '</div>'+
+      '<div class="vehicle-report-actions" role="group" aria-label="Eksport i drukowanie raportu">'+
+        '<button type="button" class="btn dark" data-vehicle-report-excel="1">Eksport do Excela</button>'+
+        '<button type="button" class="btn subtle" data-vehicle-report-print="1">Drukuj</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="vehicle-report-meta">'+
+      field('Data',report.date)+field('Godzina',report.time)+
+      field('Ekipa',report.team)+field('Tablica rejestracyjna',report.plate)+
+      field('Inwentaryzację wykonał',report.by)+
+    '</div>'+
+    '<div class="vehicle-report-section-heading">'+
+      '<strong>Porównanie stanów części</strong>'+
+      '<span>Pozycji: '+report.items.length+
+        ' · Nadwyżki: '+totalDiff.plus+' · Niedobory: '+totalDiff.minus+'</span>'+
+    '</div>'+
+    '<div class="vehicle-history-table-wrap">'+
+      '<table class="table vehicle-preview-history-table">'+
+        '<thead><tr><th>Indeks GPBS</th><th>Indeks SAP</th><th>Nazwa części</th>'+
+        '<th class="vehicle-preview-num">Stan przed</th>'+
+        '<th class="vehicle-preview-num">Policzono</th>'+
+        '<th class="vehicle-preview-num">Różnica</th></tr></thead>'+
+        '<tbody>'+rows+'</tbody></table>'+
+    '</div>'+
+    (report.preview?'<p class="vehicle-history-note">Dane przykładowe do oceny wyglądu. '+
+      'Nie pochodzą z inwentaryzacji ani z bazy D1.</p>':'')+
+    '<p id="vehicleReportActionError" class="vehicle-report-error hidden" role="alert"></p>';
+  modal.classList.remove('hidden');
+  $('modalClose').focus();
+}
 function openPolishVehicleInventory(index){
   if(state.view!=='vehicles'||state.preview||
      realWarehouse(state.warehouse)?.country_code!=='PL')return;
@@ -1086,37 +1146,43 @@ function openPolishVehicleInventory(index){
   const crew=crews.find(c=>c.id===state.vehiclePreviewCrew)||crews[0];
   const h=(PL_VEHICLE_TEST_HISTORY[crew.id]||[])[index];
   if(!h)return;
-  const modal=$('modal'),body=$('modalBody');
-  modal.querySelector('.modal-card').classList.remove('part-detail-card');
-  modal.querySelector('.modal-card').classList.add('vehicle-history-card');
-  const head='<tr><th>Indeks GPBS</th><th>Nazwa części</th>'+
-    '<th class="vehicle-preview-num">Stan przed</th>'+
-    '<th class="vehicle-preview-num">Policzono</th>'+
-    '<th class="vehicle-preview-num">Różnica</th></tr>';
-  const rows=parts.map((p,i)=>{
-    const previous=h.before[i],counted=h.counts[i];
-    const diff=previous==null||counted==null?null:counted-previous;
-    const sign=diff===null?'—':diff>0?'+'+diff:String(diff);
-    const color=diff>0?' is-positive':diff<0?' is-negative':'';
-    return '<tr><td>'+escapeHtml(p.index)+'</td>'+
-      '<td class="vehicle-preview-part-name">'+escapeHtml(p.name)+'</td>'+
-      '<td class="vehicle-preview-num">'+quantity(previous)+'</td>'+
-      '<td class="vehicle-preview-num">'+quantity(counted)+'</td>'+
-      '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
-        escapeHtml(sign)+'</td></tr>';
-  }).join('');
-  body.innerHTML='<div class="vehicle-history-top">'+
-    '<h2 id="modalTitle">Raport inwentaryzacji</h2>'+
-    '<p><strong>'+escapeHtml(h.date)+' o '+escapeHtml(h.time)+'</strong>'+
-      ' · Ekipa '+escapeHtml(crew.team)+' · '+escapeHtml(crew.plate)+
-      ' · Wykonał: '+escapeHtml(h.by)+'</p></div>'+
-    '<div class="vehicle-history-table-wrap">'+
-      '<table class="table vehicle-preview-history-table"><thead>'+head+
-      '</thead><tbody>'+rows+'</tbody></table></div>'+
-    '<p class="vehicle-history-note">Przykładowe dane do oceny wyglądu. '+
-      'Docelowo raport pokaże dane zapisane podczas tej konkretnej inwentaryzacji.</p>';
-  modal.classList.remove('hidden');
-  $('modalClose').focus();
+  const items=parts.map((p,i)=>{
+    const before=h.before[i],counted=h.counts[i];
+    return {index:p.index,sap:p.external,name:p.name,
+      before,counted,
+      difference:before==null||counted==null?null:counted-before};
+  });
+  openVehicleInventoryReport({
+    date:h.date,time:h.time,team:crew.team,plate:crew.plate,by:h.by,
+    items,preview:true
+  });
+}
+function downloadVehicleInventoryReport(){
+  if(!state.vehicleReportContext)return;
+  try{
+    if(!window.GPBSVehicleReportExport)
+      throw Error('Eksport Excel jest chwilowo niedostępny. Odśwież stronę.');
+    window.GPBSVehicleReportExport.download(state.vehicleReportContext);
+  }catch(error){
+    const field=$('vehicleReportActionError');
+    if(field){
+      field.textContent=error?.message||'Nie udało się przygotować pliku Excel.';
+      field.classList.remove('hidden');
+    }
+  }
+}
+function printVehicleInventoryReport(){
+  if(!state.vehicleReportContext||$('modal').classList.contains('hidden'))return;
+  document.body.classList.add('vehicle-inventory-print-active');
+  try{window.print();}
+  catch(error){
+    document.body.classList.remove('vehicle-inventory-print-active');
+    const field=$('vehicleReportActionError');
+    if(field){
+      field.textContent='Nie udało się otworzyć okna drukowania.';
+      field.classList.remove('hidden');
+    }
+  }
 }
 function drawVehicles(){
   // Temporary example remains only in Poland. The French UI stays empty.
@@ -1438,12 +1504,22 @@ function closePhotoViewer(){
   $('modalBody').querySelector('[data-photo-open]')?.focus();
 }
 function closeModal(){
+  state.vehicleReportContext=null;
+  document.body.classList.remove('vehicle-inventory-print-active');
   if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
   $('modal').classList.add('hidden');
   $('modal').querySelector('.modal-card').classList.remove('part-detail-card','vehicle-history-card');
   $('modalBody').innerHTML='';
 }
 document.addEventListener('click',e=>{
+  if(e.target.closest('[data-vehicle-report-excel]')){
+    downloadVehicleInventoryReport();
+    return;
+  }
+  if(e.target.closest('[data-vehicle-report-print]')){
+    printVehicleInventoryReport();
+    return;
+  }
   if(e.target.closest('[data-doc-print-close]')){closeDocumentPrint();return;}
   const docPrint=e.target.closest('[data-doc-print]');
   if(docPrint){openDocumentPrint(docPrint.dataset.docPrint,docPrint.dataset.docDirection);return;}
@@ -1659,6 +1735,9 @@ $('officeNewPartPhoto').addEventListener('change',async()=>{
 $('modalClose').addEventListener('click',closeModal);
 $('docPrintButton').addEventListener('click',printOfficeDocument);
 window.addEventListener('afterprint',clearOfficePrintStyle);
+window.addEventListener('afterprint',()=>{
+  document.body.classList.remove('vehicle-inventory-print-active');
+});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(!$('docPrintModal').classList.contains('hidden'))closeDocumentPrint();
