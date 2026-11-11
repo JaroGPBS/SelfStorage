@@ -1504,6 +1504,37 @@ function printVehicleInventoryReport(){
     }
   }
 }
+function drawFrenchVehicleCatalogue(parts){
+  // Reference list only. The Office crew balances will be supplied by D1
+  // vehicle inventories later; do NOT convert requirements into stock counts.
+  const tabs=vehicleViewTabs(state.vehicleTab);
+  const rows=parts.map(p=>'<tr>'+
+    '<td>'+escapeHtml(p.part_number||'—')+'</td>'+
+    '<td>'+escapeHtml(p.source_sap&&p.source_sap!=='-'?p.source_sap:'—')+'</td>'+
+    '<td class="vehicle-split-part-name">'+escapeHtml(p.name||'—')+'</td>'+
+    '<td class="vehicle-preview-num">'+
+      (p.required_quantity==null?'—':escapeHtml(p.required_quantity))+'</td>'+
+    '<td>'+escapeHtml(!p.part_found?'Do dopasowania':
+      !p.index_assigned?'Brak indeksu MG':'W katalogu')+'</td></tr>').join('');
+  const matched=parts.filter(p=>p.part_found).length;
+  const info='<div class="vehicle-catalogue-info">'+
+    '<strong>Wyposażenie samochodów — katalog części</strong>'+
+    '<span>Lista wymaganych części, bez stanów samochodowych. '+
+      matched+' z '+parts.length+' pozycji powiązano z katalogiem GPBS.</span>'+
+    '</div>';
+  const table='<div class="vehicle-setup-table-wrap">'+
+    '<table class="table vehicle-setup-table vehicle-catalogue-live">'+
+      '<thead><tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
+        '<th>Nazwa części</th><th class="vehicle-preview-num">Wymagane / auto</th>'+
+        '<th>Status</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table></div>';
+  $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
+    tabs+info+table+'</div>';
+  $('tableFooter').textContent='Katalog samochodowy: '+parts.length+
+    ' pozycji. Zmiany nazw i indeksów są pobierane z głównego katalogu D1.';
+  $('searchNote').classList.add('hidden');
+  $('vehicleTopScroll').classList.add('hidden');
+}
 function drawVehicles(){
   // Temporary example remains only in Poland. The French UI stays empty.
   if(!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL'){
@@ -1575,7 +1606,20 @@ function drawFrenchEmptyView(){
 async function render(){
   if(state.view==='vehicles'){
     errorBanner('');
-    drawVehicles();
+    if(state.preview?.type==='operation'&&state.preview.key==='vehicles'&&
+       state.vehicleTab==='detail'){
+      const ticket=++state.requestId;
+      try{
+        const response=await api('vehicleCatalog');
+        if(ticket!==state.requestId)return;
+        drawFrenchVehicleCatalogue(response.parts||[]);
+      }catch(ex){
+        if(ticket!==state.requestId)return;
+        errorBanner(ex.message||'Nie udało się pobrać katalogu samochodowego.');
+        drawVehicles();
+        if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
+      }
+    }else drawVehicles();
     return;
   }
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
