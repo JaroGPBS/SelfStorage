@@ -1345,6 +1345,10 @@
       $('userStatus').value=existing?(existing.active?'1':'0'):'1';
       $('userStatus').disabled=protectedAdmin;
       $('archiveUserBtn').hidden=!existing||protectedAdmin;
+      $('deleteCrewPermanentlyBtn').hidden=!existing||protectedAdmin||existing.role_code!=='EKIPA'||!state.isSuperAdmin;
+      $('userTestRow').hidden=Boolean(existing&&existing.role_code!=='EKIPA');
+      $('userIsTest').checked=Boolean(existing?.is_test);
+      $('userIsTest').disabled=Boolean(existing);
       $('protectedAdminHint').hidden=!protectedAdmin;
 
       const roleInput=$('userRole');roleInput.replaceChildren();
@@ -1388,6 +1392,7 @@
         lastName:$('userLastName').value.trim(),
         phone:$('userPhone').value.trim(),
         role:$('userRole').value,
+        isTestCrew:!userId&&$('userIsTest').checked,
         warehouses,
         ...(userId?{userId,active:Number($('userStatus').value)}:{})
       };
@@ -1418,6 +1423,22 @@
       if(state.view==='users')renderList();
       message('Użytkownik '+nickname+' jest w archiwum. Zachowano ID i historię.','info');
     } catch(error) {message(error.message,'error');}
+    finally{busy(button,false);}
+  }
+
+  async function deleteCrewPermanently(){
+    const id=$('editUserId').value,nick=$('userName').value;
+    if(!id)return;
+    if(!await confirmAction({title:'Trwale usunąć ekipę '+nick+'?',
+      description:'Dla ekipy testowej system cofnie jej zapisane ruchy w D1, a następnie usunie konto i historię. Prawdziwe operacje są chronione. Tego nie można cofnąć.',
+      confirmLabel:'Usuń trwale',danger:true}))return;
+    const button=$('deleteCrewPermanentlyBtn');busy(button,true);
+    try{
+      await post({action:'deleteCrewPermanently',userId:id});
+      $('userDialog').close();state.expandedUserId=null;
+      state.records=await api('users');if(state.view==='users')renderList();
+      message('Ekipa '+nick+' została trwale usunięta.','info');
+    }catch(error){message(error.message||'Nie udało się usunąć ekipy.','error');}
     finally{busy(button,false);}
   }
 
@@ -1688,6 +1709,7 @@
       await navigate('users');
     });
     $('archiveUserBtn').addEventListener('click',archiveCurrentUser);
+  $('deleteCrewPermanentlyBtn').addEventListener('click',deleteCrewPermanently);
     $('generateMissingPins').addEventListener('click',generateMissingPins);
     $('generatePinPepper').addEventListener('click',generatePepper);
     $('copyPinPepper').addEventListener('click',copyPepper);
