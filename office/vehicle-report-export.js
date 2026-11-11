@@ -156,7 +156,7 @@
     if(!report||!Array.isArray(report.items))throw Error('Brak danych raportu.');
     const workbook=zip(makeFiles(report));
     const clean=x=>String(x||'').replace(/[^a-zA-Z0-9_-]+/g,'-').slice(0,45);
-    const filename='GPBS_Inwentaryzacja_'+clean(report.team)+'_'+
+    const filename='Inwentaryzacja_'+clean(report.team)+'_'+
       clean(report.date)+'.xlsx';
     const url=URL.createObjectURL(workbook);
     const link=document.createElement('a');
