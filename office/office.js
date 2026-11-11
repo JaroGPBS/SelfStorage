@@ -982,19 +982,16 @@ function vehicleInventoryButton(h,index){
     '<span>Inwentaryzacja</span><small>'+escapeHtml(h.date)+'</small></button>';
 }
 function setupVehicleHistoryRail(){
-  const rail=$('tableArea').querySelector('.vehicle-history-scrollbar');
-  const wrap=$('tableArea').querySelector('.vehicle-setup-table-wrap');
-  const zone=$('tableArea').querySelector('.vehicle-preview-table-zone');
-  if(!rail||!wrap||!zone)return;
-  rail.classList.remove('hidden');
+  const rail=$('tableArea').querySelector('.vehicle-split-history .vehicle-history-scrollbar');
+  const wrap=$('tableArea').querySelector('.vehicle-history-table-wrap');
+  if(!rail||!wrap)return;
   const available=rail.clientWidth;
   const overflow=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
-  if(available<75||overflow<2){
-    rail.classList.add('hidden');
-    zone.classList.remove('vehicle-has-history-rail');
+  if(available<70||overflow<2){
+    rail.style.visibility='hidden';
     return;
   }
-  zone.classList.add('vehicle-has-history-rail');
+  rail.style.visibility='visible';
   rail.querySelector('.vehicle-history-scrollbar-track').style.width=
     Math.ceil(available+overflow)+'px';
   if(rail.dataset.linked==='1')return;
@@ -1024,7 +1021,9 @@ function drawPolishVehiclePreview(){
     crews.map(c=>'<button type="button" data-vehicle-crew="'+escapeHtml(c.id)+'" '+
       'class="vehicle-preview-team-btn'+(c.id===crew.id?' active':'')+'" '+
       'aria-pressed="'+String(c.id===crew.id)+'">'+
-      escapeHtml(c.team)+' <small>'+escapeHtml(c.plate)+'</small></button>').join('')+
+      '<span class="vehicle-team-caption">Ekipa</span>'+
+      '<span class="vehicle-team-name">'+escapeHtml(c.team)+'</span>'+
+      '<small>'+escapeHtml(c.plate)+'</small></button>').join('')+
     '</div>');
   const meta=summary?'':('<div class="vehicle-setup-meta">'+
     [['Ekipa',crew.team],['Tablica rejestracyjna',crew.plate],
@@ -1049,7 +1048,8 @@ function drawPolishVehiclePreview(){
     Math.max(...parts.map(p=>measureCode(p.index||'')))+20));
   const sapWidth=Math.max(88,Math.ceil(
     Math.max(...parts.map(p=>measureCode(p.external||'')))+20));
-  const minWidth=76,currentWidth=88,diffWidth=104;
+  const minWidth=Math.max(56,Math.ceil(measureCode('Stock min.')+12));
+  const currentWidth=88;
   const inventoryWidth=88,selectedSubWidth=49;
   const selectedInventory=Math.min(Math.max(
     Number.isInteger(state.vehicleSelectedInventory)?state.vehicleSelectedInventory:0,0),
@@ -1071,7 +1071,7 @@ function drawPolishVehiclePreview(){
   let table='';
   if(summary){
     const head='<tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
-      '<th>Wymagane min.</th><th>Nazwa części</th>'+
+      '<th>Stock min.</th><th>Nazwa części</th>'+
       crews.map(c=>'<th class="vehicle-preview-num vehicle-preview-column">'+
         '<div class="vehicle-preview-car-header"><strong>'+escapeHtml(c.team)+'</strong>'+
         '<small>'+escapeHtml(c.plate)+'</small>'+
@@ -1089,97 +1089,92 @@ function drawPolishVehiclePreview(){
     table='<table class="table vehicle-setup-table vehicle-preview-summary">'+
       '<thead>'+head+'</thead><tbody>'+rows+'</tbody></table>';
   }else{
-    // The selected inventory displays SUMA/Różnica. Others stay narrow.
-    // Each difference is against the saved count *before that audit*.
-    // The scrollbar lives in the first (17px) row of the inventory
-    // TABLE header. The newest audit remains fixed to the left of it.
-    const latestAudit=history[0]||null;
-    const latestSelected=Boolean(latestAudit)&&selectedInventory===0;
-    const oldAudits=history.slice(1);
-    const olderColumns=oldAudits.length+(selectedInventory>0?1:0);
-    const fixedHead=
-      '<th rowspan="3">Indeks GPBS</th><th rowspan="3">Indeks SAP</th>'+
-      '<th rowspan="3" class="vehicle-preview-num">Wymagane<br>min.</th>'+
-      '<th rowspan="3" class="vehicle-preview-part-name">Nazwa części</th>'+
-      '<th rowspan="3" class="vehicle-preview-num">Aktualny<br>stan</th>';
-    const latestHead=latestAudit
-      ?'<th class="vehicle-preview-inventory-col vehicle-preview-latest-header'+
-        (latestSelected?' is-selected':'')+'" '+
-        (latestSelected?'colspan="2" rowspan="2"':'rowspan="3"')+'>'+
-        vehicleInventoryButton(latestAudit,0)+'</th>'
-      :'';
-    const railHead=olderColumns
-      ?'<th class="vehicle-preview-rail-head-cell" colspan="'+olderColumns+
-        '" aria-hidden="true"></th>'
-      :'';
-    const olderHead=oldAudits.map((h,i)=>{
-      const selected=i+1===selectedInventory;
-      return '<th class="vehicle-preview-inventory-col'+
-        (selected?' is-selected':'')+'" '+
-        (selected?'colspan="2"':'rowspan="2"')+'>'+
-        vehicleInventoryButton(h,i+1)+'</th>';
-    }).join('');
-    const subHead=latestAudit
-      ?'<th class="vehicle-preview-inventory-subhead'+
-        (latestSelected?' vehicle-preview-latest-sum-subhead':'')+'">SUMA</th>'+
-        '<th class="vehicle-preview-inventory-subhead'+
-        (latestSelected?' vehicle-preview-latest-diff-subhead':'')+'">Różnica</th>'
-      :'';
-    const head='<tr class="vehicle-preview-rail-head-row">'+
-      fixedHead+latestHead+railHead+'</tr>'+
-      '<tr class="vehicle-preview-dates-head-row">'+olderHead+'</tr>'+
-      '<tr class="vehicle-preview-subhead-row">'+subHead+'</tr>';
-    const columns='<colgroup>'+
-      [gpbsWidth,sapWidth,minWidth,nameWidth,currentWidth].map(w=>
-        '<col style="width:'+w+'px">').join('')+
-      history.map((h,i)=>i===selectedInventory
-        ?'<col style="width:'+selectedSubWidth+'px"><col style="width:'+
-          selectedSubWidth+'px">'
-        :'<col style="width:'+inventoryWidth+'px">').join('')+
-      '</colgroup>';
-    const rows=parts.map((p,index)=>{
-      const stock=p.stock[crew.id];
-      const shortage=stock.current<p.required;
-      const historical=history.map((h,i)=>{
-        const amount=h.counts[index];
-        if(i!==selectedInventory){
-          return '<td class="vehicle-preview-num'+
-            (i===0?' vehicle-preview-latest-audit vehicle-preview-latest-end':'')+
-            '">'+quantity(amount)+'</td>';
-        }
-        const before=h.before[index];
-        const delta=amount==null||before==null?null:amount-before;
-        const diff=delta==null?'—':delta>0?'+'+delta:String(delta);
-        const color=delta>0?' is-positive':delta<0?' is-negative':'';
-        return '<td class="vehicle-preview-num vehicle-inventory-selected-sum'+
-          (i===0?' vehicle-preview-latest-audit':'')+'">'+
-          quantity(amount)+'</td>'+
-          '<td class="vehicle-preview-num vehicle-preview-difference'+color+
-          ' vehicle-inventory-selected-diff'+
-          (i===0?' vehicle-preview-latest-audit vehicle-preview-latest-subdiff vehicle-preview-latest-end':'')+
-          '">'+escapeHtml(diff)+'</td>';
-      }).join('');
+    // Fixed left pane: part indexes, stock and the newest inventory.
+    // Only the separate right-hand table with older audits can scroll.
+    const newest=history[0]||null;
+    const newestExpanded=Boolean(newest)&&selectedInventory===0;
+    const newestWidth=newestExpanded?2*selectedSubWidth:inventoryWidth;
+    const past=history.slice(1);
+    const pastWidth=past.length*inventoryWidth+
+      (selectedInventory>0?selectedSubWidth*2-inventoryWidth:0);
+    const subhead='<div class="vehicle-split-subhead"><span>SUMA</span><span>Różnica</span></div>';
+    const col=(width)=>'<col style="width:'+width+'px">';
+    const fixedCols='<colgroup>'+
+      [gpbsWidth,sapWidth,minWidth,nameWidth,currentWidth,
+       ...(newestExpanded?[selectedSubWidth,selectedSubWidth]:newest?[inventoryWidth]:[])]
+      .map(col).join('')+'</colgroup>';
+    const fixedHead='<thead><tr>'+
+      '<th>Indeks GPBS</th><th>Indeks SAP</th>'+
+      '<th>Stock min.</th><th>Nazwa części</th><th>Aktualny<br>stan</th>'+
+      (newest?'<th class="vehicle-split-newest-head" colspan="'+
+        (newestExpanded?2:1)+'">'+vehicleInventoryButton(newest,0)+
+        (newestExpanded?subhead:'')+'</th>':'')+'</tr></thead>';
+    const fixedBody=parts.map((p,index)=>{
+      const stock=p.stock[crew.id],shortage=stock.current<p.required;
+      let latestCells='';
+      if(newest){
+        const sum=newest.counts[index];
+        if(newestExpanded){
+          const before=newest.before[index];
+          const d=sum==null||before==null?null:sum-before;
+          const diff=d==null?'—':d>0?'+'+d:String(d);
+          const color=d>0?' is-positive':d<0?' is-negative':'';
+          latestCells='<td class="vehicle-preview-num">'+quantity(sum)+'</td>'+
+            '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
+            escapeHtml(diff)+'</td>';
+        }else latestCells='<td class="vehicle-preview-num">'+quantity(sum)+'</td>';
+      }
       return '<tr>'+
         '<td>'+escapeHtml(p.index)+'</td>'+
         '<td>'+escapeHtml(p.external||'—')+'</td>'+
         '<td class="vehicle-preview-num">'+quantity(p.required)+'</td>'+
-        '<td class="vehicle-preview-part-name" title="'+escapeHtml(p.name)+'">'+escapeHtml(p.name)+'</td>'+
-        '<td class="vehicle-preview-num vehicle-preview-current'+(shortage?' vehicle-preview-shortage':'')+'">'+
+        '<td class="vehicle-split-part-name" title="'+escapeHtml(p.name)+'">'+
+          escapeHtml(p.name)+'</td>'+
+        '<td class="vehicle-preview-num vehicle-preview-current'+
+          (shortage?' vehicle-preview-shortage':'')+'">'+
           '<strong>'+quantity(stock.current)+'</strong>'+
           (shortage?'<small>Brakuje '+escapeHtml(p.required-stock.current)+'</small>':'')+
-        '</td>'+historical+'</tr>';
+        '</td>'+latestCells+'</tr>';
     }).join('');
-    table='<table class="table vehicle-setup-table vehicle-preview-detail vehicle-preview-detail-v2">'+
-      columns+'<thead>'+head+'</thead><tbody>'+rows+'</tbody></table>';
-  }
-  const scrollbar=summary?'':(
-    '<div class="vehicle-history-scrollbar hidden" role="region" tabindex="0" '+
+    const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
+      (fixedWidth+newestWidth)+'px">'+fixedCols+fixedHead+
+      '<tbody>'+fixedBody+'</tbody></table>';
+    const pastCols='<colgroup>'+past.map((h,i)=>i+1===selectedInventory
+      ?col(selectedSubWidth)+col(selectedSubWidth):col(inventoryWidth))
+      .join('')+'</colgroup>';
+    const pastHead='<thead><tr>'+past.map((h,i)=>{
+      const expanded=i+1===selectedInventory;
+      return '<th colspan="'+(expanded?2:1)+'"'+
+        (expanded?' class="vehicle-split-selected-head"':'')+'>'+
+        vehicleInventoryButton(h,i+1)+(expanded?subhead:'')+'</th>';
+    }).join('')+'</tr></thead>';
+    const pastBody=parts.map((p,index)=>'<tr>'+past.map((h,i)=>{
+      const sum=h.counts[index];
+      if(i+1!==selectedInventory)
+        return '<td class="vehicle-preview-num">'+quantity(sum)+'</td>';
+      const before=h.before[index];
+      const d=sum==null||before==null?null:sum-before;
+      const diff=d==null?'—':d>0?'+'+d:String(d);
+      const color=d>0?' is-positive':d<0?' is-negative':'';
+      return '<td class="vehicle-preview-num">'+quantity(sum)+'</td>'+
+        '<td class="vehicle-preview-num vehicle-preview-difference'+color+'">'+
+        escapeHtml(diff)+'</td>';
+    }).join('')+'</tr>').join('');
+    const pastTable='<table class="table vehicle-split-history-table" style="width:'+
+      Math.max(1,pastWidth)+'px">'+pastCols+pastHead+
+      '<tbody>'+pastBody+'</tbody></table>';
+    const rail='<div class="vehicle-history-scrollbar" role="region" tabindex="0" '+
       'aria-label="Przewijanie starszych inwentaryzacji">'+
-      '<div class="vehicle-history-scrollbar-track"></div></div>');
+      '<div class="vehicle-history-scrollbar-track"></div></div>';
+    table='<div class="vehicle-preview-split-table">'+
+      '<div class="vehicle-split-fixed" style="width:'+(fixedWidth+newestWidth)+'px">'+
+        fixedTable+'</div>'+
+      '<div class="vehicle-split-history">'+rail+
+        '<div class="vehicle-history-table-wrap">'+pastTable+'</div></div>'+
+      '</div>';
+  }
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview"'+layout+'>'+
-    tabs+teamSelector+meta+
-    '<div class="vehicle-preview-table-zone">'+scrollbar+
-      '<div class="vehicle-setup-table-wrap">'+table+'</div></div></div>';
+    tabs+teamSelector+meta+table+'</div>';
   $('tableFooter').textContent=summary
     ?'Podgląd · '+crews.length+' samochody · '+parts.length+' przykładowych części'
     :'Podgląd · '+crew.team+' · '+crew.plate+' · '+parts.length+
