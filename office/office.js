@@ -1929,6 +1929,47 @@ function drawFrenchEmptyView(){
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
 }
+async function renderFrenchMovementHistory(){
+  const ticket=++state.requestId;
+  $('tableArea').innerHTML='<div class="loading">Wczytywanie historii operacji D1…</div>';
+  try{
+    const response=await api('frMovements');
+    if(ticket!==state.requestId)return;
+    let operations=Array.isArray(response.operations)?response.operations:[];
+    const key=state.preview?.warehouseKey||'';
+    const warehouseIds={toulouse:'FR-TOULOUSE',paris:'FR-PARIS'};
+    const warehouseId=warehouseIds[key];
+    if(warehouseId)operations=operations.filter(x=>x.warehouse_id===warehouseId);
+    // PZ = returned to warehouse; WZ = picked up from warehouse.
+    const direction=state.view==='pz'?'ZWROT':state.view==='wz'?'POBRANIE':null;
+    if(direction)operations=operations.filter(x=>x.direction===direction);
+    const search=String(state.search||'').trim().toLocaleLowerCase('pl');
+    if(search)operations=operations.filter(x=>
+      [x.team,x.plate,x.part_name,x.part_number,x.warehouse,x.direction,x.session_id]
+        .some(value=>String(value||'').toLocaleLowerCase('pl').includes(search)));
+    const headers=['Data i godzina','Ekipa','Samochód','Magazyn','Rodzaj','Część','Indeks','Ilość'];
+    const body=operations.map(x=>'<tr>'+
+      [formatTimestampPL(x.created_at),x.team||'—',x.plate||'—',x.warehouse||'—',
+       x.direction==='POBRANIE'?'Pobranie':'Zwrot',x.part_name||'—',
+       x.part_number||'—',String(x.quantity)]
+      .map(value=>'<td>'+escapeHtml(value)+'</td>').join('')+'</tr>').join('');
+    const rows=body||'<tr><td colspan="8" class="office-fr-empty-cell">Brak zapisanych operacji.</td></tr>';
+    $('tableArea').innerHTML='<div class="vehicle-setup" style="overflow-x:auto;">'+
+      '<table class="table"><thead><tr>'+headers.map(label=>
+        '<th>'+escapeHtml(label)+'</th>').join('')+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    $('tableFooter').textContent='Francja · '+operations.length+' pozycji ruchów z D1';
+    $('searchNote').classList.add('hidden');
+    $('vehicleTopScroll').classList.add('hidden');
+    errorBanner('');
+  }catch(ex){
+    if(ticket!==state.requestId)return;
+    errorBanner(ex.message||'Nie udało się pobrać operacji FR.');
+    $('tableArea').innerHTML='<div class="empty">Historia operacji jest chwilowo niedostępna.</div>';
+    $('tableFooter').textContent='';
+    if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
+  }
+}
 async function render(){
   if(state.view==='vehicles'){
     errorBanner('');
@@ -1962,6 +2003,10 @@ async function render(){
       }
     }else drawVehicles();
     return;
+  }
+  if(state.preview?.type==='module'&&state.preview.key==='crews'||
+      state.preview?.type==='operation'&&['pz','wz'].includes(state.view)){
+    await renderFrenchMovementHistory();return;
   }
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
     drawFrenchEmptyView();return;
