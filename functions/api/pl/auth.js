@@ -94,7 +94,7 @@ async function throttle(request,env) {
   return null;
 }
 
-async function login(request,env,pin) {
+async function login(request,env,pin,client='') {
   if(!workerAuthReady(env))
     return fail('Logowanie polskie nie jest skonfigurowane.',503);
   const blocked=await throttle(request,env);
@@ -112,7 +112,10 @@ async function login(request,env,pin) {
 
   // Current activation, archives and PL warehouse grants are mandatory.
   const user=await loadActiveWorker(env,existing.user_id);
-  if(!user || !user.markets.PL || !user.warehouses.length)
+  const officeAllowed=client==='office' &&
+    ['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER'].includes(user?.role) &&
+    (user?.markets.PL||user?.markets.FR);
+  if(!user || !(officeAllowed || (user.markets.PL && user.warehouses.length)))
     return fail('Nieprawidłowy PIN lub brak dostępu.',401);
   const token=await createWorkerSession(env,user);
   const {pinDigest,...safeUser}=user;
@@ -158,7 +161,7 @@ export async function onRequestPost({request,env}) {
   }
   if(body.action!=='login')return fail('Nieznana akcja.',400);
 
-  try{return await login(request,env,body.pin);}
+  try{return await login(request,env,body.pin,body.client);}
   catch(error){
     console.error('GPBS PL worker login failed',error?.name||'Error');
     return fail('Logowanie chwilowo niedostępne.',503);
