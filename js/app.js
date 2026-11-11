@@ -602,7 +602,7 @@ function readStoredVehicleStock(teamId) {
 
     const all = JSON.parse(raw);
     const entry = all && typeof all === 'object'
-      ? all[String(teamId)]
+      ? all[String(teamId)+'|'+String(state.team?.vehiclePlate||'')]
       : null;
 
     return entry?.data ? entry : null;
@@ -620,7 +620,7 @@ function writeStoredVehicleStock(teamId, entry) {
     const all = raw ? JSON.parse(raw) : {};
     const safe = all && typeof all === 'object' ? all : {};
 
-    safe[String(teamId)] = entry;
+    safe[String(teamId)+'|'+String(state.team?.vehiclePlate||'')] = entry;
     localStorage.setItem(VEHICLE_STOCK_CACHE_KEY, JSON.stringify(safe));
   } catch (error) {
     console.warn('Nie udało się zapisać stanu auta w pamięci.', error);
