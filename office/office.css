@@ -2463,3 +2463,83 @@
   transform:rotate(180deg);
   color:#f1b2b5;
 }
+
+
+/* Poland and France share one vehicle-stock window layout.
+   No example crews or zero quantities are displayed before real D1 setup. */
+.app.view-vehicles .vehicle-setup{
+  padding:14px 18px 20px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  min-height:100%;
+}
+.app.view-vehicles .vehicle-setup-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  padding:0 0 10px;
+  border-bottom:1px solid #e5e9ed;
+}
+.app.view-vehicles .vehicle-setup-tab{
+  background:none;
+  color:#687481;
+  border:0;
+  border-bottom:2px solid transparent;
+  border-radius:0;
+  padding:9px 15px;
+  font-size:13px;
+  font-weight:750;
+}
+.app.view-vehicles .vehicle-setup-tab.active{
+  color:#c72e3e;
+  border-bottom-color:#c72e3e;
+}
+.app.view-vehicles .vehicle-setup-tab:hover{color:#303943}
+.app.view-vehicles .vehicle-setup-meta{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.app.view-vehicles .vehicle-setup-meta>div{
+  padding:0 12px 0 0;
+  border-right:1px solid #e5e9ed;
+}
+.app.view-vehicles .vehicle-setup-meta>div:last-child{border-right:0}
+.app.view-vehicles .vehicle-setup-meta span{
+  display:block;
+  font-size:11px;
+  font-weight:600;
+  color:#858e99;
+  margin-bottom:5px;
+}
+.app.view-vehicles .vehicle-setup-meta strong{
+  font-size:14px;
+  color:#2c3540;
+  font-weight:750;
+}
+.app.view-vehicles .vehicle-setup-table-wrap{
+  overflow-x:auto;
+  border:1px solid #e8eaee;
+  border-radius:7px;
+}
+.app.view-vehicles .vehicle-setup-table{width:100%;min-width:700px}
+.app.view-vehicles .vehicle-setup-table th{padding:12px 13px}
+.app.view-vehicles .vehicle-setup-table td.vehicle-setup-empty{
+  padding:35px 20px;
+  color:#808b97;
+  font-size:12px;
+  line-height:1.5;
+  text-align:center;
+  font-weight:500;
+  white-space:normal;
+}
+@media(max-width:830px){
+  .app.view-vehicles .vehicle-setup-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app.view-vehicles .vehicle-setup-meta>div:nth-child(2){border-right:0}
+}
+@media(max-width:690px){
+  .app.view-vehicles .vehicle-setup{padding:9px 10px 14px;gap:12px}
+  .app.view-vehicles .vehicle-setup-tab{padding:8px 9px;font-size:12px}
+  .app.view-vehicles .vehicle-setup-meta span{font-size:10px}
+}
