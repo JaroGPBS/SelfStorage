@@ -123,6 +123,8 @@ export async function tryPolishLogin(pin) {
     throw new Error(body?.error || 'Logowanie do polskiego magazynu nie powiodło się.');
   }
 
+  // FR-only crews share the D1 PIN session but use the French mobile UI.
+  if (body.user?.markets?.FR && !body.user?.markets?.PL) return false;
   await activatePolishWorkspace();
   setMarket('PL');
   return true;
