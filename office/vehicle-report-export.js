@@ -19,61 +19,60 @@
     const rows=[],merged=[];
     let tableHeaderRow=0;
     const line=(cells,height=23)=>{
-      const rowNumber=rows.length+1;
+      const n=rows.length+1;
       rows.push({cells,height});
-      return rowNumber;
+      return n;
     };
     const mergedLine=(value,style,height)=>{
-      const cells=Array.from({length:6},(_,i)=>({
-        value:i===0?value:null,style
-      }));
+      const cells=Array.from({length:7},(_,i)=>({value:i===0?value:null,style}));
       const n=line(cells,height);
-      merged.push('A'+n+':F'+n);
+      merged.push('A'+n+':G'+n);
       return n;
     };
     const when=(date,time)=>[date,time].filter(Boolean).join(' ');
-    const head='RAPORT INWENTARYZACJI SAMOCHODU';
-    mergedLine(head,1,37);
+    mergedLine('RAPORT INWENTARYZACJI SAMOCHODU',1,37);
     mergedLine('EKIPA: '+(report.team||'—')+'     •     REJESTRACJA: '+
       (report.plate||'—')+'     •     DATA: '+when(report.date,report.time),2,27);
     mergedLine('INWENTARYZACJĘ WYKONAŁ: '+(report.by||'—')+
       (report.periodStart?'     •     POPRZEDNIA INWENTARYZACJA: '+
-      report.periodStart:''),2,26);
+       report.periodStart:''),2,26);
     if(report.note)mergedLine('KOMENTARZ: '+report.note,8,40);
     line([],12);
     tableHeaderRow=line([
       {value:'Indeks GPBS',style:3},{value:'Indeks SAP',style:3},
       {value:'Nazwa części',style:3},{value:'Stan przed',style:3},
-      {value:'Policzono',style:3},{value:'Różnica',style:3}
+      {value:'Policzono',style:3},{value:'Różnica',style:3},
+      {value:'Ruchy części w okresie',style:3}
     ],31);
-    const kinds={usage:'Zużycie',warehouse_in:'Pobranie z magazynu',
-      warehouse_out:'Zwrot do magazynu',transfer:'Transfer'};
-    let partRow=0;
+    let partCount=0;
     for(const part of report.items||[]){
-      const numbers=[part.before,part.counted,part.difference];
-      line([
-        {value:part.index||'—',style:4},
-        {value:part.sap||'—',style:4},
-        {value:part.name||'—',style:4},
-        ...numbers.map(n=>({value:n==null?'—':n,style:5}))
-      ],32);
-      partRow++;
-      for(const move of part.movements||[]){
+      const movements=Array.isArray(part.movements)?part.movements:[];
+      const moveText=movements.map(move=>{
         const outgoing=move.kind==='usage'||move.kind==='warehouse_out'||
           (move.kind==='transfer'&&String(move.description||'').startsWith('Przekazanie'));
         const qty=Number(move.quantity);
         const amount=Number.isFinite(qty)
           ?(outgoing?'−':'+')+qty+' szt.':'—';
-        const description='↳ '+when(move.date,move.time)+'    |    '+
-          (kinds[move.kind]||'Ruch części')+' '+amount+'    |    '+
-          (move.description||'')+'    |    '+
-          (move.status||'Zapisano')+
-          (move.actor?'    |    '+move.actor:'');
-        const pending=/oczekuje/i.test(move.status||'');
-        mergedLine(description,pending?7:6,35);
-      }
+        const top=when(move.date,move.time)+' · '+(move.description||'Ruch części')+
+          ' · '+amount;
+        const bottom='Status: '+(move.status||'Zapisano')+
+          (move.actor?' · '+move.actor:'');
+        return top+'\\n'+bottom;
+      }).join('\\n\\n');
+      const hasPending=movements.some(move=>/oczekuje/i.test(move.status||''));
+      const height=movements.length?Math.min(390,Math.max(46,
+        24+movements.length*44+Math.max(0,movements.length-1)*9)):32;
+      line([
+        {value:part.index||'—',style:4},
+        {value:part.sap||'—',style:4},
+        {value:part.name||'—',style:4},
+        ...[part.before,part.counted,part.difference]
+          .map(n=>({value:n==null?'—':n,style:5})),
+        {value:moveText||null,style:moveText?(hasPending?7:6):4}
+      ],height);
+      partCount++;
     }
-    if(!partRow)mergedLine('Brak części w tym raporcie.',8,30);
+    if(!partCount)mergedLine('Brak części w tym raporcie.',8,30);
 
     const cellXml=(value,r,c)=>{
       if(value===undefined||value===null)return '';
@@ -86,12 +85,11 @@
       return '<c r="'+ref+'"'+style+' t="inlineStr"><is><t xml:space="preserve">'+
         xml(info.value)+'</t></is></c>';
     };
-    const rowXml=rows.map((row,index)=>{
-      const cells=row.cells.map((v,c)=>cellXml(v,index,c)).join('');
-      return '<row r="'+(index+1)+'" ht="'+row.height+
-        '" customHeight="1">'+cells+'</row>';
-    }).join('');
-    const widths=[19,19,44,16,16,16];
+    const rowXml=rows.map((row,index)=>
+      '<row r="'+(index+1)+'" ht="'+row.height+'" customHeight="1">'+
+      row.cells.map((v,c)=>cellXml(v,index,c)).join('')+'</row>'
+    ).join('');
+    const widths=[19,19,43,15,15,15,85];
     const columns=widths.map((width,i)=>'<col min="'+(i+1)+
       '" max="'+(i+1)+'" width="'+width+'" customWidth="1"/>').join('');
     const mergedXml='<mergeCells count="'+merged.length+'">'+
@@ -99,7 +97,7 @@
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
       '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'+
-      '<dimension ref="A1:F'+rows.length+'"/>'+
+      '<dimension ref="A1:G'+rows.length+'"/>'+
       '<sheetViews><sheetView workbookViewId="0" showGridLines="0">'+
       '<pane ySplit="'+tableHeaderRow+'" topLeftCell="A'+(tableHeaderRow+1)+
         '" activePane="bottomLeft" state="frozen"/>'+
