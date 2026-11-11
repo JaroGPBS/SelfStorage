@@ -19,6 +19,72 @@ async function ready(db){
   ).first();
   return Number(r?.n)===9;
 }
+// Non-destructive first-use bootstrap. Never updates existing warehouse quantities.
+async function ensureSchema(db){
+  if(await ready(db))return;
+  const ddl=[
+    "CREATE TABLE IF NOT EXISTS vehicles ("+
+      "id TEXT PRIMARY KEY,registration_number TEXT NOT NULL UNIQUE COLLATE NOCASE,"+
+      "active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),"+
+      "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE TABLE IF NOT EXISTS vehicle_stock ("+
+      "vehicle_id TEXT NOT NULL,part_id TEXT NOT NULL,"+
+      "quantity INTEGER NOT NULL CHECK(quantity>=0),"+
+      "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"+
+      "PRIMARY KEY(vehicle_id,part_id),"+
+      "FOREIGN KEY(vehicle_id) REFERENCES vehicles(id),"+
+      "FOREIGN KEY(part_id) REFERENCES parts(id))",
+    "CREATE TABLE IF NOT EXISTS fr_warehouse_qr ("+
+      "warehouse_id TEXT PRIMARY KEY REFERENCES warehouses(id),"+
+      "code TEXT NOT NULL UNIQUE)",
+    "CREATE TABLE IF NOT EXISTS fr_vehicle_usage ("+
+      "user_id TEXT PRIMARY KEY REFERENCES users(id),"+
+      "vehicle_id TEXT NOT NULL REFERENCES vehicles(id),"+
+      "assigned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE INDEX IF NOT EXISTS idx_fr_vehicle_usage_vehicle ON fr_vehicle_usage(vehicle_id)",
+    "CREATE TABLE IF NOT EXISTS fr_visits ("+
+      "id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),"+
+      "vehicle_id TEXT NOT NULL REFERENCES vehicles(id),"+
+      "warehouse_id TEXT NOT NULL REFERENCES warehouses(id),"+
+      "started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,ended_at TEXT,"+
+      "status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','ENDED')))",
+    "CREATE INDEX IF NOT EXISTS idx_fr_visits_user ON fr_visits(user_id,started_at)",
+    "CREATE INDEX IF NOT EXISTS idx_fr_visits_warehouse ON fr_visits(warehouse_id,started_at)",
+    "CREATE TABLE IF NOT EXISTS fr_sessions ("+
+      "id TEXT PRIMARY KEY,visit_id TEXT NOT NULL REFERENCES fr_visits(id),"+
+      "user_id TEXT NOT NULL REFERENCES users(id),"+
+      "vehicle_id TEXT NOT NULL REFERENCES vehicles(id),"+
+      "warehouse_id TEXT NOT NULL REFERENCES warehouses(id),"+
+      "content_hash TEXT NOT NULL,comment TEXT,"+
+      "saved_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE INDEX IF NOT EXISTS idx_fr_sessions_warehouse ON fr_sessions(warehouse_id,saved_at)",
+    "CREATE TABLE IF NOT EXISTS fr_session_lines ("+
+      "session_id TEXT NOT NULL REFERENCES fr_sessions(id),"+
+      "direction TEXT NOT NULL CHECK(direction IN ('POBRANIE','ZWROT')),"+
+      "part_id TEXT NOT NULL REFERENCES parts(id),"+
+      "quantity INTEGER NOT NULL CHECK(quantity>0),"+
+      "PRIMARY KEY(session_id,direction,part_id))",
+    "CREATE INDEX IF NOT EXISTS idx_fr_session_lines_part ON fr_session_lines(part_id)",
+    "CREATE TABLE IF NOT EXISTS fr_vehicle_events ("+
+      "id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),"+
+      "vehicle_id TEXT NOT NULL REFERENCES vehicles(id),"+
+      "type TEXT NOT NULL CHECK(type IN ('INWENTARYZACJA','RECZNA')),"+
+      "event_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE TABLE IF NOT EXISTS fr_vehicle_event_lines ("+
+      "event_id TEXT NOT NULL REFERENCES fr_vehicle_events(id),"+
+      "part_id TEXT NOT NULL REFERENCES parts(id),"+
+      "quantity_before INTEGER,quantity_after INTEGER NOT NULL CHECK(quantity_after>=0),"+
+      "PRIMARY KEY(event_id,part_id))"
+  ];
+  for(const sql of ddl)await db.prepare(sql).run();
+  await db.prepare(
+    "INSERT INTO fr_warehouse_qr(warehouse_id,code) VALUES "+
+    "('FR-TOULOUSE','MAG-TL7A2Q'),('FR-PARIS','MAG-PA5A4B') "+
+    "ON CONFLICT(warehouse_id) DO NOTHING"
+  ).run();
+  if(!await ready(db))throw Error('Nie udało się przygotować tabel francuskich w D1.');
+}
+
 async function vehicle(db,userId){
   return db.prepare(
     'SELECT v.id,v.registration_number FROM fr_vehicle_usage a '+
@@ -309,7 +375,7 @@ export async function onRequestPost({request,env}){
     const user=await verifyWorkerSession(request,env);
     if(!user||!user.markets?.FR||user.role!=='EKIPA')
       return fail('Brak dostępu do francuskiego magazynu. Zaloguj się ponownie.',401);
-    if(!await ready(env.DB))return fail('Brak migracji D1 db/18-fr-mobile-d1.sql.',503);
+    await ensureSchema(env.DB);
     return workerJson(await action(env.DB,user,body));
   }catch(err){
     console.error('FR D1 action failed',err?.name||'Error');
