@@ -1726,7 +1726,7 @@ function drawFrenchVehicleFleet(parts,crews){
     $('vehicleTopScroll').classList.add('hidden');
     return;
   }
-  const selection=summary?'':(
+  const selection=summary||!teams.length?'':(
     '<div class="vehicle-preview-teams" aria-label="Ekipy francuskie">'+
     teams.map(team=>'<button type="button" data-fr-vehicle-crew="'+
       escapeHtml(team.id)+'" class="vehicle-preview-team-btn'+
@@ -1736,16 +1736,14 @@ function drawFrenchVehicleFleet(parts,crews){
       '<span class="vehicle-team-name">'+escapeHtml(team.team)+'</span>'+
       '<small>Bez inwentaryzacji</small></button>').join('')+
     '</div>');
-  const meta=summary?'':(chosen
-    ?'<div class="vehicle-setup-meta">'+
+  const meta=summary||!chosen?'':(
+    '<div class="vehicle-setup-meta">'+
       [['Ekipa',chosen.team],['Tablica rejestracyjna','—'],
        ['Inwentaryzacja','Wymagana inwentaryzacja'],
        ['Ostatnia inwentaryzacja','Brak']]
       .map(([label,value])=>'<div><span>'+escapeHtml(label)+'</span>'+
         '<div class="vehicle-preview-meta-value"><strong>'+
-          escapeHtml(value)+'</strong></div></div>').join('')+'</div>'
-    :'<p class="vehicle-fr-no-teams">Brak ekip francuskich. '+
-      'Dodaj konto z rolą EKIPA i przypisz mu magazyn we Francji w panelu Admin.</p>');
+          escapeHtml(value)+'</strong></div></div>').join('')+'</div>');
   const ctx=document.createElement('canvas').getContext('2d');
   if(ctx)ctx.font='11px Inter, "Segoe UI", system-ui, sans-serif';
   const widthText=v=>ctx?ctx.measureText(String(v||'')).width:String(v||'').length*6.5;
@@ -1820,8 +1818,8 @@ function drawFrenchVehicleFleet(parts,crews){
       '<div class="vehicle-split-history vehicle-fr-empty-history">'+
       '<strong>'+(chosen?'Wymagana inwentaryzacja':'Brak ekip')+'</strong>'+
       '<span>'+(chosen?'Nie ma jeszcze pierwszej inwentaryzacji tej ekipy. '+
-        'Stan pozostaje nieustalony.':'Po dodaniu ekipy w panelu Admin '+
-        'pojawi się możliwość wyboru samochodu.')+'</span>'+
+        'Stan pozostaje nieustalony.':'Po dodaniu ekipy w panelu administracyjnym '+
+        'pojawią się panele ekip i możliwość ich wyboru.')+'</span>'+
       '</div></div>';
   }
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
