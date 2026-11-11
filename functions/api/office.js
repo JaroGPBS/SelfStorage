@@ -4,6 +4,7 @@ import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worke
 import {createRememberToken,verifyRememberSession,officeRememberCookie} from '../../lib/pl-office-remember.js';
 import {createUnverifiedPart} from '../../lib/pl-part-create.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
+import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
@@ -140,7 +141,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
-    frCatalog:'stocks',frCatalogPhoto:'stocks',
+    frCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
@@ -165,6 +166,17 @@ export async function onRequestGet({request,env}){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
+  }
+  if(view==='vehicleCatalog'){
+    // Exactly the same D1-backed equipment category that Admin uses.
+    // This is not vehicle stock: no crew balances or test car records included.
+    try{
+      const catalogue=await getVehicleCatalogue(env.DB);
+      return workerJson({ok:true,...catalogue});
+    }catch(err){
+      console.error('Vehicle Office catalogue read failed',err?.name||'Error');
+      return error('Nie udało się pobrać katalogu części samochodowych.',503);
+    }
   }
   // An authorized Office administrator can view the common parts catalogue in
   // French layout-only warehouses. No warehouse inventory is created or inferred.
