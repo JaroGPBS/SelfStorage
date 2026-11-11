@@ -985,7 +985,8 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
 
   const allowed=new Set(['user_private_profiles','user_warehouse_access',
-    'user_pin_credentials','user_access_settings','user_archives']);
+    'user_pin_credentials','user_access_settings','user_archives',
+    'fr_vehicle_usage']);
   const tables=(await db.prepare(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
   ).all()).results||[];
