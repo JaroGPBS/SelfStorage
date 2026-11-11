@@ -899,6 +899,8 @@ function syncVehicleTopScroll(){
   if(!content){
     scroller.classList.add('hidden');
     $('vehicleScrollWidth').style.width='0px';
+    // The preview uses its own slider aligned only with older inventories.
+    setupVehicleHistoryRail();
     return;
   }
   scroller.classList.remove('hidden');
@@ -1107,43 +1109,48 @@ function openPolishVehicleInventory(index){
   $('modalClose').focus();
 }
 function drawVehicles(){
-  // Show temporary example in Poland only. France still has an empty D1-ready layout.
+  // Temporary example remains only in Poland. The French UI stays empty.
   if(!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL'){
     drawPolishVehiclePreview();return;
   }
-  // Identical production layout; no real or fake data are imported into D1.
-  const summary=state.vehicleTab==='summary';
-  const tabs='<div class="vehicle-setup-tabs" role="tablist" aria-label="Widok stanów samochodowych">'+
-    [['detail','Samochód'],['summary','Zestawienie zbiorcze']].map(([id,label])=>
-      '<button type="button" role="tab" data-vehicle-tab="'+id+'" '+
-      'aria-selected="'+String((summary?'summary':'detail')===id)+'" '+
-      'class="vehicle-setup-tab'+((summary?'summary':'detail')===id?' active':'')+'">'+label+'</button>'
-    ).join('')+'</div>';
+  const tab=state.vehicleTab;
+  const tabs=vehicleViewTabs(tab);
+  if(tab==='transfers'){
+    $('tableArea').innerHTML='<div class="vehicle-setup">'+tabs+
+      fleetTransfersPlaceholder()+'</div>';
+    $('tableFooter').textContent='Transfery — funkcja do przygotowania';
+    $('searchNote').classList.add('hidden');$('vehicleTopScroll').classList.add('hidden');
+    return;
+  }
+  const summary=tab==='summary';
   const meta=summary?'':(
     '<div class="vehicle-setup-meta">'+
-      [['Ekipa','—'],['Tablica rejestracyjna','—'],['Wymagana inwentaryzacja','—'],
-       ['Ostatnia inwentaryzacja','—']].map(([label,value])=>
-        '<div><span>'+label+'</span><strong>'+value+'</strong></div>').join('')+
-    '</div>');
+    [['Ekipa','—'],['Tablica rejestracyjna','—'],
+     ['Wymagana inwentaryzacja','—'],['Ostatnia inwentaryzacja','—']]
+      .map(([label,value])=>'<div><span>'+label+'</span>'+
+        '<strong>'+value+'</strong></div>').join('')+'</div>');
   const headers=summary?[
-    {label:'Indeks GPBS'},{label:'Nazwa części'},{label:'Suma',numeric:true}
+    {label:'Indeks GPBS'},{label:'Indeks SAP'},{label:'Wymagane min.',numeric:true},
+    {label:'Nazwa części'},{label:'Suma',numeric:true}
   ]:[
-    {label:'Indeks GPBS'},{label:'Indeks A'},{label:'Nazwa części'},
-    {label:'Aktualny stan',numeric:true},{label:'Wymagane',numeric:true},
-    {label:'Poprzedni stan',numeric:true}
+    {label:'Indeks GPBS'},{label:'Indeks SAP'},{label:'Wymagane min.',numeric:true},
+    {label:'Nazwa części'},{label:'Aktualny stan',numeric:true},
+    {label:'Różnica ostatniej inwentaryzacji',numeric:true},
+    {label:'Ostatnia inwentaryzacja',numeric:true}
   ];
   const message=summary
-    ?'Brak samochodów w ewidencji. Po ich dodaniu każda ekipa i numer rejestracyjny otrzymają własną kolumnę, a na końcu pojawi się suma.'
-    :'Brak samochodów w ewidencji. Po dodaniu samochodu pojawi się tutaj jego wyposażenie i historia stanów.';
+    ?'Brak samochodów w ewidencji. Po dodaniu ekip pojawią się kolumny z ich stanami oraz suma.'
+    :'Brak samochodów w ewidencji. Po pierwszej inwentaryzacji pojawią się tu stany i historia.';
   const empty='<tr><td colspan="'+headers.length+'" class="vehicle-setup-empty">'+
     escapeHtml(message)+'</td></tr>';
   $('tableArea').innerHTML='<div class="vehicle-setup">'+tabs+meta+
-    '<div class="vehicle-setup-table-wrap">'+wrapTable(headers,empty,'vehicle-setup-table')+'</div>'+
-    '</div>';
-  $('tableFooter').textContent='Układ przygotowany · samochody i ich stany nie są jeszcze podłączone do D1';
+    '<div class="vehicle-setup-table-wrap">'+wrapTable(headers,empty,'vehicle-setup-table')+
+    '</div></div>';
+  $('tableFooter').textContent='Ewidencja samochodowa nie jest jeszcze podłączona do D1';
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
 }
+
 function drawFrenchEmptyView(){
   const view=state.view;
   const headers={
@@ -1442,11 +1449,15 @@ document.addEventListener('click',e=>{
   const vehicleTab=e.target.closest('[data-vehicle-tab]');
   if(vehicleTab&&state.view==='vehicles'){
     const next=vehicleTab.dataset.vehicleTab;
-    if(next==='detail'||next==='summary'){state.vehicleTab=next;drawVehicles();}
+    if(next==='detail'||next==='summary'||next==='transfers'){
+      state.vehicleTab=next;drawVehicles();
+    }
     return;
   }
-  if(e.target.closest('[data-vehicle-history]')&&state.view==='vehicles'){
-    openPolishVehicleHistory();
+  const inventoryButton=e.target.closest('[data-vehicle-inventory-index]');
+  if(inventoryButton&&state.view==='vehicles'){
+    const index=Number(inventoryButton.dataset.vehicleInventoryIndex);
+    if(Number.isInteger(index)&&index>=0)openPolishVehicleInventory(index);
     return;
   }
   const vehicleCrew=e.target.closest('[data-vehicle-crew]');
