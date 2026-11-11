@@ -75,6 +75,25 @@ const PL_VEHICLE_TEST_HISTORY={
     {date:'27.09.2026',time:'08:55',by:'TEST-B',before:[2,1,0,2,4,0],counts:[2,1,1,2,4,0]}
   ]
 };
+// More fake weekly snapshots to exercise the narrow scrolling history UI.
+// They exist ONLY in the Polish Office preview, never in the D1 database.
+for(const [crewId,history] of Object.entries(PL_VEHICLE_TEST_HISTORY)){
+  const oldest=history[history.length-1];
+  const [day,month,year]=oldest.date.split('.').map(Number);
+  const base=Date.UTC(year,month-1,day);
+  for(let n=1;n<=14;n++){
+    const date=new Date(base-n*7*86400000);
+    const stamp=[String(date.getUTCDate()).padStart(2,'0'),
+      String(date.getUTCMonth()+1).padStart(2,'0'),
+      String(date.getUTCFullYear())].join('.');
+    const counts=oldest.counts.map((v,i)=>Math.max(0,
+      v+((n+i+(crewId==='demo-b'?1:0))%4===0?1:0)-
+      ((n+i)%5===0?1:0)));
+    const before=counts.map((v,i)=>Math.max(0,v+(i===n%counts.length?1:0)));
+    history.push({date:stamp,time:(9+n%8)+':20',
+      by:crewId==='demo-a'?'TEST-A':'TEST-B',before,counts});
+  }
+}
 const OFFICE_OPERATION_PREVIEWS={
   pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',
   inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',
@@ -999,11 +1018,28 @@ function drawPolishVehiclePreview(){
   const maxMeasured=Math.max(0,...parts.map(p=>measure
     ?measure.measureText(p.name).width:Array.from(p.name).length*6.2));
   const nameWidth=Math.max(210,Math.ceil(maxMeasured+22));
-  const fixedWidth=104+122+88+nameWidth+102+112+126;
+  // Indices shrink to the longest real value plus a small safety margin.
+  // A longer SAP/GPBS number automatically makes only its column wider.
+  const measureCode=(text)=>measure?measure.measureText(text).width:
+    Array.from(String(text)).length*6.6;
+  const gpbsWidth=Math.max(80,Math.ceil(
+    Math.max(...parts.map(p=>measureCode(p.index||'')))+20));
+  const sapWidth=Math.max(88,Math.ceil(
+    Math.max(...parts.map(p=>measureCode(p.external||'')))+20));
+  const minWidth=76,currentWidth=88,diffWidth=104;
+  const inventoryWidth=96;
+  const fixedWidth=gpbsWidth+sapWidth+minWidth+nameWidth+
+    currentWidth+diffWidth+inventoryWidth;
   const olderCount=Math.max(0,history.length-1);
   const layout=' style="--vehicle-name-width:'+nameWidth+'px;'+
+    '--vehicle-gpbs-width:'+gpbsWidth+'px;'+
+    '--vehicle-sap-width:'+sapWidth+'px;'+
+    '--vehicle-min-width:'+minWidth+'px;'+
+    '--vehicle-current-width:'+currentWidth+'px;'+
+    '--vehicle-diff-width:'+diffWidth+'px;'+
+    '--vehicle-inventory-width:'+inventoryWidth+'px;'+
     '--vehicle-fixed-width:'+fixedWidth+'px;'+
-    '--vehicle-table-width:'+(fixedWidth+olderCount*112)+'px;'+
+    '--vehicle-table-width:'+(fixedWidth+olderCount*inventoryWidth)+'px;'+
     '--vehicle-history-count:'+olderCount+'"';
   let table='';
   if(summary){
@@ -1033,7 +1069,7 @@ function drawPolishVehiclePreview(){
       '<th class="vehicle-preview-num">Wymagane<br>min.</th>'+
       '<th class="vehicle-preview-part-name">Nazwa części</th>'+
       '<th class="vehicle-preview-num">Aktualny<br>stan</th>'+
-      '<th class="vehicle-preview-num">Różnica ostatniej<br>inwentaryzacji</th>'+
+      '<th class="vehicle-preview-num">Różnica<br>ostatniej<br>inwentaryzacji</th>'+
       '<th class="vehicle-preview-inventory-col vehicle-preview-latest">'+
         (latest?vehicleInventoryButton(latest,0):'Ostatnia inwentaryzacja')+'</th>'+
       others.map((h,index)=>'<th class="vehicle-preview-inventory-col">'+
