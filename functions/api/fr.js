@@ -240,11 +240,24 @@ async function saveSession(db,user,data){
   }
   for(const [id,delta] of deltas){
     if(delta===0)continue;
-    statements.push(db.prepare(
-      'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP) '+
-      'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
-      'quantity=warehouse_stock.quantity+excluded.quantity,updated_at=CURRENT_TIMESTAMP'
-    ).bind(visit.warehouse_id,id,delta));
+    if(delta<0){
+      // SQLite checks the INSERT candidate even on an UPSERT conflict.
+      // Use a valid zero candidate; fail if the existing row disappears.
+      statements.push(db.prepare(
+        'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) '+
+        'VALUES(?,?,CASE WHEN EXISTS(SELECT 1 FROM warehouse_stock '+
+        'WHERE warehouse_id=? AND part_id=?) THEN 0 ELSE -1 END,CURRENT_TIMESTAMP) '+
+        'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
+        'quantity=warehouse_stock.quantity+?,updated_at=CURRENT_TIMESTAMP'
+      ).bind(visit.warehouse_id,id,visit.warehouse_id,id,delta));
+    }else{
+      statements.push(db.prepare(
+        'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) '+
+        'VALUES(?,?,?,CURRENT_TIMESTAMP) '+
+        'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
+        'quantity=warehouse_stock.quantity+excluded.quantity,updated_at=CURRENT_TIMESTAMP'
+      ).bind(visit.warehouse_id,id,delta));
+    }
     // Vehicle stock cannot become negative. Old Apps Script also clamped returns to zero.
     statements.push(db.prepare(
       'INSERT INTO vehicle_stock(vehicle_id,part_id,quantity,updated_at) '+
