@@ -532,6 +532,9 @@ function setHead(title,kicker,desc){
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
   $('refresh').classList.toggle('hidden',Boolean(state.preview?.type==='warehouse')||state.view==='vehicles');
+  // A preview with no D1 fleet source must not show a stale sync timestamp.
+  $('syncTime').classList.toggle('hidden',state.view==='vehicles');
+  if(state.view==='vehicles')$('syncTime').textContent='';
   $('refresh').disabled=Boolean(frEmpty)||state.view==='vehicles';
   $('refresh').title=frEmpty?'Brak danych do synchronizacji':'Odśwież dane';
   // French catalogue views can add shared parts, without creating stock.
