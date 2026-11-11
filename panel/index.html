@@ -386,11 +386,13 @@
           <option value="0">Nieaktywny — bez dostępu</option>
         </select>
       </div>
+      <label id="userTestRow" class="checkbox-row" for="userIsTest"><input type="checkbox" id="userIsTest"> Ekipa testowa (można ją trwale usunąć wraz z testami)</label>
       <fieldset id="userWarehouses"><legend>Dostęp do magazynów</legend></fieldset>
       <p id="protectedAdminHint" class="hint" hidden>Konto administratora jest chronione. Rola, status i przypisane magazyny nie mogą zostać zmienione w panelu.</p>
       <p class="hint">Nadanie i zmiana PIN-u to oddzielna operacja. Edycja danych pracownika nie zmienia PIN-u.</p>
       <div class="dialog-actions">
         <button id="archiveUserBtn" class="btn archive-danger" type="button" hidden>Usuń z listy</button>
+        <button id="deleteCrewPermanentlyBtn" class="btn archive-danger" type="button" hidden>Usuń ekipę trwale</button>
         <button id="cancelUser" class="btn ghost" type="button">Anuluj</button>
         <button class="btn primary" id="saveUser" type="submit">Zapisz użytkownika</button>
       </div>
