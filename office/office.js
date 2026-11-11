@@ -150,7 +150,7 @@ function vehicleDemoCrewName(id){
   return PL_VEHICLE_TEST_PREVIEW.crews.find(c=>c.id===id)?.team||'—';
 }
 function vehicleDemoDateKey(date){
-  const match=/^(\\d{2})\\.(\\d{2})\\.(\\d{4})$/.exec(String(date||''));
+  const match=/^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(date||''));
   return match?match[3]+'-'+match[2]+'-'+match[1]:'';
 }
 function vehicleDemoMovementsFor(crewId,until,after){
@@ -1047,7 +1047,7 @@ function syncVehicleTopScroll(){
   $('vehicleTopScroll').scrollLeft=$('tableArea').scrollLeft;
 }
 function vehicleViewTabs(tab){
-  const tabs=[['detail','Samochód'],['summary','Zestawienie zbiorcze'],['transfers','Transfery']];
+  const tabs=[['detail','Ekipy'],['summary','Zestawienie zbiorcze'],['transfers','Transfery']];
   return '<div class="vehicle-tabs-row"><nav class="vehicle-setup-tabs" role="tablist" aria-label="Widoki stanów samochodowych">'+
     tabs.map(([id,label])=>'<button type="button" role="tab" data-vehicle-tab="'+id+'" '+
       'aria-selected="'+String(tab===id)+'" '+
@@ -1058,11 +1058,49 @@ function vehicleViewTabs(tab){
 }
 function fleetTransfersPlaceholder(){
   return '<div class="vehicle-transfer-empty">'+
-    '<h3>Transfery między samochodami</h3>'+
-    '<p>To miejsce na przekazanie części między ekipami. Zasady potwierdzania '+
-    'i automatycznej aktualizacji obu samochodów ustalimy w kolejnym etapie.</p>'+
-    '<small>Transfery nie są jeszcze uruchomione. Żadne stany nie są zmieniane.</small>'+
+    '<h3>Transfery między ekipami</h3>'+
+    '<p>Po połączeniu magazynów mobilnych z D1 w tym miejscu będą zgłoszenia i potwierdzenia transferów.</p>'+
+    '<small>Nie ma jeszcze realnych transferów do pokazania.</small>'+
     '</div>';
+}
+function vehicleDemoTransfersView(){
+  const rights=['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(state.user?.role);
+  const roleNames={ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator'};
+  const label=roleNames[state.user?.role]||'Pracownik';
+  const rows=PL_VEHICLE_DEMO_MOVEMENTS.filter(x=>x.kind==='transfer')
+    .sort((a,b)=>vehicleDemoDateKey(b.date).localeCompare(vehicleDemoDateKey(a.date)));
+  return '<section class="vehicle-demo-transfers">'+
+    '<div class="vehicle-demo-transfers-head">'+
+      '<div><h3>Transfery pomiędzy ekipami</h3>'+
+      '<p>Przekazanie zmienia oba stany dopiero po potwierdzeniu odbiorcy albo decyzji uprawnionej osoby.</p></div>'+
+      '<span class="vehicle-demo-label">DANE FIKCYJNE · PODGLĄD</span></div>'+
+    '<div class="vehicle-demo-transfers-list">'+rows.map(t=>{
+      const status=vehicleDemoTransferStatus(t);
+      const itemList=t.items.map(item=>{
+        const p=PL_VEHICLE_TEST_PREVIEW.parts[item.i];
+        return escapeHtml(p?.name||'Część')+' <b>'+escapeHtml(item.qty)+' szt.</b>';
+      }).join(' · ');
+      const from=vehicleDemoCrewName(t.crew),to=vehicleDemoCrewName(t.peer);
+      return '<article class="vehicle-demo-transfer-card'+vehicleDemoStatusClass(t)+'">'+
+        '<div class="vehicle-demo-transfer-main">'+
+          '<div class="vehicle-demo-transfer-title">'+
+            '<strong>'+escapeHtml(from)+' <span aria-hidden="true">→</span> '+escapeHtml(to)+'</strong>'+
+            '<span class="vehicle-demo-transfer-status">'+escapeHtml(vehicleDemoStatusText(t))+'</span>'+
+          '</div>'+
+          '<p>'+itemList+'</p>'+
+          '<small>'+escapeHtml(t.date)+' · '+escapeHtml(t.time)+
+            ' · Zgłosił: '+escapeHtml(t.actor)+'</small>'+
+        '</div>'+
+        (status==='pending'&&rights?
+          '<button type="button" class="btn subtle vehicle-demo-approve" '+
+          'data-vehicle-demo-approve="'+escapeHtml(t.id)+'" '+
+          'title="Tylko podgląd. Nie zapisuje nic w bazie D1.">'+
+          'Zatwierdź jako '+escapeHtml(label.toLowerCase())+'</button>':'')+
+      '</article>';
+    }).join('')+'</div>'+
+    '<p class="vehicle-demo-transfers-foot">Przy prawdziwym transferze uprawniona osoba po wyjaśnieniu sytuacji zatwierdziłaby go pod własnym kontem. '+
+      'W tym podglądzie przycisk zmienia wyłącznie dane przykładowe w bieżącej sesji, bez zapisu do D1.</p>'+
+    '</section>';
 }
 function vehicleInventoryButton(h,index){
   return '<button type="button" class="vehicle-inventory-button" '+
@@ -1100,8 +1138,8 @@ function drawPolishVehiclePreview(){
   const tabs=vehicleViewTabs(tab);
   if(tab==='transfers'){
     $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+tabs+
-      fleetTransfersPlaceholder()+'</div>';
-    $('tableFooter').textContent='Transfery — funkcja do przygotowania';
+      vehicleDemoTransfersView()+'</div>';
+    $('tableFooter').textContent='Podgląd transferów — dane przykładowe, bez zapisu D1';
     $('searchNote').classList.add('hidden');$('vehicleTopScroll').classList.add('hidden');
     return;
   }
