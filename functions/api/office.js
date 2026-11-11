@@ -141,7 +141,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
-    frCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',
+    frCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
@@ -166,6 +166,35 @@ export async function onRequestGet({request,env}){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
+  }
+  if(view==='vehicleCrews'){
+    // Teams come exclusively from active Admin user accounts (role EKIPA)
+    // assigned to active French warehouses. No synthetic vehicle records.
+    const privileged=user.role==='ADMIN'&&
+      String(user.nickname||'').trim().toUpperCase()==='JJ';
+    const frIds=authorizedWarehouses
+      .filter(w=>w.country_code==='FR').map(w=>w.id);
+    if(!privileged&&!frIds.length)
+      return error('Brak dostępu do ekip francuskich.',403);
+    try{
+      const scope=privileged?'':(
+        ' AND w.id IN ('+frIds.map(()=>'?').join(',')+')'
+      );
+      const result=await env.DB.prepare(
+        'SELECT DISTINCT u.id,u.name FROM users u '+
+        'JOIN user_warehouse_access a ON a.user_id=u.id '+
+        'JOIN warehouses w ON w.id=a.warehouse_id '+
+        "WHERE u.active=1 AND u.role_code='EKIPA' "+
+        "AND w.active=1 AND w.country_code='FR'"+scope+
+        ' ORDER BY u.name COLLATE NOCASE LIMIT 250'
+      ).bind(...(privileged?[]:frIds)).all();
+      return workerJson({ok:true,crews:(result.results||[]).map(row=>({
+        id:row.id,team:row.name
+      }))});
+    }catch(err){
+      console.error('French crew list lookup',err?.name||'Error');
+      return error('Nie udało się pobrać ekip francuskich.',503);
+    }
   }
   if(view==='vehicleCatalog'){
     // Exactly the same D1-backed equipment category that Admin uses.
