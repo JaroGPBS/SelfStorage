@@ -1728,6 +1728,8 @@ function drawFrenchVehicleFleet(parts,crews){
   if(!teams.some(c=>c.id===state.frVehicleCrew))
     state.frVehicleCrew=teams[0]?.id||null;
   const chosen=teams.find(c=>c.id===state.frVehicleCrew)||null;
+  const actualQty=(crew,part)=>crew?.stock&&Object.prototype.hasOwnProperty.call(crew.stock,part.id)
+    ?String(crew.stock[part.id]):crew?.lastInventory?'0':'—';
   const summary=state.vehicleTab==='summary';
   const tabs=vehicleViewTabs(state.vehicleTab,false);
   if(state.vehicleTab==='transfers'){
@@ -1746,13 +1748,13 @@ function drawFrenchVehicleFleet(parts,crews){
       String(chosen?.id===team.id)+'">'+
       '<span class="vehicle-team-caption">Ekipa</span>'+
       '<span class="vehicle-team-name">'+escapeHtml(team.team)+'</span>'+
-      '<small>Bez inwentaryzacji</small></button>').join('')+
+      '<small>'+escapeHtml(team.plate||'Bez samochodu')+'</small></button>').join('')+
     '</div>');
   const meta=summary||!chosen?'':(
     '<div class="vehicle-setup-meta">'+
-      [['Ekipa',chosen.team],['Tablica rejestracyjna','—'],
-       ['Inwentaryzacja','Wymagana inwentaryzacja'],
-       ['Ostatnia inwentaryzacja','Brak']]
+      [['Ekipa',chosen.team],['Tablica rejestracyjna',chosen.plate||'—'],
+       ['Inwentaryzacja',chosen.lastInventory?'Wykonana':'Do wykonania'],
+       ['Ostatnia inwentaryzacja',chosen.lastInventory||'Brak']]
       .map(([label,value])=>'<div><span>'+escapeHtml(label)+'</span>'+
         '<div class="vehicle-preview-meta-value"><strong>'+
           escapeHtml(value)+'</strong></div></div>').join('')+'</div>');
@@ -1785,7 +1787,10 @@ function drawFrenchVehicleFleet(parts,crews){
       '<td class="vehicle-preview-num">'+escapeHtml(needed(p))+'</td>'+
       '<td class="vehicle-split-part-name" title="'+escapeHtml(p.name)+'">'+
         escapeHtml(p.name)+'</td>'+
-      '<td class="vehicle-preview-num vehicle-preview-sum">—</td></tr>').join('');
+      '<td class="vehicle-preview-num vehicle-preview-sum">'+escapeHtml((()=>{
+        const values=teams.map(t=>actualQty(t,p)).filter(v=>v!=='—').map(Number);
+        return values.length?String(values.reduce((a,b)=>a+b,0)):'—';
+      })())+'</td></tr>').join('');
     const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
       fixedWidth+'px">'+fixedCols+fixedHead+'<tbody>'+fixedBody+'</tbody></table>';
     const teamTable='<table class="table vehicle-split-history-table" style="width:'+
@@ -1794,10 +1799,10 @@ function drawFrenchVehicleFleet(parts,crews){
       '<thead><tr>'+teams.map(c=>
         '<th class="vehicle-preview-column" title="'+escapeHtml(c.team)+'">'+
         '<div class="vehicle-preview-car-header"><strong>'+escapeHtml(c.team)+
-        '</strong><small>Brak</small><span>inwentaryzacji</span></div></th>'
+        '</strong><small>'+escapeHtml(c.plate||'Brak auta')+'</small><span>'+escapeHtml(c.lastInventory?'Po inwentaryzacji':'Do inwentaryzacji')+'</span></div></th>'
       ).join('')+'</tr></thead><tbody>'+
-      entries.map(()=>'<tr>'+teams.map(()=>
-        '<td class="vehicle-preview-num">—</td>').join('')+'</tr>').join('')+
+      entries.map(p=>'<tr>'+teams.map(c=>
+        '<td class="vehicle-preview-num">'+escapeHtml(actualQty(c,p))+'</td>').join('')+'</tr>').join('')+
       '</tbody></table>';
     table='<div class="vehicle-preview-split-table vehicle-summary-split vehicle-fr-split">'+
       '<div class="vehicle-split-fixed" style="width:'+fixedWidth+'px">'+fixedTable+'</div>'+
@@ -1821,23 +1826,33 @@ function drawFrenchVehicleFleet(parts,crews){
       '<td class="vehicle-preview-num">'+escapeHtml(needed(p))+'</td>'+
       '<td class="vehicle-split-part-name" title="'+escapeHtml(p.name)+'">'+
         escapeHtml(p.name)+'</td>'+
-      '<td class="vehicle-preview-num" title="Nie przeprowadzono inwentaryzacji">—</td>'+
+      '<td class="vehicle-preview-num">'+escapeHtml(actualQty(chosen,p))+'</td>'+
       '</tr>').join('');
     const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
       fixedWidth+'px">'+fixedCols+partsHead+'<tbody>'+fixedBody+'</tbody></table>';
     table='<div class="vehicle-preview-split-table vehicle-fr-split">'+
       '<div class="vehicle-split-fixed" style="width:'+fixedWidth+'px">'+fixedTable+'</div>'+
       '<div class="vehicle-split-history vehicle-fr-empty-history">'+
-      '<strong>'+(chosen?'Wymagana inwentaryzacja':'Brak ekip')+'</strong>'+
-      '<span>'+(chosen?'Nie ma jeszcze pierwszej inwentaryzacji tej ekipy. '+
-        'Stan pozostaje nieustalony.':'Po dodaniu ekipy w panelu administracyjnym '+
-        'pojawią się panele ekip i możliwość ich wyboru.')+'</span>'+
+      '<strong>'+(chosen?(chosen.lastInventory?'Stan samochodu':'Do inwentaryzacji'):'Brak ekip')+'</strong>'+
+      '<span>'+(chosen?(chosen.lastInventory?'Dane odświeżane z D1 po zapisaniu operacji.':
+        'Części pobrane już widać, pełny stan ustali pierwsza inwentaryzacja.'):
+        'Po dodaniu ekipy w Adminie pojawi się jej kolumna.')+'</span>'+
       '</div></div>';
   }
+  const movements=(state.frVehicleData?.movements||[]).filter(m=>summary||
+    (chosen&&(m.plate===chosen.plate||(!chosen.plate&&m.team===chosen.team)))).slice(0,60);
+  const history='<div class="vehicle-setup" style="margin-top:16px;overflow:auto;">'+
+    '<h3>Ostatnie pobrania i zwroty</h3>'+
+    (movements.length?'<table class="table"><thead><tr><th>Data</th><th>Ekipa</th><th>Auto</th><th>Magazyn</th><th>Operacja</th><th>Część</th><th>Ilość</th></tr></thead><tbody>'+
+      movements.map(m=>'<tr><td>'+escapeHtml(m.created_at||'—')+'</td><td>'+escapeHtml(m.team||'—')+
+      '</td><td>'+escapeHtml(m.plate||'—')+'</td><td>'+escapeHtml(m.warehouse||'—')+
+      '</td><td>'+escapeHtml(m.direction||'—')+'</td><td>'+escapeHtml(m.part_name||'—')+
+      '</td><td>'+escapeHtml(String(m.quantity))+'</td></tr>').join('')+'</tbody></table>':
+      '<p>Brak zapisanych pobrań i zwrotów.</p>')+'</div>';
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
-    tabs+selection+meta+table+'</div>';
+    tabs+selection+meta+table+history+'</div>';
   $('tableFooter').textContent='Francja · '+entries.length+
-    ' części · '+teams.length+' ekip · brak inwentaryzacji i stanów samochodowych.';
+    ' części · '+teams.length+' ekip · aktualne dane D1.';
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
   if(summary&&teams.length){
@@ -1925,16 +1940,17 @@ async function render(){
       try{
         // French team membership is reloaded on entering each fleet tab,
         // so a newly created Admin EKIPA appears without a second registry.
-        const [response,teamResponse]=await Promise.all([
+        const [response,teamResponse,movementResponse]=await Promise.all([
           api('vehicleCatalog'),
-          french?api('vehicleCrews'):Promise.resolve({crews:[]})
+          french?api('vehicleCrews'):Promise.resolve({crews:[]}),
+          french?api('frMovements'):Promise.resolve({operations:[]})
         ]);
         if(ticket!==state.requestId)return;
         if(polish&&OFFICE_VEHICLE_DEMO_ENABLED){
           useVehicleCatalogueInDemo(response.parts||[]);
           drawPolishVehiclePreview();
         }else if(french){
-          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[]};
+          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],movements:movementResponse.operations||[]};
           drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews);
         }else drawVehicles();
       }catch(ex){
