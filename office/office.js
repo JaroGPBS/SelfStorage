@@ -1027,20 +1027,21 @@ function drawPolishVehiclePreview(){
   const sapWidth=Math.max(88,Math.ceil(
     Math.max(...parts.map(p=>measureCode(p.external||'')))+20));
   const minWidth=76,currentWidth=88,diffWidth=104;
-  const inventoryWidth=96;
-  const fixedWidth=gpbsWidth+sapWidth+minWidth+nameWidth+
-    currentWidth+diffWidth+inventoryWidth;
-  const olderCount=Math.max(0,history.length-1);
+  const inventoryWidth=88,selectedSubWidth=49;
+  const selectedInventory=Math.min(Math.max(
+    Number.isInteger(state.vehicleSelectedInventory)?state.vehicleSelectedInventory:0,0),
+    Math.max(0,history.length-1));
+  const fixedWidth=gpbsWidth+sapWidth+minWidth+nameWidth+currentWidth;
+  const historyWidth=history.length*inventoryWidth+
+    (history.length?selectedSubWidth*2-inventoryWidth:0);
   const layout=' style="--vehicle-name-width:'+nameWidth+'px;'+
     '--vehicle-gpbs-width:'+gpbsWidth+'px;'+
     '--vehicle-sap-width:'+sapWidth+'px;'+
     '--vehicle-min-width:'+minWidth+'px;'+
     '--vehicle-current-width:'+currentWidth+'px;'+
-    '--vehicle-diff-width:'+diffWidth+'px;'+
     '--vehicle-inventory-width:'+inventoryWidth+'px;'+
     '--vehicle-fixed-width:'+fixedWidth+'px;'+
-    '--vehicle-table-width:'+(fixedWidth+olderCount*inventoryWidth)+'px;'+
-    '--vehicle-history-count:'+olderCount+'"';
+    '--vehicle-table-width:'+(fixedWidth+historyWidth)+'px"';
   let table='';
   if(summary){
     const head='<tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
@@ -1062,29 +1063,45 @@ function drawPolishVehiclePreview(){
     table='<table class="table vehicle-setup-table vehicle-preview-summary">'+
       '<thead>'+head+'</thead><tbody>'+rows+'</tbody></table>';
   }else{
-    const latest=history[0];
-    const others=history.slice(1);
+    // The selected inventory displays SUMA/Różnica. Others stay narrow.
+    // Each difference is against the saved count *before that audit*.
     const head='<tr>'+
-      '<th>Indeks GPBS</th><th>Indeks SAP</th>'+
-      '<th class="vehicle-preview-num">Wymagane<br>min.</th>'+
-      '<th class="vehicle-preview-part-name">Nazwa części</th>'+
-      '<th class="vehicle-preview-num">Aktualny<br>stan</th>'+
-      '<th class="vehicle-preview-num">Różnica<br>ostatniej<br>inwentaryzacji</th>'+
-      '<th class="vehicle-preview-inventory-col vehicle-preview-latest">'+
-        (latest?vehicleInventoryButton(latest,0):'Ostatnia inwentaryzacja')+'</th>'+
-      others.map((h,index)=>'<th class="vehicle-preview-inventory-col">'+
-        vehicleInventoryButton(h,index+1)+'</th>').join('')+
-      '</tr>';
+      '<th rowspan="2">Indeks GPBS</th><th rowspan="2">Indeks SAP</th>'+
+      '<th rowspan="2" class="vehicle-preview-num">Wymagane<br>min.</th>'+
+      '<th rowspan="2" class="vehicle-preview-part-name">Nazwa części</th>'+
+      '<th rowspan="2" class="vehicle-preview-num">Aktualny<br>stan</th>'+
+      history.map((h,i)=>
+        '<th class="vehicle-preview-inventory-col'+
+        (i===selectedInventory?' is-selected':'')+
+        '"'+(i===selectedInventory?' colspan="2"':' rowspan="2"')+'>'+
+        vehicleInventoryButton(h,i)+'</th>').join('')+
+      '</tr><tr><th class="vehicle-preview-inventory-subhead">SUMA</th>'+
+      '<th class="vehicle-preview-inventory-subhead">Różnica</th></tr>';
+    const columns='<colgroup>'+
+      [gpbsWidth,sapWidth,minWidth,nameWidth,currentWidth].map(w=>
+        '<col style="width:'+w+'px">').join('')+
+      history.map((h,i)=>i===selectedInventory
+        ?'<col style="width:'+selectedSubWidth+'px"><col style="width:'+
+          selectedSubWidth+'px">'
+        :'<col style="width:'+inventoryWidth+'px">').join('')+
+      '</colgroup>';
     const rows=parts.map((p,index)=>{
       const stock=p.stock[crew.id];
       const shortage=stock.current<p.required;
-      const difference=latest&&latest.before[index]!=null
-        ?latest.counts[index]-latest.before[index]:null;
-      const diffText=difference===null?'—':difference>0?'+'+difference:String(difference);
-      const diffClass=difference>0?' is-positive':difference<0?' is-negative':'';
-      const historical=history.map((h,position)=>
-        '<td class="vehicle-preview-num'+(position===0?' vehicle-preview-latest':'')+'">'+
-          quantity(h.counts[index])+'</td>').join('');
+      const historical=history.map((h,i)=>{
+        const amount=h.counts[index];
+        if(i!==selectedInventory){
+          return '<td class="vehicle-preview-num">'+quantity(amount)+'</td>';
+        }
+        const before=h.before[index];
+        const delta=amount==null||before==null?null:amount-before;
+        const diff=delta==null?'—':delta>0?'+'+delta:String(delta);
+        const color=delta>0?' is-positive':delta<0?' is-negative':'';
+        return '<td class="vehicle-preview-num vehicle-inventory-selected-sum">'+
+          quantity(amount)+'</td>'+
+          '<td class="vehicle-preview-num vehicle-preview-difference'+color+
+          ' vehicle-inventory-selected-diff">'+escapeHtml(diff)+'</td>';
+      }).join('');
       return '<tr>'+
         '<td>'+escapeHtml(p.index)+'</td>'+
         '<td>'+escapeHtml(p.external||'—')+'</td>'+
@@ -1093,12 +1110,10 @@ function drawPolishVehiclePreview(){
         '<td class="vehicle-preview-num vehicle-preview-current'+(shortage?' vehicle-preview-shortage':'')+'">'+
           '<strong>'+quantity(stock.current)+'</strong>'+
           (shortage?'<small>Brakuje '+escapeHtml(p.required-stock.current)+'</small>':'')+
-        '</td>'+
-        '<td class="vehicle-preview-num vehicle-preview-difference'+diffClass+'">'+
-          escapeHtml(diffText)+'</td>'+historical+'</tr>';
+        '</td>'+historical+'</tr>';
     }).join('');
-    table='<table class="table vehicle-setup-table vehicle-preview-detail">'+
-      '<thead>'+head+'</thead><tbody>'+rows+'</tbody></table>';
+    table='<table class="table vehicle-setup-table vehicle-preview-detail vehicle-preview-detail-v2">'+
+      columns+'<thead>'+head+'</thead><tbody>'+rows+'</tbody></table>';
   }
   const scrollbar=summary?'':(
     '<div class="vehicle-history-scrollbar hidden" role="region" tabindex="0" '+
@@ -1216,7 +1231,7 @@ function printVehicleInventoryReport(){
   clearVehicleInventoryPrintStyle();
   const sheet=document.createElement('style');
   sheet.id='vehicleReportPrintPage';
-  sheet.textContent='@page { size: A4 landscape; margin: 11mm; }';
+  sheet.textContent='@page { size: A4 portrait; margin: 10mm; }';
   document.head.append(sheet);
   document.body.classList.add('vehicle-inventory-print-active');
   try{window.print();}
@@ -1256,7 +1271,6 @@ function drawVehicles(){
   ]:[
     {label:'Indeks GPBS'},{label:'Indeks SAP'},{label:'Wymagane min.',numeric:true},
     {label:'Nazwa części'},{label:'Aktualny stan',numeric:true},
-    {label:'Różnica ostatniej inwentaryzacji',numeric:true},
     {label:'Ostatnia inwentaryzacja',numeric:true}
   ];
   const message=summary
@@ -1588,7 +1602,11 @@ document.addEventListener('click',e=>{
   const inventoryButton=e.target.closest('[data-vehicle-inventory-index]');
   if(inventoryButton&&state.view==='vehicles'){
     const index=Number(inventoryButton.dataset.vehicleInventoryIndex);
-    if(Number.isInteger(index)&&index>=0)openPolishVehicleInventory(index);
+    if(Number.isInteger(index)&&index>=0){
+      state.vehicleSelectedInventory=index;
+      drawVehicles();
+      openPolishVehicleInventory(index);
+    }
     return;
   }
   const vehicleCrew=e.target.closest('[data-vehicle-crew]');
@@ -1596,7 +1614,7 @@ document.addEventListener('click',e=>{
      realWarehouse(state.warehouse)?.country_code==='PL'){
     const id=vehicleCrew.dataset.vehicleCrew;
     if(PL_VEHICLE_TEST_PREVIEW.crews.some(c=>c.id===id)){
-      state.vehiclePreviewCrew=id;drawVehicles();
+      state.vehiclePreviewCrew=id;state.vehicleSelectedInventory=0;drawVehicles();
     }
     return;
   }
