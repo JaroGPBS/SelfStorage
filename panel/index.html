@@ -379,6 +379,14 @@
       <p class="hint identity-hint">Dane kontaktowe można zostawić puste i uzupełnić później. Po kliknięciu użytkownika zobaczysz je w rozwiniętym wierszu. Będą dostępne tylko dla administratora.</p>
       <label for="userRole">Rola</label>
       <select id="userRole" class="select" required></select>
+      <div id="userCrewMarketField" hidden>
+        <label for="userCrewMarket">Rynek ekipy</label>
+        <select id="userCrewMarket" class="select">
+          <option value="FR">Francja</option>
+          <option value="PL">Polska</option>
+        </select>
+        <p class="hint">Ekipa działa na swoim rynku, bez stałego magazynu.</p>
+      </div>
       <div id="userStatusRow" class="account-status" hidden>
         <label for="userStatus">Status konta</label>
         <select id="userStatus" class="select">
