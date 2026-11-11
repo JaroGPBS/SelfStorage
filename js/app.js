@@ -266,7 +266,8 @@ function restore() {
   if (!saved) return;
 
   // Discard historical demo sessions so they can never reappear as real visits.
-  if(saved.demo || saved.team?.id==='DEMO' || saved.visit?.magazyn?.id==='DEMO') {
+  if(saved.demo || saved.team?.id==='DEMO' || saved.visit?.magazyn?.id==='DEMO' ||
+     (saved.team?.id && !/^GPBS-U-[a-f0-9-]{36}$/.test(saved.team.id))) {
     clearState();
     return;
   }
@@ -596,6 +597,7 @@ function getCachedVehicleStock() {
   const cache = state.vehicleStockCache;
   if (!cache || !cache.data || !state.team?.id) return null;
   if (String(cache.teamId || '') !== String(state.team.id)) return null;
+  if (String(cache.vehiclePlate || '') !== String(state.team.samochod || '')) return null;
   return cache.data;
 }
 
@@ -607,8 +609,9 @@ function readStoredVehicleStock(teamId) {
     if (!raw) return null;
 
     const all = JSON.parse(raw);
+    const key=String(teamId)+'::'+String(state.team?.samochod||'');
     const entry = all && typeof all === 'object'
-      ? all[String(teamId)]
+      ? all[key]
       : null;
 
     return entry?.data ? entry : null;
@@ -626,7 +629,7 @@ function writeStoredVehicleStock(teamId, entry) {
     const all = raw ? JSON.parse(raw) : {};
     const safe = all && typeof all === 'object' ? all : {};
 
-    safe[String(teamId)] = entry;
+    safe[String(teamId)+'::'+String(state.team?.samochod||'')] = entry;
     localStorage.setItem(VEHICLE_STOCK_CACHE_KEY, JSON.stringify(safe));
   } catch (error) {
     console.warn('Nie udało się zapisać stanu auta w pamięci.', error);
@@ -647,6 +650,7 @@ function storeVehicleStockCache(data) {
 
   const entry = {
     teamId: state.team.id,
+    vehiclePlate:state.team.samochod||'',
     visitId: state.visit?.idWizyty || null,
     fetchedAt: new Date().toISOString(),
     updatedLocallyAt: previous?.updatedLocallyAt || null,
@@ -1815,6 +1819,13 @@ async function assignCurrentVehicle() {
   if(!/^[A-Z0-9-]{3,20}$/.test(raw))
     throw new Error('Wpisz numer rejestracyjny samochodu.');
   const result=await api.assignVehicle(raw);
+  if(state.team.samochod!==result.samochod.registration_number){
+    state.vehicleStockCache=null;
+    state.vehicleVisitDelta={};
+    vehicleStockRequest=null;
+    vehicleManualDraft={};
+    vehicleInventoryParts=[];
+  }
   state.team.samochod=result.samochod.registration_number;
   localStorage.setItem('gpbs-fr-car-'+state.team.id,state.team.samochod);
   $('frVehiclePlate').value=state.team.samochod;
