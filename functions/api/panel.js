@@ -931,6 +931,9 @@ async function staffMutation(env,body,actor,edit) {
   const code=await chooseStaffCode(db,staff,id,before);
   if(!code)return fail('Symbol jest zajęty. Wybierz inny.',409);
 
+  if(staff.role==='EKIPA' && !['PL','FR'].includes(String(body.crewMarket||'')))
+    return fail('Wybierz rynek ekipy: Polska albo Francja.',400);
+  if(staff.role==='EKIPA')await ensureAccessTable(db);
   const stmts=[];
   if(edit) {
     stmts.push(db.prepare('UPDATE users SET name=?,role_code=?,active=? WHERE id=?')
@@ -952,6 +955,13 @@ async function staffMutation(env,body,actor,edit) {
   for(const wh of staff.warehouses) {
     stmts.push(db.prepare('INSERT INTO user_warehouse_access (user_id,warehouse_id) VALUES (?,?)')
       .bind(id,wh));
+  }
+  if(staff.role==='EKIPA'){
+    stmts.push(db.prepare(
+      'INSERT INTO user_access_settings(user_id,pl_enabled,fr_enabled) VALUES(?,?,?) '+
+      'ON CONFLICT(user_id) DO UPDATE SET pl_enabled=excluded.pl_enabled,'+
+      'fr_enabled=excluded.fr_enabled,updated_at=CURRENT_TIMESTAMP'
+    ).bind(id,body.crewMarket==='PL'?1:0,body.crewMarket==='FR'?1:0));
   }
   // Audit stores the symbol, role and warehouse assignment, NEVER phone numbers.
   stmts.push(db.prepare(
