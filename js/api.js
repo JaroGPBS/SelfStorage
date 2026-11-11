@@ -1,4 +1,4 @@
-const API_URL = '/api';
+const API_URL = '/api/fr';
 const REQUEST_TIMEOUT_MS = 25000;
 const SAVE_SESSION_TIMEOUT_MS = 60000;
 const VEHICLE_META_TIMEOUT_MS = 8000;
@@ -113,6 +113,10 @@ export const api = {
       typZmiany,
       zmiany
     });
+  },
+
+  assignVehicle(numerRejestracyjny) {
+    return request('USTAW_SAMOCHOD', {numerRejestracyjny});
   },
 
   startVisit({ idEkipy, kodMagazynu, idWizyty }) {
