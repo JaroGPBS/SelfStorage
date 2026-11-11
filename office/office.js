@@ -51,20 +51,28 @@ const PL_VEHICLE_TEST_PREVIEW={
   ]
 };
 // Invented dated snapshots for the temporary Office preview, not actual audits.
+// Temporary, wholly invented inventory snapshots for visual approval.
+// 'before' records the stock in the vehicle ledger immediately before counting;
+// 'counts' records what the crew counted. They are not consecutive snapshots
+// of stock movements, and MUST NOT be migrated to D1.
 const PL_VEHICLE_TEST_HISTORY={
   'demo-a':[
-    {date:'05.11.2026',time:'10:35',by:'TEST-A',counts:[4,1,1,2,3,1]},
-    {date:'29.10.2026',time:'16:10',by:'TEST-A',counts:[3,1,0,3,4,1]},
-    {date:'22.10.2026',time:'11:20',by:'TEST-A',counts:[3,0,0,3,4,1]},
-    {date:'15.10.2026',time:'09:05',by:'TEST-A',counts:[4,1,1,2,4,0]},
-    {date:'08.10.2026',time:'14:20',by:'TEST-A',counts:[4,1,0,2,3,1]}
+    {date:'05.11.2026',time:'10:35',by:'TEST-A',before:[3,1,0,3,4,1],counts:[4,1,1,2,3,1]},
+    {date:'29.10.2026',time:'16:10',by:'TEST-A',before:[3,1,0,3,4,1],counts:[3,1,0,3,4,1]},
+    {date:'22.10.2026',time:'11:20',by:'TEST-A',before:[3,0,0,3,4,1],counts:[3,0,0,3,4,1]},
+    {date:'15.10.2026',time:'09:05',by:'TEST-A',before:[4,1,1,2,4,0],counts:[4,1,1,2,4,0]},
+    {date:'08.10.2026',time:'14:20',by:'TEST-A',before:[4,1,0,2,3,1],counts:[4,1,0,2,3,1]},
+    {date:'01.10.2026',time:'12:10',by:'TEST-A',before:[3,1,0,2,3,0],counts:[4,1,0,2,3,1]},
+    {date:'24.09.2026',time:'09:50',by:'TEST-A',before:[3,0,0,2,3,0],counts:[3,1,0,2,3,0]}
   ],
   'demo-b':[
-    {date:'07.11.2026',time:'17:15',by:'TEST-B',counts:[2,0,1,3,4,1]},
-    {date:'02.11.2026',time:'11:50',by:'TEST-B',counts:[2,1,1,2,4,0]},
-    {date:'25.10.2026',time:'16:30',by:'TEST-B',counts:[1,1,0,2,4,0]},
-    {date:'18.10.2026',time:'13:40',by:'TEST-B',counts:[3,1,0,2,3,0]},
-    {date:'11.10.2026',time:'10:05',by:'TEST-B',counts:[3,1,1,2,4,1]}
+    {date:'07.11.2026',time:'17:15',by:'TEST-B',before:[2,1,1,2,4,0],counts:[2,0,1,3,4,1]},
+    {date:'02.11.2026',time:'11:50',by:'TEST-B',before:[2,1,1,2,4,0],counts:[2,1,1,2,4,0]},
+    {date:'25.10.2026',time:'16:30',by:'TEST-B',before:[1,1,0,2,4,0],counts:[1,1,0,2,4,0]},
+    {date:'18.10.2026',time:'13:40',by:'TEST-B',before:[3,1,0,2,3,0],counts:[3,1,0,2,3,0]},
+    {date:'11.10.2026',time:'10:05',by:'TEST-B',before:[3,1,1,2,4,1],counts:[3,1,1,2,4,1]},
+    {date:'04.10.2026',time:'15:30',by:'TEST-B',before:[2,1,1,2,4,0],counts:[3,1,1,2,4,1]},
+    {date:'27.09.2026',time:'08:55',by:'TEST-B',before:[2,1,0,2,4,0],counts:[2,1,1,2,4,0]}
   ]
 };
 const OFFICE_OPERATION_PREVIEWS={
