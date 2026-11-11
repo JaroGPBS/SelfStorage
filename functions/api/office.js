@@ -141,7 +141,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
-    frCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',
+    frCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',frMovements:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
@@ -168,34 +168,73 @@ export async function onRequestGet({request,env}){
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
   }
   if(view==='vehicleCrews'){
-    // Teams come exclusively from active Admin user accounts (role EKIPA)
-    // assigned to active French warehouses. No synthetic vehicle records.
-    const privileged=user.role==='ADMIN'&&
-      String(user.nickname||'').trim().toUpperCase()==='JJ';
-    const frIds=authorizedWarehouses
-      .filter(w=>w.country_code==='FR').map(w=>w.id);
-    if(!privileged&&!frIds.length)
+    const privileged=user.role==='ADMIN'&&String(user.nickname||'').trim().toUpperCase()==='JJ';
+    const frIds=authorizedWarehouses.filter(w=>w.country_code==='FR').map(w=>w.id);
+    if(!privileged&&(!user.markets.FR||!frIds.length))
       return error('Brak dostępu do ekip francuskich.',403);
     try{
-      const scope=privileged?'':(
-        ' AND w.id IN ('+frIds.map(()=>'?').join(',')+')'
+      const hasAccess=await tableExists(env.DB,'user_access_settings');
+      const hasLinks=await tableExists(env.DB,'fr_mobile_vehicle_links');
+      const hasVersions=await tableExists(env.DB,'fr_mobile_vehicle_versions');
+      const hasVehicles=await tableExists(env.DB,'vehicles');
+      const market=hasAccess
+        ?'EXISTS (SELECT 1 FROM user_access_settings us WHERE us.user_id=u.id AND us.fr_enabled=1)'
+        :'0';
+      const grants="EXISTS (SELECT 1 FROM user_warehouse_access a JOIN warehouses w ON w.id=a.warehouse_id "+
+        "WHERE a.user_id=u.id AND w.country_code='FR')";
+      const rows=await selectRows(env.DB,
+        'SELECT u.id,u.name,'+
+        (hasLinks&&hasVehicles?'v.id AS vehicle_id,v.registration_number AS plate':"NULL AS vehicle_id,NULL AS plate")+
+        (hasLinks&&hasVersions?',ver.last_inventory_at':',NULL AS last_inventory_at')+
+        ' FROM users u '+
+        (hasLinks&&hasVehicles?'LEFT JOIN fr_mobile_vehicle_links l ON l.user_id=u.id '+
+          'LEFT JOIN vehicles v ON v.id=l.vehicle_id ':'')+
+        (hasLinks&&hasVersions?'LEFT JOIN fr_mobile_vehicle_versions ver ON ver.vehicle_id=v.id ':'')+
+        "WHERE u.active=1 AND u.role_code='EKIPA' AND ("+market+' OR '+grants+') '+
+        'ORDER BY u.name COLLATE NOCASE LIMIT 250'
       );
-      const statement=env.DB.prepare(
-        'SELECT u.id,u.name FROM users u '+
-        'JOIN user_warehouse_access a ON a.user_id=u.id '+
-        'JOIN warehouses w ON w.id=a.warehouse_id '+
-        "WHERE u.active=1 AND u.role_code='EKIPA' "+
-        "AND w.active=1 AND w.country_code='FR'"+scope+
-        ' GROUP BY u.id,u.name ORDER BY u.name COLLATE NOCASE LIMIT 250'
-      );
-      const result=privileged?await statement.all():
-        await statement.bind(...frIds).all();
-      return workerJson({ok:true,crews:(result.results||[]).map(row=>({
-        id:row.id,team:row.name
+      const cars=rows.map(x=>x.vehicle_id).filter(Boolean);
+      const stocks=new Map();
+      if(cars.length&&await tableExists(env.DB,'vehicle_stock')){
+        const values=await selectRows(env.DB,
+          'SELECT vehicle_id,part_id,quantity FROM vehicle_stock WHERE vehicle_id IN ('+
+          cars.map(()=>'?').join(',')+')',cars);
+        for(const item of values){
+          if(!stocks.has(item.vehicle_id))stocks.set(item.vehicle_id,{});
+          stocks.get(item.vehicle_id)[item.part_id]=Number(item.quantity);
+        }
+      }
+      return workerJson({ok:true,crews:rows.map(row=>({
+        id:row.id,team:row.name,plate:row.plate||'',
+        lastInventory:row.last_inventory_at||'',stock:stocks.get(row.vehicle_id)||{}
       }))});
     }catch(err){
-      console.error('French crew list lookup',err?.name||'Error');
-      return error('Nie udało się pobrać ekip francuskich.',503);
+      console.error('French crew stock lookup',err?.name||'Error');
+      return error('Nie udało się pobrać stanów ekip francuskich.',503);
+    }
+  }
+  if(view==='frMovements'){
+    const privileged=user.role==='ADMIN'&&String(user.nickname||'').trim().toUpperCase()==='JJ';
+    const frIds=authorizedWarehouses.filter(w=>w.country_code==='FR').map(w=>w.id);
+    if(!privileged&&(!user.markets.FR||!frIds.length))
+      return error('Brak dostępu do historii francuskiej.',403);
+    if(!await tableExists(env.DB,'fr_mobile_session_lines'))
+      return workerJson({ok:true,operations:[]});
+    try{
+      const scope=privileged?'':(' AND s.warehouse_id IN ('+frIds.map(()=>'?').join(',')+')');
+      const rows=await selectRows(env.DB,
+        'SELECT s.created_at,s.id AS session_id,u.name AS team,w.name AS warehouse,'+
+        'v.registration_number AS plate,l.direction,p.name AS part_name,'+
+        'p.part_number,l.quantity FROM fr_mobile_session_lines l '+
+        'JOIN fr_mobile_sessions s ON s.id=l.session_id '+
+        'JOIN users u ON u.id=s.user_id JOIN warehouses w ON w.id=s.warehouse_id '+
+        'JOIN parts p ON p.id=l.part_id LEFT JOIN vehicles v ON v.id=s.vehicle_id '+
+        "WHERE w.country_code='FR'"+scope+
+        ' ORDER BY s.created_at DESC,s.id DESC LIMIT 250',privileged?[]:frIds);
+      return workerJson({ok:true,operations:rows});
+    }catch(err){
+      console.error('French operations history failed',err?.name||'Error');
+      return error('Nie udało się pobrać historii operacji FR.',503);
     }
   }
   if(view==='vehicleCatalog'){
