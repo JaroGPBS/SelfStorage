@@ -4814,3 +4814,28 @@
     display:block!important;
   }
 }
+
+
+/* Permanent newest audit layout: 71px fixed header aligns with
+   17px scrollbar + 54px historical header on the right. */
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table thead th{
+  height:71px;
+  min-height:71px;
+  max-height:71px;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-fixed-table thead th.vehicle-split-newest-head{
+  padding-top:3px;
+  padding-bottom:3px;
+  vertical-align:middle;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-history-table thead th{
+  height:54px;
+  min-height:54px;
+  max-height:54px;
+  padding-top:0;
+  padding-bottom:0;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-split-subhead{
+  height:20px;
+  box-sizing:border-box;
+}
