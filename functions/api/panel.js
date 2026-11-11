@@ -4,6 +4,7 @@ import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
+import {deleteDisposableCrew} from '../../lib/fr-test-crew-deletion.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
@@ -723,10 +724,12 @@ async function queryPanel(env,view,url) {
     const hasArchiveTable=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='user_archives'"
     ).first();
+    const hasTestCrewTable=!!await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='fr_mobile_test_users'").first();
     const archived=url.searchParams.get('archived')==='1';
     if(archived&&!hasArchiveTable)return [];
     const rows=await env.DB.prepare(
       'SELECT u.id,u.name,u.role_code,u.active,u.created_at,'+
+      (hasTestCrewTable?'CASE WHEN ft.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_test,':'0 AS is_test,')+
       'pr.first_name,pr.last_name,pr.phone,pr.display_code, '+
       'CASE WHEN p.user_id IS NULL THEN 0 ELSE 1 END AS has_pin, '+
       "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses, "+
@@ -735,6 +738,7 @@ async function queryPanel(env,view,url) {
       'FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
       'LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
+      (hasTestCrewTable?'LEFT JOIN fr_mobile_test_users ft ON ft.user_id=u.id ':'')+
       (hasArchiveTable?'LEFT JOIN user_archives ar ON ar.user_id=u.id ':'')+
       (hasArchiveTable
         ? (archived?'WHERE ar.user_id IS NOT NULL ':'WHERE ar.user_id IS NULL ')
@@ -898,6 +902,10 @@ async function staffMutation(env,body,actor,edit) {
   if(!await requireStaffSchema(db))
     return fail('Najpierw wykonaj migrację db/05-user-private-profiles.sql w D1.',503);
   const id=edit?String(body.userId||''):'GPBS-U-'+crypto.randomUUID();
+  const testCrew=!edit&&body.isTestCrew===true&&staff.role==='EKIPA';
+  if(!edit&&body.isTestCrew===true&&staff.role!=='EKIPA')
+    return fail('Konto testowe można utworzyć tylko z rolą EKIPA.',400);
+  if(testCrew)await db.prepare('CREATE TABLE IF NOT EXISTS fr_mobile_test_users (user_id TEXT PRIMARY KEY REFERENCES users(id))').run();
   let before=null,prior=[];
   if(edit) {
     if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Niepoprawne konto.',400);
@@ -949,6 +957,7 @@ async function staffMutation(env,body,actor,edit) {
       'INSERT INTO user_private_profiles (user_id,first_name,last_name,phone,display_code) VALUES (?,?,?,?,?)'
     ).bind(id,staff.first,staff.last,staff.phone||null,code));
   }
+  if(testCrew)stmts.push(db.prepare('INSERT INTO fr_mobile_test_users(user_id) VALUES (?)').bind(id));
   for(const wh of staff.warehouses) {
     stmts.push(db.prepare('INSERT INTO user_warehouse_access (user_id,warehouse_id) VALUES (?,?)')
       .bind(id,wh));
@@ -1438,6 +1447,16 @@ async function route(request,env) {
     } catch(error) {
       console.error('GPBS PIN provisioning error:',error?.name||'Error');
       return fail('Nie udało się wygenerować PIN-u. Sprawdź konfigurację i spróbuj ponownie.',500);
+    }
+  }
+  if(body?.action==='deleteCrewPermanently') {
+    if(!session.superAdmin)return fail('Tylko główny administrator może trwale usunąć ekipę.',403);
+    try{
+      const result=await deleteDisposableCrew(env,String(body.userId||''),session.id);
+      return result.ok?respond(result):fail(result.error,result.status||409);
+    }catch(error){
+      console.error('Test crew permanent deletion failed',error?.name||'Error');
+      return fail('Nie udało się trwale usunąć ekipy.',503);
     }
   }
   if(body?.action==='archiveUser'||body?.action==='restoreUser') {
