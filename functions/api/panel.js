@@ -977,69 +977,78 @@ async function staffMutation(env,body,actor,edit) {
 // operational history. Never touch warehouse_stock, movements or inventories.
 async function permanentlyDeleteUnusedCrew(env,body) {
   const id=String(body?.userId||'');
-  if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Nieprawidłowe konto.',400);
+  if(!/^GPBS-U-[a-f0-9-]{36}$/.test(id))return fail('Nieprawidłowy identyfikator ekipy.',400);
   const db=env.DB;
   const user=await db.prepare('SELECT id,name,role_code FROM users WHERE id=?').bind(id).first();
-  if(!user)return fail('Nie znaleziono ekipy.',404);
+  if(!user)return fail('Nie znaleziono ekipy. Odśwież listę użytkowników.',404);
   if(user.role_code!=='EKIPA')return fail('Trwale można usuwać tylko konta ekip.',403);
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
 
-  const allowed=new Set(['user_private_profiles','user_warehouse_access',
-    'user_pin_credentials','user_access_settings','user_archives',
-    'fr_vehicle_usage','fr_sessions','fr_visits']);
-  const tables=(await db.prepare(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+  // Fetch the schemas in one request; D1 Free has limits per Worker invocation.
+  // Introspect ONLY operational tables that might reference this account.
+  const rows=(await db.prepare(
+    "SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
   ).all()).results||[];
-  for(const entry of tables){
+  const present=new Set(rows.map(t=>t.name));
+  const metadata=new Set(['user_private_profiles','user_warehouse_access',
+    'user_pin_credentials','user_access_settings','user_archives','fr_vehicle_usage']);
+  const visitTables=new Set(['fr_visits','fr_sessions']);
+  const possibleColumns=new Set(['user_id','actor_id','operator_id','created_by',
+    'team_id','assigned_by','reviewed_by','performed_by','verified_by',
+    'approved_by','submitted_by','owner_user_id','updated_by','archived_by',
+    'issued_by','received_by']);
+  for(const entry of rows){
     const table=String(entry.name||'');
-    if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)||table==='users')continue;
-    const columns=(await db.prepare('PRAGMA table_info("'+table+'")').all()).results||[];
-    const fks=(await db.prepare('PRAGMA foreign_key_list("'+table+'")').all()).results||[];
-    const references=new Set(fks.filter(x=>x.table==='users').map(x=>x.from));
-    // Some legacy tables store operator IDs without SQLite foreign keys.
-    if(!allowed.has(table)){
-      for(const c of columns){
-        if(['actor_id','operator_id','created_by','user_id','team_id',
-          'assigned_by','reviewed_by','performed_by'].includes(c.name))references.add(c.name);
-      }
+    if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)||table==='users'||
+       metadata.has(table)||visitTables.has(table))continue;
+    const schema=String(entry.sql||'').toLowerCase();
+    if(![...possibleColumns].some(col=>schema.includes(col)) &&
+       !/\breferences\s+["']?users\b/i.test(schema))continue;
+    const cols=(await db.prepare('PRAGMA table_info("'+table+'")').all()).results||[];
+    const refColumns=new Set(cols.map(c=>c.name).filter(name=>possibleColumns.has(name)));
+    if(/\breferences\s+["']?users\b/i.test(schema)){
+      const fks=(await db.prepare('PRAGMA foreign_key_list("'+table+'")').all()).results||[];
+      for(const fk of fks)if(String(fk.table).toLowerCase()==='users')
+        refColumns.add(fk.from);
     }
-    for(const column of references){
-      if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(column))continue;
-      if(!await db.prepare('SELECT 1 FROM "'+table+'" WHERE "'+column+'"=? LIMIT 1').bind(id).first())continue;
-      if(!allowed.has(table))
-        return fail('Ta ekipa ma powiązaną historię. Nie można jej usunąć bez rozliczenia operacji.',409);
+    for(const col of refColumns){
+      if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(col))continue;
+      const found=await db.prepare('SELECT 1 FROM "'+table+'" WHERE "'+col+'"=? LIMIT 1')
+        .bind(id).first();
+      if(found)return fail(
+        'Nie usunięto ekipy: ma powiązane dane ('+table+'). Stany pozostają bez zmian.',409);
     }
   }
-  // Only zero-net FR test sessions may be removed automatically.
-  // Their D1 warehouse/vehicle balances have not changed at all.
-  const hasFrSessions=tables.some(t=>t.name==='fr_sessions');
-  const hasFrLines=tables.some(t=>t.name==='fr_session_lines');
-  if(hasFrSessions&&hasFrLines){
+  const hasSessions=present.has('fr_sessions');
+  const hasLines=present.has('fr_session_lines');
+  if(hasSessions&&hasLines){
     const changed=await db.prepare(
       'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
       "WHERE s.user_id=? GROUP BY s.id,l.part_id HAVING "+
       "SUM(CASE WHEN l.direction='ZWROT' THEN l.quantity ELSE -l.quantity END)<>0 LIMIT 1"
     ).bind(id).first();
     if(changed)return fail(
-      'Ekipa ma testowe operacje, które zmieniły stany. Najpierw trzeba rozliczyć te ruchy.',409);
+      'Nie można skasować ekipy: ma operacje zmieniające stany magazynowe. Żadnych stanów nie zmieniono.',409);
   }
+
   const statements=[];
-  if(hasFrSessions&&hasFrLines)statements.push(db.prepare(
+  if(hasSessions&&hasLines)statements.push(db.prepare(
     'DELETE FROM fr_session_lines WHERE session_id IN (SELECT id FROM fr_sessions WHERE user_id=?)'
   ).bind(id));
-  if(hasFrSessions)statements.push(db.prepare('DELETE FROM fr_sessions WHERE user_id=?').bind(id));
-  if(tables.some(t=>t.name==='fr_visits'))
+  if(hasSessions)statements.push(db.prepare('DELETE FROM fr_sessions WHERE user_id=?').bind(id));
+  if(present.has('fr_visits'))
     statements.push(db.prepare('DELETE FROM fr_visits WHERE user_id=?').bind(id));
-  for(const entry of tables){
-    const table=String(entry.name||'');
-    if(!allowed.has(table)||table==='fr_sessions'||table==='fr_visits')continue;
-    const columns=(await db.prepare('PRAGMA table_info("'+table+'")').all()).results||[];
-    if(columns.some(c=>c.name==='user_id'))
-      statements.push(db.prepare('DELETE FROM "'+table+'" WHERE user_id=?').bind(id));
+  for(const table of metadata)if(present.has(table)){
+    statements.push(db.prepare('DELETE FROM "'+table+'" WHERE user_id=?').bind(id));
   }
+  // AA and other unused fictitious crews should not survive in Admin history.
+  if(present.has('panel_audit_log'))
+    statements.push(db.prepare(
+      "DELETE FROM panel_audit_log WHERE target_type='USER' AND target_id=?"
+    ).bind(id));
   statements.push(db.prepare("DELETE FROM users WHERE id=? AND role_code='EKIPA'").bind(id));
   await db.batch(statements);
-  return respond({ok:true,message:'Ekipa została trwale usunięta z listy użytkowników.'});
+  return respond({ok:true,userId:id,message:'Ekipa została trwale usunięta z D1.'});
 }
 
 async function archiveTableExists(db) {
@@ -1522,8 +1531,10 @@ async function route(request,env) {
   if(body?.action==='deleteUnusedCrew') {
     if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
     try{return await permanentlyDeleteUnusedCrew(env,body);}
-    catch(error){console.error('Permanent crew deletion',error?.name||'Error');
-      return fail('Nie można usunąć ekipy. Sprawdź jej powiązania.',409);}
+    catch(error){
+      console.error('Permanent crew deletion failed',String(error?.message||error).slice(0,300));
+      return fail('D1 nie usunęła ekipy. Możliwe powiązania lub ograniczenie bazy. Żadne dane nie zostały skasowane.',409);
+    }
   }
   if(body?.action==='archiveUser'||body?.action==='restoreUser') {
     if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
