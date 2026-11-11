@@ -118,7 +118,7 @@ async function activatePolishWorkspace() {
 
 export async function tryPolishLogin(pin) {
   const { response, body } = await workerRequest('POST', pin);
-  if (response.status === 401) return false; // Not a Polish D1 user.
+  if (response.status === 401) throw new Error('Nieprawidłowy PIN lub brak dostępu.');
   if (!response.ok || !body?.ok) {
     throw new Error(body?.error || 'Logowanie do polskiego magazynu nie powiodło się.');
   }
