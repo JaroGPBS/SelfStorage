@@ -145,7 +145,7 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=44"></script>
+  <script type="module" src="./js/app.js?v=45"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -175,6 +175,8 @@
           <p>Wpisz swój kod PIN</p>
 
           <input id="pinInput" class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+           <label for="frRegistrationInput" style="display:block;margin:13px 0 5px;font-size:13px;color:var(--muted);">Numer rejestracyjny samochodu (ekipy Francja)</label>
+           <input id="frRegistrationInput" class="text-input" type="text" maxlength="20" autocomplete="off" autocapitalize="characters" placeholder="Np. AB123CD" style="width:100%;margin-bottom:12px;text-transform:uppercase;">
           <button id="loginBtn" class="btn btn-primary" disabled>Zaloguj</button>
           <div class="login-instruction-wrap">
             <button id="loginInstructionBtn" class="instruction-link-btn" type="button">ⓘ Instrukcja</button>
