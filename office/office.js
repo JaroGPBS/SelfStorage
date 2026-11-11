@@ -101,6 +101,95 @@ for(const [crewId,history] of Object.entries(PL_VEHICLE_TEST_HISTORY)){
       by:crewId==='demo-a'?'TEST-A':'TEST-B',before,counts});
   }
 }
+// Fleet workflow demonstration. All examples stay inside the Office browser.
+// Never send these examples to D1 or mix them with real warehouse sessions.
+const PL_VEHICLE_DEMO_MOVEMENTS=[
+  {id:'DEMO-R01',kind:'usage',date:'04.11.2026',time:'11:40',crew:'demo-a',
+    machine:'FR-0819',actor:'TEST-A',items:[{i:0,qty:2},{i:4,qty:1}]},
+  {id:'DEMO-R02',kind:'warehouse_in',date:'01.11.2026',time:'09:10',crew:'demo-a',
+    warehouse:'Belleville',actor:'Magazyn Belleville',items:[{i:1,qty:2}]},
+  {id:'DEMO-R03',kind:'usage',date:'06.11.2026',time:'10:25',crew:'demo-b',
+    machine:'FR-1234',actor:'TEST-B',items:[{i:1,qty:1},{i:3,qty:1}]},
+  {id:'DEMO-R04',kind:'warehouse_in',date:'03.11.2026',time:'08:45',crew:'demo-b',
+    warehouse:'Box Toulouse',actor:'Ekipa TEST-B',items:[{i:0,qty:2},{i:1,qty:3}]},
+  {id:'DEMO-R05',kind:'transfer',date:'05.11.2026',time:'15:30',
+    crew:'demo-b',peer:'demo-a',actor:'TEST-B',items:[{i:0,qty:1}],
+    status:'pending'},
+  {id:'DEMO-R06',kind:'transfer',date:'04.11.2026',time:'13:05',
+    crew:'demo-b',peer:'demo-tw',actor:'TEST-B',items:[{i:3,qty:1}],
+    status:'approved',approvedBy:'TW',approvalRole:'Ekipa'},
+  {id:'DEMO-R07',kind:'usage',date:'06.11.2026',time:'12:20',crew:'demo-tw',
+    machine:'FR-0453',actor:'TW',items:[{i:2,qty:1},{i:3,qty:1}]},
+  {id:'DEMO-R08',kind:'warehouse_in',date:'05.11.2026',time:'08:40',crew:'demo-tw',
+    warehouse:'Box Paris',actor:'Ekipa TW',items:[{i:2,qty:2}]},
+  {id:'DEMO-R09',kind:'transfer',date:'02.11.2026',time:'16:55',
+    crew:'demo-a',peer:'demo-tw',actor:'TEST-A',items:[{i:2,qty:1}],
+    status:'approved',approvedBy:'JK',approvalRole:'Koordynator'}
+];
+const vehicleDemoApprovals=new Map();
+function vehicleDemoTransferApproval(movement){
+  return vehicleDemoApprovals.get(movement.id)||null;
+}
+function vehicleDemoTransferStatus(movement){
+  return vehicleDemoTransferApproval(movement)?.status||movement.status||'recorded';
+}
+function vehicleDemoStockFor(part,partIndex,crewId){
+  const base=part.stock[crewId]||{current:0};
+  let current=Number(base.current)||0;
+  for(const movement of PL_VEHICLE_DEMO_MOVEMENTS){
+    // Only approvals made now in the preview affect example balances.
+    if(movement.kind!=='transfer'||movement.status!=='pending'||
+       vehicleDemoTransferStatus(movement)!=='approved')continue;
+    const units=movement.items.find(item=>item.i===partIndex)?.qty||0;
+    if(movement.crew===crewId)current-=units;
+    if(movement.peer===crewId)current+=units;
+  }
+  return {...base,current};
+}
+function vehicleDemoCrewName(id){
+  return PL_VEHICLE_TEST_PREVIEW.crews.find(c=>c.id===id)?.team||'—';
+}
+function vehicleDemoDateKey(date){
+  const match=/^(\\d{2})\\.(\\d{2})\\.(\\d{4})$/.exec(String(date||''));
+  return match?match[3]+'-'+match[2]+'-'+match[1]:'';
+}
+function vehicleDemoMovementsFor(crewId,until,after){
+  const to=vehicleDemoDateKey(until),from=vehicleDemoDateKey(after);
+  return PL_VEHICLE_DEMO_MOVEMENTS.filter(move=>
+    (move.crew===crewId||move.peer===crewId)&&
+    vehicleDemoDateKey(move.date)<=to&&
+    (!from||vehicleDemoDateKey(move.date)>from))
+    .sort((a,b)=>vehicleDemoDateKey(b.date).localeCompare(vehicleDemoDateKey(a.date))||
+      String(b.time).localeCompare(String(a.time)));
+}
+function vehicleDemoMoveLabel(move,crewId){
+  if(move.kind==='usage')return 'Zużycie · maszyna '+(move.machine||'—');
+  if(move.kind==='warehouse_in')return 'Pobrano z magazynu '+(move.warehouse||'');
+  if(move.kind==='warehouse_out')return 'Zwrot do magazynu '+(move.warehouse||'');
+  if(move.kind==='transfer')
+    return move.crew===crewId
+      ?'Przekazanie ekipie '+vehicleDemoCrewName(move.peer)
+      :'Odebranie od ekipy '+vehicleDemoCrewName(move.crew);
+  return 'Ruch części';
+}
+function vehicleDemoMoveIcon(move){
+  return move.kind==='usage'?'⚒':move.kind==='transfer'?'⇄':move.kind==='warehouse_in'?'↓':'↑';
+}
+function vehicleDemoStatusText(move){
+  const status=vehicleDemoTransferStatus(move);
+  if(move.kind!=='transfer')return 'Zapisano';
+  const approval=vehicleDemoTransferApproval(move);
+  if(status==='pending')return 'Oczekuje na potwierdzenie';
+  if(status==='rejected')return 'Odrzucono';
+  const by=approval?.by||move.approvedBy;
+  const role=approval?.role||move.approvalRole;
+  return 'Potwierdzono'+(by?' przez '+(role?role+' · ':'')+by:'');
+}
+function vehicleDemoStatusClass(move){
+  const status=vehicleDemoTransferStatus(move);
+  return status==='pending'?' is-pending':status==='rejected'?' is-rejected':' is-complete';
+}
+
 const OFFICE_OPERATION_PREVIEWS={
   pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',
   inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',
