@@ -986,7 +986,7 @@ async function permanentlyDeleteUnusedCrew(env,body) {
 
   const allowed=new Set(['user_private_profiles','user_warehouse_access',
     'user_pin_credentials','user_access_settings','user_archives',
-    'fr_vehicle_usage']);
+    'fr_vehicle_usage','fr_sessions','fr_visits']);
   const tables=(await db.prepare(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
   ).all()).results||[];
@@ -1010,10 +1010,29 @@ async function permanentlyDeleteUnusedCrew(env,body) {
         return fail('Ta ekipa ma powiązaną historię. Nie można jej usunąć bez rozliczenia operacji.',409);
     }
   }
+  // Only zero-net FR test sessions may be removed automatically.
+  // Their D1 warehouse/vehicle balances have not changed at all.
+  const hasFrSessions=tables.some(t=>t.name==='fr_sessions');
+  const hasFrLines=tables.some(t=>t.name==='fr_session_lines');
+  if(hasFrSessions&&hasFrLines){
+    const changed=await db.prepare(
+      'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
+      "WHERE s.user_id=? GROUP BY s.id,l.part_id HAVING "+
+      "SUM(CASE WHEN l.direction='ZWROT' THEN l.quantity ELSE -l.quantity END)<>0 LIMIT 1"
+    ).bind(id).first();
+    if(changed)return fail(
+      'Ekipa ma testowe operacje, które zmieniły stany. Najpierw trzeba rozliczyć te ruchy.',409);
+  }
   const statements=[];
+  if(hasFrSessions&&hasFrLines)statements.push(db.prepare(
+    'DELETE FROM fr_session_lines WHERE session_id IN (SELECT id FROM fr_sessions WHERE user_id=?)'
+  ).bind(id));
+  if(hasFrSessions)statements.push(db.prepare('DELETE FROM fr_sessions WHERE user_id=?').bind(id));
+  if(tables.some(t=>t.name==='fr_visits'))
+    statements.push(db.prepare('DELETE FROM fr_visits WHERE user_id=?').bind(id));
   for(const entry of tables){
     const table=String(entry.name||'');
-    if(!allowed.has(table))continue;
+    if(!allowed.has(table)||table==='fr_sessions'||table==='fr_visits')continue;
     const columns=(await db.prepare('PRAGMA table_info("'+table+'")').all()).results||[];
     if(columns.some(c=>c.name==='user_id'))
       statements.push(db.prepare('DELETE FROM "'+table+'" WHERE user_id=?').bind(id));
