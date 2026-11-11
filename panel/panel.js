@@ -3,11 +3,12 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false, boxPartsSource:null};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
     parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
+    boxParts:['Katalog części Boxy','Wyłącznie części dla Box Toulouse i Box Paris. Stany obu magazynów są rozdzielone.'],
     newParts:['Nowe części','Nowe części zgłoszone przez magazynierów — do weryfikacji.'],
     indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
@@ -392,6 +393,20 @@
   function colsFor(view,items) {
     if(view==='warehouses')return [ ['MAGAZYN','ID','STATUS','POZYCJE','ŁĄCZNY STAN'],warehouseRows(items) ];
     if(view==='newParts')return [[],[]];
+    if(view==='boxParts'){
+      const fromD1=state.boxPartsSource?.fromD1||{};
+      const columnName=place=>(place==='toulouse'?'TULUZA':'PARYŻ')+
+        (fromD1[place]?' (D1)':' (ARKUSZ)');
+      return [
+        ['NAZWA CZĘŚCI','INDEKS GPBS','INDEKS ŹRÓDŁOWY','INDEKS FR','SAP',
+          columnName('toulouse'),columnName('paris')],
+        items.map(p=>[
+          p.name||'—',p.part_number||'—',p.legacy_index||'—',
+          p.source_code||'—',p.sap_number||'—',
+          formatNum(p.toulouse)+' szt.',formatNum(p.paris)+' szt.'
+        ])
+      ];
+    }
     if(view==='parts')return [
       ['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ILOŚĆ'],
       items.map(p=>[p.name,p.part_number||'—',p.sap_number||'—',
@@ -999,7 +1014,8 @@
     $('pageTitle').textContent=defs[view][0];
     $('pageSubtitle').textContent=defs[view][1];
     $('adminPageEyebrow').textContent=view==='parts'
-      ?'GPBS STORAGE / WSPÓLNY KATALOG':'GPBS STORAGE';
+      ?'GPBS STORAGE / WSPÓLNY KATALOG'
+      :view==='boxParts'?'GPBS STORAGE / KATALOG BOXY':'GPBS STORAGE';
     $('breadcrumbCurrent').textContent=defs[view][0];
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
@@ -1057,8 +1073,20 @@
           $('generateMissingPins').textContent=state.pinReady?'Generuj brakujące PIN-y':'Skonfiguruj generator PIN-ów';
         } else {
           const response=await api(view);
-          state.records=(view==='parts'||view==='newParts')?response.parts:response;
+          state.records=(view==='parts'||view==='newParts'||view==='boxParts')
+            ?response.parts:response;
           if(view==='newParts')setNewPartsBadge(state.records.length);
+          if(view==='boxParts'){
+            state.boxPartsSource=response;
+            if(state.view===view){
+              const d1=response.fromD1||{};
+              $('tableDescription').textContent=
+                'Tuluza: '+(d1.toulouse?'stan zapisany w D1':'stan z arkusza Google')+
+                ' · Paryż: '+(d1.paris?'stan zapisany w D1':'stan z arkusza Google')+
+                ' · Źródło: Stock FR GPBS, 11.11.2026 · '+
+                response.parts.length+' pozycji.';
+            }
+          }
         }
         if(state.view===view)renderList();
       }
