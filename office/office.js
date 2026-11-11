@@ -1927,7 +1927,10 @@ document.addEventListener('click',e=>{
   if(vehicleTab&&state.view==='vehicles'){
     const next=vehicleTab.dataset.vehicleTab;
     if(next==='detail'||next==='summary'||next==='transfers'){
-      state.vehicleTab=next;drawVehicles();
+      state.vehicleTab=next;
+      if(state.preview?.type==='operation'&&state.preview.key==='vehicles')
+        render();
+      else drawVehicles();
     }
     return;
   }
