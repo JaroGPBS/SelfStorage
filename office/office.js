@@ -1306,8 +1306,10 @@ function drawPolishVehiclePreview(){
           escapeHtml(p.name)+'</td>'+
         '<td class="vehicle-preview-num vehicle-preview-current'+
           (shortage?' vehicle-preview-shortage':'')+'">'+
-          '<strong>'+quantity(stock.current)+'</strong>'+
-          (shortage?'<small>Brakuje '+escapeHtml(p.required-stock.current)+'</small>':'')+
+          '<div class="vehicle-current-compact">'+
+            '<strong>'+quantity(stock.current)+'</strong>'+
+            (shortage?'<small>Brakuje '+escapeHtml(p.required-stock.current)+'</small>':'')+
+          '</div>'+
         '</td>'+latestCells+'</tr>';
     }).join('');
     const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
