@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false, boxPartsSource:null};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false, boxPartsSource:null,vehiclePartChoice:null};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
@@ -686,11 +686,93 @@
         edit.addEventListener('click',()=>openPartEditor(part));
         actions.append(edit);
       }else{
-        actions.textContent='Do weryfikacji';
+        const match=document.createElement('button');
+        match.type='button';match.className='btn mini';match.textContent='Dopasuj';
+        match.title='Powiąż z istniejącą częścią w katalogu głównym';
+        match.addEventListener('click',()=>openVehiclePartChoice(part));
+        actions.append(match);
       }
+      const remove=document.createElement('button');
+      remove.type='button';remove.className='btn mini archive-danger';
+      remove.textContent='Usuń z samochodów';
+      remove.title='Usuń tylko z tej kategorii, nie z katalogu głównego';
+      remove.addEventListener('click',()=>removeVehicleCategoryPart(part));
+      actions.append(remove);
       tr.append(actions);
     }
     return table;
+  }
+
+  async function refreshVehicleCatalogue(){
+    if(state.view!=='vehicleParts')return;
+    const response=await api('vehicleParts');
+    state.records=response.parts||[];
+    $('tableDescription').textContent='Części dla samochodów: '+response.parts.length+
+      ' · Powiązane z katalogiem głównym: '+response.matchedParts+
+      ' · Do dopasowania: '+response.unresolved+
+      '. Zmiany tej listy nie usuwają części z katalogu głównego.';
+    renderList();
+  }
+  async function openVehiclePartChoice(part=null){
+    const dialog=$('vehiclePartSelectDialog');
+    const form=$('vehiclePartSelect');
+    const err=$('vehiclePartSelectError');
+    err.classList.add('hidden');err.textContent='';
+    state.vehiclePartChoice=part?.source_row??null;
+    $('vehiclePartSelectTitle').textContent=part
+      ?'Dopasuj: '+part.name:'Dodaj część do samochodów';
+    form.replaceChildren();
+    const first=document.createElement('option');
+    first.value='';first.textContent='Wybierz część z głównego katalogu';
+    form.append(first);
+    try{
+      const response=await api('parts');
+      const linked=new Set((state.records||[]).filter(p=>p.id&&
+        p.source_row!==part?.source_row).map(p=>p.id));
+      for(const row of response.parts||[]){
+        if(linked.has(row.id))continue;
+        const option=document.createElement('option');
+        option.value=row.id;
+        option.textContent=(row.part_number||'—')+' · '+row.name+
+          (row.sap_number?' · SAP '+row.sap_number:'');
+        form.append(option);
+      }
+      if(part?.id)form.value=part.id;
+      dialog.showModal();
+    }catch(error){message('Nie można pobrać głównego katalogu części. '+error.message,'error');}
+  }
+  async function saveVehiclePartChoice(event){
+    event.preventDefault();
+    const partId=$('vehiclePartSelect').value;
+    if(!partId)return;
+    const button=$('vehiclePartSelectSave');
+    button.disabled=true;
+    try{
+      const sourceRow=state.vehiclePartChoice;
+      await post(sourceRow===null
+        ?{action:'addVehiclePart',partId}
+        :{action:'linkVehiclePart',partId,sourceRow});
+      $('vehiclePartSelectDialog').close();
+      await refreshVehicleCatalogue();
+      message('Zapisano przypisanie do katalogu samochodowego.','success');
+    }catch(error){
+      const target=$('vehiclePartSelectError');
+      target.textContent=error.message;target.classList.remove('hidden');
+    }finally{button.disabled=false;}
+  }
+  async function removeVehicleCategoryPart(part){
+    const yes=await confirmAction({
+      title:'Usunąć tylko z katalogu samochodowego?',
+      description:'„'+part.name+'” zniknie z listy wyposażenia aut. '+
+        'Pozostanie w głównym katalogu i historiach magazynowych.',
+      confirmLabel:'Usuń z samochodów',danger:true
+    });
+    if(!yes)return;
+    try{
+      await post({action:'removeVehiclePart',sourceRow:part.source_row});
+      await refreshVehicleCatalogue();
+      message('Usunięto tylko z listy samochodów.','success');
+    }catch(error){message(error.message,'error');}
   }
 
   async function removePart(part) {
@@ -1107,6 +1189,7 @@
     $('pinRoleFilter').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('warehouseFilter').classList.add('hidden');
     $('addPartBtn').classList.toggle('hidden',view!=='parts');
+    $('vehicleAddPartBtn').classList.toggle('hidden',view!=='vehicleParts');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
     $('tableDescription').textContent=defs[view][1];
@@ -1581,6 +1664,10 @@
     $('superPasswordForm').addEventListener('submit',submitSuperAdminCredential);
     $('logoutBtn').addEventListener('click',performLogout);
     $('newPartsAlert').addEventListener('click',()=>navigate('newParts'));
+    $('vehicleAddPartBtn').addEventListener('click',()=>openVehiclePartChoice());
+    $('vehiclePartSelectCancel').addEventListener('click',()=>$('vehiclePartSelectDialog').close());
+    $('vehiclePartSelectDialog').querySelector('form')
+      .addEventListener('submit',saveVehiclePartChoice);
     $('mainNav').addEventListener('click',event=>{
       const item=event.target.closest('[data-view]');if(item)navigate(item.dataset.view);
     });
