@@ -4969,3 +4969,90 @@
   min-width:230px;
   white-space:normal;
 }
+
+
+/* Compact aggregate: SAP, minimum, name and total are pinned.
+   Only the fourteen crew columns move under the upper scrollbar.
+   Preserve the 41px row rhythm of the detailed Ekipy table. */
+.app.view-vehicles .vehicle-summary-split .vehicle-split-fixed-table thead th{
+  height:71px;
+  min-height:71px;
+  max-height:71px;
+  padding:4px 3px;
+  text-align:center;
+  vertical-align:middle;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-history-table thead th{
+  box-sizing:border-box;
+  height:54px;
+  min-height:54px;
+  max-height:54px;
+  padding:3px 1px;
+  text-align:center;
+  vertical-align:middle;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-history-table thead th.vehicle-preview-column{
+  min-width:0;
+  max-width:none;
+  width:auto;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-preview-car-header{
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  width:100%;
+  margin:0;
+  line-height:1.05;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-preview-car-header strong{
+  display:block;
+  font-size:10px;
+  line-height:12px;
+  max-width:100%;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-preview-car-header small{
+  display:block;
+  font-size:9px;
+  line-height:11px;
+  max-width:100%;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-preview-car-header span{
+  display:block;
+  font-size:9px;
+  line-height:11px;
+  max-width:100%;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-fixed-table tbody tr,
+.app.view-vehicles .vehicle-summary-split .vehicle-split-history-table tbody tr{
+  height:41px;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-fixed-table tbody td,
+.app.view-vehicles .vehicle-summary-split .vehicle-split-history-table tbody td{
+  height:41px;
+  min-height:41px;
+  max-height:41px;
+  padding:6px 3px;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-fixed-table td.vehicle-split-part-name{
+  padding-left:8px;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-fixed-table td.vehicle-preview-sum{
+  background:#f3f6f9;
+  font-weight:850;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-history-table td.vehicle-summary-shortage{
+  color:#b13c45;
+  font-weight:800;
+}
+.app.view-vehicles .vehicle-summary-split .vehicle-split-history .vehicle-history-scrollbar{
+  display:block !important;
+}
+@media(max-width:1050px){
+  .app.view-vehicles .vehicle-summary-split{
+    overflow:hidden;
+  }
+  .app.view-vehicles .vehicle-summary-split .vehicle-split-history{
+    flex:1 1 auto;
+    min-width:0;
+  }
+}
