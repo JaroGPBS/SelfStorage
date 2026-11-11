@@ -590,7 +590,7 @@ function renderMenu(){
       '<button type="button" class="subnav-btn office-operation-link office-fr-operation office-fr-stock-link" '+
         'data-fr-stock="'+escapeHtml(key)+'" data-fr-real-id="'+escapeHtml(realId)+'" '+
         'data-fr-warehouse-name="'+escapeHtml(label)+'">'+
-        '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('vehicles')+'</span>'+
+        '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('stocks')+'</span>'+
         'Stany magazynowe</button>');
     const children=stockButton+permittedOperations('FR').map(op=>
       '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
