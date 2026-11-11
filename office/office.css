@@ -3912,6 +3912,9 @@
   height:34px!important;
 }
 .app.view-vehicles .vehicle-preview-detail-v2 thead tr.vehicle-preview-dates-head-row th.vehicle-preview-inventory-col{
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
   height:34px!important;
   max-height:none!important;
   padding:0!important;
