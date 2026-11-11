@@ -508,7 +508,12 @@ function setHead(title,kicker,desc){
   $('app').classList.toggle('view-aggregate',aggregateView);
   $('app').classList.toggle('view-labels',workingLabels);
   $('app').classList.toggle('view-fr-empty',frEmpty);
-  $('receiptToolbarInfo').classList.toggle('hidden',!compactView);
+  $('vehicleTopContext').classList.toggle('hidden',!vehicleView);
+  $('vehicleTopExportHost').classList.toggle('hidden',!vehicleView);
+  $('officeTableCard').querySelector('.table-toolbar').classList.toggle('hidden',vehicleView);
+  if(vehicleView)$('vehicleTopExportHost').append($('export'));
+  else $('tableToolbarTools').append($('export'));
+  $('receiptToolbarInfo').classList.toggle('hidden',!compactView||vehicleView);
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
   // The fleet scroll track is useful only when a real crew-stock table exists.
   // Do not show an empty horizontal strip above the no-data message.
