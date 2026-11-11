@@ -2454,6 +2454,7 @@ async function finishVisit() {
       idWizyty: state.visit.idWizyty
     });
 
+    await clearWorkerCookie();
     resetState();
     showScreen('screenDone');
 
@@ -2467,12 +2468,25 @@ async function finishVisit() {
   }
 }
 
-function logout() {
+async function clearWorkerCookie() {
+  try{
+    await fetch('/api/pl/auth',{
+      method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'logout'})
+    });
+  }catch(error){
+    console.warn('Nie udało się zakończyć sesji D1 na serwerze.',error);
+  }
+}
+
+async function logout() {
   if (state.visit) {
     showToast('Najpierw zakończ aktywną wizytę.', true);
     return;
   }
 
+  await clearWorkerCookie();
   resetState();
   $('warehouseCodeInput').value = '';
   showScreen('screenLogin');
