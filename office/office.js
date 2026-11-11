@@ -1710,39 +1710,6 @@ function printVehicleInventoryReport(){
     }
   }
 }
-function drawFrenchVehicleCatalogue(parts){
-  // Reference list only. The Office crew balances will be supplied by D1
-  // vehicle inventories later; do NOT convert requirements into stock counts.
-  const tabs=vehicleViewTabs(state.vehicleTab);
-  const rows=parts.map(p=>'<tr>'+
-    '<td>'+escapeHtml(p.part_number||'—')+'</td>'+
-    '<td>'+escapeHtml(p.source_sap&&p.source_sap!=='-'?p.source_sap:'—')+'</td>'+
-    '<td class="vehicle-split-part-name">'+escapeHtml(p.name||'—')+'</td>'+
-    '<td class="vehicle-preview-num">'+
-      (p.required_quantity==null?'—':escapeHtml(p.required_quantity))+'</td>'+
-    '<td>'+escapeHtml(!p.part_found?'Do dopasowania':
-      !p.index_assigned?'Brak indeksu MG':'W katalogu')+'</td></tr>').join('');
-  const matched=parts.filter(p=>p.part_found).length;
-  const info='<div class="vehicle-catalogue-info">'+
-    '<strong>Wyposażenie samochodów — katalog części</strong>'+
-    '<span>Lista wymaganych części, bez stanów samochodowych. '+
-      matched+' z '+parts.length+' pozycji powiązano z katalogiem GPBS.</span>'+
-    '</div>';
-  const table='<div class="vehicle-setup-table-wrap">'+
-    '<table class="table vehicle-setup-table vehicle-catalogue-live">'+
-      '<thead><tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
-        '<th>Nazwa części</th><th class="vehicle-preview-num">Wymagane / auto</th>'+
-        '<th>Status</th></tr></thead>'+
-      '<tbody>'+rows+'</tbody></table></div>';
-  $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
-    tabs+info+table+'</div>';
-  $('tableFooter').textContent='Katalog samochodowy: '+parts.length+
-    ' pozycji. Zmiany nazw i indeksów są pobierane z głównego katalogu D1.';
-  $('searchNote').classList.add('hidden');
-  $('vehicleTopScroll').classList.add('hidden');
-}
-// France: identical fleet table design, but only canonical D1 catalogue and
-// active EKIPA users granted an FR warehouse. No sample balances or audits.
 function drawFrenchVehicleFleet(parts,crews){
   const entries=Array.isArray(parts)?parts:[];
   const teams=Array.isArray(crews)?crews:[];
