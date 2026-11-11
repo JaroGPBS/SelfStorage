@@ -262,7 +262,11 @@ async function updateVehicleStock(db,user,data){
 }
 async function action(db,user,body){
   const type=entryCode(body.action),data=body.payload||{};
-  if(type==='LOGIN')return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role}};
+  if(type==='LOGIN'){
+    const car=await vehicle(db,user.id);
+    return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
+      samochod:car?.registration_number||''};
+  }
   if(type==='POBIERZ_DANE_STARTOWE'){
     const catalog=await parts(db);
     const car=await vehicle(db,user.id);
