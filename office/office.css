@@ -4779,3 +4779,38 @@
 .app.view-vehicles .vehicle-preview-split-table .vehicle-inventory-button:hover .vehicle-inventory-marker{
   filter:brightness(.96);
 }
+
+/* Movement toggle aligns against the right edge of the part-name column,
+   regardless of the length of the part description. */
+#modal .vehicle-history-card .vehicle-preview-history-table .vehicle-report-part-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  width:100%;
+  min-width:0;
+}
+#modal .vehicle-history-card .vehicle-preview-history-table .vehicle-report-part-label{
+  flex:1 1 auto;
+  min-width:0;
+  overflow-wrap:anywhere;
+  text-align:left;
+}
+#modal .vehicle-history-card .vehicle-preview-history-table .vehicle-report-expand{
+  flex:0 0 auto;
+  margin:0 0 0 auto;
+  padding:4px 7px;
+  min-width:66px;
+  justify-content:center;
+  border-color:#c8d6e3;
+  font-size:10px;
+}
+#modal .vehicle-history-card .vehicle-preview-history-table .vehicle-report-expand strong{
+  font-size:10px;
+  font-weight:800;
+}
+@media print{
+  body.vehicle-inventory-print-active #modal .vehicle-report-part-line{
+    display:block!important;
+  }
+}
