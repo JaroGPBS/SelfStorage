@@ -5045,7 +5045,7 @@
   font-weight:800;
 }
 .app.view-vehicles .vehicle-summary-split .vehicle-split-history .vehicle-history-scrollbar{
-  display:block !important;
+  display:flex !important;
 }
 @media(max-width:1050px){
   .app.view-vehicles .vehicle-summary-split{
@@ -5116,8 +5116,9 @@
   min-height:20px;
   padding:0 2px;
   overflow:hidden;
-  background:#edf1f5;
-  border-bottom:1px solid #d4dce4;
+  background:#e9eff5;
+  border-top:1px solid #d1dbe5;
+  border-bottom:1px solid #c9d4df;
   visibility:visible !important;
 }
 .app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range{
@@ -5134,47 +5135,47 @@
   cursor:pointer;
 }
 .app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range::-webkit-slider-runnable-track{
-  height:9px;
-  background:#d8e0e8;
-  border:1px solid #c5cfda;
+  height:11px;
+  background:#d6e0ea;
+  border:1px solid #bac8d6;
   border-radius:6px;
 }
 .app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range::-webkit-slider-thumb{
   -webkit-appearance:none;
   appearance:none;
-  height:15px;
-  width:38px;
-  margin-top:-4px;
-  border:1px solid #8496a8;
+  height:16px;
+  width:var(--vehicle-rail-thumb-width,64px);
+  margin-top:-3.5px;
+  border:1px solid #728ba2;
   border-radius:5px;
-  background:#a8b7c6;
+  background:#91a9bf;
   box-shadow:0 1px 2px rgba(29,46,61,.2);
 }
 .app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range::-moz-range-track{
-  height:9px;
+  height:11px;
   box-sizing:border-box;
-  background:#d8e0e8;
-  border:1px solid #c5cfda;
+  background:#d6e0ea;
+  border:1px solid #bac8d6;
   border-radius:6px;
 }
 .app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range::-moz-range-thumb{
-  height:13px;
-  width:38px;
-  border:1px solid #8496a8;
+  height:14px;
+  width:var(--vehicle-rail-thumb-width,64px);
+  border:1px solid #728ba2;
   border-radius:5px;
-  background:#a8b7c6;
+  background:#91a9bf;
   box-shadow:0 1px 2px rgba(29,46,61,.2);
 }
 .app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-arrow{
-  flex:0 0 16px;
-  width:16px;
-  height:17px;
-  line-height:13px;
+  flex:0 0 18px;
+  width:18px;
+  height:18px;
+  line-height:15px;
   padding:0;
-  border:1px solid #c7d0da;
+  border:1px solid #b6c5d3;
   border-radius:3px;
-  background:#f7f9fb;
-  color:#596b7d;
+  background:#f8fafc;
+  color:#43576c;
   font-size:15px;
   font-weight:800;
   text-align:center;
@@ -5184,6 +5185,21 @@
 .app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range:disabled{
   opacity:.55;
   cursor:default;
+}
+
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range:focus-visible{
+  outline:2px solid #597e9f;
+  outline-offset:0;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-arrow:hover:not(:disabled){
+  background:#dce7f0;
+  border-color:#90a6ba;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range::-webkit-slider-thumb:hover{
+  background:#809bb4;
+}
+.app.view-vehicles .vehicle-preview-split-table .vehicle-history-rail-range::-moz-range-thumb:hover{
+  background:#809bb4;
 }
 
 
