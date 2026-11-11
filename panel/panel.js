@@ -679,7 +679,7 @@
         part.part_found&&part.index_assigned?'green':'red'));
       tr.append(status);
       const actions=td('');actions.className='part-row-actions';
-      if(part.part_found&&part.id){
+      if(part.part_found&&part.index_assigned&&part.id){
         const edit=document.createElement('button');
         edit.type='button';edit.className='btn mini';edit.textContent='Edytuj';
         edit.title='Edytuj tę samą część co w katalogu głównym';
