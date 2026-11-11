@@ -1356,6 +1356,13 @@
         roleInput.append(option);
       }
       if(existing)roleInput.value=existing.role_code;
+      const toggleCrewMarket=()=>{
+        $('userCrewMarketField').hidden=roleInput.value!=='EKIPA';
+      };
+      roleInput.onchange=toggleCrewMarket;
+      $('userCrewMarket').value=existing?.market_fr?'FR':
+        existing?.market_pl?'PL':'FR';
+      toggleCrewMarket();
 
       const assigned=new Set((existing?.warehouses||'').split(',').map(x=>x.trim()).filter(Boolean));
       const field=$('userWarehouses');field.replaceChildren();
@@ -1389,6 +1396,7 @@
         lastName:$('userLastName').value.trim(),
         phone:$('userPhone').value.trim(),
         role:$('userRole').value,
+        crewMarket:$('userRole').value==='EKIPA' ? $('userCrewMarket').value : null,
         warehouses,
         ...(userId?{userId,active:Number($('userStatus').value)}:{})
       };
