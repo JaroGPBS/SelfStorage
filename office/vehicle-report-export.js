@@ -12,83 +12,142 @@
     for(let i=n+1;i>0;i=Math.floor((i-1)/26))name=String.fromCharCode(65+(i-1)%26)+name;
     return name;
   };
-  function makeWorksheet(lines,widths,headingRows=[0],movementRows=[]){
-    const rows=lines.map((cells,r)=>{
-      if(!cells.length)return '<row r="'+(r+1)+'"/>';
-      const values=cells.map((value,c)=>{
-        if(value===null||value===undefined||value==='')return '';
-        const ref=excelColumn(c)+(r+1);
-        const style=headingRows.includes(r)?' s="1"':movementRows.includes(r)?' s="2"':'';
-        if(typeof value==='number'&&Number.isFinite(value))
-          return '<c r="'+ref+'"'+style+'><v>'+value+'</v></c>';
-        return '<c r="'+ref+'"'+style+' t="inlineStr"><is><t>'+
-          xml(value)+'</t></is></c>';
-      }).join('');
-      const height=movementRows.includes(r)?' ht="30" customHeight="1"':'';
-      return '<row r="'+(r+1)+'"'+height+'>'+values+'</row>';
-    }).join('');
-    const columns=widths.map((width,index)=>
-      '<col min="'+(index+1)+'" max="'+(index+1)+'" width="'+width+
-        '" customWidth="1"/>').join('');
-    const maxColumn=excelColumn(Math.max(0,widths.length-1));
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
-      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-      '<dimension ref="A1:'+maxColumn+lines.length+'"/>'+
-      '<sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
-      '<sheetFormatPr defaultRowHeight="17"/>'+
-      '<cols>'+columns+'</cols><sheetData>'+rows+'</sheetData></worksheet>';
-  }
+  // One clear Excel report: each part is followed immediately by its activity.
+  // The export uses merged, lightly shaded detail rows instead of mixing
+  // unrelated fields under the 'Stan przed / Policzono / Różnica' headers.
   function makeSheet(report){
-    const lines=[
-      ['RAPORT INWENTARYZACJI SAMOCHODU'],
-      ['Data',report.date||'—','Godzina',report.time||'—'],
-      ['Ekipa',report.team||'—','Tablica rejestracyjna',report.plate||'—'],
-      ['Wykonał',report.by||'—']
-    ];
-    if(report.note)lines.push(['Komentarz do inwentaryzacji',report.note]);
-    lines.push([]);
-    const headersAt=lines.length;
-    lines.push(['Indeks GPBS','Indeks SAP','Nazwa części',
-      'Stan przed','Policzono','Różnica']);
-    const movementRows=[];
-    const names={usage:'Zużycie',warehouse_in:'Pobranie',
-      warehouse_out:'Zwrot',transfer:'Transfer'};
-    // Movement records follow the corresponding item, never a second sheet.
-    for(const item of report.items||[]){
-      lines.push([item.index||'',item.sap||'',item.name||'',
-        item.before,item.counted,item.difference]);
-      for(const move of item.movements||[]){
-        const sending=move.kind==='usage'||move.kind==='warehouse_out'||
+    const rows=[],merged=[];
+    let tableHeaderRow=0;
+    const line=(cells,height=23)=>{
+      const rowNumber=rows.length+1;
+      rows.push({cells,height});
+      return rowNumber;
+    };
+    const mergedLine=(value,style,height)=>{
+      const cells=Array.from({length:6},(_,i)=>({
+        value:i===0?value:null,style
+      }));
+      const n=line(cells,height);
+      merged.push('A'+n+':F'+n);
+      return n;
+    };
+    const when=(date,time)=>[date,time].filter(Boolean).join(' ');
+    const head='RAPORT INWENTARYZACJI SAMOCHODU';
+    mergedLine(head,1,37);
+    mergedLine('EKIPA: '+(report.team||'—')+'     •     REJESTRACJA: '+
+      (report.plate||'—')+'     •     DATA: '+when(report.date,report.time),2,27);
+    mergedLine('INWENTARYZACJĘ WYKONAŁ: '+(report.by||'—')+
+      (report.periodStart?'     •     POPRZEDNIA INWENTARYZACJA: '+
+      report.periodStart:''),2,26);
+    if(report.note)mergedLine('KOMENTARZ: '+report.note,8,40);
+    line([],12);
+    tableHeaderRow=line([
+      {value:'Indeks GPBS',style:3},{value:'Indeks SAP',style:3},
+      {value:'Nazwa części',style:3},{value:'Stan przed',style:3},
+      {value:'Policzono',style:3},{value:'Różnica',style:3}
+    ],31);
+    const kinds={usage:'Zużycie',warehouse_in:'Pobranie z magazynu',
+      warehouse_out:'Zwrot do magazynu',transfer:'Transfer'};
+    let partRow=0;
+    for(const part of report.items||[]){
+      const numbers=[part.before,part.counted,part.difference];
+      line([
+        {value:part.index||'—',style:4},
+        {value:part.sap||'—',style:4},
+        {value:part.name||'—',style:4},
+        ...numbers.map(n=>({value:n==null?'—':n,style:5}))
+      ],32);
+      partRow++;
+      for(const move of part.movements||[]){
+        const outgoing=move.kind==='usage'||move.kind==='warehouse_out'||
           (move.kind==='transfer'&&String(move.description||'').startsWith('Przekazanie'));
         const qty=Number(move.quantity);
-        const amount=Number.isFinite(qty)?(sending?'−':'+')+qty+' szt.':'—';
-        movementRows.push(lines.length);
-        lines.push([
-          '↳ '+(names[move.kind]||'Ruch'),
-          [move.date,move.time].filter(Boolean).join(' '),
-          move.description||'',amount,move.status||'',move.actor||''
-        ]);
+        const amount=Number.isFinite(qty)
+          ?(outgoing?'−':'+')+qty+' szt.':'—';
+        const description='↳ '+when(move.date,move.time)+'    |    '+
+          (kinds[move.kind]||'Ruch części')+' '+amount+'    |    '+
+          (move.description||'')+'    |    '+
+          (move.status||'Zapisano')+
+          (move.actor?'    |    '+move.actor:'');
+        const pending=/oczekuje/i.test(move.status||'');
+        mergedLine(description,pending?7:6,35);
       }
     }
-    return makeWorksheet(lines,[20,21,52,17,34,20],[0,headersAt],movementRows);
+    if(!partRow)mergedLine('Brak części w tym raporcie.',8,30);
+
+    const cellXml=(value,r,c)=>{
+      if(value===undefined||value===null)return '';
+      const info=typeof value==='object'?value:{value,style:0};
+      const ref=excelColumn(c)+(r+1),style=' s="'+(info.style||0)+'"';
+      if(info.value===undefined||info.value===null)
+        return '<c r="'+ref+'"'+style+'/>';
+      if(typeof info.value==='number'&&Number.isFinite(info.value))
+        return '<c r="'+ref+'"'+style+'><v>'+info.value+'</v></c>';
+      return '<c r="'+ref+'"'+style+' t="inlineStr"><is><t xml:space="preserve">'+
+        xml(info.value)+'</t></is></c>';
+    };
+    const rowXml=rows.map((row,index)=>{
+      const cells=row.cells.map((v,c)=>cellXml(v,index,c)).join('');
+      return '<row r="'+(index+1)+'" ht="'+row.height+
+        '" customHeight="1">'+cells+'</row>';
+    }).join('');
+    const widths=[19,19,44,16,16,16];
+    const columns=widths.map((width,i)=>'<col min="'+(i+1)+
+      '" max="'+(i+1)+'" width="'+width+'" customWidth="1"/>').join('');
+    const mergedXml='<mergeCells count="'+merged.length+'">'+
+      merged.map(r=>'<mergeCell ref="'+r+'"/>').join('')+'</mergeCells>';
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+      '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'+
+      '<dimension ref="A1:F'+rows.length+'"/>'+
+      '<sheetViews><sheetView workbookViewId="0">'+
+      '<pane ySplit="'+tableHeaderRow+'" topLeftCell="A'+(tableHeaderRow+1)+
+        '" activePane="bottomLeft" state="frozen"/>'+
+      '</sheetView></sheetViews>'+
+      '<sheetFormatPr defaultRowHeight="22"/>'+
+      '<cols>'+columns+'</cols><sheetData>'+rowXml+'</sheetData>'+
+      mergedXml+
+      '<printOptions horizontalCentered="1"/>'+
+      '<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'+
+      '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>'+
+      '</worksheet>';
   }
   const styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
-    '<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font>'+
-    '<font><b/><sz val="11"/><name val="Calibri"/></font>'+
-    '<font><i/><sz val="10"/><color rgb="FF536172"/><name val="Calibri"/></font></fonts>'+
-    '<fills count="3"><fill><patternFill patternType="none"/></fill>'+
+    '<fonts count="5">'+
+      '<font><sz val="11"/><name val="Calibri"/></font>'+
+      '<font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'+
+      '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'+
+      '<font><b/><sz val="10"/><color rgb="FF445468"/><name val="Calibri"/></font>'+
+      '<font><sz val="10"/><color rgb="FF344C62"/><name val="Calibri"/></font>'+
+    '</fonts>'+
+    '<fills count="7">'+
+      '<fill><patternFill patternType="none"/></fill>'+
       '<fill><patternFill patternType="gray125"/></fill>'+
-      '<fill><patternFill patternType="solid"><fgColor rgb="FFF3F6F9"/><bgColor indexed="64"/></patternFill></fill></fills>'+
-    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
+      '<fill><patternFill patternType="solid"><fgColor rgb="FF283846"/></patternFill></fill>'+
+      '<fill><patternFill patternType="solid"><fgColor rgb="FF465B6D"/></patternFill></fill>'+
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFF6F8FA"/></patternFill></fill>'+
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFECF3F9"/></patternFill></fill>'+
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFFFF4DF"/></patternFill></fill>'+
+    '</fills>'+
+    '<borders count="2">'+
+      '<border><left/><right/><top/><bottom/><diagonal/></border>'+
+      '<border><left/><right/><top/><bottom style="thin"><color rgb="FFDEE5EC"/></bottom/><diagonal/></border>'+
+    '</borders>'+
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-    '<cellXfs count="3">'+
+    '<cellXfs count="9">'+
       '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
-      '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'+
-      '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment wrapText="1" vertical="center"/></xf>'+
-    '</cellXfs><cellStyles count="1">'+
-      '<cellStyle name="Normal" xfId="0" builtinId="0"/>'+
-    '</cellStyles></styleSheet>';
+      '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center" indent="1"/></xf>'+
+      '<xf numFmtId="0" fontId="3" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
+      '<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'+
+      '<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf>'+
+      '<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>'+
+      '<xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
+      '<xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
+      '<xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFill="1"><alignment vertical="center" indent="1" wrapText="1"/></xf>'+
+    '</cellXfs>'+
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
+    '</styleSheet>';
   function makeFiles(report){
     return [
       ['[Content_Types].xml',
