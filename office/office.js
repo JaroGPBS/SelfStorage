@@ -1947,9 +1947,15 @@ async function renderFrenchMovementHistory(){
     if(search)operations=operations.filter(x=>
       [x.team,x.plate,x.part_name,x.part_number,x.warehouse,x.direction,x.session_id]
         .some(value=>String(value||'').toLocaleLowerCase('pl').includes(search)));
+    const formatTime=value=>{
+      const text=String(value||'').trim();
+      if(!text)return '—';
+      const date=new Date(/Z$|[+-]\d\d:\d\d$/.test(text)?text:text.replace(' ','T')+'Z');
+      return Number.isNaN(date.getTime())?text:date.toLocaleString('pl-PL',{timeZone:'Europe/Paris'});
+    };
     const headers=['Data i godzina','Ekipa','Samochód','Magazyn','Rodzaj','Część','Indeks','Ilość'];
     const body=operations.map(x=>'<tr>'+
-      [formatTimestampPL(x.created_at),x.team||'—',x.plate||'—',x.warehouse||'—',
+      [formatTime(x.created_at),x.team||'—',x.plate||'—',x.warehouse||'—',
        x.direction==='POBRANIE'?'Pobranie':'Zwrot',x.part_name||'—',
        x.part_number||'—',String(x.quantity)]
       .map(value=>'<td>'+escapeHtml(value)+'</td>').join('')+'</tr>').join('');
