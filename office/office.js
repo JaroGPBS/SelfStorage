@@ -1319,10 +1319,10 @@ function drawVehicles(){
       .map(([label,value])=>'<div><span>'+label+'</span>'+
         '<strong>'+value+'</strong></div>').join('')+'</div>');
   const headers=summary?[
-    {label:'Indeks GPBS'},{label:'Indeks SAP'},{label:'Wymagane min.',numeric:true},
+    {label:'Indeks GPBS'},{label:'Indeks SAP'},{label:'Stock min.',numeric:true},
     {label:'Nazwa części'},{label:'Suma',numeric:true}
   ]:[
-    {label:'Indeks GPBS'},{label:'Indeks SAP'},{label:'Wymagane min.',numeric:true},
+    {label:'Indeks GPBS'},{label:'Indeks SAP'},{label:'Stock min.',numeric:true},
     {label:'Nazwa części'},{label:'Aktualny stan',numeric:true},
     {label:'Ostatnia inwentaryzacja',numeric:true}
   ];
