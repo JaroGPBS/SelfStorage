@@ -2565,7 +2565,7 @@ $('logout').addEventListener('click',async()=>{
 $('loginForm').addEventListener('submit',async e=>{
   e.preventDefault();$('loginError').classList.add('hidden');const btn=$('loginButton');btn.disabled=true;
   try{
-    const response=await fetch('/api/pl/auth',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',pin:$('pin').value})});
+    const response=await fetch('/api/pl/auth',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',pin:$('pin').value,client:'office'})});
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||!payload.ok)throw Error(payload.error||'Nieprawidłowy PIN.');
     if(!['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER'].includes(payload.user?.role))throw Error('Brak dostępu do panelu biurowego.');
