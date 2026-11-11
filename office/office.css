@@ -2857,3 +2857,309 @@
   .app.view-vehicles .vehicle-preview-detail td{padding:8px 7px}
   .app .modal-card.vehicle-history-card{padding:17px}
 }
+
+
+/* Shared fleet design: compact top header and tabs. */
+.app.view-vehicles .topbar{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.app.view-vehicles .breadcrumbs{
+  flex:0 0 auto;
+}
+.app.view-vehicles .breadcrumbs strong{
+  font-size:24px;
+  font-weight:850;
+}
+.app.view-vehicles .vehicle-top-context{
+  display:flex;
+  flex:1 1 auto;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.app.view-vehicles .vehicle-top-description{
+  font-size:11px;
+  color:#7b8796;
+  white-space:nowrap;
+}
+.app.view-vehicles .vehicle-top-hint{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  padding:7px 10px;
+  background:#fffaf3;
+  border:1px solid #f1e1ca;
+  border-radius:7px;
+  color:#a7672e;
+  font-size:11px;
+  font-weight:650;
+  white-space:nowrap;
+}
+.app.view-vehicles .vehicle-top-hint>span{font-size:14px;flex:none}
+.app.view-vehicles .vehicle-top-export-host{flex:0 0 auto;margin-left:auto}
+.app.view-vehicles .vehicle-top-export-host .btn{
+  min-height:33px;
+  padding:7px 12px;
+}
+.app.view-vehicles .top-status{flex:0 0 auto;margin-left:2px}
+.app.view-vehicles .vehicle-setup-tabs{
+  padding:0 0 8px;
+  margin:0;
+  gap:7px;
+  border-bottom:1px solid #e9edf1;
+}
+.app.view-vehicles .vehicle-setup-tab{
+  border:1px solid #e1e5ea;
+  border-bottom-color:#e1e5ea;
+  border-radius:6px;
+  padding:7px 13px;
+  background:#fbfcfd;
+  color:#606f7e;
+  font-weight:750;
+  font-size:12px;
+  min-height:34px;
+}
+.app.view-vehicles .vehicle-setup-tab.active{
+  border:1px solid #d96068;
+  color:#b72b39;
+  background:#fff6f6;
+  box-shadow:inset 3px 0 #c83844;
+}
+.app.view-vehicles .vehicle-setup-tab:hover{
+  border-color:#c77d83;
+  background:#fff9f9;
+}
+.app.view-vehicles .vehicle-preview{
+  gap:8px;
+  padding:9px 10px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-meta{
+  padding:2px 0 1px;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-meta>div{
+  padding-right:10px;
+}
+.app.view-vehicles .vehicle-preview-team-btn{min-height:35px}
+
+/* Fixed GPBS/SAP/minimum/name/current/difference/latest columns.
+   ONLY older inventory columns move under the top history scrollbar. */
+.app.view-vehicles .vehicle-preview-detail{
+  table-layout:fixed;
+  width:var(--vehicle-table-width);
+  min-width:var(--vehicle-table-width);
+  max-width:var(--vehicle-table-width);
+  border-spacing:0;
+  border-collapse:separate;
+}
+.app.view-vehicles .vehicle-preview-detail th,
+.app.view-vehicles .vehicle-preview-detail td{
+  box-sizing:border-box;
+  height:41px;
+  padding:7px 7px;
+  border-right:1px solid #e1e5ea;
+  border-bottom:1px solid #edf0f3;
+}
+.app.view-vehicles .vehicle-preview-detail thead th{height:48px;line-height:1.25}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(1),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(1){width:104px;min-width:104px;max-width:104px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(2),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(2){width:122px;min-width:122px;max-width:122px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(3),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(3){width:88px;min-width:88px;max-width:88px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(4),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(4){
+  width:var(--vehicle-name-width);min-width:var(--vehicle-name-width);
+  max-width:var(--vehicle-name-width);
+  white-space:nowrap;overflow:visible;overflow-wrap:normal;
+}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(5),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(5){width:102px;min-width:102px;max-width:102px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(6),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(6){width:112px;min-width:112px;max-width:112px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(7),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(7){width:126px;min-width:126px;max-width:126px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(n+8),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(n+8){width:112px;min-width:112px;max-width:112px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(-n+7),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(-n+7){
+  position:sticky;
+  z-index:3;
+  background:#fff;
+}
+.app.view-vehicles .vehicle-preview-detail thead th:nth-child(-n+7){
+  z-index:6;
+  background:#f6f8fa;
+}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(1),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(1){left:0}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(2),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(2){left:104px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(3),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(3){left:226px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(4),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(4){left:314px}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(5),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(5){
+  left:calc(314px + var(--vehicle-name-width))
+}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(6),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(6){
+  left:calc(416px + var(--vehicle-name-width))
+}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(7),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(7){
+  left:calc(528px + var(--vehicle-name-width))
+}
+.app.view-vehicles .vehicle-preview-detail th:nth-child(7),
+.app.view-vehicles .vehicle-preview-detail td:nth-child(7){
+  border-right:2px solid #c7cfd8;
+  background:#fbfcfe;
+}
+.app.view-vehicles .vehicle-preview-detail thead th:nth-child(7){
+  background:#f0f4f8;
+}
+.app.view-vehicles .vehicle-preview-detail .vehicle-preview-num{
+  text-align:center!important;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-vehicles .vehicle-preview-detail .vehicle-preview-part-name{
+  white-space:nowrap;
+  font-size:11px;
+  overflow:visible;
+  text-overflow:clip;
+}
+.app.view-vehicles .vehicle-preview-difference.is-positive{color:#168654;font-weight:850}
+.app.view-vehicles .vehicle-preview-difference.is-negative{color:#bd3341;font-weight:850}
+.app.view-vehicles .vehicle-preview-inventory-col{
+  padding:0!important;
+  vertical-align:stretch;
+}
+.app.view-vehicles .vehicle-inventory-button{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  width:100%;
+  height:100%;
+  min-height:48px;
+  border:0;
+  padding:5px 3px;
+  background:transparent;
+  color:#5f6975;
+  text-transform:none;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.app.view-vehicles .vehicle-inventory-button span{
+  font-size:10px;
+  line-height:1.2;
+  font-weight:750;
+}
+.app.view-vehicles .vehicle-inventory-button small{
+  display:block;
+  font-size:10px;
+  margin-top:3px;
+  color:#778291;
+  font-weight:650;
+}
+.app.view-vehicles .vehicle-inventory-button:hover{
+  background:#eaf1f8;
+  color:#a22d38;
+}
+.app.view-vehicles .vehicle-inventory-button:focus-visible{
+  outline:2px solid #c83844;
+  outline-offset:-2px;
+}
+.app.view-vehicles .vehicle-preview-detail .vehicle-preview-current{
+  text-align:center!important;
+}
+.app.view-vehicles .vehicle-history-scrollbar{
+  flex:none;
+  height:16px;
+  margin-top:1px;
+  overflow-x:scroll;
+  overflow-y:hidden;
+  border-top:1px solid #e9edf1;
+  border-bottom:1px solid #dfe5eb;
+  background:#f5f7f9;
+  scrollbar-color:#aab5c1 #eef1f4;
+  scrollbar-width:auto;
+}
+.app.view-vehicles .vehicle-history-scrollbar-track{height:1px}
+.app.view-vehicles .vehicle-preview-detail+.vehicle-history-scrollbar{display:none}
+.app.view-vehicles .vehicle-preview .vehicle-setup-table-wrap{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  border-radius:5px;
+  scrollbar-width:none;
+}
+.app.view-vehicles .vehicle-preview .vehicle-setup-table-wrap::-webkit-scrollbar{
+  display:none;
+}
+.app.view-vehicles .vehicle-preview-summary{
+  min-width:max-content;
+  width:100%;
+  table-layout:auto;
+}
+.app.view-vehicles .vehicle-preview-summary th,
+.app.view-vehicles .vehicle-preview-summary td{
+  border-right:1px solid #e1e5ea;
+  white-space:nowrap;
+  text-align:left;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-num{
+  text-align:center!important;
+}
+.app.view-vehicles .vehicle-preview-summary .vehicle-preview-part-name{
+  white-space:nowrap;
+  min-width:315px;
+}
+.app.view-vehicles .vehicle-transfer-empty{
+  padding:24px 8px;
+  color:#637181;
+}
+.app.view-vehicles .vehicle-transfer-empty h3{
+  color:#303943;
+  font-size:16px;
+  margin:0 0 8px;
+}
+.app.view-vehicles .vehicle-transfer-empty p{
+  max-width:700px;
+  font-size:13px;
+  line-height:1.55;
+  margin-bottom:8px;
+}
+.app.view-vehicles .vehicle-transfer-empty small{color:#8b95a0;font-size:11px}
+.vehicle-preview-history-table .vehicle-preview-difference.is-positive{color:#168654;font-weight:800}
+.vehicle-preview-history-table .vehicle-preview-difference.is-negative{color:#bd3341;font-weight:800}
+@media(max-width:1500px){
+  .app.view-vehicles .vehicle-top-description{display:none}
+}
+@media(max-width:1280px){
+  .app.view-vehicles .vehicle-top-hint{white-space:normal}
+}
+@media(max-width:1170px){
+  .app.view-vehicles .vehicle-preview-detail th:nth-child(-n+7),
+  .app.view-vehicles .vehicle-preview-detail td:nth-child(-n+7){
+    position:static;
+  }
+  .app.view-vehicles .vehicle-history-scrollbar{display:none!important}
+  .app.view-vehicles .vehicle-preview .vehicle-setup-table-wrap{
+    overflow-x:auto;
+    scrollbar-width:auto;
+  }
+  .app.view-vehicles .vehicle-preview .vehicle-setup-table-wrap::-webkit-scrollbar{
+    display:block;
+  }
+}
+@media(max-width:760px){
+  .app.view-vehicles .vehicle-top-context{display:none!important}
+  .app.view-vehicles .breadcrumbs strong{font-size:17px}
+  .app.view-vehicles .vehicle-top-export-host .btn{padding:6px 8px;font-size:11px}
+  .app.view-vehicles .vehicle-setup-tab{padding:7px 8px;font-size:11px}
+}
