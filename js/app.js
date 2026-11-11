@@ -412,6 +412,12 @@ function cleanEmptyDraft() {
 }
 
 function renderWarehouse() {
+  const plateInput=$('frVehiclePlate');
+  if(plateInput && state.team?.id) {
+    const current=String(state.team.samochod||'').trim();
+    const stored=localStorage.getItem('gpbs-fr-car-'+state.team.id)||'';
+    if(!plateInput.value)plateInput.value=current||stored;
+  }
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
   showScreen('screenWarehouse');
@@ -1760,32 +1766,14 @@ async function login() {
   setLoading(true, 'Logowanie…');
 
   try {
-    // D1 Poland is checked first. The Polish user should never depend on
-    // a failed French Apps Script request to reach their assigned warehouse.
-    // French users still use the unchanged legacy API when D1 has no match.
-    let polishError = null;
-    try {
-      if (await tryPolishLogin(pin)) {
-        // Never erase pending French visit or offline drafts when a PL worker
-        // signs in on a device that previously ran the French application.
-        $('pinInput').value = '';
-        $('loginBtn').disabled = true;
-        return;
-      }
-    } catch (error) {
-      polishError = error;
+    // One shared D1 PIN. PL loads its workspace; FR keeps this mobile UI.
+    if (await tryPolishLogin(pin)) {
+      $('pinInput').value = '';
+      $('loginBtn').disabled = true;
+      return;
     }
-
-    let loginResult;
-    try {
-      loginResult = await api.login(pin);
-    } catch (frenchLoginError) {
-      // If D1 was unavailable or couldn't load the PL workspace, tell the
-      // worker what actually failed instead of reporting a bad French PIN.
-      if (polishError) throw polishError;
-      throw frenchLoginError;
-    }
-    const team = loginResult.ekipa;
+    const loginResult = await api.login(pin);
+    const team = {...loginResult.ekipa, samochod:loginResult.samochod||''};
     const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
 
     let startData = null;
@@ -1822,6 +1810,18 @@ async function login() {
   }
 }
 
+async function assignCurrentVehicle() {
+  const raw=String($('frVehiclePlate')?.value||'').toUpperCase().replace(/\s+/g,'');
+  if(!/^[A-Z0-9-]{3,20}$/.test(raw))
+    throw new Error('Wpisz numer rejestracyjny samochodu.');
+  const result=await api.assignVehicle(raw);
+  state.team.samochod=result.samochod.registration_number;
+  localStorage.setItem('gpbs-fr-car-'+state.team.id,state.team.samochod);
+  $('frVehiclePlate').value=state.team.samochod;
+  persist();
+  return result;
+}
+
 async function startVisit(code) {
   const cleanCode = String(code || '').trim().toUpperCase();
 
@@ -1852,6 +1852,7 @@ async function startVisit(code) {
   setLoading(true, 'Rozpoczynanie wizyty…');
 
   try {
+    await assignCurrentVehicle();
     const result = await api.startVisit({
       idEkipy: state.team.id,
       kodMagazynu: cleanCode,
@@ -2480,7 +2481,21 @@ function bindEvents() {
     if (event.key === 'Enter') startVisit(event.target.value);
   });
 
-  $('vehicleStatePreBtn')?.addEventListener('click', openVehicleStock);
+  $('frVehicleAssignBtn')?.addEventListener('click',async()=>{
+    try{
+      setLoading(true,'Przypisywanie samochodu…');
+      await assignCurrentVehicle();
+      showToast('Samochód przypisany do ekipy.');
+    }catch(error){showToast(messageFromError(error),true);}
+    finally{setLoading(false);}
+  });
+  $('frVehiclePlate')?.addEventListener('input',event=>{
+    event.target.value=event.target.value.toUpperCase();
+  });
+  $('vehicleStatePreBtn')?.addEventListener('click',async()=>{
+    try{await assignCurrentVehicle();await openVehicleStock();}
+    catch(error){showToast(messageFromError(error),true);}
+  });
   $('vehiclePartsBtn')?.addEventListener('click', openVehicleStock);
 
   $('vehicleBackBtn')?.addEventListener('click', () => {
