@@ -71,50 +71,6 @@ function vehicleSummaryStock(part,partIndex,crew,crewIndex){
 }
 // Presentation-only quantities, history and teams. Never persisted to D1.
 // The real vehicle part catalogue is fetched separately from /api/office.
-function prepareVehicleDemonstration(catalogue){
-  if(!Array.isArray(catalogue))throw Error('Nieprawidłowy katalog części samochodowych.');
-  const list=catalogue.map((part,i)=>{
-    const required=part.required_quantity==null?0:Number(part.required_quantity);
-    return {
-      index:part.part_number||'—',external:part.sap_number||part.source_sap||'',
-      name:part.name||part.source_name||'Nieznana część',
-      required:Number.isFinite(required)&&required>=0?required:0,
-      stock:{},partId:part.id||'',sourceRow:part.source_row,
-      requiredKnown:part.required_quantity!==null
-    };
-  });
-  // Existing three crew buttons stay unchanged. Add six wholly fictional teams.
-  if(PL_VEHICLE_TEST_PREVIEW.crews.length===3){
-    for(let n=4;n<=9;n++){
-      const code=String(n).padStart(2,'0');
-      PL_VEHICLE_TEST_PREVIEW.crews.push({
-        id:'demo-'+code,team:'TEST-'+code,
-        plate:'DEMO '+String(n).padStart(3,'0'),
-        inventory:String(4+n%7).padStart(2,'0')+'.11.2026',
-        frequency:'Co 7 dni'
-      });
-    }
-  }
-  const teams=PL_VEHICLE_TEST_PREVIEW.crews;
-  const baseHistory=PL_VEHICLE_TEST_HISTORY['demo-a'];
-  teams.forEach((crew,ci)=>{
-    const history=PL_VEHICLE_TEST_HISTORY[crew.id]||
-      baseHistory.map(item=>({...item,by:crew.team}));
-    PL_VEHICLE_TEST_HISTORY[crew.id]=history.map((item,h)=>{
-      const counted=list.map((part,i)=>Math.max(0,part.required+
-        ((i*3+ci*4+h*2)%7)-3));
-      const before=counted.map((value,i)=>Math.max(0,value+
-        ((i+ci+h)%9===0?1:(i+ci+h)%11===0?-1:0)));
-      return {...item,by:crew.team,counts:counted,before};
-    });
-    list.forEach((part,i)=>{
-      const previous=PL_VEHICLE_TEST_HISTORY[crew.id][1]?.counts[i]??0;
-      const current=PL_VEHICLE_TEST_HISTORY[crew.id][0]?.counts[i]??0;
-      part.stock[crew.id]={previous,current};
-    });
-  });
-  PL_VEHICLE_TEST_PREVIEW.parts=list;
-}
 // The third imaginary crew is for testing the width of "ST 7486W" only.
 for(const p of PL_VEHICLE_TEST_PREVIEW.parts){
   p.stock['demo-tw']={...p.stock['demo-b']};
@@ -1775,7 +1731,8 @@ function drawFrenchVehicleCatalogue(parts){
 }
 function drawVehicles(){
   // Temporary example remains only in Poland. The French UI stays empty.
-  if(!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL'){
+  if(OFFICE_VEHICLE_DEMO_ENABLED&&!state.preview&&
+     realWarehouse(state.warehouse)?.country_code==='PL'){
     drawPolishVehiclePreview();return;
   }
   const tab=state.vehicleTab;
@@ -1844,34 +1801,26 @@ function drawFrenchEmptyView(){
 async function render(){
   if(state.view==='vehicles'){
     errorBanner('');
-    if(!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL'&&
-       state.vehicleTab!=='transfers'){
+    const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
+    const french=state.preview?.type==='operation'&&
+      state.preview.key==='vehicles'&&state.vehicleTab==='detail';
+    if(polish||french){
       const ticket=++state.requestId;
+      $('tableArea').innerHTML='<div class="loading">Wczytywanie katalogu samochodowego…</div>';
       try{
         const response=await api('vehicleCatalog');
         if(ticket!==state.requestId)return;
-        prepareVehicleDemonstration(response.parts||[]);
-        drawVehicles();
+        if(polish&&OFFICE_VEHICLE_DEMO_ENABLED){
+          useVehicleCatalogueInDemo(response.parts||[]);
+          drawPolishVehiclePreview();
+        }else if(french){
+          drawFrenchVehicleCatalogue(response.parts||[]);
+        }else drawVehicles();
       }catch(ex){
         if(ticket!==state.requestId)return;
         errorBanner(ex.message||'Nie udało się pobrać katalogu samochodowego.');
-        $('tableArea').innerHTML='<div class="empty">Katalog części samochodowych jest niedostępny.</div>';
+        $('tableArea').innerHTML='<div class="empty">Katalog samochodowy jest niedostępny.</div>';
         $('tableFooter').textContent='';
-        if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
-      }
-      return;
-    }
-    if(state.preview?.type==='operation'&&state.preview.key==='vehicles'&&
-       state.vehicleTab==='detail'){
-      const ticket=++state.requestId;
-      try{
-        const response=await api('vehicleCatalog');
-        if(ticket!==state.requestId)return;
-        drawFrenchVehicleCatalogue(response.parts||[]);
-      }catch(ex){
-        if(ticket!==state.requestId)return;
-        errorBanner(ex.message||'Nie udało się pobrać katalogu samochodowego.');
-        drawVehicles();
         if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
       }
     }else drawVehicles();
