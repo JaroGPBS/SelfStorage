@@ -971,13 +971,13 @@ function setupVehicleHistoryRail(){
   const wrap=$('tableArea').querySelector('.vehicle-setup-table-wrap');
   const preview=$('tableArea').querySelector('.vehicle-preview');
   if(!rail||!wrap||!preview)return;
+  rail.classList.remove('hidden');
   const available=rail.clientWidth;
   const overflow=Math.max(0,wrap.scrollWidth-wrap.clientWidth);
   if(available<75||overflow<2){
     rail.classList.add('hidden');
     return;
   }
-  rail.classList.remove('hidden');
   rail.querySelector('.vehicle-history-scrollbar-track').style.width=
     Math.ceil(available+overflow)+'px';
   if(rail.dataset.linked==='1')return;
