@@ -15,9 +15,9 @@ async function ready(db){
   const r=await db.prepare(
     "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ("+
     "'fr_warehouse_qr','fr_vehicle_usage','fr_visits','fr_sessions','fr_session_lines',"+
-    "'fr_vehicle_events','fr_vehicle_event_lines','vehicle_stock','vehicles')"
+    "'fr_vehicle_events','fr_vehicle_event_lines','fr_vehicle_event_fingerprints','vehicle_stock','vehicles')"
   ).first();
-  return Number(r?.n)===9;
+  return Number(r?.n)===10;
 }
 // Non-destructive first-use bootstrap. Never updates existing warehouse quantities.
 async function ensureSchema(db){
@@ -74,7 +74,10 @@ async function ensureSchema(db){
       "event_id TEXT NOT NULL REFERENCES fr_vehicle_events(id),"+
       "part_id TEXT NOT NULL REFERENCES parts(id),"+
       "quantity_before INTEGER,quantity_after INTEGER NOT NULL CHECK(quantity_after>=0),"+
-      "PRIMARY KEY(event_id,part_id))"
+      "PRIMARY KEY(event_id,part_id))",
+    "CREATE TABLE IF NOT EXISTS fr_vehicle_event_fingerprints ("+
+      "event_id TEXT PRIMARY KEY REFERENCES fr_vehicle_events(id),"+
+      "content_hash TEXT NOT NULL)"
   ];
   for(const sql of ddl)await db.prepare(sql).run();
   await db.prepare(
@@ -298,8 +301,6 @@ async function updateVehicleStock(db,user,data){
   if(!car)throw Error('Najpierw przypisz samochód.');
   const eventId=clean(data.idZmiany);
   if(!validId(eventId))throw Error('Brak identyfikatora zmiany.');
-  const previous=await db.prepare('SELECT id FROM fr_vehicle_events WHERE id=?').bind(eventId).first();
-  if(previous)return {ok:true,duplicate:true};
   const inventory=entryCode(data.typZmiany).includes('INWENT');
   const changes=Array.isArray(data.zmiany)?data.zmiany:[];
   if(!changes.length||changes.length>1000)throw Error('Brak poprawnej listy części.');
@@ -318,9 +319,23 @@ async function updateVehicleStock(db,user,data){
       throw Error('Nieprawidłowa ilość części.');
     byId.set(id,{absolute,value});
   }
+  const hash=await fingerprint({car:car.id,inventory,
+    changes:[...byId.entries()].map(([id,v])=>[id,v.absolute,v.value])
+      .sort((a,b)=>a[0].localeCompare(b[0]))});
+  const previous=await db.prepare(
+    'SELECT f.content_hash FROM fr_vehicle_event_fingerprints f WHERE f.event_id=?'
+  ).bind(eventId).first();
+  if(previous){
+    if(previous.content_hash!==hash)
+      throw Error('Operacja została wcześniej zapisana z inną zawartością.');
+    return {ok:true,duplicate:true};
+  }
   const statements=[db.prepare(
     'INSERT INTO fr_vehicle_events(id,user_id,vehicle_id,type) VALUES(?,?,?,?)'
-  ).bind(eventId,user.id,car.id,inventory?'INWENTARYZACJA':'RECZNA')];
+  ).bind(eventId,user.id,car.id,inventory?'INWENTARYZACJA':'RECZNA'),
+    db.prepare(
+      'INSERT INTO fr_vehicle_event_fingerprints(event_id,content_hash) VALUES(?,?)'
+    ).bind(eventId,hash)];
   for(const [id,x] of byId){
     const current=await db.prepare(
       'SELECT quantity FROM vehicle_stock WHERE vehicle_id=? AND part_id=?'
