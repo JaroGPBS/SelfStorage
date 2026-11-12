@@ -437,13 +437,13 @@
     return [[],[]];
   }
 
-  // Keep exactly the original six columns. Click the row to reveal
+  // Keep the user row compact. Click the row to reveal
   // one extra line containing ONLY optional contact details.
   function renderUsersTable(users) {
     const table=document.createElement('table');
     table.className='users-table';
     const header=table.createTHead().insertRow();
-    for(const title of ['UŻYTKOWNIK','ROLA','PIN','STATUS','PL','FR','']) {
+    for(const title of ['UŻYTKOWNIK','ROLA','PIN','STATUS','PL','FR','MOBILNA','OFFICE','']) {
       const th=document.createElement('th');th.textContent=title;header.append(th);
     }
     const tbody=table.createTBody();
@@ -503,7 +503,7 @@
         input.addEventListener('change',async event=>{
           event.stopPropagation();
           const previous=!input.checked;
-          const controls=[...row.querySelectorAll('.market-access-check')];
+          const controls=[...row.querySelectorAll('.market-access-check,.app-access-check')];
           controls.forEach(control=>{control.disabled=true;});
           try{
             const markets={PL:Boolean(user.market_pl),FR:Boolean(user.market_fr)};
@@ -522,6 +522,42 @@
           }
         });
         access.append(input);row.append(access);
+      }
+      for(const app of [
+        {key:'mobile',field:'app_mobile',name:'aplikacji mobilnej'},
+        {key:'office',field:'app_office',name:'panelu Office'}
+      ]){
+        const cell=td('');cell.className='app-access-cell';
+        const input=document.createElement('input');
+        input.type='checkbox';input.className='app-access-check';
+        input.checked=Boolean(user[app.field]);
+        input.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+        input.setAttribute('aria-label',user.name+': dostęp do '+app.name);
+        input.title=user.owner_protected?'Główny administrator ma stały dostęp do obu aplikacji':
+          'Zmień dostęp do '+app.name;
+        input.addEventListener('click',event=>event.stopPropagation());
+        input.addEventListener('change',async event=>{
+          event.stopPropagation();
+          const previous=!input.checked;
+          const controls=[...row.querySelectorAll('.market-access-check,.app-access-check')];
+          controls.forEach(control=>{control.disabled=true;});
+          try{
+            const apps={mobile:Boolean(user.app_mobile),office:Boolean(user.app_office)};
+            apps[app.key]=input.checked;
+            const result=await post({action:'setUserApps',userId:user.id,apps});
+            user.app_mobile=Number(result.apps.mobile);
+            user.app_office=Number(result.apps.office);
+            message('Zapisano dostęp użytkownika '+user.name+' do aplikacji.','info');
+          }catch(error){
+            input.checked=previous;
+            message(error.message||'Nie udało się zmienić dostępu.','error');
+          }finally{
+            controls.forEach(control=>{
+              control.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+            });
+          }
+        });
+        cell.append(input);row.append(cell);
       }
       const actions=td('');actions.className='user-row-actions';
       const edit=document.createElement('button');edit.type='button';
@@ -552,7 +588,7 @@
       }
       row.append(actions);
 
-      const cell=detail.insertCell();cell.colSpan=7;
+      const cell=detail.insertCell();cell.colSpan=9;
       const box=document.createElement('div');box.className='user-details-inner';
       const fields=[
         ['Imię',user.first_name||'—'],
