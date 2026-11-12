@@ -1759,7 +1759,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       '<span class="vehicle-team-name">'+escapeHtml(team.team)+'</span>'+
       '<small>'+escapeHtml(team.plate||'Bez samochodu')+(team.carPending?' · Do weryfikacji':'')+'</small>'+
       ((team.missedWeeks||[]).length?'<small class="vehicle-weekly-missed">'+
-        escapeHtml('Pominięte: '+team.missedWeeks.map(w=>w.replace('-W','/')).join(', '))+
+        escapeHtml('Pominięte: '+team.missedWeeks.map(w=>w.split('-W').reverse().join('/')).join(', '))+
         '</small>':'')+'</button>').join('')+
     '</div>');
   const meta=summary||!chosen?'':(
@@ -1769,7 +1769,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
        ...(chosen.carPending?[['Rejestracja','Oczekuje na decyzję Admina']]:[]),
        ['Ostatnia inwentaryzacja',chosen.lastInventory?String(chosen.lastInventory).slice(0,10):'Brak'],
        ['Pominięte inwentaryzacje',(chosen.missedWeeks||[]).length
-         ?chosen.missedWeeks.map(w=>'tydz. '+w.replace('-W','/')).join(', '):'Brak']]
+         ?chosen.missedWeeks.map(w=>'tydz. '+w.split('-W').reverse().join('/')).join(', '):'Brak']]
       .map(([label,value])=>'<div><span>'+escapeHtml(label)+'</span>'+
         '<div class="vehicle-preview-meta-value"><strong>'+
           escapeHtml(value)+'</strong></div></div>').join('')+'</div>');
