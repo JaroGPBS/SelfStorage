@@ -470,7 +470,12 @@ function updateInitialInventoryAccess(){
   const input=$('warehouseCodeInput'),confirm=$('manualWarehouseBtn');
   if(input)input.disabled=locked;
   if(confirm)confirm.disabled=locked;
-  $('vehicleStatePreBtn')?.classList.toggle('hidden',!plate);
+  const carButton=$('vehicleStatePreBtn');
+  if(carButton){
+    carButton.classList.toggle('hidden',!plate);
+    carButton.classList.toggle('is-first-inventory',locked);
+    carButton.textContent=locked?'Inwentaryzacja':'Stan auta';
+  }
 }
 async function checkRestoredVehicleInventory(){
   if(!state.team?.id||isAdminTeam()||!state.team.samochod)return;
@@ -1810,6 +1815,37 @@ function renderVehicleStock(data) {
   showScreen('screenVehicle');
 }
 
+async function openFirstVehicleInventory(){
+  if(!state.team?.id||!state.team.samochod)return;
+  if(!navigator.onLine){
+    showToast('Pierwsza inwentaryzacja wymaga połączenia z internetem.',true);
+    return;
+  }
+  setLoading(true,'Pobieranie listy części do inwentaryzacji…');
+  try{
+    // Load current D1 stock directly, without displaying the Stan auta page.
+    // fetchVehicleStockOnce also stores the inventory catalogue locally.
+    const data=await fetchVehicleStockOnce();
+    if(typeof data?.inwentaryzacjaWykonana!=='boolean')
+      throw Error('Nie udało się sprawdzić pierwszej inwentaryzacji.');
+    firstInventoryRequired=!data.inwentaryzacjaWykonana;
+    updateInitialInventoryAccess();
+    if(firstInventoryRequired){
+      vehicleManualDraft={};
+      vehicleManualPart=null;
+      vehicleInventoryParts=[];
+      openWeeklyReport();
+    }else{
+      // The inventory may have been completed on another device.
+      renderVehicleStock(data);
+    }
+  }catch(error){
+    showToast(messageFromError(error),true);
+  }finally{
+    setLoading(false);
+  }
+}
+
 async function openVehicleStock() {
   if (!state.team?.id) return;
 
@@ -2705,7 +2741,10 @@ function bindEvents() {
   $('frVehiclePlate')?.addEventListener('keydown',event=>{
     if(event.key==='Enter'){event.preventDefault();$('frVehicleAssignBtn')?.click();}
   });
-  $('vehicleStatePreBtn')?.addEventListener('click',openVehicleStock);
+  $('vehicleStatePreBtn')?.addEventListener('click',()=>{
+    if(firstInventoryRequired!==false)openFirstVehicleInventory();
+    else openVehicleStock();
+  });
   $('vehiclePartsBtn')?.addEventListener('click', openVehicleStock);
 
   $('vehicleBackBtn')?.addEventListener('click', () => {
