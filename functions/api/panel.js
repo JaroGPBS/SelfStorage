@@ -2,6 +2,7 @@
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {readFrBoxSharedCatalog} from '../../lib/fr-box-office-stock.js';
+import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
@@ -606,6 +607,13 @@ async function queryPanel(env,view,url) {
     };
   }
   if(view==='warehouses') {
+    // Repair only missing/inactive FR BOX records and missing stock rows.
+    // Never overwrite current quantities already stored in D1.
+    try{await ensureFrenchBoxSetup(env.DB);}
+    catch(error){
+      console.error('French BOX initialization failed',error?.name||'Error');
+      return fail('Nie udało się przygotować Box Toulouse i Box Paryż w D1.',503);
+    }
     // Show only actual warehouse records. French BOX QR values are read from
     // the existing registry; printed codes are NEVER rotated by this view.
     const qrTable=await env.DB.prepare(
