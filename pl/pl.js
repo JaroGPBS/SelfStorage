@@ -58,7 +58,7 @@
   })();
   const pinInput = byId('workerPin');
   const subscreens = ['warehouseSelection','warehouseHome','stockScreen','operationScreen','inventoryScreen','crewHome','officeHome'];
-  const warehouseRoles = new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
+  const warehouseRoles = new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
   const roleLabels = {
     ADMIN:'Administrator', KIEROWNIK:'Kierownik', KOORDYNATOR:'Koordynator',
     MAGAZYNIER:'Magazynier', EKIPA:'Ekipa serwisowa'
@@ -365,10 +365,7 @@
       .replace(/[^A-Za-z0-9ĄĆĘŁŃÓŚŹŻąćęłńóśźż]/g,'')
       .slice(0,3).toLocaleUpperCase('pl')||'PL';
 
-    if(role==='KOORDYNATOR') {
-      state.warehouse=null;
-      subview('officeHome');
-    } else if(role==='EKIPA') {
+    if(role==='EKIPA') {
       state.warehouse=null;
       subview('crewHome');
     } else if(warehouseRoles.has(role)) {
