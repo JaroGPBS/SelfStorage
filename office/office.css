@@ -5390,7 +5390,8 @@
 }
 .office-home-sync:hover{background:rgba(255,255,255,.13)}
 .office-home-sync:disabled{opacity:.55;cursor:wait}
-.office-home-sync-error{min-height:0;margin:9px 0 0;color:#ffc9c9;font-size:12px}
+.office-home-sync-error{min-height:0;margin:9px 0 0;color:#a8c9d4;font-size:12px}
+.office-home-sync-error.is-error{color:#ffc9c9}
 
 /* Fleet screen hides its table toolbar: show synchronization in the top bar. */
 .app.view-vehicles .vehicle-top-export-host{
