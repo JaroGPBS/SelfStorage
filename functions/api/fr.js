@@ -345,7 +345,7 @@ async function vehicleStock(db,user){
     samochod:car.registration_number,inwentaryzacjaWykonana:inventoryDone,
     wymagaWeryfikacji:verificationPending,poprzedniaEkipa:handover?.previous_crew||'',
     ostatniaInwentaryzacja:inventory?.last_at||'',
-    czesci:catalogue.parts.filter(x=>x.id).map(x=>({
+    czesci:catalogue.parts.filter((x,i,all)=>x.id&&all.findIndex(p=>p.id===x.id)===i).map(x=>({
       kod:x.source_code||x.old_index||x.part_number||x.id,
       numerIndeksu:x.part_number||'',
       nazwa:x.name,stanDocelowy:x.required_quantity,
@@ -361,7 +361,8 @@ async function updateVehicleStock(db,user,data){
   if(!validId(eventId))throw Error('Brak identyfikatora zmiany.');
   const inventory=entryCode(data.typZmiany).includes('INWENT');
   const currentHandover=await currentFrHandover(db,user,car.id);
-  const pending=!currentHandover||currentHandover.status!=='ACTIVE';
+  if(!currentHandover)throw Error('Najpierw potwierdź przypisanie samochodu.');
+  const pending=currentHandover.status!=='ACTIVE';
   if(pending&&!inventory)throw Error('Najpierw wykonaj inwentaryzację przejętego samochodu.');
   const changes=Array.isArray(data.zmiany)?data.zmiany:[];
   if(!changes.length||changes.length>1000)throw Error('Brak poprawnej listy części.');
@@ -396,7 +397,7 @@ async function updateVehicleStock(db,user,data){
   if(previous){
     if(previous.content_hash!==hash)
       throw Error('Operacja została wcześniej zapisana z inną zawartością.');
-    return {ok:true,duplicate:true};
+    return {ok:true,duplicate:true,wymagaWeryfikacji:pending};
   }
   const statements=[db.prepare(
     'INSERT INTO '+t.events+'(id,user_id,vehicle_id,type) VALUES(?,?,?,?)'
