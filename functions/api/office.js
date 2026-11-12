@@ -331,7 +331,7 @@ export async function onRequestGet({request,env}){
     if(user.role!=='ADMIN'||String(user.nickname||'').trim().toUpperCase()!=='JJ')
       return error('Brak uprawnień do katalogu BOX.',403);
     try{
-      return workerJson({ok:true,parts:await readFrBoxOfficeParts(env.DB)});
+      return workerJson({ok:true,...await readFrBoxOfficeParts(env.DB)});
     }catch(err){
       console.error('Office FR BOX catalogue read failed',err?.name||'Error');
       return error('Nie udało się pobrać katalogu BOX.',503);
@@ -459,7 +459,7 @@ export async function onRequestGet({request,env}){
          ['FR-TOULOUSE','FR-PARIS'].includes(warehouseId)){
         // Only the 78 BOX references; all amounts are read live from D1.
         return workerJson({ok:true,warehouseId,
-          parts:await readFrBoxOfficeParts(env.DB,warehouseId)});
+          ...await readFrBoxOfficeParts(env.DB,warehouseId)});
       }
       const hasIndices=await tableExists(env.DB,'pl_part_index_migrations');
       const parts=await selectRows(env.DB,
