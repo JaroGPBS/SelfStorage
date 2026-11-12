@@ -140,6 +140,18 @@ async function fingerprint(data){
   const digest=await crypto.subtle.digest('SHA-256',encoded);
   return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
 }
+async function queueCarClaim(db,userId,carId,number,ownerId,claim){
+  if(claim?.status==='PENDING'&&claim.requested_plate===number)
+    return {id:carId,registration_number:number,wymagaZatwierdzenia:true};
+  await db.prepare(
+    'INSERT INTO fr_car_claims(user_id,requested_plate,owner_user_id,status) '+
+    "VALUES(?,?,?,'PENDING') ON CONFLICT(user_id) DO UPDATE SET "+
+    "requested_plate=excluded.requested_plate,owner_user_id=excluded.owner_user_id,"+
+    "status='PENDING',inventory_json=NULL,inventory_event_id=NULL,"+
+    'updated_at=CURRENT_TIMESTAMP,resolved_at=NULL,resolved_by=NULL'
+  ).bind(userId,number,ownerId).run();
+  return {id:carId,registration_number:number,wymagaZatwierdzenia:true};
+}
 async function assignVehicle(db,user,value){
   const number=normalPlate(value);
   if(!number)throw Error('Podaj poprawny numer rejestracyjny samochodu.');
@@ -164,18 +176,7 @@ async function assignVehicle(db,user,value){
     'SELECT a.user_id,u.name FROM fr_vehicle_usage a '+
     'JOIN users u ON u.id=a.user_id WHERE a.vehicle_id=? AND a.user_id<>?'
   ).bind(existing.id,user.id).first():null;
-  if(owner){
-    if(claim?.status==='PENDING'&&claim.requested_plate===number)
-      return {id:existing.id,registration_number:number,wymagaZatwierdzenia:true};
-    await db.prepare(
-      'INSERT INTO fr_car_claims(user_id,requested_plate,owner_user_id,status) '+
-      "VALUES(?,?,?,'PENDING') ON CONFLICT(user_id) DO UPDATE SET "+
-      "requested_plate=excluded.requested_plate,owner_user_id=excluded.owner_user_id,"+
-      "status='PENDING',inventory_json=NULL,inventory_event_id=NULL,"+
-      'updated_at=CURRENT_TIMESTAMP,resolved_at=NULL,resolved_by=NULL'
-    ).bind(user.id,number,owner.user_id).run();
-    return {id:existing.id,registration_number:number,wymagaZatwierdzenia:true};
-  }
+  if(owner)return queueCarClaim(db,user.id,existing.id,number,owner.user_id,claim);
   if(own){
     const active=await db.prepare(
       "SELECT 1 FROM fr_visits WHERE user_id=? AND status='ACTIVE' LIMIT 1"
@@ -190,6 +191,10 @@ async function assignVehicle(db,user,value){
     'SELECT id FROM vehicles WHERE registration_number=? COLLATE NOCASE'
   ).bind(number).first();
   if(!found)throw Error('Nie udało się przypisać samochodu.');
+  const newOwner=await db.prepare(
+    'SELECT a.user_id FROM fr_vehicle_usage a WHERE a.vehicle_id=? AND a.user_id<>?'
+  ).bind(found.id,user.id).first();
+  if(newOwner)return queueCarClaim(db,user.id,found.id,number,newOwner.user_id,claim);
   const statements=[db.prepare(
     'INSERT INTO fr_vehicle_usage(user_id,vehicle_id,assigned_at) VALUES(?,?,CURRENT_TIMESTAMP) '+
     'ON CONFLICT(user_id) DO UPDATE SET vehicle_id=excluded.vehicle_id,assigned_at=CURRENT_TIMESTAMP'
