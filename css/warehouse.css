@@ -804,6 +804,12 @@ body:has(#screenVehicle.active) .app-signature {
   cursor: pointer;
 }
 
+/* First-ever vehicle inventory: mandatory, red until successfully saved. */
+.vehicle-weekly-report-btn.is-first-inventory {
+  background: linear-gradient(145deg, #bc303a, #90232e);
+  border-color: rgba(255, 157, 164, .55);
+  color: #fff;
+}
 .vehicle-weekly-report-btn:active {
   transform: translateY(1px);
 }
