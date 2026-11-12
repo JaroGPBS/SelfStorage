@@ -1038,3 +1038,15 @@ tr:hover td{background:#ffffff04}
 @media(max-width:1100px){
   .users-table{min-width:1010px}
 }
+
+/* French reminder schedule: straightforward Admin form, no new dashboard cards. */
+.fr-weekly-form{display:flex;flex-direction:column;gap:13px;max-width:720px;padding:22px 26px 28px}
+.fr-weekly-form label{font-size:13px;font-weight:750;color:#dbe4ed}
+.fr-weekly-form .fr-weekly-enable{display:flex;gap:11px;align-items:center;cursor:pointer}
+.fr-weekly-form .fr-weekly-enable input{appearance:auto;width:19px;height:19px;min-width:19px;min-height:19px;padding:0;margin:0;accent-color:#2588ef}
+.fr-weekly-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fr-weekly-fields>div{display:flex;flex-direction:column;gap:7px}
+.fr-weekly-form textarea{display:block;min-height:94px;width:100%;resize:vertical;padding:12px;border:1px solid #455160;border-radius:10px;background:#10151b;color:inherit;font:inherit}
+.fr-weekly-form .hint{line-height:1.5;margin:0}
+.fr-weekly-form .btn{align-self:flex-start}
+@media(max-width:600px){.fr-weekly-fields{grid-template-columns:1fr}.fr-weekly-form{padding:19px}}
