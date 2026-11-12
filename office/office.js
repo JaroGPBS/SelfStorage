@@ -517,6 +517,7 @@ function showOfficeHome(){
   $('sidebar').classList.remove('open');
   $('officePageHead').classList.add('hidden');
   $('officeHome').classList.remove('hidden');
+  $('app').classList.add('view-home');
   $('officeTableCard').classList.add('hidden');
   $('officeLabelsView').classList.add('hidden');
   $('officePreview').classList.add('hidden');
@@ -706,9 +707,6 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  $('officeHomeButton').classList.toggle('active',state.view==='home');
-  $('officeHomeButton').setAttribute('aria-current',
-    state.view==='home'?'page':'false');
   for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
@@ -794,6 +792,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
   render();
 }
 function setHead(title,kicker,desc){
+  $('app').classList.remove('view-home');
   $('officeHome').classList.add('hidden');
   $('officePageHead').classList.remove('hidden');
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
@@ -2644,7 +2643,6 @@ $('refresh').addEventListener('click',()=>{
   state.partsCache.clear();state.detailCache.clear();render();
 });
 // Warehouse lists remain permanently visible; no expanding menu.
-$('officeHomeButton').addEventListener('click',showOfficeHome);
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 $('logout').addEventListener('click',async()=>{
   try{
