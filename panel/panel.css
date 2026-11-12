@@ -1050,3 +1050,16 @@ tr:hover td{background:#ffffff04}
 .fr-weekly-form .hint{line-height:1.5;margin:0}
 .fr-weekly-form .btn{align-self:flex-start}
 @media(max-width:600px){.fr-weekly-fields{grid-template-columns:1fr}.fr-weekly-form{padding:19px}}
+
+/* Unified warehouses: QR is an action on the warehouse row, not another menu. */
+.warehouses-unified-table{min-width:890px}
+.warehouses-unified-table th:nth-child(2),
+.warehouses-unified-table td:nth-child(2),
+.warehouses-unified-table th:last-child,
+.warehouses-unified-table td:last-child{text-align:center}
+.warehouses-unified-table td:nth-child(4){font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:nowrap}
+.warehouses-unified-table .warehouse-show-qr{min-height:30px;padding:5px 10px;white-space:nowrap}
+.warehouse-creation{border-top:1px solid var(--edge);background:var(--surface)}
+.warehouse-creation .box-warehouse-form{padding:15px 21px 8px}
+.warehouse-creation .hint{padding:0 21px 17px;margin:0;color:var(--mute);font-size:12px}
+#showBoxWarehouseFormBtn{min-height:34px;padding:6px 12px}
