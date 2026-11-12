@@ -3,6 +3,7 @@
 import {verifyWorkerSession,workerJson} from '../../lib/pl-worker-auth.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrCarClaims,normalPlate} from '../../lib/fr-car-claims.js';
+import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
 
 const fail=(message,status=400)=>workerJson({ok:false,error:message},status);
 const clean=value=>String(value||'').trim();
@@ -22,6 +23,9 @@ async function ready(db){
 }
 // Non-destructive first-use bootstrap. Never updates existing warehouse quantities.
 async function ensureSchema(db){
+  // Reactivate the two existing printed QR locations before any FR operation.
+  // Preserve every existing D1 stock quantity.
+  await ensureFrenchBoxSetup(db);
   if(await ready(db))return;
   const ddl=[
     "CREATE TABLE IF NOT EXISTS vehicles ("+
