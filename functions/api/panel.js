@@ -603,14 +603,38 @@ async function queryPanel(env,view,url) {
     };
   }
   if(view==='warehouses') {
+    // Show only actual warehouse records. French BOX QR values are read from
+    // the existing registry; printed codes are NEVER rotated by this view.
+    const qrTable=await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='fr_warehouse_qr'"
+    ).first();
+    const qrJoin=qrTable?'LEFT JOIN fr_warehouse_qr q ON q.warehouse_id=w.id ':'';
+    const qrExpr=qrTable?'MAX(q.code)':'NULL';
     const rows=await env.DB.prepare(
-      "SELECT w.id, w.name,w.country_code,w.active,COUNT(s.part_id) AS positions,"+
-      "COALESCE(SUM(s.quantity),0) AS units FROM warehouses w "+
-      "LEFT JOIN warehouse_stock s ON s.warehouse_id=w.id "+
-      "WHERE w.country_code='PL' GROUP BY w.id,w.name,w.country_code,w.active "+
-      "ORDER BY w.active DESC,w.name"
+      "SELECT w.id,w.name,w.country_code,w.active,COUNT(s.part_id) AS positions,"+
+      "COALESCE(SUM(s.quantity),0) AS units,"+
+      "COALESCE("+qrExpr+",CASE w.id WHEN 'FR-TOULOUSE' THEN 'MAG-TL7A2Q' "+
+      "WHEN 'FR-PARIS' THEN 'MAG-PA5A4B' ELSE NULL END) AS qr_code "+
+      "FROM warehouses w LEFT JOIN warehouse_stock s ON s.warehouse_id=w.id "+
+      qrJoin+
+      "WHERE w.country_code='PL' OR (w.country_code='FR' AND ("+
+      "w.id IN ('FR-TOULOUSE','FR-PARIS','FR-BELLEVILLE') OR "+
+      "LOWER(w.name) LIKE '%belleville%')) "+
+      "GROUP BY w.id,w.name,w.country_code,w.active "+
+      "ORDER BY CASE w.id WHEN 'FR-TOULOUSE' THEN 1 "+
+      "WHEN 'FR-PARIS' THEN 2 ELSE CASE WHEN w.country_code='PL' THEN 0 ELSE 3 END END,"+
+      "w.name COLLATE NOCASE"
     ).all();
-    return rows.results||[];
+    const result=(rows.results||[]).map(w=>({
+      ...w,name:w.id==='FR-TOULOUSE'?'Box Toulouse':
+        w.id==='FR-PARIS'?'Box Paryż':w.name
+    }));
+    if(!result.some(w=>w.country_code==='FR'&&
+      /belleville/i.test(w.id+' '+w.name))){
+      result.push({id:'',name:'Belleville',country_code:'FR',active:0,
+        positions:null,units:null,qr_code:null,not_configured:true});
+    }
+    return result;
   }
   if(view==='warehouseOptions') {
     const rows=await env.DB.prepare(
