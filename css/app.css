@@ -328,3 +328,13 @@ p { color: var(--muted); line-height: 1.5; }
     font-size: 17px;
   }
 }
+
+/* The weekly notice is informational, never a stock-operation lock. */
+.fr-weekly-warning{margin:11px 0 14px;padding:12px 14px;border-radius:10px;
+  border:1px solid rgba(235,175,68,.42);background:rgba(205,143,44,.11);
+  display:flex;flex-direction:column;gap:5px;color:#f2e5cc}
+.fr-weekly-warning.hidden{display:none!important}
+.fr-weekly-warning strong{font-size:15px;font-weight:850}
+.fr-weekly-warning span{font-size:12px;line-height:1.45;color:#d4c6ae}
+.fr-push-enable{font-size:12px!important;margin:0 0 10px;padding:4px 0!important;
+  text-align:left;color:#a7caff!important}
