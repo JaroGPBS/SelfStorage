@@ -413,7 +413,85 @@ async function adminUsage(env,url) {
   return {cloudflare:await cloudflareUsage(env,url),photo};
 }
 
+// BOX QR registry: deliberately separate from ordinary warehouses (Belleville/PL).
+// Original QR payloads verified in Admin Stock FR / Magazyny, 12 Nov 2026.
+async function ensureBoxQrRegistry(db) {
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS fr_warehouse_qr ('+
+      'warehouse_id TEXT PRIMARY KEY REFERENCES warehouses(id),'+
+      'code TEXT NOT NULL UNIQUE)'
+  ).run();
+  const existing=[
+    ['FR-TOULOUSE','MAG-TL7A2Q'],['FR-PARIS','MAG-PA5A4B']
+  ];
+  for(const [id,qr] of existing){
+    await db.prepare(
+      'INSERT OR IGNORE INTO fr_warehouse_qr(warehouse_id,code) '+
+      "SELECT id,? FROM warehouses WHERE id=? AND country_code='FR'"
+    ).bind(qr,id).run();
+  }
+}
+async function boxQrRows(db) {
+  await ensureBoxQrRegistry(db);
+  const rows=await db.prepare(
+    'SELECT w.id,w.name,w.active,q.code FROM fr_warehouse_qr q '+
+    "JOIN warehouses w ON w.id=q.warehouse_id WHERE w.country_code='FR' "+
+    'ORDER BY CASE w.id WHEN \'FR-TOULOUSE\' THEN 0 WHEN \'FR-PARIS\' THEN 1 ELSE 2 END,'+
+    'w.name COLLATE NOCASE'
+  ).all();
+  return rows.results||[];
+}
+function freshBoxCode() {
+  const bytes=crypto.getRandomValues(new Uint8Array(12));
+  return 'BOX-'+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function boxSlug(name) {
+  return String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/ł/g,'l').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,35);
+}
+async function createBoxWarehouse(env,body,actor) {
+  const name=String(body?.name||'').trim().replace(/\s+/g,' ');
+  if(name.length<3||name.length>70)return fail('Podaj nazwę magazynu BOX (3–70 znaków).',400);
+  const slug=boxSlug(name), id='FR-BOX-'+slug;
+  if(!slug||id.length>50)return fail('Podaj poprawną nazwę magazynu.',400);
+  const db=env.DB;
+  await ensureBoxQrRegistry(db);
+  const dupe=await db.prepare(
+    'SELECT id FROM warehouses WHERE id=? OR (name=? COLLATE NOCASE AND country_code=\'FR\') LIMIT 1'
+  ).bind(id,name).first();
+  if(dupe)return fail('Magazyn o tej nazwie lub identyfikatorze już istnieje.',409);
+  const code=freshBoxCode();
+  await db.batch([
+    db.prepare('INSERT INTO warehouses(id,name,country_code,active) VALUES(?,?,\'FR\',1)').bind(id,name),
+    db.prepare('INSERT INTO fr_warehouse_qr(warehouse_id,code) VALUES(?,?)').bind(id,code),
+    db.prepare('INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)')
+      .bind(crypto.randomUUID(),actor,'BOX_CREATE','WAREHOUSE',id,JSON.stringify({name,code}))
+  ]);
+  return respond({ok:true,warehouse:{id,name,active:1,code}});
+}
+async function rotateBoxQr(env,body,actor) {
+  const id=String(body?.warehouseId||'');
+  if(!/^[A-Z0-9-]{3,50}$/.test(id))return fail('Nieprawidłowy magazyn.',400);
+  const db=env.DB;
+  await ensureBoxQrRegistry(db);
+  const row=await db.prepare(
+    'SELECT q.code,w.name,w.active FROM fr_warehouse_qr q '+
+    "JOIN warehouses w ON w.id=q.warehouse_id WHERE w.country_code='FR' AND w.id=?"
+  ).bind(id).first();
+  if(!row)return fail('Magazyn nie jest zarejestrowanym magazynem BOX.',404);
+  const code=freshBoxCode();
+  await db.batch([
+    db.prepare('UPDATE fr_warehouse_qr SET code=? WHERE warehouse_id=? AND code=?')
+      .bind(code,id,row.code),
+    db.prepare('INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)')
+      .bind(crypto.randomUUID(),actor,'BOX_QR_ROTATE','WAREHOUSE',id,
+        JSON.stringify({previousCode:row.code,code}))
+  ]);
+  return respond({ok:true,warehouse:{id,name:row.name,active:row.active,code}});
+}
+
 async function queryPanel(env,view,url) {
+  if(view==='boxQr')return boxQrRows(env.DB);
   if(view==='usage')return adminUsage(env,url);
   if(view==='indexMigration') {
     await ensurePartIndexes(env.DB);
@@ -1339,6 +1417,7 @@ async function route(request,env) {
     const session=await readSession(request,env);
     if(!session) return fail('Zaloguj się do panelu.',401);
     const view=url.searchParams.get('view')||'summary';
+    if(view==='boxQr'&&!session.superAdmin)return fail('Tylko Super Admin może zarządzać kodami BOX.',403);
     if((view==='users'||view==='newParts'||view==='usage') && session.role!=='ADMIN')
       return fail('Brak uprawnień.',403);
     if(view==='partPhoto') {
@@ -1526,6 +1605,17 @@ async function route(request,env) {
     } catch(error) {
       console.error('GPBS PIN provisioning error:',error?.name||'Error');
       return fail('Nie udało się wygenerować PIN-u. Sprawdź konfigurację i spróbuj ponownie.',500);
+    }
+  }
+  if(body?.action==='boxCreate'||body?.action==='boxQrRotate'){
+    if(!session.superAdmin)return fail('Tylko Super Admin może zarządzać kodami BOX.',403);
+    try{
+      return body.action==='boxCreate'
+        ?await createBoxWarehouse(env,body,session.id)
+        :await rotateBoxQr(env,body,session.id);
+    }catch(error){
+      console.error('BOX QR change failed',error?.name||'Error');
+      return fail('Nie udało się zapisać kodu magazynu BOX. Sprawdź nazwę lub stan D1.',409);
     }
   }
   if(body?.action==='deleteUnusedCrew') {
