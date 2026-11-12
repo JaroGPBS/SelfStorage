@@ -612,7 +612,7 @@ async function queryPanel(env,view,url) {
     try{await ensureFrenchBoxSetup(env.DB);}
     catch(error){
       console.error('French BOX initialization failed',error?.name||'Error');
-      return fail('Nie udało się przygotować Box Toulouse i Box Paryż w D1.',503);
+      throw Error('Nie udało się przygotować Box Toulouse i Box Paryż w D1.');
     }
     // Show only actual warehouse records. French BOX QR values are read from
     // the existing registry; printed codes are NEVER rotated by this view.
