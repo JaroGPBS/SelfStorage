@@ -123,6 +123,9 @@ export async function tryPolishLogin(pin) {
     throw new Error(body?.error || 'Logowanie do polskiego magazynu nie powiodło się.');
   }
 
+  if (!body.user?.apps?.mobile) {
+    throw new Error('Brak dostępu do aplikacji mobilnej. Skorzystaj z panelu Office.');
+  }
   // FR-only crews share the D1 PIN session but use the French mobile UI.
   if (body.user?.markets?.FR && !body.user?.markets?.PL) {
     setMarket(null);
@@ -144,7 +147,7 @@ export async function resumePolishSession() {
     return false;
   }
   if (!result.response.ok || !result.body?.ok) return false;
-  if (!result.body.user?.markets?.PL) {
+  if (!result.body.user?.markets?.PL || !result.body.user?.apps?.mobile) {
     setMarket(null);
     return false;
   }
