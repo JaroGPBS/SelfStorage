@@ -403,8 +403,9 @@
     if(view==='newParts')return [[],[]];
     if(view==='boxParts'){
       const fromD1=state.boxPartsSource?.fromD1||{};
+      const counts=state.boxPartsSource?.d1Positions||{};
       const columnName=place=>(place==='toulouse'?'TULUZA':'PARYŻ')+
-        (fromD1[place]?' (D1)':' (ARKUSZ)');
+        (fromD1[place]?' (D1)':Number(counts[place]||0)>0?' (D1 + ARKUSZ)':' (ARKUSZ)');
       return [
         ['NAZWA CZĘŚCI','INDEKS GPBS','INDEKS ŹRÓDŁOWY','INDEKS FR','SAP',
           columnName('toulouse'),columnName('paris')],
@@ -1376,9 +1377,12 @@
             state.boxPartsSource=response;
             if(state.view===view){
               const d1=response.fromD1||{};
+              const counts=response.d1Positions||{};
+              const source=place=>d1[place]?'stany z D1':
+                Number(counts[place]||0)>0?'D1 + brakujące stany z arkusza':'stany z arkusza';
               $('tableDescription').textContent=
-                'Tuluza: '+(d1.toulouse?'stan zapisany w D1':'stan z arkusza Google')+
-                ' · Paryż: '+(d1.paris?'stan zapisany w D1':'stan z arkusza Google')+
+                'Tuluza: '+source('toulouse')+
+                ' · Paryż: '+source('paris')+
                 ' · Źródło: Stock FR GPBS, 11.11.2026 · '+
                 response.parts.length+' pozycji.';
             }
