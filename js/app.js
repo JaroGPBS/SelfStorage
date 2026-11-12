@@ -427,6 +427,7 @@ function renderWarehouse() {
   }
   $('teamName').textContent = (state.team?.trybTestowy?'TEST · ':'')+(state.team?.nazwa||'Ekipa');
   $('teamRole').textContent = state.team?.rola || '';
+  $('vehicleStatePreBtn')?.classList.remove('hidden');
   showScreen('screenWarehouse');
 }
 
@@ -799,7 +800,7 @@ function warmVehicleStateInBackground() {
 function syncVehicleStateInBackground() {
   if (!state.team?.id || !navigator.onLine) return;
 
-  const entry = getVehicleCacheEntry();
+  const entry = forceFresh===true?null:getVehicleCacheEntry();
 
   if (entry?.data) {
     refreshVehicleSyncInBackground(entry);
@@ -1339,6 +1340,7 @@ function buildVehicleLocalDataFromInventory(data, valuesByCode, result = {}) {
       result.hashStanu ??
       data.hashStanu,
     inwentaryzacjaWykonana: true,
+    wymagaWeryfikacji: false,
     ostatniaInwentaryzacja:
       result.ostatniaInwentaryzacja ||
       new Date().toISOString(),
@@ -1438,7 +1440,8 @@ async function saveWeeklyReport() {
       renderVehicleStock(localData);
     }
 
-    showToast('Cotygodniowy raport zapisany.');
+    if(state.team)state.team.wymagaWeryfikacji=false;
+    showToast('Inwentaryzacja samochodu zapisana. Możesz rozpocząć wizytę.');
 
     fetchVehicleStockOnce()
       .then(data => {
@@ -1458,7 +1461,7 @@ async function saveWeeklyReport() {
 
 function renderVehicleStock(data) {
   const inWarehouseVisit = Boolean(state.visit?.idWizyty);
-  const inventoryDone = data?.inwentaryzacjaWykonana !== false;
+  const inventoryDone = data?.inwentaryzacjaWykonana !== false && data?.wymagaWeryfikacji!==true;
 
   let parts = (Array.isArray(data?.czesci) ? data.czesci : [])
     .slice();
@@ -1539,6 +1542,9 @@ function renderVehicleStock(data) {
 
   if (weeklyButton) {
     weeklyButton.classList.toggle('hidden', inWarehouseVisit);
+    weeklyButton.textContent=data?.wymagaWeryfikacji
+      ? 'Wykonaj inwentaryzację po przejęciu'
+      : 'Inwentaryzacja tygodniowa';
   }
 
   if (vehicleInstructionButton) {
@@ -1557,8 +1563,11 @@ function renderVehicleStock(data) {
       : 'Inwentaryzacja niewykonana';
     modeNote.classList.remove('hidden');
   } else {
-    modeNote.textContent = '';
-    modeNote.classList.add('hidden');
+    modeNote.textContent=data?.wymagaWeryfikacji
+      ? 'Wymagana inwentaryzacja samochodu przed rozpoczęciem wizyty'+
+        (data.poprzedniaEkipa?' · poprzednia ekipa: '+data.poprzedniaEkipa:'')
+      : '';
+    modeNote.classList.toggle('hidden',!data?.wymagaWeryfikacji);
   }
 
   updateVehicleBackButton();
@@ -1673,7 +1682,7 @@ function renderVehicleStock(data) {
   showScreen('screenVehicle');
 }
 
-async function openVehicleStock() {
+async function openVehicleStock(forceFresh=false) {
   if (!state.team?.id) return;
 
   vehicleManualDraft = {};
@@ -1841,7 +1850,7 @@ async function assignCurrentVehicle() {
   if(!/^[A-Z0-9-]{3,20}$/.test(raw))
     throw new Error('Wpisz numer rejestracyjny samochodu.');
   const result=await api.assignVehicle(raw);
-  if(state.team.samochod!==result.samochod.registration_number){
+  if(state.team.samochod!==result.samochod.registration_number || result.wymagaWeryfikacji){
     state.vehicleStockCache=null;
     state.vehicleVisitDelta={};
     vehicleStockRequest=null;
@@ -1849,6 +1858,7 @@ async function assignCurrentVehicle() {
     vehicleInventoryParts=[];
   }
   state.team.samochod=result.samochod.registration_number;
+  state.team.wymagaWeryfikacji=Boolean(result.wymagaWeryfikacji);
   localStorage.setItem('gpbs-fr-car-'+state.team.id,state.team.samochod);
   $('frVehiclePlate').value=state.team.samochod;
   persist();
@@ -1885,7 +1895,14 @@ async function startVisit(code) {
   setLoading(true, 'Rozpoczynanie wizyty…');
 
   try {
-    await assignCurrentVehicle();
+    const assignment=await assignCurrentVehicle();
+    if(assignment.wymagaWeryfikacji){
+      state.pendingStart=null;
+      persist();
+      await openVehicleStock(true);
+      showToast('Najpierw policz wyposażenie auta. Wybierz „Inwentaryzacja po przejęciu”.',true);
+      return;
+    }
     const result = await api.startVisit({
       idEkipy: state.team.id,
       kodMagazynu: cleanCode,
@@ -2531,8 +2548,13 @@ function bindEvents() {
   $('frVehicleAssignBtn')?.addEventListener('click',async()=>{
     try{
       setLoading(true,'Przypisywanie samochodu…');
-      await assignCurrentVehicle();
-      showToast('Samochód przypisany do ekipy.');
+      const assignment=await assignCurrentVehicle();
+      if(assignment.wymagaWeryfikacji){
+        await openVehicleStock(true);
+        showToast('Samochód przypisany. Teraz wykonaj inwentaryzację wyposażenia.');
+      }else{
+        showToast('Samochód przypisany do ekipy.');
+      }
     }catch(error){showToast(messageFromError(error),true);}
     finally{setLoading(false);}
   });
@@ -2540,7 +2562,7 @@ function bindEvents() {
     event.target.value=event.target.value.toUpperCase();
   });
   $('vehicleStatePreBtn')?.addEventListener('click',async()=>{
-    try{await assignCurrentVehicle();await openVehicleStock();}
+    try{await assignCurrentVehicle();await openVehicleStock(true);}
     catch(error){showToast(messageFromError(error),true);}
   });
   $('vehiclePartsBtn')?.addEventListener('click', openVehicleStock);
