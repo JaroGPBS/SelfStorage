@@ -475,7 +475,7 @@ export async function onRequestPost({request,env}){
   }catch{return fail('Błędne dane JSON.',400);}
   try{
     const user=await verifyWorkerSession(request,env);
-    if(!user||!user.markets?.FR||user.role!=='EKIPA')
+    if(!user||!user.apps?.mobile||!user.markets?.FR||user.role!=='EKIPA')
       return fail('Brak dostępu do francuskiego magazynu. Zaloguj się ponownie.',401);
     await ensureSchema(env.DB);
     await ensureFrCarClaims(env.DB);
