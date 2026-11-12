@@ -95,6 +95,13 @@ async function vehicle(db,userId){
     'JOIN vehicles v ON v.id=a.vehicle_id WHERE a.user_id=? AND v.active=1'
   ).bind(userId).first();
 }
+async function hasCrewVehicleInventory(db,userId,vehicleId){
+  const last=await db.prepare(
+    "SELECT 1 FROM fr_vehicle_events "+
+    "WHERE vehicle_id=? AND user_id=? AND type='INWENTARYZACJA' LIMIT 1"
+  ).bind(vehicleId,userId).first();
+  return Boolean(last);
+}
 async function parts(db){
   const staged=!!await db.prepare(
     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_stock_import_20261107'"
@@ -221,6 +228,8 @@ async function startVisit(db,user,data){
   if(!warehouse)throw Error('Nieznany lub nieaktywny kod magazynu.');
   const car=await vehicle(db,user.id);
   if(!car)throw Error('Najpierw wpisz numer rejestracyjny samochodu.');
+  if(!await hasCrewVehicleInventory(db,user.id,car.id))
+    throw Error('Najpierw wykonaj inwentaryzację samochodu.');
   const found=await db.prepare('SELECT * FROM fr_visits WHERE id=?').bind(id).first();
   if(found){
     if(found.user_id!==user.id||found.warehouse_id!==warehouse.warehouse_id||
@@ -264,6 +273,8 @@ async function saveSession(db,user,data){
     if(old.content_hash!==hash)throw Error('Sesja była zapisana z inną zawartością.');
     return {ok:true,duplicate:true,idSesji:sessionId,status:'ZAPISANA'};
   }
+  if(!await hasCrewVehicleInventory(db,user.id,activeCar.id))
+    throw Error('Najpierw wykonaj inwentaryzację samochodu.');
   const deltas=new Map();
   for(const [id,x] of pob)deltas.set(id,(deltas.get(id)||0)-x.qty);
   for(const [id,x] of zwr)deltas.set(id,(deltas.get(id)||0)+x.qty);
@@ -369,6 +380,11 @@ async function updateVehicleStock(db,user,data){
       throw Error('Nieprawidłowa ilość części.');
     byId.set(id,{absolute,value});
   }
+  if(!await hasCrewVehicleInventory(db,user.id,car.id)){
+    if(!inventory)throw Error('Najpierw wykonaj inwentaryzację samochodu.');
+    if(byId.size!==allowed.size||[...byId.values()].some(x=>!x.absolute))
+      throw Error('Wpisz stan każdej części samochodowej, również 0.');
+  }
   const hash=await fingerprint({car:car.id,inventory,
     changes:[...byId.entries()].map(([id,v])=>[id,v.absolute,v.value])
       .sort((a,b)=>a[0].localeCompare(b[0]))});
@@ -409,7 +425,8 @@ async function action(db,user,body){
   if(type==='LOGIN'){
     const car=await vehicle(db,user.id);
     return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
-      samochod:car?.registration_number||''};
+      samochod:car?.registration_number||'',
+      inwentaryzacjaWykonana:car?await hasCrewVehicleInventory(db,user.id,car.id):false};
   }
   if(type==='POBIERZ_DANE_STARTOWE'){
     const catalog=await parts(db);
@@ -423,14 +440,19 @@ async function action(db,user,body){
       ).all()).results.map(w=>({id:w.id,nazwa:w.name,kodQr:w.code,aktywny:true,gotowy:true})),
       ustawienia:{logowanieOfflineDni:0,autoSynchronizacja:true,whatsappAlert:false}};
   }
-  if(type==='USTAW_SAMOCHOD')return {ok:true,samochod:await assignVehicle(db,user,data.numerRejestracyjny)};
+  if(type==='USTAW_SAMOCHOD'){
+    const car=await assignVehicle(db,user,data.numerRejestracyjny);
+    return {ok:true,samochod:car,
+      inwentaryzacjaWykonana:await hasCrewVehicleInventory(db,user.id,car.id)};
+  }
   if(type==='SKAN_MAGAZYNU')return startVisit(db,user,data);
   if(type==='ZAKONCZ_WIZYTE')return endVisit(db,user,data);
   if(type==='ZAPISZ_SESJE')return saveSession(db,user,data);
   if(type==='POBIERZ_STAN_AUTA')return vehicleStock(db,user);
   if(type==='SPRAWDZ_SYNC_AUTA'){
     const car=await vehicle(db,user.id);
-    return {ok:true,wersjaStanu:0,wersjaListy:'D1',samochod:car?.registration_number||''};
+    return {ok:true,wersjaStanu:0,wersjaListy:'D1',samochod:car?.registration_number||'',
+      inwentaryzacjaWykonana:car?await hasCrewVehicleInventory(db,user.id,car.id):false};
   }
   if(type==='AKTUALIZUJ_STAN_AUTA')return updateVehicleStock(db,user,data);
   if(type==='PING')return {ok:true,service:'FR-D1'};
