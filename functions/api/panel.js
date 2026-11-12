@@ -805,6 +805,28 @@ async function queryPanel(env,view,url) {
     const hasFrTest=Boolean(await env.DB.prepare(
       "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_test_accounts'"
     ).first());
+    const carTableRows=(await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
+      "'fr_vehicle_usage','vehicles','fr_vehicle_handovers',"+
+      "'fr_test_vehicle_usage','fr_test_vehicles','fr_test_vehicle_handovers')"
+    ).all()).results||[];
+    const carTables=new Set(carTableRows.map(r=>r.name));
+    const realCars=carTables.has('fr_vehicle_usage')&&carTables.has('vehicles');
+    const testCars=carTables.has('fr_test_vehicle_usage')&&carTables.has('fr_test_vehicles');
+    const realPlate=realCars
+      ?"(SELECT v.registration_number FROM fr_vehicle_usage a JOIN vehicles v "+
+       "ON v.id=a.vehicle_id WHERE a.user_id=u.id LIMIT 1)"
+      :'NULL';
+    const testPlate=testCars
+      ?"(SELECT v.registration_number FROM fr_test_vehicle_usage a JOIN fr_test_vehicles v "+
+       "ON v.id=a.vehicle_id WHERE a.user_id=u.id LIMIT 1)"
+      :'NULL';
+    const realStatus=carTables.has('fr_vehicle_handovers')
+      ?"(SELECT h.status FROM fr_vehicle_handovers h WHERE h.user_id=u.id AND h.is_current=1 LIMIT 1)"
+      :'NULL';
+    const testStatus=carTables.has('fr_test_vehicle_handovers')
+      ?"(SELECT h.status FROM fr_test_vehicle_handovers h WHERE h.user_id=u.id AND h.is_current=1 LIMIT 1)"
+      :'NULL';
     const archived=url.searchParams.get('archived')==='1';
     if(archived&&!hasArchiveTable)return [];
     const rows=await env.DB.prepare(
@@ -812,6 +834,8 @@ async function queryPanel(env,view,url) {
       'pr.first_name,pr.last_name,pr.phone,pr.display_code, '+
       'CASE WHEN p.user_id IS NULL THEN 0 ELSE 1 END AS has_pin, '+
       (hasFrTest?'CASE WHEN test.user_id IS NULL THEN 0 ELSE 1 END':'0')+' AS is_test, '+
+       'COALESCE('+realPlate+','+testPlate+",'') AS car_plate, "+
+       'COALESCE('+realStatus+','+testStatus+",'') AS car_status, "+
       "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses, "+
       "COALESCE((SELECT GROUP_CONCAT(DISTINCT w.country_code) FROM user_warehouse_access a "+
       "JOIN warehouses w ON w.id=a.warehouse_id WHERE a.user_id=u.id),'') AS warehouse_countries "+
@@ -1087,6 +1111,9 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     const others=await db.prepare(
       'SELECT 1 FROM fr_test_accounts WHERE user_id<>? LIMIT 1'
     ).bind(id).first();
+    const hasTestHandover=Boolean(await db.prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_test_vehicle_handovers'"
+    ).first());
     const statements=[
       db.prepare('DELETE FROM fr_test_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)').bind(id),
       db.prepare('DELETE FROM fr_test_vehicle_event_lines WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)').bind(id),
@@ -1097,6 +1124,9 @@ async function permanentlyDeleteUnusedCrew(env,body) {
       db.prepare('DELETE FROM fr_test_vehicle_usage WHERE user_id=?').bind(id),
       db.prepare('DELETE FROM fr_test_accounts WHERE user_id=?').bind(id)
     ];
+    if(hasTestHandover)statements.push(
+      db.prepare('DELETE FROM fr_test_vehicle_handovers WHERE user_id=?').bind(id)
+    );
     if(!others){
       // Last test crew: discard all fake cars and BOX snapshots together.
       statements.push(db.prepare('DELETE FROM fr_test_vehicle_stock'));
