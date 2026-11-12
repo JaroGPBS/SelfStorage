@@ -5260,3 +5260,24 @@
   white-space:nowrap;
   text-overflow:ellipsis;
 }
+
+/* French vehicles: real and test fleets share the screen but never their data. */
+.app.view-vehicles .vehicle-fleet-scope{
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+  margin:7px 0 12px;padding-bottom:10px;border-bottom:1px solid #e2e7ed;
+}
+.app.view-vehicles .vehicle-fleet-scope button{
+  appearance:none;background:transparent;color:#536173;
+  border:1px solid #d2dce5;border-radius:6px;
+  padding:7px 11px;min-height:33px;font-size:12px;
+  font-weight:700;cursor:pointer;
+}
+.app.view-vehicles .vehicle-fleet-scope button.active{
+  color:#1c3041;border-color:#728b9d;background:#eaf0f5;
+}
+.app.view-vehicles .vehicle-fleet-scope button:focus-visible{
+  outline:2px solid #436f92;outline-offset:2px;
+}
+.app.view-vehicles .vehicle-test-note{
+  margin:0 0 12px;font-size:12px;line-height:1.5;color:#65522a;
+}
