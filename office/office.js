@@ -500,9 +500,11 @@ function greetingName(user){
 // Warn on the Office homepage and above FR work screens whenever a physical
 // pickup exceeded D1 stock. Never automatically approve/correct a discrepancy.
 let frDiscrepancyRequest=0;
+let frDiscrepancyLastCheck=0;
 async function refreshFrStockDiscrepancies(){
   const notice=$('frStockDiscrepancyNotice');
   const request=++frDiscrepancyRequest;
+  frDiscrepancyLastCheck=Date.now();
   const hasFrance=state.user?.markets?.FR!==false&&
     state.warehouses.some(w=>w.country_code==='FR');
   if(!state.user||!hasFrance||state.user.features?.stocks===false){
@@ -532,8 +534,7 @@ async function refreshFrStockDiscrepancies(){
       '</tr>').join('');
     notice.innerHTML='<div class="office-fr-discrepancy-title">'+
       '<strong>⚠ Niezgodność stanów magazynowych</strong>'+
-      '<span>'+rows.length+' '+(rows.length===1?'pozycja wymaga':'pozycji wymaga')+
-        ' wyjaśnienia</span></div>'+
+      '<span>Do wyjaśnienia: '+rows.length+'</span></div>'+
       '<p>Ekipa pobrała więcej części, niż wykazywał system. '+
       'Pobranie zostało zapisane; stan magazynu nie spadł poniżej zera.</p>'+
       '<details><summary>Pokaż szczegóły pobrań</summary>'+
@@ -2891,6 +2892,11 @@ async function synchronizeOffice(){
   }
 }
 $('refresh').addEventListener('click',()=>synchronizeOffice());
+document.addEventListener('visibilitychange',()=>{
+  // No polling in the background: check only after Office becomes visible again.
+  if(!document.hidden&&state.user&&Date.now()-frDiscrepancyLastCheck>60000)
+    refreshFrStockDiscrepancies();
+});
 // Warehouse lists remain permanently visible; no expanding menu.
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 $('logout').addEventListener('click',async()=>{
