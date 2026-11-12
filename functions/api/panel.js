@@ -4,6 +4,7 @@ import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
+import {ensureFrTestSchema,isFrTestAccount} from '../../lib/fr-test-store.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
@@ -801,18 +802,23 @@ async function queryPanel(env,view,url) {
     const hasArchiveTable=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='user_archives'"
     ).first();
+    const hasFrTest=Boolean(await env.DB.prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_test_accounts'"
+    ).first());
     const archived=url.searchParams.get('archived')==='1';
     if(archived&&!hasArchiveTable)return [];
     const rows=await env.DB.prepare(
       'SELECT u.id,u.name,u.role_code,u.active,u.created_at,'+
       'pr.first_name,pr.last_name,pr.phone,pr.display_code, '+
       'CASE WHEN p.user_id IS NULL THEN 0 ELSE 1 END AS has_pin, '+
+      (hasFrTest?'CASE WHEN test.user_id IS NULL THEN 0 ELSE 1 END':'0')+' AS is_test, '+
       "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses, "+
       "COALESCE((SELECT GROUP_CONCAT(DISTINCT w.country_code) FROM user_warehouse_access a "+
       "JOIN warehouses w ON w.id=a.warehouse_id WHERE a.user_id=u.id),'') AS warehouse_countries "+
       'FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
       'LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
+      (hasFrTest?'LEFT JOIN fr_test_accounts test ON test.user_id=u.id ':'')+
       (hasArchiveTable?'LEFT JOIN user_archives ar ON ar.user_id=u.id ':'')+
       (hasArchiveTable
         ? (archived?'WHERE ar.user_id IS NOT NULL ':'WHERE ar.user_id IS NULL ')
@@ -1011,6 +1017,17 @@ async function staffMutation(env,body,actor,edit) {
 
   if(staff.role==='EKIPA' && !['PL','FR'].includes(String(body.crewMarket||'')))
     return fail('Wybierz rynek ekipy: Polska albo Francja.',400);
+  const testCrew=body.isTestCrew===true;
+  if(testCrew&&(staff.role!=='EKIPA'||body.crewMarket!=='FR'))
+    return fail('Tryb testowy można nadać tylko nowej ekipie francuskiej.',400);
+  if(edit){
+    const wasTest=await isFrTestAccount(db,id);
+    if(wasTest&&(staff.role!=='EKIPA'||body.crewMarket!=='FR'))
+      return fail('Ekipa testowa musi pozostać ekipą francuską.',409);
+    if(testCrew&&!wasTest)
+      return fail('Tryb testowy wybieraj podczas tworzenia nowej ekipy.',409);
+  }
+  if(!edit&&testCrew)await ensureFrTestSchema(db);
   if(staff.role==='EKIPA')await ensureAccessTable(db);
   const stmts=[];
   if(edit) {
@@ -1041,6 +1058,9 @@ async function staffMutation(env,body,actor,edit) {
       'fr_enabled=excluded.fr_enabled,updated_at=CURRENT_TIMESTAMP'
     ).bind(id,body.crewMarket==='PL'?1:0,body.crewMarket==='FR'?1:0));
   }
+  if(!edit&&testCrew)stmts.push(db.prepare(
+    'INSERT INTO fr_test_accounts(user_id) VALUES(?)'
+  ).bind(id));
   // Audit stores the symbol, role and warehouse assignment, NEVER phone numbers.
   stmts.push(db.prepare(
     'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
@@ -1061,6 +1081,42 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   if(!user)return fail('Nie znaleziono ekipy. Odśwież listę użytkowników.',404);
   if(user.role_code!=='EKIPA')return fail('Trwale można usuwać tylko konta ekip.',403);
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
+  if(await isFrTestAccount(db,id)){
+    // Full history of this fake account is disposable by design.
+    // The real tables warehouse_stock, vehicle_stock and fr_* are untouched.
+    const others=await db.prepare(
+      'SELECT 1 FROM fr_test_accounts WHERE user_id<>? LIMIT 1'
+    ).bind(id).first();
+    const statements=[
+      db.prepare('DELETE FROM fr_test_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)').bind(id),
+      db.prepare('DELETE FROM fr_test_vehicle_event_lines WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)').bind(id),
+      db.prepare('DELETE FROM fr_test_vehicle_events WHERE user_id=?').bind(id),
+      db.prepare('DELETE FROM fr_test_session_lines WHERE session_id IN (SELECT id FROM fr_test_sessions WHERE user_id=?)').bind(id),
+      db.prepare('DELETE FROM fr_test_sessions WHERE user_id=?').bind(id),
+      db.prepare('DELETE FROM fr_test_visits WHERE user_id=?').bind(id),
+      db.prepare('DELETE FROM fr_test_vehicle_usage WHERE user_id=?').bind(id),
+      db.prepare('DELETE FROM fr_test_accounts WHERE user_id=?').bind(id)
+    ];
+    if(!others){
+      // Last test crew: discard all fake cars and BOX snapshots together.
+      statements.push(db.prepare('DELETE FROM fr_test_vehicle_stock'));
+      statements.push(db.prepare('DELETE FROM fr_test_vehicles'));
+      statements.push(db.prepare('DELETE FROM fr_test_warehouse_stock'));
+      statements.push(db.prepare('DELETE FROM fr_test_warehouse_snapshots'));
+    }
+    for(const table of ['user_private_profiles','user_warehouse_access',
+      'user_pin_credentials','user_access_settings','user_archives']){
+      statements.push(db.prepare('DELETE FROM '+table+' WHERE user_id=?').bind(id));
+    }
+    statements.push(db.prepare(
+      "DELETE FROM panel_audit_log WHERE target_type='USER' AND target_id=?"
+    ).bind(id));
+    statements.push(db.prepare("DELETE FROM users WHERE id=? AND role_code='EKIPA'").bind(id));
+    await db.batch(statements);
+    return respond({ok:true,userId:id,
+      message:'Usunięto ekipę testową i jej testowe operacje. Prawdziwe stany pozostały bez zmian.'});
+  }
+
 
   // Fetch the schemas in one request; D1 Free has limits per Worker invocation.
   // Introspect ONLY operational tables that might reference this account.
