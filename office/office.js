@@ -2371,7 +2371,9 @@ document.addEventListener('click',e=>{
   if(frenchCrew&&state.view==='vehicles'&&
      state.preview?.type==='operation'&&state.preview.key==='vehicles'){
     const id=frenchCrew.dataset.frVehicleCrew;
-    if(state.frVehicleData?.crews?.some(c=>c.id===id)){
+    const fleet=state.vehicleScope==='test'
+      ?state.frVehicleData?.test:state.frVehicleData?.real;
+    if(fleet?.crews?.some(c=>c.id===id)){
       state.frVehicleCrew=id;
       drawFrenchVehicleFleet();
     }
