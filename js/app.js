@@ -800,7 +800,7 @@ function warmVehicleStateInBackground() {
 function syncVehicleStateInBackground() {
   if (!state.team?.id || !navigator.onLine) return;
 
-  const entry = forceFresh===true?null:getVehicleCacheEntry();
+  const entry = getVehicleCacheEntry();
 
   if (entry?.data) {
     refreshVehicleSyncInBackground(entry);
@@ -1689,7 +1689,7 @@ async function openVehicleStock(forceFresh=false) {
   vehicleManualPart = null;
   vehicleInventoryParts = [];
 
-  const entry = getVehicleCacheEntry();
+  const entry = forceFresh===true?null:getVehicleCacheEntry();
 
   if (entry?.data) {
     state.vehicleStockCache = {
