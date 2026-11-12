@@ -157,7 +157,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
-    frCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',
+    frCatalog:'stocks',frBoxCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
