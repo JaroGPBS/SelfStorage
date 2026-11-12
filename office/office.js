@@ -2674,7 +2674,16 @@ async function synchronizeOffice({automatic=false}={}){
       if(user!==state.user)return;
       state.warehouses=data.warehouses||[];
       renderMenu();
-      if(state.view!=='home')markSynced();
+      if(state.view==='home'){
+        const status=$('homeSyncError');
+        status.classList.remove('is-error');
+        status.textContent='Zaktualizowano: '+new Intl.DateTimeFormat('pl-PL',{
+          hour:'2-digit',minute:'2-digit'
+        }).format(new Date());
+      }else{
+        markSynced();
+        $('syncTime').textContent=$('syncTime').textContent.replace('Aktualizacja:','Menu:');
+      }
     }else if(state.view==='labels'){
       // The label component keeps the user's pending print queue intact.
       await window.GPBSOfficeLabels?.refresh();
@@ -2682,10 +2691,13 @@ async function synchronizeOffice({automatic=false}={}){
     }else{
       const scroll=$('tableArea');
       const top=scroll.scrollTop,left=scroll.scrollLeft;
+      const viewAtStart=state.view,warehouseAtStart=state.warehouse;
+      const previewAtStart=state.preview;
       state.partsCache.clear();
       if(!automatic)state.detailCache.clear();
       await render({silent:automatic});
-      if(automatic&&user===state.user){
+      if(automatic&&user===state.user&&state.view===viewAtStart&&
+         state.warehouse===warehouseAtStart&&state.preview===previewAtStart){
         scroll.scrollTop=top;
         scroll.scrollLeft=left;
       }
@@ -2693,7 +2705,11 @@ async function synchronizeOffice({automatic=false}={}){
   }catch(ex){
     if(user!==state.user)return;
     if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
-    else if(state.view==='home'){$('homeSyncError').textContent=ex.message||'Nie udało się pobrać danych.';}
+    else if(state.view==='home'){
+      const status=$('homeSyncError');
+      status.classList.add('is-error');
+      status.textContent=ex.message||'Nie udało się pobrać danych.';
+    }
     else errorBanner(ex.message||'Synchronizacja nie powiodła się.');
   }finally{
     syncBusy=false;
@@ -2707,6 +2723,7 @@ async function synchronizeOffice({automatic=false}={}){
 $('refresh').addEventListener('click',()=>synchronizeOffice());
 $('homeRefresh').addEventListener('click',()=>{
   $('homeSyncError').textContent='';
+  $('homeSyncError').classList.remove('is-error');
   synchronizeOffice();
 });
 // Warehouse lists remain permanently visible; no expanding menu.
@@ -2809,13 +2826,11 @@ updateOfficeInstallUI();
 setInterval(()=>{
   if(!state.user||document.visibilityState!=='visible')return;
   if(Date.now()-lastAutomaticSync<5*60*1000)return;
-  lastAutomaticSync=Date.now();
   synchronizeOffice({automatic:true});
-},5*60*1000);
+},60*1000);
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&state.user&&
      Date.now()-lastAutomaticSync>=5*60*1000){
-    lastAutomaticSync=Date.now();
     synchronizeOffice({automatic:true});
   }
 });
