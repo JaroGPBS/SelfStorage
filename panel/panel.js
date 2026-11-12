@@ -225,10 +225,13 @@
   function warehouseRows(items) {
     return items.map(row=>[
       row.name,
-      row.id,
-      row.active?pill('Aktywny','green'):pill('Testowy / nieaktywny','red'),
-      Number(row.positions)===0?'Nieustalony':formatNum(row.positions),
-      Number(row.positions)===0?'Nieustalony':formatNum(row.units)+' szt.'
+      row.country_code||'—',
+      row.id||'—',
+      row.qr_code||'—',
+      row.not_configured?pill('Do konfiguracji','red'):
+        row.active?pill('Aktywny','green'):pill('Nieaktywny','red'),
+      row.not_configured?'—':Number(row.positions)===0?'Nieustalony':formatNum(row.positions),
+      row.not_configured?'—':Number(row.positions)===0?'Nieustalony':formatNum(row.units)+' szt.'
     ]);
   }
 
@@ -396,7 +399,10 @@
   }
 
   function colsFor(view,items) {
-    if(view==='warehouses')return [ ['MAGAZYN','ID','STATUS','POZYCJE','ŁĄCZNY STAN'],warehouseRows(items) ];
+    if(view==='warehouses')return [
+      ['MAGAZYN','RYNEK','ID MAGAZYNU','KOD QR','STATUS','POZYCJE','ŁĄCZNY STAN'],
+      warehouseRows(items)
+    ];
     if(view==='newParts')return [[],[]];
     if(view==='boxParts'){
       const fromD1=state.boxPartsSource?.fromD1||{};
