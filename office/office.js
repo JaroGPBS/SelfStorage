@@ -1802,12 +1802,14 @@ async function loadFrenchVehicleInventories(){
   const seq=++frInventoryLoadSeq;
   if(!data)return;
   data.inventories=[];
+  data.inventoryMovements=[];
   data.inventoryVehicleId=null;
   if(!vehicleId||selected.carPending)return;
   try{
     const response=await api('vehicleInventories',{vehicleId});
     if(seq!==frInventoryLoadSeq||data!==state.frVehicleData)return;
     data.inventories=response.inventories||[];
+    data.inventoryMovements=response.movements||[];
     data.inventoryVehicleId=vehicleId;
     if(state.view==='vehicles'&&state.preview?.key==='vehicles')
       drawFrenchVehicleFleet(data.parts,data.crews,data.history);
@@ -1829,9 +1831,8 @@ function openFrenchVehicleInventory(id){
   const time=auditTime?new Intl.DateTimeFormat('pl-PL',{
     timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit'
   }).format(auditTime):'—';
-  const parts=new Map((data.parts||[]).map(p=>[p.id,p]));
   const lines=new Map((audit.lines||[]).map(l=>[l.partId,l]));
-  const moves=(data.history||[]).filter(m=>{
+  const moves=(data.inventoryMovements||[]).filter(m=>{
     const at=frenchInventoryDate(m.date);
     return m.vehicleId===audit.vehicleId&&at&&auditTime&&at<=auditTime&&
       (!previousTime||at>previousTime);
