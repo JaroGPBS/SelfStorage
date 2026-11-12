@@ -115,8 +115,8 @@ export const api = {
     });
   },
 
-  assignVehicle(numerRejestracyjny) {
-    return request('USTAW_SAMOCHOD', {numerRejestracyjny});
+  assignVehicle(numerRejestracyjny,potwierdzPrzejecie=false) {
+    return request('USTAW_SAMOCHOD', {numerRejestracyjny,potwierdzPrzejecie});
   },
 
   startVisit({ idEkipy, kodMagazynu, idWizyty }) {
