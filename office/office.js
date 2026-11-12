@@ -1866,7 +1866,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       '</tbody></table></div>':'<p>Brak zapisanych pobrań i zwrotów.</p>')+
     '</details>'
   ):'';
-  $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
+  $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview fr-weekly-office">'+
     tabs+selection+meta+table+historyMarkup+'</div>';
   $('tableFooter').textContent='Francja · '+entries.length+
     ' części · '+teams.length+' ekip · rzeczywiste dane z D1.';
