@@ -5379,3 +5379,15 @@
   font-weight:600;
 }
 .app.view-stocks .table-footer{font-size:12px}
+
+/* Office: compact synchronization action on the login-only welcome screen. */
+.office-home-sync{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:auto;min-height:38px;margin-top:24px;padding:8px 14px;
+  background:rgba(255,255,255,.075);
+  border:1px solid rgba(229,237,247,.28);border-radius:9px;
+  color:#eef4fa;font-size:12px;font-weight:750;cursor:pointer;
+}
+.office-home-sync:hover{background:rgba(255,255,255,.13)}
+.office-home-sync:disabled{opacity:.55;cursor:wait}
+.office-home-sync-error{min-height:0;margin:9px 0 0;color:#ffc9c9;font-size:12px}
