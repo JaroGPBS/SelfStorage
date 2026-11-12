@@ -34,13 +34,27 @@ export async function onRequestGet({request,env}){
   if(!user)return fail('Brak dostępu.',401);
   try{
     const settings=await readFrWeeklySettings(env.DB);
-    const events=settings.enabled
-      ?(await env.DB.prepare(
-        "SELECT event_at FROM fr_vehicle_events WHERE user_id=? "+
-        "AND type='INWENTARYZACJA' AND event_at>=datetime(?, '-8 days') "+
-        "ORDER BY event_at DESC"
-       ).bind(user.id,settings.startedAt||new Date().toISOString()).all()).results||[]
-      :[];
+    const events=[];
+    if(settings.enabled){
+      const tables=(await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN "+
+        "('fr_vehicle_events','fr_car_claims')"
+      ).all()).results||[];
+      const present=new Set(tables.map(x=>x.name));
+      if(present.has('fr_vehicle_events')){
+        events.push(...(await env.DB.prepare(
+          "SELECT event_at FROM fr_vehicle_events WHERE user_id=? "+
+          "AND type='INWENTARYZACJA' AND event_at>=datetime(?, '-8 days') "+
+          "ORDER BY event_at DESC"
+        ).bind(user.id,settings.startedAt||new Date().toISOString()).all()).results||[]);
+      }
+      if(present.has('fr_car_claims')){
+        events.push(...(await env.DB.prepare(
+          "SELECT updated_at AS event_at FROM fr_car_claims WHERE user_id=? "+
+          "AND status='PENDING' AND inventory_json IS NOT NULL"
+        ).bind(user.id).all()).results||[]);
+      }
+    }
     const status=weeklyInventoryStatus(settings,events);
     return workerJson({ok:true,enabled:settings.enabled,
       due:status.due,missedWeeks:status.missedWeeks,
