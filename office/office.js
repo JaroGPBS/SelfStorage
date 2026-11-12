@@ -2640,24 +2640,10 @@ $('search').addEventListener('input',e=>{
   }else filterCurrent();
 });
 $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';filterCurrent();});
-// Reload only the open screen. Never reload the page, PIN session or print
-// queue, and never interrupt a user who is editing a field or dialog.
+// Synchronize ONLY after the user clicks a button. No background refresh.
 let syncBusy=false;
-let lastAutomaticSync=Date.now();
-async function synchronizeOffice({automatic=false}={}){
+async function synchronizeOffice(){
   if(!state.user||syncBusy||!navigator.onLine)return;
-  if(automatic){
-    // The one-time welcome screen has no stock data to refresh.
-    if(state.view==='home')return;
-    if(document.visibilityState!=='visible')return;
-    const active=document.activeElement;
-    if(active&&(/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)||active.isContentEditable))
-      return;
-    if(document.querySelector('dialog[open]')||
-       ['modal','docPrintModal','photoViewer'].some(id=>{
-         const el=$(id);return el&&!el.classList.contains('hidden');
-       }))return;
-  }
   syncBusy=true;
   const user=state.user;
   for(const id of ['refresh','homeRefresh']){
@@ -2694,9 +2680,9 @@ async function synchronizeOffice({automatic=false}={}){
       const viewAtStart=state.view,warehouseAtStart=state.warehouse;
       const previewAtStart=state.preview;
       state.partsCache.clear();
-      if(!automatic)state.detailCache.clear();
-      await render({silent:automatic});
-      if(automatic&&user===state.user&&state.view===viewAtStart&&
+      state.detailCache.clear();
+      await render();
+      if(user===state.user&&state.view===viewAtStart&&
          state.warehouse===warehouseAtStart&&state.preview===previewAtStart){
         scroll.scrollTop=top;
         scroll.scrollLeft=left;
@@ -2717,9 +2703,6 @@ async function synchronizeOffice({automatic=false}={}){
       const button=$(id);
       if(button){button.disabled=false;button.removeAttribute('aria-busy');}
     }
-    // A manual refresh also restarts the 5-minute interval; do not make
-    // another D1 request immediately after the user clicked Synchronizuj.
-    lastAutomaticSync=Date.now();
   }
 }
 $('refresh').addEventListener('click',()=>synchronizeOffice());
@@ -2823,17 +2806,5 @@ $('installOffice').addEventListener('click',async()=>{
 });
 updateOfficeInstallUI();
 (async()=>{try{setLoggedIn(await api('warehouses'));}catch{showLogin();}})();
-// Refresh only while Office is open and visible; background tabs do not
-// generate D1 reads. If someone is entering data, wait until their next idle slot.
-setInterval(()=>{
-  if(!state.user||document.visibilityState!=='visible')return;
-  if(Date.now()-lastAutomaticSync<5*60*1000)return;
-  synchronizeOffice({automatic:true});
-},60*1000);
-document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&state.user&&
-     Date.now()-lastAutomaticSync>=5*60*1000){
-    synchronizeOffice({automatic:true});
-  }
-});
+
 })();
