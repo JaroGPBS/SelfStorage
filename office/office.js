@@ -852,7 +852,11 @@ function setHead(title,kicker,desc){
       :state.view==='pz'?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
   }
   // Reuse the existing synchronization control in the compact toolbar.
-  if(compactView){
+  if(vehicleView){
+    // The fleet table's toolbar is intentionally hidden; keep sync visible
+    // beside the other compact actions in the top bar.
+    $('vehicleTopExportHost').append($('syncTime'),$('refresh'));
+  }else if(compactView){
     $('receiptToolbarActions').append($('syncTime'),$('refresh'));
   }else if(state.view==='labels'){
     $('labelToolbarActions').append($('syncTime'),$('refresh'));
@@ -870,8 +874,8 @@ function setHead(title,kicker,desc){
   // Keep the synchronization control on every Office screen, including fleet
   // and French catalogues; it refreshes the current view without reloading.
   $('refresh').classList.remove('hidden');
-  $('syncTime').classList.toggle('hidden',Boolean(frEmpty));
-  if(frEmpty)$('syncTime').textContent='';
+  $('syncTime').classList.toggle('hidden',Boolean(frEmpty)&&!vehicleView);
+  if(frEmpty&&!vehicleView)$('syncTime').textContent='';
   $('refresh').disabled=false;
   $('refresh').title='Pobierz aktualne dane';
   // French catalogue views can add shared parts, without creating stock.
@@ -2643,6 +2647,8 @@ let lastAutomaticSync=Date.now();
 async function synchronizeOffice({automatic=false}={}){
   if(!state.user||syncBusy||!navigator.onLine)return;
   if(automatic){
+    // The one-time welcome screen has no stock data to refresh.
+    if(state.view==='home')return;
     if(document.visibilityState!=='visible')return;
     const active=document.activeElement;
     if(active&&(/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)||active.isContentEditable))
