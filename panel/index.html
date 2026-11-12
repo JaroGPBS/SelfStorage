@@ -9,7 +9,8 @@
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=26">
-  <script src="./panel.js?v=51" defer></script>
+  <script src="./qrcode.min.js?v=1" defer></script>
+  <script src="./panel.js?v=52" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -43,6 +44,7 @@
       <nav aria-label="Nawigacja panelu" id="mainNav">
         <button data-view="summary" class="nav-item active" type="button"><span class="nav-symbol">◈</span> Pulpit</button>
         <button data-view="warehouses" class="nav-item" type="button"><span class="nav-symbol">▣</span> Magazyny</button>
+        <button data-view="boxQr" id="boxQrNav" class="nav-item hidden" type="button"><span class="nav-symbol">▦</span> Magazyny BOX · QR</button>
         <button data-view="parts" class="nav-item" type="button"><span class="nav-symbol">▤</span> Katalog części</button>
         <button data-view="boxParts" class="nav-item" type="button"><span class="nav-symbol">▥</span> Katalog części Boxy</button>
         <button data-view="vehicleParts" class="nav-item" type="button"><span class="nav-symbol">▤</span> Katalog części Samochody</button>
@@ -307,6 +309,22 @@
             <div id="indexMigrationFooter" class="table-footer" role="status" aria-live="polite"></div>
           </div>
         </section>
+        <section id="boxQrView" class="view hidden" aria-labelledby="boxQrTitle">
+          <div class="table-panel">
+            <div class="table-title"><div>
+              <h2 id="boxQrTitle">Magazyny BOX · kody QR</h2>
+              <p>Wyłącznie samoobsługowe magazyny Self Storage we Francji. Dotychczasowe kody pozostają bez zmian.</p>
+            </div></div>
+            <form id="boxWarehouseForm" class="box-warehouse-form" autocomplete="off">
+              <label for="boxWarehouseName">Nowy magazyn BOX</label>
+              <input type="text" id="boxWarehouseName" maxlength="70" minlength="3"
+                     placeholder="Np. Lyon" aria-label="Nazwa nowego magazynu BOX" required>
+              <button type="submit" id="boxWarehouseAdd" class="btn primary">+ Dodaj i wygeneruj QR</button>
+            </form>
+            <p class="hint">Dodanie magazynu nie tworzy stanów ani operacji. Nowy BOX zaczyna z pustą ewidencją. Kody można pobrać i wydrukować.</p>
+            <div id="boxQrRows" class="box-qr-list" aria-live="polite"></div>
+          </div>
+        </section>
         <section id="tableView" class="view hidden">
           <div class="table-panel">
             <div class="table-title">
@@ -323,6 +341,24 @@
     </div>
   </div>
 
+  <dialog id="boxQrDialog" class="modal box-qr-dialog" aria-labelledby="boxQrDialogTitle">
+    <div class="modal-inner">
+      <div class="modal-heading"><div>
+        <div class="eyebrow">SELF STORAGE / MAGAZYN BOX</div>
+        <h2 id="boxQrDialogTitle">Kod QR magazynu</h2>
+      </div><button id="boxQrClose" class="icon-button" aria-label="Zamknij" type="button">×</button></div>
+      <div id="boxQrPrint" class="box-qr-print">
+        <strong id="boxQrPrintName"></strong>
+        <div id="boxQrPreview" class="box-qr-preview"></div>
+        <span id="boxQrPrintCode"></span>
+      </div>
+      <p class="hint">Zeskanowanie kodu rozpoczyna wizytę na tym magazynie BOX.</p>
+      <div class="dialog-actions box-qr-actions">
+        <button id="boxQrDownload" class="btn ghost" type="button">Pobierz PNG</button>
+        <button id="boxQrPrintButton" class="btn primary" type="button">Drukuj</button>
+      </div>
+    </div>
+  </dialog>
   <dialog id="vehiclePartSelectDialog" class="modal" aria-labelledby="vehiclePartSelectTitle">
     <form method="dialog" class="modal-inner">
       <div class="modal-heading">
