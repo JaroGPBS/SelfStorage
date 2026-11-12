@@ -144,8 +144,14 @@ async function assignVehicle(db,user,value){
   const number=normalPlate(value);
   if(!number)throw Error('Podaj poprawny numer rejestracyjny samochodu.');
   const own=await vehicle(db,user.id);
-  if(own?.registration_number===number)
+  if(own?.registration_number===number){
+    await db.prepare(
+      "UPDATE fr_car_claims SET status='REJECTED',inventory_json=NULL,"+
+      "inventory_event_id=NULL,updated_at=CURRENT_TIMESTAMP "+
+      "WHERE user_id=? AND status='PENDING'"
+    ).bind(user.id).run();
     return {id:own.id,registration_number:number,wymagaZatwierdzenia:false};
+  }
   const claim=await db.prepare(
     'SELECT requested_plate,status FROM fr_car_claims WHERE user_id=?'
   ).bind(user.id).first();
@@ -419,14 +425,16 @@ async function action(db,user,body){
   const type=entryCode(body.action),data=body.payload||{};
   if(type==='LOGIN'){
     const car=await vehicle(db,user.id);
+    const pending=await pendingFrCarClaim(db,user.id);
     return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
-      samochod:car?.registration_number||''};
+      samochod:pending?.requested_plate||car?.registration_number||''};
   }
   if(type==='POBIERZ_DANE_STARTOWE'){
     const catalog=await parts(db);
     const car=await vehicle(db,user.id);
+    const pending=await pendingFrCarClaim(db,user.id);
     return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
-      samochod:car?.registration_number||'',
+      samochod:pending?.requested_plate||car?.registration_number||'',
       czesci:catalog.map(p=>({kod:codeForPart(p),nazwa:p.name})),
       magazyny:(await db.prepare(
         "SELECT w.id,w.name,q.code FROM fr_warehouse_qr q JOIN warehouses w ON w.id=q.warehouse_id "+
