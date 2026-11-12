@@ -1224,7 +1224,10 @@
     columns.push('KOD QR / DRUK');
     for(let i=0;i<items.length;i++){
       const warehouse=items[i],code=String(warehouse.qr_code||'').trim();
-      if(!code){rows[i].push('—');continue;}
+      if(!code||warehouse.not_configured){
+        rows[i].push(warehouse.not_configured&&code?'Brak wpisu D1':'—');
+        continue;
+      }
       const button=document.createElement('button');
       button.type='button';
       button.className='btn mini warehouse-show-qr';
