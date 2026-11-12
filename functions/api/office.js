@@ -26,13 +26,23 @@ async function tableExists(db,name){
   return Boolean(row);
 }
 // Office-only cross-market warehouse grants; mobile PL session remains limited to PL.
-async function officeWarehouses(db,userId,markets){
+async function officeWarehouses(db,userId,markets,ownerFrenchBoxes=false){
   const rows=await selectRows(db,
     "SELECT w.id,w.name,w.country_code FROM user_warehouse_access a "+
     "JOIN warehouses w ON w.id=a.warehouse_id "+
     "WHERE a.user_id=? AND w.active=1 AND w.country_code IN ('PL','FR') "+
     "ORDER BY w.country_code,w.name",[userId]);
-  return rows.filter(row=>Boolean(markets?.[row.country_code]));
+  const allowed=rows.filter(row=>Boolean(markets?.[row.country_code]));
+  // The protected owner can inspect existing BOX records without needing a
+  // fictitious staff assignment. Other Office users retain their D1 grants.
+  if(ownerFrenchBoxes&&markets?.FR){
+    const boxes=await selectRows(db,
+      "SELECT id,name,country_code FROM warehouses "+
+      "WHERE active=1 AND country_code='FR' AND id IN ('FR-TOULOUSE','FR-PARIS') "+
+      "ORDER BY CASE id WHEN 'FR-TOULOUSE' THEN 0 ELSE 1 END");
+    for(const box of boxes)if(!allowed.some(w=>w.id===box.id))allowed.push(box);
+  }
+  return allowed;
 }
 // The long-lived cookie is issued only after a successful normal PIN login.
 // A different cookie name and audience keep it unusable in the warehouse app.
@@ -136,8 +146,11 @@ export async function onRequestGet({request,env}){
   if(!user.apps?.office||!ALLOWED.has(user.role))return error('Brak dostępu do panelu biurowego.',403);
   const url=new URL(request.url);
   let authorizedWarehouses;
-  try{authorizedWarehouses=await officeWarehouses(env.DB,user.id,user.markets);}
-  catch(e){console.error('Office grants lookup failed',e?.name||'Error');return error('Brak dostępu do magazynów.',503);}
+  try{
+    const isOwner=user.role==='ADMIN'&&
+      String(user.nickname||'').trim().toUpperCase()==='JJ';
+    authorizedWarehouses=await officeWarehouses(env.DB,user.id,user.markets,isOwner);
+  }catch(e){console.error('Office grants lookup failed',e?.name||'Error');return error('Brak dostępu do magazynów.',503);}
   if(!authorizedWarehouses.length)return error('Brak przypisanych magazynów Office.',403);
   const view=url.searchParams.get('view')||'warehouses';
   const permissions=user.features||{};
