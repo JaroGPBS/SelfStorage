@@ -1757,14 +1757,19 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       String(chosen?.id===team.id)+'">'+
       '<span class="vehicle-team-caption">Ekipa</span>'+
       '<span class="vehicle-team-name">'+escapeHtml(team.team)+'</span>'+
-      '<small>'+escapeHtml(team.plate||'Bez samochodu')+(team.carPending?' · Do weryfikacji':'')+'</small></button>').join('')+
+      '<small>'+escapeHtml(team.plate||'Bez samochodu')+(team.carPending?' · Do weryfikacji':'')+'</small>'+
+      ((team.missedWeeks||[]).length?'<small class="vehicle-weekly-missed">'+
+        escapeHtml('Pominięte: '+team.missedWeeks.map(w=>w.replace('-W','/')).join(', '))+
+        '</small>':'')+'</button>').join('')+
     '</div>');
   const meta=summary||!chosen?'':(
     '<div class="vehicle-setup-meta">'+
       [['Ekipa',chosen.team],['Tablica rejestracyjna',chosen.plate||'—'],
        ['Inwentaryzacja',chosen.inventory?'Wykonana':'Wymagana inwentaryzacja'],
        ...(chosen.carPending?[['Rejestracja','Oczekuje na decyzję Admina']]:[]),
-       ['Ostatnia inwentaryzacja',chosen.lastInventory?String(chosen.lastInventory).slice(0,10):'Brak']]
+       ['Ostatnia inwentaryzacja',chosen.lastInventory?String(chosen.lastInventory).slice(0,10):'Brak'],
+       ['Pominięte inwentaryzacje',(chosen.missedWeeks||[]).length
+         ?chosen.missedWeeks.map(w=>'tydz. '+w.replace('-W','/')).join(', '):'Brak']]
       .map(([label,value])=>'<div><span>'+escapeHtml(label)+'</span>'+
         '<div class="vehicle-preview-meta-value"><strong>'+
           escapeHtml(value)+'</strong></div></div>').join('')+'</div>');
