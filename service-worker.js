@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v153';
+const CACHE_NAME = 'selfstorage-shell-v154';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LOCAL_DATA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const API_CACHE_DB = 'selfstorage-api-cache-v1';
@@ -151,7 +151,7 @@ function pendingVisitKey(visitId) {
 }
 
 async function postApiPayload(incoming) {
-  return fetch('/api', {
+  return fetch('/api/fr', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
