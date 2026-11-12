@@ -13,7 +13,7 @@
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=7">
-  <link rel="stylesheet" href="./css/warehouse.css?v=18">
+  <link rel="stylesheet" href="./css/warehouse.css?v=19">
   <link rel="stylesheet" href="./css/theme-gpbs.css?v=7">
   <style>
     .toast {
@@ -146,7 +146,7 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=57"></script>
+  <script type="module" src="./js/app.js?v=58"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -186,11 +186,16 @@
       <section id="screenWarehouse" class="screen">
         <div class="section-head warehouse-login-line">
           <div class="warehouse-login-copy">
-            <div class="eyebrow">ZALOGOWANO</div>
-            <h2 id="teamName">Ekipa</h2>
-            <p id="teamRole">EKIPA</p>
+            <div class="eyebrow">Ekipa</div>
+            <h2 id="teamName">AA</h2>
+            <p id="teamRole" class="hidden">EKIPA</p>
           </div>
           <div id="crewVehiclePlateBadge" class="crew-vehicle-plate hidden" aria-label="Numer rejestracyjny samochodu"></div>
+        </div>
+
+        <div id="firstVehicleInventoryNotice" class="first-vehicle-inventory-notice hidden" role="status">
+          <strong>Wymagana pierwsza inwentaryzacja części na samochodzie.</strong>
+          <span>Wykonaj inwentaryzację części znajdujących się na liście.</span>
         </div>
 
         <div id="frWeeklyWarning" class="fr-weekly-warning hidden" role="status">
