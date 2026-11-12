@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./css/app.css?v=6">
+  <link rel="stylesheet" href="./css/app.css?v=7">
   <link rel="stylesheet" href="./css/warehouse.css?v=17">
   <link rel="stylesheet" href="./css/theme-gpbs.css?v=7">
   <style>
@@ -118,6 +118,7 @@
     body.gpbs-market-pl > .app-shell,
     body.gpbs-market-pl > #scannerModal,
     body.gpbs-market-pl > #vehicleChangeModal,
+    body.gpbs-market-pl > #frVehiclePlateModal,
     body.gpbs-market-pl > #quantityModal,
     body.gpbs-market-pl > #reviewModal,
     body.gpbs-market-pl > #finishModal,
@@ -145,7 +146,7 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=55"></script>
+  <script type="module" src="./js/app.js?v=56"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -189,6 +190,7 @@
             <h2 id="teamName">Ekipa</h2>
             <p id="teamRole">EKIPA</p>
           </div>
+          <div id="crewVehiclePlateBadge" class="crew-vehicle-plate hidden" aria-label="Numer rejestracyjny samochodu"></div>
         </div>
 
         <div id="frWeeklyWarning" class="fr-weekly-warning hidden" role="status">
@@ -198,12 +200,6 @@
         <button id="frPushEnableBtn" class="instruction-link-btn fr-push-enable hidden" type="button">♧ Włącz przypomnienia na telefonie</button>
         <div class="warehouse-scan-area">
           <h2 class="warehouse-scan-title">Zeskanuj kod magazynu aby rozpocząć wizytę</h2>
-          <label for="frVehiclePlate" style="display:block;margin:10px 0 4px;font-size:14px;font-weight:600">Numer rejestracyjny samochodu</label>
-          <input id="frVehiclePlate" class="text-input" type="text" autocapitalize="characters"
-                 autocomplete="off" spellcheck="false" maxlength="24"
-                 placeholder="Wpisz numer auta" style="width:100%;margin-bottom:12px">
-          <button id="frVehicleAssignBtn" class="btn btn-secondary" type="button"
-                  style="margin-bottom:12px">Potwierdź samochód</button>
           <button id="openWarehouseScannerBtn" class="btn btn-primary warehouse-scan-btn">Otwórz skaner</button>
           <button id="vehicleStatePreBtn" class="btn btn-secondary vehicle-entry-btn hidden" type="button">Stan auta</button>
 
@@ -322,6 +318,7 @@
             </div>
             <span id="visitId" class="hidden" aria-hidden="true">—</span>
             <h2 id="visitWarehouse" class="visit-warehouse-name">Magazyn</h2>
+            <div id="visitVehiclePlateBadge" class="crew-vehicle-plate visit-vehicle-plate hidden" aria-label="Numer rejestracyjny samochodu"></div>
             <span id="visitWarehouseShort" class="hidden" aria-hidden="true">—</span>
           </div>
           <button id="visitInstructionBtn" class="instruction-link-btn visit-instruction-btn" type="button">ⓘ Instrukcja</button>
@@ -447,6 +444,19 @@
       </div>
       <div id="reader" class="reader"></div>
       <p id="scannerNote" class="camera-note" style="display:none;">Skieruj aparat na kod.</p>
+    </div>
+  </div>
+
+  <div id="frVehiclePlateModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="frVehiclePlateTitle">
+    <div class="modal-card compact fr-plate-dialog">
+      <h3 id="frVehiclePlateTitle">Numer rejestracyjny samochodu</h3>
+      <p>Podaj tablicę rejestracyjną swojego samochodu.</p>
+      <label class="field-label" for="frVehiclePlate">Tablica rejestracyjna</label>
+      <input id="frVehiclePlate" class="text-input" type="text" autocapitalize="characters"
+             autocomplete="off" spellcheck="false" maxlength="20"
+             enterkeyhint="done" placeholder="Np. AB123CD">
+      <p id="frVehiclePlateError" class="fr-plate-error hidden" role="alert"></p>
+      <button id="frVehicleAssignBtn" class="btn btn-primary" type="button">Zatwierdź</button>
     </div>
   </div>
 
