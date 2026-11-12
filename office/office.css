@@ -5260,3 +5260,34 @@
   white-space:nowrap;
   text-overflow:ellipsis;
 }
+
+/* French Office only: keep the added missed-week field visible without
+   changing the established Polish vehicle preview layout. */
+.app.view-vehicles .fr-weekly-office .vehicle-setup-meta{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(116px,1fr)) minmax(170px,1.4fr);
+  width:100%;max-width:100%;gap:8px;
+}
+.app.view-vehicles .fr-weekly-office .vehicle-setup-meta>div{
+  box-sizing:border-box;width:auto;min-width:0;max-width:none;
+  overflow-wrap:anywhere;white-space:normal;
+}
+.app.view-vehicles .fr-weekly-office .vehicle-setup-meta strong{
+  white-space:normal;overflow-wrap:anywhere;line-height:1.35;
+}
+.app.view-vehicles .fr-weekly-office .vehicle-weekly-missed{
+  color:#b14343;font-weight:750;overflow-wrap:anywhere;
+}
+@media(max-width:1080px){
+  .app.view-vehicles .fr-weekly-office .vehicle-setup-meta{
+    grid-template-columns:repeat(3,minmax(120px,1fr));
+  }
+}
+@media(max-width:690px){
+  .app.view-vehicles .fr-weekly-office .vehicle-setup-meta{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .app.view-vehicles .fr-weekly-office .vehicle-setup-meta>div:nth-child(2){
+    border-right:0;
+  }
+}
