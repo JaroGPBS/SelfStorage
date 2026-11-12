@@ -464,6 +464,12 @@
       const arrow=document.createElement('span');arrow.className='user-expand-arrow';
       arrow.textContent=open?'▴':'▾';arrow.setAttribute('aria-hidden','true');
       button.append(arrow);name.append(button);
+      if(user.role_code==='EKIPA'&&user.car_plate){
+        const car=document.createElement('small');
+        car.style.cssText='display:block;font-size:11px;line-height:1.5;margin:3px 0;color:var(--mute)';
+        car.textContent='Auto: '+user.car_plate+(user.car_status!=='ACTIVE'?' · Wymagana inwentaryzacja':'');
+        name.append(car);
+      }
       row.append(name);
 
       const role=td('');role.append(pill(user.role_code,'blue'));
@@ -554,6 +560,12 @@
         ['Numer telefonu',user.phone||'—'],
         ['Przypisane magazyny',user.warehouses||'—']
       ];
+      if(user.role_code==='EKIPA')fields.push(
+        ['Samochód',user.car_plate||'—'],
+        ['Weryfikacja auta',user.car_plate
+          ?(user.car_status==='ACTIVE'?'Inwentaryzacja wykonana':'Wymagana inwentaryzacja')
+          :'Brak przypisania']
+      );
       for(const [title,value] of fields) {
         const field=document.createElement('div');field.className='user-detail-field';
         const label=document.createElement('span');label.className='user-detail-label';
