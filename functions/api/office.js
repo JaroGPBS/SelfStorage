@@ -7,6 +7,7 @@ import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {readFrWeeklySettings,weeklyInventoryStatus} from '../../lib/fr-weekly-schedule.js';
 import {frenchBoxDocuments,frenchBoxDocumentLines} from '../../lib/fr-office-movements.js';
+import {readFrBoxOfficeParts} from '../../lib/fr-box-office-stock.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
@@ -324,6 +325,18 @@ export async function onRequestGet({request,env}){
       return error('Nie udało się pobrać katalogu części samochodowych.',503);
     }
   }
+  // A BOX without an active D1 warehouse can still display its 78 catalogue
+  // references in the owner's layout preview, but NEVER fabricated balances.
+  if(view==='frBoxCatalog'){
+    if(user.role!=='ADMIN'||String(user.nickname||'').trim().toUpperCase()!=='JJ')
+      return error('Brak uprawnień do katalogu BOX.',403);
+    try{
+      return workerJson({ok:true,parts:await readFrBoxOfficeParts(env.DB)});
+    }catch(err){
+      console.error('Office FR BOX catalogue read failed',err?.name||'Error');
+      return error('Nie udało się pobrać katalogu BOX.',503);
+    }
+  }
   // An authorized Office administrator can view the common parts catalogue in
   // French layout-only warehouses. No warehouse inventory is created or inferred.
   if(view==='frCatalog'||view==='frCatalogPhoto'){
@@ -442,6 +455,12 @@ export async function onRequestGet({request,env}){
       }});
     }
     if(view==='stocks'){
+      if(authorizedWarehouse.country_code==='FR'&&
+         ['FR-TOULOUSE','FR-PARIS'].includes(warehouseId)){
+        // Only the 78 BOX references; all amounts are read live from D1.
+        return workerJson({ok:true,warehouseId,
+          parts:await readFrBoxOfficeParts(env.DB,warehouseId)});
+      }
       const hasIndices=await tableExists(env.DB,'pl_part_index_migrations');
       const parts=await selectRows(env.DB,
         'SELECT p.id,'+
