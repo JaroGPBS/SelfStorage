@@ -6,6 +6,7 @@
   const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false, boxPartsSource:null,vehiclePartChoice:null};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
+    boxQr:['Magazyny BOX · QR','Generator i drukowanie kodów QR wyłącznie dla magazynów samoobsługowych we Francji.'],
     warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
     parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
     boxParts:['Katalog części Boxy','Wyłącznie części dla Box Toulouse i Box Paris. Stany obu magazynów są rozdzielone.'],
@@ -75,6 +76,7 @@
     if(!res.ok||!json?.ok)throw new Error(json?.error||'Serwer nie odpowiedział.');
     state.isSuperAdmin=Boolean(json.user?.superAdmin);
     $('superAdminNav').classList.toggle('hidden',!state.isSuperAdmin);
+    $('boxQrNav').classList.toggle('hidden',!state.isSuperAdmin);
     return json.data;
   }
 
@@ -97,6 +99,7 @@
     state.loggedIn=false;
     state.isSuperAdmin=false;
     $('superAdminNav').classList.add('hidden');
+    $('boxQrNav').classList.add('hidden');
     $('superPinForm').reset();
     $('superPasswordForm').reset();
     $('app').classList.add('hidden');
@@ -1176,7 +1179,7 @@
   }
 
   function showView(view) {
-    if(!defs[view]||(view==='superAdmin'&&!state.isSuperAdmin))return;
+    if(!defs[view]||((view==='superAdmin'||view==='boxQr')&&!state.isSuperAdmin))return;
     state.view=view;
     $('pageHeading').classList.toggle('hidden',view==='summary');
     $('pageTitle').textContent=defs[view][0];
@@ -1189,7 +1192,8 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='boxQr');
+    $('boxQrView').classList.toggle('hidden',view!=='boxQr');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
     $('settingsView').classList.toggle('hidden',view!=='settings');
@@ -1209,11 +1213,16 @@
   }
 
   async function navigate(view) {
-    if(view==='superAdmin'&&!state.isSuperAdmin)return;
+    if((view==='superAdmin'||view==='boxQr')&&!state.isSuperAdmin)return;
     showView(view);
     closeSide();
     try {
       if(view==='security'||view==='settings') return;
+      if(view==='boxQr'){
+        state.records=await api('boxQr');
+        if(state.view==='boxQr')renderBoxQrRows();
+        return;
+      }
       if(view==='superAdmin'){
         const details=await api('superAdmin');
         $('superAdminStatus').textContent=details.unifiedPin
@@ -1267,6 +1276,114 @@
         if(state.view===view)renderList();
       }
     } catch(error){message(error.message,'error');}
+  }
+
+  // BOX QR generator is intentionally isolated from ordinary warehouse UI.
+  function renderBoxQrRows() {
+    const root=$('boxQrRows');
+    root.replaceChildren();
+    const records=Array.isArray(state.records)?state.records:[];
+    if(!records.length){
+      const empty=document.createElement('p');
+      empty.textContent='Brak zarejestrowanych magazynów BOX w D1. Możesz dodać nowy magazyn.';
+      root.append(empty);
+      return;
+    }
+    for(const warehouse of records){
+      const line=document.createElement('div');
+      line.className='box-qr-row';
+      const name=document.createElement('div');
+      name.className='box-qr-name';
+      const title=document.createElement('strong');title.textContent=warehouse.name;
+      const desc=document.createElement('small');
+      desc.textContent=warehouse.id+' · '+(warehouse.active?'Aktywny':'Nieaktywny')+
+        ' · kod: '+warehouse.code;
+      name.append(title,desc);
+      const actions=document.createElement('div');
+      actions.className='box-qr-row-actions';
+      const preview=document.createElement('button');preview.type='button';
+      preview.className='btn mini';preview.textContent='Pokaż QR';
+      preview.addEventListener('click',()=>showBoxQr(warehouse));
+      const regenerate=document.createElement('button');regenerate.type='button';
+      regenerate.className='btn mini ghost';regenerate.textContent='Zmień kod';
+      regenerate.title='Stary wydrukowany kod QR przestanie działać';
+      regenerate.addEventListener('click',()=>rotateBoxQr(warehouse,regenerate));
+      actions.append(preview,regenerate);
+      line.append(name,actions);root.append(line);
+    }
+  }
+
+  async function createBoxQrWarehouse(event) {
+    event.preventDefault();
+    const button=$('boxWarehouseAdd');
+    const name=$('boxWarehouseName').value.trim();
+    if(!name)return;
+    if(!await confirmAction({
+      title:'Dodać nowy magazyn BOX: '+name+'?',
+      description:'Powstanie aktywny magazyn samoobsługowy bez stanów i bez historii. System wygeneruje mu osobny kod QR.',
+      confirmLabel:'Dodaj magazyn'
+    }))return;
+    busy(button,true);
+    try{
+      const result=await post({action:'boxCreate',name});
+      state.records=await api('boxQr');
+      renderBoxQrRows();
+      $('boxWarehouseForm').reset();
+      message('Dodano BOX '+result.warehouse.name+' i zapisano jego kod QR w D1.','info');
+      showBoxQr(result.warehouse);
+    }catch(error){message(error.message||'Nie udało się dodać magazynu BOX.','error');}
+    finally{busy(button,false);}
+  }
+
+  async function rotateBoxQr(warehouse,button) {
+    if(!await confirmAction({
+      title:'Zmienić kod QR magazynu '+warehouse.name+'?',
+      description:'UWAGA: dotychczasowy wydrukowany kod QR natychmiast przestanie działać. Przed zmianą przygotuj nową etykietę.',
+      confirmLabel:'Wygeneruj nowy kod',danger:true
+    }))return;
+    busy(button,true);
+    try{
+      const result=await post({action:'boxQrRotate',warehouseId:warehouse.id});
+      state.records=await api('boxQr');
+      renderBoxQrRows();
+      message('Zapisano nowy kod magazynu '+warehouse.name+'. Poprzedni kod jest nieaktywny.','info');
+      showBoxQr(result.warehouse);
+    }catch(error){message(error.message||'Nie udało się zmienić kodu.','error');}
+    finally{busy(button,false);}
+  }
+
+  function showBoxQr(warehouse) {
+    const code=String(warehouse?.code||'');
+    if(!code){message('Ten magazyn nie ma kodu QR.','error');return;}
+    if(typeof QRCode!=='function'){
+      message('Moduł tworzenia QR nie został załadowany. Odśwież panel.','error');return;
+    }
+    $('boxQrDialogTitle').textContent='Kod QR · '+warehouse.name;
+    $('boxQrPrintName').textContent=warehouse.name;
+    $('boxQrPrintCode').textContent=code;
+    const preview=$('boxQrPreview');preview.replaceChildren();
+    try{
+      new QRCode(preview,{
+        text:code,width:256,height:256,
+        colorDark:'#000000',colorLight:'#ffffff',
+        correctLevel:QRCode.CorrectLevel.H
+      });
+      state.boxQrCurrent=warehouse;
+      $('boxQrDialog').showModal();
+    }catch(error){message('Nie udało się narysować kodu QR.','error');}
+  }
+
+  function downloadBoxQr() {
+    const code=state.boxQrCurrent?.code;
+    const preview=$('boxQrPreview');
+    const canvas=preview.querySelector('canvas');
+    const img=preview.querySelector('img');
+    const url=img?.src?.startsWith('data:image')?img.src:
+      canvas?.toDataURL?.('image/png');
+    if(!url){message('Nie można pobrać QR. Odśwież panel i spróbuj ponownie.','error');return;}
+    const a=document.createElement('a');
+    a.href=url;a.download='GPBS-BOX-'+String(state.boxQrCurrent.id)+'-'+code+'.png';
+    a.click();
   }
 
   function closeSide() {
@@ -1732,6 +1849,10 @@
       $('sideOverlay').classList.toggle('hidden',!$('sidebar').classList.contains('open'));
     });
     $('sideOverlay').addEventListener('click',closeSide);
+    $('boxWarehouseForm').addEventListener('submit',createBoxQrWarehouse);
+    $('boxQrClose').addEventListener('click',()=>$('boxQrDialog').close());
+    $('boxQrDownload').addEventListener('click',downloadBoxQr);
+    $('boxQrPrintButton').addEventListener('click',()=>window.print());
     $('addUserBtn').addEventListener('click',()=>openUserDialog());
     $('showArchivedUsers').addEventListener('click',async()=>{
       state.showArchives=!state.showArchives;
