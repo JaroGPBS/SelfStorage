@@ -157,7 +157,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
-    frCatalog:'stocks',frBoxCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',vehicleInventories:'stocks',
+    frCatalog:'stocks',frBoxCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',vehicleInventories:'stocks',frStockDiscrepancies:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
@@ -182,6 +182,38 @@ export async function onRequestGet({request,env}){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
+  }
+  if(view==='frStockDiscrepancies'){
+    // Show FR shortages only for warehouses this Office user can access.
+    // No test data, stock changes or admin rights are needed.
+    const fr=authorizedWarehouses.filter(w=>w.country_code==='FR');
+    if(!user.markets?.FR||!fr.length)return workerJson({ok:true,rows:[]});
+    try{
+      if(!await tableExists(env.DB,'fr_stock_discrepancies'))
+        return workerJson({ok:true,rows:[]});
+      const ids=[...new Set(fr.map(w=>w.id))];
+      const placeholders=ids.map(()=>'?').join(',');
+      const rows=(await env.DB.prepare(
+        'SELECT d.session_id AS sessionId,d.warehouse_id AS warehouseId,'+
+        'w.name AS warehouseName,d.part_id AS partId,p.name AS partName,'+
+        'p.sap_number AS sap,u.name AS team,v.registration_number AS plate,'+
+        's.saved_at AS date,d.stock_before AS stockBefore,'+
+        'd.picked_qty AS pickedQty,d.returned_qty AS returnedQty,'+
+        'd.shortage_qty AS missingQty '+
+        'FROM fr_stock_discrepancies d '+
+        'JOIN fr_sessions s ON s.id=d.session_id '+
+        'JOIN warehouses w ON w.id=d.warehouse_id '+
+        'JOIN parts p ON p.id=d.part_id '+
+        'JOIN users u ON u.id=s.user_id '+
+        'JOIN vehicles v ON v.id=s.vehicle_id '+
+        "WHERE d.status='PENDING' AND d.warehouse_id IN ("+placeholders+") "+
+        'ORDER BY s.saved_at DESC,d.session_id DESC LIMIT 200'
+      ).bind(...ids).all()).results||[];
+      return workerJson({ok:true,rows});
+    }catch(err){
+      console.error('FR stock discrepancy lookup failed',err?.name||'Error');
+      return error('Nie udało się pobrać niezgodności stanów FR.',503);
+    }
   }
   if(view==='vehicleInventories'){
     // Inventory history belongs to the vehicle, not the currently logged-in crew.

@@ -281,14 +281,22 @@ async function saveSession(db,user,data){
   const deltas=new Map();
   for(const [id,x] of pob)deltas.set(id,(deltas.get(id)||0)-x.qty);
   for(const [id,x] of zwr)deltas.set(id,(deltas.get(id)||0)+x.qty);
-  for(const [id,delta] of deltas){
-    if(delta>=0)continue;
-    const stock=await db.prepare(
-      'SELECT quantity FROM warehouse_stock WHERE warehouse_id=? AND part_id=?'
-    ).bind(visit.warehouse_id,id).first();
-    if(!stock||Number(stock.quantity)<-delta)
-      throw Error('Za mało części w magazynie. Sprawdź stany przed zatwierdzeniem.');
-  }
+  // A physical pickup must not be blocked by an outdated warehouse count.
+  // Record the shortage in the SAME D1 transaction as the session and stock.
+  // Existing warehouse quantities remain nonnegative.
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS fr_stock_discrepancies ('+
+    'session_id TEXT NOT NULL REFERENCES fr_sessions(id),'+
+    'warehouse_id TEXT NOT NULL REFERENCES warehouses(id),'+
+    'part_id TEXT NOT NULL REFERENCES parts(id),'+
+    'stock_before INTEGER NOT NULL CHECK(stock_before>=0),'+
+    'picked_qty INTEGER NOT NULL CHECK(picked_qty>0),'+
+    'returned_qty INTEGER NOT NULL DEFAULT 0 CHECK(returned_qty>=0),'+
+    'shortage_qty INTEGER NOT NULL CHECK(shortage_qty>0),'+
+    "status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','RESOLVED')),"+
+    'created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'+
+    'PRIMARY KEY(session_id,part_id))'
+  ).run();
   const vehiclePartIds=new Set((await getVehicleCatalogue(db)).parts.filter(p=>p.id).map(p=>p.id));
   const statements=[
     db.prepare(
@@ -305,23 +313,27 @@ async function saveSession(db,user,data){
   for(const [id,delta] of deltas){
     if(delta===0)continue;
     if(delta<0){
-      // SQLite checks the INSERT candidate even on an UPSERT conflict.
-      // Use a valid zero candidate; fail if the existing row disappears.
+      const needed=-delta;
+      // Read the actual D1 quantity at the time of this atomic batch,
+      // rather than relying on an earlier non-transactional stock check.
       statements.push(db.prepare(
-        'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) '+
-        'VALUES(?,?,CASE WHEN EXISTS(SELECT 1 FROM warehouse_stock '+
-        'WHERE warehouse_id=? AND part_id=?) THEN 0 ELSE -1 END,CURRENT_TIMESTAMP) '+
-        'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
-        'quantity=warehouse_stock.quantity+?,updated_at=CURRENT_TIMESTAMP'
-      ).bind(visit.warehouse_id,id,visit.warehouse_id,id,delta));
-    }else{
-      statements.push(db.prepare(
-        'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) '+
-        'VALUES(?,?,?,CURRENT_TIMESTAMP) '+
-        'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
-        'quantity=warehouse_stock.quantity+excluded.quantity,updated_at=CURRENT_TIMESTAMP'
-      ).bind(visit.warehouse_id,id,delta));
+        'INSERT INTO fr_stock_discrepancies ('+
+        'session_id,warehouse_id,part_id,stock_before,picked_qty,returned_qty,shortage_qty) '+
+        'SELECT ?,?,?,COALESCE(stock.quantity,0),?,?,?-COALESCE(stock.quantity,0) '+
+        'FROM (SELECT 1) AS source '+
+        'LEFT JOIN warehouse_stock stock ON stock.warehouse_id=? AND stock.part_id=? '+
+        'WHERE ? > COALESCE(stock.quantity,0)'
+      ).bind(sessionId,visit.warehouse_id,id,pob.get(id)?.qty||0,
+        zwr.get(id)?.qty||0,needed,visit.warehouse_id,id,needed));
     }
+    // Both pickups and returns are saved. Missing physical stock is kept at
+    // zero; its difference is reported separately, never as a negative balance.
+    statements.push(db.prepare(
+      'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) '+
+      'VALUES(?,?,MAX(0,?),CURRENT_TIMESTAMP) '+
+      'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
+      'quantity=MAX(0,warehouse_stock.quantity+?),updated_at=CURRENT_TIMESTAMP'
+    ).bind(visit.warehouse_id,id,delta,delta));
     // Only parts belonging to the vehicle catalogue change the car balance.
     if(vehiclePartIds.has(id))statements.push(db.prepare(
       'INSERT INTO vehicle_stock(vehicle_id,part_id,quantity,updated_at) '+
@@ -331,7 +343,12 @@ async function saveSession(db,user,data){
     ).bind(visit.vehicle_id,id,-delta,-delta));
   }
   await db.batch(statements);
-  return {ok:true,idSesji:sessionId,idWizyty:visitId,status:'ZAPISANA'};
+  const shortages=(await db.prepare(
+    'SELECT part_id AS partId,shortage_qty AS missingQty '+
+    'FROM fr_stock_discrepancies WHERE session_id=?'
+  ).bind(sessionId).all()).results||[];
+  return {ok:true,idSesji:sessionId,idWizyty:visitId,status:'ZAPISANA',
+    discrepancies:shortages.map(x=>({partId:x.partId,missingQty:Number(x.missingQty)}))};
 }
 async function vehicleStock(db,user){
   const car=await vehicle(db,user.id);
