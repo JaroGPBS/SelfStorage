@@ -4,7 +4,7 @@ import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worke
 import {verifyRememberSession} from '../../lib/pl-office-remember.js';
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 
-const ROLES=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
+const ROLES=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
 const WAREHOUSE=/^[A-Z0-9-]{2,50}$/;
 const PART=/^[A-Za-z0-9_-]{1,100}$/;
 const fail=(message,status=400)=>workerJson({ok:false,error:message},status);
@@ -15,7 +15,7 @@ async function authenticate(request,env){
   try{user=await verifyWorkerSession(request,env)||await verifyRememberSession(request,env);}
   catch{return {error:fail('Nie można zweryfikować sesji.',503)};}
   if(!user)return {error:fail('Sesja wygasła. Zaloguj się ponownie.',401)};
-  if(!ROLES.has(user.role)||user.features?.labels===false)
+  if(!user.apps?.office||!ROLES.has(user.role)||user.features?.labels===false)
     return {error:fail('Brak uprawnień do drukowania etykiet.',403)};
   return {user};
 }
