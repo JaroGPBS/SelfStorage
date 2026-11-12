@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=86">
+  <link rel="stylesheet" href="./office.css?v=87">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -122,7 +122,7 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=103"></script>
+  <script defer src="./office.js?v=104"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -169,6 +169,9 @@
         <span class="sidebar-brand-name">STORAGE OFFICE</span>
       </div>
       <nav aria-label="Menu główne">
+        <button id="officeHomeButton" class="subnav-btn office-home-nav" type="button">
+          <span aria-hidden="true" class="office-home-nav-icon">⌂</span> Strona główna
+        </button>
         <div id="warehouseMenu" class="office-warehouse-menu"></div>
       </nav>
       <div class="side-footer office-side-footer">
@@ -195,7 +198,7 @@
         <div class="top-status"><span class="status-dot"></span><span>Online</span></div>
       </header>
       <div class="content">
-        <div class="page-head">
+        <div class="page-head" id="officePageHead">
           <div>
             <div class="kicker" id="pageKicker">MAGAZYN TYCHY</div>
             <h1 id="pageTitle">Stany magazynowe</h1>
@@ -211,6 +214,25 @@
             <button type="button" class="btn dark" id="newPart">+ Dodaj część</button>
           </div>
         </div>
+        <section id="officeHome" class="office-home hidden" aria-labelledby="officeHomeTitle">
+          <div class="office-home-hero">
+            <div class="office-home-shade">
+              <div class="office-home-lockup">
+                <img src="./gpbs-logo-sharp.svg?v=1" alt="Logo GPBS" width="86" height="72">
+                <span>GPBS STORAGE <small>OFFICE</small></span>
+              </div>
+              <div class="office-home-bottom">
+                <p class="office-home-kicker">PANEL BIUROWY</p>
+                <h1 id="officeHomeTitle">Witaj w GPBS Storage</h1>
+                <p>Wybierz magazyn lub funkcję z menu po lewej stronie, aby rozpocząć pracę.</p>
+              </div>
+            </div>
+          </div>
+          <div class="office-home-note">
+            <span class="office-home-online"><span aria-hidden="true"></span> Online</span>
+            <span>Polska i Francja · Zarządzanie magazynami i częściami</span>
+          </div>
+        </section>
         <div id="errorBanner" class="error-banner hidden" role="alert"></div>
         <p id="officeNewPartNotice" class="office-new-part-notice hidden" role="status" aria-live="polite"></p>
         <section id="officeLabelsView" class="label-tool hidden" aria-label="Drukowanie etykiet">
