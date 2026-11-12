@@ -142,7 +142,7 @@ async function fingerprint(data){
   const digest=await crypto.subtle.digest('SHA-256',encoded);
   return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
 }
-async function assignVehicle(db,user,value){
+async function assignVehicle(db,user,value,confirmedTransfer=false){
   const t=frTables(user.testCrew);
   const h=handoverTable(user.testCrew);
   const number=plate(value);
@@ -181,6 +181,10 @@ async function assignVehicle(db,user,value){
     'SELECT a.user_id,u.name FROM '+t.usage+' a '+
     'JOIN users u ON u.id=a.user_id WHERE a.vehicle_id=? AND a.user_id<>?'
   ).bind(carId,user.id).first();
+  if(previous&&!confirmedTransfer)
+    throw Error('Samochód '+number+' jest przypisany do ekipy '+previous.name+
+      '. Aby go przejąć, kliknij „Potwierdź samochód” i wykonaj inwentaryzację.');
+
   // Old assignments without a handover row are treated as unverified.
   // No update or reset of the car's existing quantities on assignment.
   const statements=[
@@ -449,7 +453,7 @@ async function action(db,user,body){
       ustawienia:{logowanieOfflineDni:0,autoSynchronizacja:true,whatsappAlert:false}};
   }
   if(type==='USTAW_SAMOCHOD'){
-    const assignment=await assignVehicle(db,user,data.numerRejestracyjny);
+    const assignment=await assignVehicle(db,user,data.numerRejestracyjny,data.potwierdzPrzejecie===true);
     return {ok:true,samochod:assignment,wymagaWeryfikacji:assignment.wymagaWeryfikacji,
       poprzedniaEkipa:assignment.poprzedniaEkipa,zmianaEkipy:assignment.zmianaEkipy};
   }
