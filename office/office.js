@@ -1782,6 +1782,80 @@ function printVehicleInventoryReport(){
     }
   }
 }
+// French audit reports use the same table, modal, Excel export and print
+// as the approved Polish preview, but every value comes from real D1 events.
+let frInventoryLoadSeq=0;
+function frenchInventoryDate(value){
+  const raw=String(value||'');
+  const parsed=new Date(raw.includes('T')?raw:raw.replace(' ','T')+'Z');
+  return Number.isNaN(parsed.getTime())?null:parsed;
+}
+function frenchInventoryButton(audit){
+  return '<button type="button" class="vehicle-inventory-button" data-fr-vehicle-inventory-id="'+
+    escapeHtml(audit.id)+'" aria-label="Otwórz inwentaryzację '+escapeHtml(dateText(audit.date))+'">'+
+    '<span>Inwentaryzacja</span><small>'+escapeHtml(dateText(audit.date))+'</small></button>';
+}
+async function loadFrenchVehicleInventories(){
+  const data=state.frVehicleData;
+  const selected=data?.crews?.find(c=>c.id===state.frVehicleCrew);
+  const vehicleId=selected?.vehicleId;
+  const seq=++frInventoryLoadSeq;
+  if(!data)return;
+  data.inventories=[];
+  data.inventoryVehicleId=null;
+  if(!vehicleId||selected.carPending)return;
+  try{
+    const response=await api('vehicleInventories',{vehicleId});
+    if(seq!==frInventoryLoadSeq||data!==state.frVehicleData)return;
+    data.inventories=response.inventories||[];
+    data.inventoryVehicleId=vehicleId;
+    if(state.view==='vehicles'&&state.preview?.key==='vehicles')
+      drawFrenchVehicleFleet(data.parts,data.crews,data.history);
+  }catch(error){
+    if(seq!==frInventoryLoadSeq)return;
+    errorBanner(error.message||'Nie udało się pobrać historii inwentaryzacji.');
+  }
+}
+function openFrenchVehicleInventory(id){
+  const data=state.frVehicleData;
+  const selected=data?.crews?.find(c=>c.id===state.frVehicleCrew);
+  if(!selected?.vehicleId||data.inventoryVehicleId!==selected.vehicleId)return;
+  const audits=data.inventories||[];
+  const index=audits.findIndex(x=>x.id===id);
+  if(index<0)return;
+  const audit=audits[index],previous=audits[index+1];
+  const auditTime=frenchInventoryDate(audit.date);
+  const previousTime=previous?frenchInventoryDate(previous.date):null;
+  const time=auditTime?new Intl.DateTimeFormat('pl-PL',{
+    timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit'
+  }).format(auditTime):'—';
+  const parts=new Map((data.parts||[]).map(p=>[p.id,p]));
+  const lines=new Map((audit.lines||[]).map(l=>[l.partId,l]));
+  const moves=(data.history||[]).filter(m=>{
+    const at=frenchInventoryDate(m.date);
+    return m.vehicleId===audit.vehicleId&&at&&auditTime&&at<=auditTime&&
+      (!previousTime||at>previousTime);
+  });
+  const items=(data.parts||[]).map(part=>{
+    const line=lines.get(part.id);
+    const counted=line?.counted??null,before=line?.before??null;
+    const movements=moves.filter(move=>move.partId===part.id).map(move=>{
+      const at=frenchInventoryDate(move.date);
+      return {date:dateText(move.date),time:at?new Intl.DateTimeFormat('pl-PL',{
+        timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit'
+      }).format(at):'',description:move.direction==='ZWROT'?'Zwrot do magazynu':'Pobranie z magazynu',
+        quantity:Number(move.quantity),status:'Zapisano',actor:''};
+    });
+    return {index:part.part_number||'',sap:part.sap_number||part.source_sap||'',
+      name:part.name,before,counted,
+      difference:before==null||counted==null?null:counted-before,movements};
+  });
+  const by=data.crews.find(c=>c.id===audit.userId)?.team||'—';
+  openVehicleInventoryReport({
+    date:dateText(audit.date),time,team:selected.team,plate:selected.plate,
+    by,items,periodStart:previous?dateText(previous.date):'',preview:false
+  });
+}
 function drawFrenchVehicleFleet(parts,crews,history=[]){
   const entries=Array.isArray(parts)?parts:[];
   const teams=Array.isArray(crews)?crews:[];
@@ -1888,27 +1962,66 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
           'pojawi się tutaj jej kolumna.</span></div>')+
       '</div>';
   }else{
-    const fixedWidth=indexWidth+sapWidth+minWidth+nameWidth+currentWidth;
-    const fixedCols='<colgroup>'+[indexWidth,sapWidth,minWidth,nameWidth,currentWidth]
-      .map(col).join('')+'</colgroup>';
-    const fixedBody=entries.map(p=>'<tr>'+
-      '<td title="'+escapeHtml(p.part_number||'')+'">'+
-        escapeHtml(p.part_number||'—')+'</td>'+
-      '<td title="'+escapeHtml(p.sap_number||p.source_sap||'')+'">'+
-        escapeHtml(p.sap_number||p.source_sap||'—')+'</td>'+
-      '<td class="vehicle-preview-num">'+escapeHtml(needed(p))+'</td>'+
-      '<td class="vehicle-split-part-name" title="'+escapeHtml(p.name)+'">'+
-        escapeHtml(p.name)+'</td>'+
-      '<td class="vehicle-preview-num">'+escapeHtml(reading(chosen,p))+'</td>'+
-      '</tr>').join('');
+    const audits=chosen&&state.frVehicleData?.inventoryVehicleId===chosen.vehicleId
+      ?state.frVehicleData.inventories||[]:[];
+    const newest=audits[0]||null,past=audits.slice(1);
+    const newestWidth=newest?98:0;
+    const fixedWidth=indexWidth+sapWidth+minWidth+nameWidth+currentWidth+newestWidth;
+    const fixedCols='<colgroup>'+[indexWidth,sapWidth,minWidth,nameWidth,currentWidth,
+      ...(newest?[49,49]:[])].map(col).join('')+'</colgroup>';
+    const newestHeader=newest?'<th class="vehicle-split-newest-head" colspan="2">'+
+      frenchInventoryButton(newest)+
+      '<div class="vehicle-split-subhead"><span>SUMA</span><span>Różnica</span></div></th>':'';
+    const fixedHead='<thead><tr><th>Indeks GPBS</th><th>Indeks SAP</th>'+
+      '<th>Stock<br>min.</th><th>Nazwa części</th><th>Aktualny<br>stan</th>'+
+      newestHeader+'</tr></thead>';
+    const recentLines=new Map((newest?.lines||[]).map(l=>[l.partId,l]));
+    const fixedBody=entries.map(p=>{
+      const line=recentLines.get(p.id);
+      const diff=line&&line.before!==null?line.counted-line.before:null;
+      const sign=diff===null?'—':diff>0?'+'+diff:String(diff);
+      const extra=newest?'<td class="vehicle-preview-num">'+
+        escapeHtml(line?String(line.counted):'—')+'</td>'+
+        '<td class="vehicle-preview-num vehicle-preview-difference'+
+        (diff>0?' is-positive':diff<0?' is-negative':'')+'">'+
+        escapeHtml(sign)+'</td>':'';
+      return '<tr>'+
+        '<td title="'+escapeHtml(p.part_number||'')+'">'+escapeHtml(p.part_number||'—')+'</td>'+
+        '<td title="'+escapeHtml(p.sap_number||p.source_sap||'')+'">'+
+          escapeHtml(p.sap_number||p.source_sap||'—')+'</td>'+
+        '<td class="vehicle-preview-num">'+escapeHtml(needed(p))+'</td>'+
+        '<td class="vehicle-split-part-name" title="'+escapeHtml(p.name)+'">'+
+          escapeHtml(p.name)+'</td>'+
+        '<td class="vehicle-preview-num">'+escapeHtml(reading(chosen,p))+'</td>'+
+        extra+'</tr>';
+    }).join('');
     const fixedTable='<table class="table vehicle-split-fixed-table" style="width:'+
-      fixedWidth+'px">'+fixedCols+partsHead+'<tbody>'+fixedBody+'</tbody></table>';
+      fixedWidth+'px">'+fixedCols+fixedHead+'<tbody>'+fixedBody+'</tbody></table>';
+    let pastBlock='';
+    if(past.length){
+      const columns='<colgroup>'+past.map(()=>col(88)).join('')+'</colgroup>';
+      const header='<thead><tr>'+past.map(h=>'<th>'+frenchInventoryButton(h)+'</th>').join('')+
+        '</tr></thead>';
+      const lines=past.map(h=>new Map((h.lines||[]).map(l=>[l.partId,l.counted])));
+      const body=entries.map(p=>'<tr>'+lines.map(m=>
+        '<td class="vehicle-preview-num">'+escapeHtml(
+          m.has(p.id)?String(m.get(p.id)):'—')+'</td>').join('')+'</tr>').join('');
+      const historyTable='<table class="table vehicle-split-history-table" style="width:'+
+        (past.length*88)+'px">'+columns+header+'<tbody>'+body+'</tbody></table>';
+      pastBlock='<div class="vehicle-split-history">'+
+        vehicleHistoryRail('Przewijanie starszych inwentaryzacji')+
+        '<div class="vehicle-history-table-wrap">'+historyTable+'</div></div>';
+    }else{
+      pastBlock='<div class="vehicle-split-history vehicle-fr-empty-history">'+
+        '<strong>'+(newest?'Brak wcześniejszych inwentaryzacji':
+        chosen?.vehicleId?'Historia inwentaryzacji':'Brak samochodu')+'</strong>'+
+        '<span>'+(newest?'Każda kolejna inwentaryzacja pojawi się tutaj.':
+        chosen?.vehicleId?'Brak zapisanych inwentaryzacji lub trwa wczytywanie.':
+        'Ekipa przypisze samochód po zalogowaniu.')+'</span></div>';
+    }
     table='<div class="vehicle-preview-split-table vehicle-fr-split">'+
       '<div class="vehicle-split-fixed" style="width:'+fixedWidth+'px">'+fixedTable+'</div>'+
-      '<div class="vehicle-split-history vehicle-fr-empty-history">'+
-      '<strong>'+(chosen?.plate?'Stan samochodu':chosen?'Brak samochodu':'Brak ekip')+'</strong>'+
-      '<span>'+(chosen?.plate?'Zapisane ilości są widoczne w tabeli. Niezinwentaryzowane pozycje mają znak —.':chosen?'Ekipa przypisze samochód po zalogowaniu.':'Po dodaniu ekipy w panelu administracyjnym pojawią się panele ekip.')+'</span>'+
-      '</div></div>';
+      pastBlock+'</div>';
   }
   const moves=chosen?(Array.isArray(history)?history:[])
     .filter(x=>x.userId===chosen.id).slice(0,40):[];
@@ -2027,8 +2140,9 @@ async function render({silent=false}={}){
           useVehicleCatalogueInDemo(response.parts||[]);
           drawPolishVehiclePreview();
         }else if(french){
-          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],history:teamResponse.history||[]};
+          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],history:teamResponse.history||[],inventories:[],inventoryVehicleId:null};
           drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
+          loadFrenchVehicleInventories();
         }else drawVehicles();
         markSynced();
       }catch(ex){
@@ -2377,6 +2491,11 @@ document.addEventListener('click',e=>{
     }
     return;
   }
+  const frenchInventory=e.target.closest('[data-fr-vehicle-inventory-id]');
+  if(frenchInventory&&state.view==='vehicles'){
+    openFrenchVehicleInventory(frenchInventory.dataset.frVehicleInventoryId);
+    return;
+  }
   const inventoryButton=e.target.closest('[data-vehicle-inventory-index]');
   if(inventoryButton&&state.view==='vehicles'){
     const index=Number(inventoryButton.dataset.vehicleInventoryIndex);
@@ -2393,6 +2512,7 @@ document.addEventListener('click',e=>{
     if(state.frVehicleData?.crews?.some(c=>c.id===id)){
       state.frVehicleCrew=id;
       drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
+      loadFrenchVehicleInventories();
     }
     return;
   }
