@@ -238,6 +238,13 @@ export async function onRequestGet({request,env}){
           "WHERE type='INWENTARYZACJA' AND event_at >= "+
           "datetime(?, '-8 days') ORDER BY event_at DESC"
         ).bind(weekly.startedAt||new Date().toISOString()).all()).results||[];
+        if(await tableExists(env.DB,'fr_car_claims')){
+          const pending=(await env.DB.prepare(
+            "SELECT user_id,updated_at AS event_at FROM fr_car_claims "+
+            "WHERE status='PENDING' AND inventory_json IS NOT NULL"
+          ).all()).results||[];
+          recent.push(...pending);
+        }
         const byCrew=new Map();
         for(const e of recent) {
           if(!byCrew.has(e.user_id))byCrew.set(e.user_id,[]);
