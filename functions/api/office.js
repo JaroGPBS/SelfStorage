@@ -195,11 +195,12 @@ export async function onRequestGet({request,env}){
       ).all();
       const crews=(rows.results||[]).map(x=>({
         id:x.id,team:x.name,plate:null,vehicleId:null,stock:{},
-        inventory:false,lastInventory:null
+        inventory:false,lastInventory:null,handoverStatus:'',previousCrew:'',assignedAt:null
       }));
       const hasUsage=await tableExists(env.DB,'fr_vehicle_usage');
       const hasEvents=await tableExists(env.DB,'fr_vehicle_events');
       const hasSessions=await tableExists(env.DB,'fr_sessions');
+      const hasHandovers=await tableExists(env.DB,'fr_vehicle_handovers');
       if(hasUsage&&crews.length){
         const usage=(await env.DB.prepare(
           'SELECT a.user_id,a.vehicle_id,v.registration_number '+
@@ -219,6 +220,26 @@ export async function onRequestGet({request,env}){
           stocks.get(item.vehicle_id)[item.part_id]=Number(item.quantity);
         }
         for(const crew of crews)if(crew.vehicleId)crew.stock=stocks.get(crew.vehicleId)||{};
+        if(hasHandovers){
+          const handovers=(await env.DB.prepare(
+            'SELECT user_id,vehicle_id,status,previous_crew,assigned_at,verified_at '+
+            'FROM fr_vehicle_handovers WHERE is_current=1'
+          ).all()).results||[];
+          const currentByCrew=new Map(handovers.map(row=>[row.user_id,row]));
+          for(const crew of crews){
+            const handover=currentByCrew.get(crew.id);
+            if(handover&&crew.vehicleId===handover.vehicle_id){
+              crew.handoverStatus=handover.status;
+              crew.previousCrew=handover.previous_crew||'';
+              crew.assignedAt=handover.assigned_at;
+            }else if(crew.vehicleId){
+              crew.handoverStatus='PENDING_INVENTORY';
+            }
+          }
+        }else{
+          for(const crew of crews)if(crew.vehicleId)
+            crew.handoverStatus='PENDING_INVENTORY';
+        }
         if(hasEvents){
           const events=(await env.DB.prepare(
             "SELECT vehicle_id,MAX(event_at) AS last_at FROM fr_vehicle_events "+
@@ -227,7 +248,7 @@ export async function onRequestGet({request,env}){
           const last=new Map(events.map(x=>[x.vehicle_id,x.last_at]));
           for(const crew of crews)if(crew.vehicleId){
             crew.lastInventory=last.get(crew.vehicleId)||null;
-            crew.inventory=Boolean(crew.lastInventory);
+            crew.inventory=Boolean(crew.lastInventory)&&crew.handoverStatus==='ACTIVE';
           }
         }
       }
@@ -243,7 +264,18 @@ export async function onRequestGet({request,env}){
           'ORDER BY s.saved_at DESC,s.id DESC LIMIT 250'
         ).all()).results||[];
       }
-      return workerJson({ok:true,crews,history});
+      let handoverHistory=[];
+      if(hasHandovers){
+        handoverHistory=(await env.DB.prepare(
+          'SELECT h.id,h.vehicle_id,h.previous_crew,h.assigned_at,h.verified_at,h.status,'+
+          'u.name AS crew,v.registration_number AS plate '+
+          'FROM fr_vehicle_handovers h '+
+          'LEFT JOIN users u ON u.id=h.user_id '+
+          'JOIN vehicles v ON v.id=h.vehicle_id '+
+          'ORDER BY h.assigned_at DESC,h.id DESC LIMIT 100'
+        ).all()).results||[];
+      }
+      return workerJson({ok:true,crews,history,handoverHistory});
     }catch(err){
       console.error('French D1 crew stock lookup',err?.name||'Error');
       return error('Nie udało się pobrać ekip i stanów francuskich.',503);
