@@ -457,6 +457,7 @@ function updateInitialInventoryAccess(){
   const plate=String(state.team?.samochod||'').trim();
   // Until the server confirms the first inventory, scanning is locked.
   const locked=crew&&Boolean(plate)&&firstInventoryRequired!==false;
+  $('firstVehicleInventoryNotice')?.classList.toggle('hidden',!locked);
   const scanner=$('openWarehouseScannerBtn');
   if(scanner){scanner.disabled=locked;scanner.classList.toggle('hidden',locked);}
   const title=document.querySelector('#screenWarehouse .warehouse-scan-title');
