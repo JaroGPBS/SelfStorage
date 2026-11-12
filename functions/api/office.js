@@ -5,6 +5,7 @@ import {createRememberToken,verifyRememberSession,officeRememberCookie} from '..
 import {createUnverifiedPart} from '../../lib/pl-part-create.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
+import {readFrWeeklySettings,weeklyInventoryStatus} from '../../lib/fr-weekly-schedule.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
@@ -191,7 +192,7 @@ export async function onRequestGet({request,env}){
       ).all();
       const crews=(rows.results||[]).map(x=>({
         id:x.id,team:x.name,plate:null,vehicleId:null,stock:{},
-        inventory:false,lastInventory:null
+        inventory:false,lastInventory:null,missedWeeks:[],inventoryDue:false
       }));
       const hasUsage=await tableExists(env.DB,'fr_vehicle_usage');
       const hasEvents=await tableExists(env.DB,'fr_vehicle_events');
@@ -225,6 +226,27 @@ export async function onRequestGet({request,env}){
             crew.lastInventory=last.get(crew.id+'::'+crew.vehicleId)||null;
             crew.inventory=Boolean(crew.lastInventory);
           }
+        }
+      }
+      // Weekly status belongs to the crew (user_id), not to a registration plate.
+      // Tracking begins only when Admin enables the schedule; historical weeks are
+      // never manufactured retroactively.
+      const weekly=await readFrWeeklySettings(env.DB);
+      if(weekly.enabled&&crews.length&&hasEvents){
+        const recent=(await env.DB.prepare(
+          "SELECT user_id,event_at FROM fr_vehicle_events "+
+          "WHERE type='INWENTARYZACJA' AND event_at >= "+
+          "datetime(?, '-8 days') ORDER BY event_at DESC"
+        ).bind(weekly.startedAt||new Date().toISOString()).all()).results||[];
+        const byCrew=new Map();
+        for(const e of recent) {
+          if(!byCrew.has(e.user_id))byCrew.set(e.user_id,[]);
+          byCrew.get(e.user_id).push(e);
+        }
+        for(const crew of crews){
+          const status=weeklyInventoryStatus(weekly,byCrew.get(crew.id)||[]);
+          crew.missedWeeks=status.missedWeeks;
+          crew.inventoryDue=status.due;
         }
       }
       let history=[];
