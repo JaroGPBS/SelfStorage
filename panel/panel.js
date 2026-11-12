@@ -15,6 +15,7 @@
     indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
+    frWeeklySettings:['Powiadomienia FR','Przypomnienia o cotygodniowej inwentaryzacji ekip francuskich.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.'],
     settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.'],
     superAdmin:['Super Admin','Hasło i wspólny PIN głównego konta właściciela.']
@@ -1263,8 +1264,9 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='boxQr');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='boxQr'||view==='frWeeklySettings');
     $('boxQrView').classList.toggle('hidden',view!=='boxQr');
+    $('frWeeklySettingsView').classList.toggle('hidden',view!=='frWeeklySettings');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
     $('settingsView').classList.toggle('hidden',view!=='settings');
@@ -1289,6 +1291,17 @@
     closeSide();
     try {
       if(view==='security'||view==='settings') return;
+      if(view==='frWeeklySettings'){
+        const settings=await api('frWeeklySettings');
+        $('frWeeklyEnabled').checked=Boolean(settings.enabled);
+        $('frWeeklyDay').value=String(settings.weekday||5);
+        $('frWeeklyTime').value=settings.time||'16:00';
+        $('frWeeklyMessage').value=settings.message||'';
+        $('frWeeklyPushNotice').textContent=settings.enabled
+          ?'Harmonogram zapisany. Powiadomienia na zamkniętym telefonie wymagają dodatkowo konfiguracji Web Push w Cloudflare.'
+          :'Harmonogram wyłączony.';
+        return;
+      }
       if(view==='boxQr'){
         state.records=await api('boxQr');
         if(state.view==='boxQr')renderBoxQrRows();
@@ -1916,6 +1929,25 @@
     logoutLocally();
   }
 
+  async function saveFrWeeklySettings(event){
+    event.preventDefault();
+    const button=$('frWeeklySave');busy(button,true);
+    try{
+      const settings={
+        enabled:$('frWeeklyEnabled').checked,
+        weekday:Number($('frWeeklyDay').value),
+        time:$('frWeeklyTime').value,
+        message:$('frWeeklyMessage').value.trim()
+      };
+      await post({action:'setFrWeeklySettings',settings});
+      message('Zapisano harmonogram inwentaryzacji francuskich ekip.','info');
+      $('frWeeklyPushNotice').textContent=settings.enabled
+        ?'Aktywny harmonogram i raport pominiętych tygodni. Wysyłka Push wymaga uruchomienia usługi w Cloudflare.'
+        :'Harmonogram wyłączony.';
+    }catch(error){message(error.message||'Nie udało się zapisać ustawień.','error');}
+    finally{busy(button,false);}
+  }
+
   async function init() {
     applyFontSize(storedFontSize(),false);
     applyTheme(storedTheme(),false);
@@ -1928,6 +1960,7 @@
       if(input.matches('input[name="adminFontSize"]'))applyFontSize(input.value);
     });
     $('loginForm').addEventListener('submit',performLogin);
+    $('frWeeklySettingsForm').addEventListener('submit',saveFrWeeklySettings);
     $('superPinForm').addEventListener('submit',submitSuperAdminCredential);
     $('superPasswordForm').addEventListener('submit',submitSuperAdminCredential);
     $('logoutBtn').addEventListener('click',performLogout);
