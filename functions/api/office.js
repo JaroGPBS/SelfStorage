@@ -330,8 +330,11 @@ export async function onRequestGet({request,env}){
   if(view==='frBoxCatalog'){
     if(user.role!=='ADMIN'||String(user.nickname||'').trim().toUpperCase()!=='JJ')
       return error('Brak uprawnień do katalogu BOX.',403);
+    const boxId=url.searchParams.get('warehouse')||'';
+    if(!['FR-TOULOUSE','FR-PARIS'].includes(boxId))
+      return error('Nieprawidłowy magazyn BOX.',400);
     try{
-      return workerJson({ok:true,...await readFrBoxOfficeParts(env.DB)});
+      return workerJson({ok:true,...await readFrBoxOfficeParts(env.DB,boxId)});
     }catch(err){
       console.error('Office FR BOX catalogue read failed',err?.name||'Error');
       return error('Nie udało się pobrać katalogu BOX.',503);
