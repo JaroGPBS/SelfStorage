@@ -184,9 +184,13 @@ export async function onRequestGet({request,env}){
           "ON w.id=a.warehouse_id WHERE a.user_id=u.id AND w.country_code='FR'))")
         :("EXISTS(SELECT 1 FROM user_warehouse_access a JOIN warehouses w "+
           "ON w.id=a.warehouse_id WHERE a.user_id=u.id AND w.country_code='FR')");
+      const testAccountTable=await tableExists(env.DB,'fr_test_accounts');
+      const excludeTests=testAccountTable
+        ?'AND NOT EXISTS(SELECT 1 FROM fr_test_accounts t WHERE t.user_id=u.id) '
+        :'';
       const rows=await env.DB.prepare(
         'SELECT u.id,u.name FROM users u '+
-        "WHERE u.active=1 AND u.role_code='EKIPA' AND ("+accessFilter+") "+
+        "WHERE u.active=1 AND u.role_code='EKIPA' "+excludeTests+"AND ("+accessFilter+") "+
         'ORDER BY u.name COLLATE NOCASE LIMIT 250'
       ).all();
       const crews=(rows.results||[]).map(x=>({
