@@ -970,3 +970,71 @@ tr:hover td{background:#ffffff04}
  #boxQrDialog .modal-heading,#boxQrDialog .dialog-actions,#boxQrDialog .hint{display:none!important}
  #boxQrPrint{margin:0 auto!important;width:100%!important;max-width:90mm!important;box-shadow:none!important;border:0!important}
 }
+
+/* Admin user access toggles. Reset generic 44px text-input dimensions:
+   these must remain small, aligned checkbox controls on every screen. */
+.users-table th:nth-child(5),.users-table th:nth-child(6),
+.users-table th:nth-child(7),.users-table th:nth-child(8),
+.users-table .market-access-cell,.users-table .app-access-cell{
+  text-align:center;
+}
+.users-table th:nth-child(5),.users-table th:nth-child(6),
+.users-table th:nth-child(7),.users-table th:nth-child(8){
+  min-width:72px;
+  padding-inline:10px;
+  letter-spacing:.04em;
+}
+.users-table .market-access-cell,.users-table .app-access-cell{
+  padding:12px 10px;
+}
+.users-table input.market-access-check,
+.users-table input.app-access-check{
+  appearance:none;
+  -webkit-appearance:none;
+  display:inline-grid;
+  place-items:center;
+  box-sizing:border-box;
+  width:22px!important;
+  height:22px!important;
+  min-width:22px!important;
+  min-height:22px!important;
+  max-width:22px;
+  max-height:22px;
+  padding:0!important;
+  margin:0;
+  vertical-align:middle;
+  border:1.5px solid #6d7b8e;
+  border-radius:5px;
+  background:#202934;
+  box-shadow:none!important;
+  cursor:pointer;
+  transition:background-color .12s,border-color .12s;
+}
+.users-table input.market-access-check:checked,
+.users-table input.app-access-check:checked{
+  background:#1975e9;
+  border-color:#2787fc;
+}
+.users-table input.market-access-check:checked::after,
+.users-table input.app-access-check:checked::after{
+  content:'';
+  display:block;
+  width:10px;
+  height:6px;
+  border-left:2px solid #fff;
+  border-bottom:2px solid #fff;
+  transform:translateY(-1px) rotate(-45deg);
+}
+.users-table input.market-access-check:disabled,
+.users-table input.app-access-check:disabled{
+  opacity:.67;
+  cursor:default;
+}
+.users-table input.market-access-check:focus-visible,
+.users-table input.app-access-check:focus-visible{
+  outline:2px solid #ff626a;
+  outline-offset:3px;
+}
+@media(max-width:1100px){
+  .users-table{min-width:1010px}
+}
