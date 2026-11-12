@@ -1099,8 +1099,21 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   if(!user)return fail('Nie znaleziono ekipy. Odśwież listę użytkowników.',404);
   if(user.role_code!=='EKIPA')return fail('Trwale można usuwać tylko konta ekip.',403);
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
+  const realSessions=await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('fr_sessions','fr_session_lines')"
+  ).all();
+  const realSessionTables=new Set((realSessions.results||[]).map(x=>x.name));
+  if(realSessionTables.has('fr_sessions')&&realSessionTables.has('fr_session_lines')){
+    const hasLiveOperations=await db.prepare(
+      'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
+      'WHERE s.user_id=? LIMIT 1'
+    ).bind(id).first();
+    if(hasLiveOperations)return fail(
+      'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
+  }
   if(await isFrTestAccount(db,id)){
-    // Full history of this fake account is disposable by design.
+    // Legacy separated test records are removed, as well as any car-only
+    // inventories recorded after restoring the normal mobile workflow.
     // The real tables warehouse_stock, vehicle_stock and fr_* are untouched.
     const others=await db.prepare(
       'SELECT 1 FROM fr_test_accounts WHERE user_id<>? LIMIT 1'
@@ -1121,6 +1134,38 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     if(hasTestHandover)statements.push(
       db.prepare('DELETE FROM fr_test_vehicle_handovers WHERE user_id=?').bind(id)
     );
+    // Remove vehicle-only trial history without modifying actual BOX stock.
+    const frTables=(await db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
+      "'fr_car_claims','fr_vehicle_events','fr_vehicle_event_lines',"+
+      "'fr_vehicle_event_fingerprints','fr_vehicle_usage','fr_vehicle_handovers',"+
+      "'fr_visits','fr_sessions','fr_session_lines')"
+    ).all()).results||[];
+    const has=new Set(frTables.map(t=>t.name));
+    if(has.has('fr_car_claims'))
+      statements.push(db.prepare('DELETE FROM fr_car_claims WHERE user_id=?').bind(id));
+    if(has.has('fr_vehicle_events')){
+      if(has.has('fr_vehicle_event_fingerprints'))statements.push(db.prepare(
+        'DELETE FROM fr_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_vehicle_events WHERE user_id=?)'
+      ).bind(id));
+      if(has.has('fr_vehicle_event_lines'))statements.push(db.prepare(
+        'DELETE FROM fr_vehicle_event_lines WHERE event_id IN (SELECT id FROM fr_vehicle_events WHERE user_id=?)'
+      ).bind(id));
+      statements.push(db.prepare('DELETE FROM fr_vehicle_events WHERE user_id=?').bind(id));
+    }
+    if(has.has('fr_vehicle_handovers'))
+      statements.push(db.prepare('DELETE FROM fr_vehicle_handovers WHERE user_id=?').bind(id));
+    if(has.has('fr_vehicle_usage'))
+      statements.push(db.prepare('DELETE FROM fr_vehicle_usage WHERE user_id=?').bind(id));
+    if(has.has('fr_sessions')){
+      if(has.has('fr_session_lines'))statements.push(db.prepare(
+        'DELETE FROM fr_session_lines WHERE session_id IN (SELECT id FROM fr_sessions WHERE user_id=?)'
+      ).bind(id));
+      statements.push(db.prepare('DELETE FROM fr_sessions WHERE user_id=?').bind(id));
+    }
+    if(has.has('fr_visits'))
+      statements.push(db.prepare('DELETE FROM fr_visits WHERE user_id=?').bind(id));
+
     if(!others){
       // Last test crew: discard all fake cars and BOX snapshots together.
       statements.push(db.prepare('DELETE FROM fr_test_vehicle_stock'));
@@ -1156,8 +1201,9 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   ).all()).results||[];
   const present=new Set(rows.map(t=>t.name));
   const metadata=new Set(['user_private_profiles','user_warehouse_access',
-    'user_pin_credentials','user_access_settings','user_archives','fr_vehicle_usage']);
-  const visitTables=new Set(['fr_visits','fr_sessions']);
+    'user_pin_credentials','user_access_settings','user_archives','fr_vehicle_usage',
+    'fr_car_claims','fr_vehicle_handovers']);
+  const visitTables=new Set(['fr_visits','fr_sessions','fr_vehicle_events']);
   const possibleColumns=new Set(['user_id','actor_id','operator_id','created_by',
     'team_id','assigned_by','reviewed_by','performed_by','verified_by',
     'approved_by','submitted_by','owner_user_id','updated_by','archived_by',
@@ -1197,6 +1243,15 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   }
 
   const statements=[];
+  if(present.has('fr_vehicle_events')){
+    if(present.has('fr_vehicle_event_fingerprints'))statements.push(db.prepare(
+      'DELETE FROM fr_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_vehicle_events WHERE user_id=?)'
+    ).bind(id));
+    if(present.has('fr_vehicle_event_lines'))statements.push(db.prepare(
+      'DELETE FROM fr_vehicle_event_lines WHERE event_id IN (SELECT id FROM fr_vehicle_events WHERE user_id=?)'
+    ).bind(id));
+    statements.push(db.prepare('DELETE FROM fr_vehicle_events WHERE user_id=?').bind(id));
+  }
   if(hasSessions&&hasLines)statements.push(db.prepare(
     'DELETE FROM fr_session_lines WHERE session_id IN (SELECT id FROM fr_sessions WHERE user_id=?)'
   ).bind(id));
