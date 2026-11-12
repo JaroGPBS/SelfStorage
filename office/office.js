@@ -506,7 +506,29 @@ function setLoggedIn(payload){
   $('username').textContent=name?name+'!':'!';
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
-  renderMenu();selectView('stocks',state.warehouse);
+  showOfficeHome();
+}
+function showOfficeHome(){
+  // No stock data request on login: only the welcome screen.
+  ++state.requestId;
+  state.view='home';state.preview=null;state.frExpanded=null;
+  state.bovisExpanded=false;state.expanded=null;state.focusDocument=null;
+  state.search='';state.vehicleSelectedInventory=0;
+  $('sidebar').classList.remove('open');
+  $('officePageHead').classList.add('hidden');
+  $('officeHome').classList.remove('hidden');
+  $('officeTableCard').classList.add('hidden');
+  $('officeLabelsView').classList.add('hidden');
+  $('officePreview').classList.add('hidden');
+  $('errorBanner').classList.add('hidden');
+  $('officeNewPartNotice').classList.add('hidden');
+  $('crumb').textContent='Strona główna';
+  $('warehouseCrumb').classList.add('hidden');
+  $('vehicleTopContext').classList.add('hidden');
+  $('vehicleTopExportHost').classList.add('hidden');
+  $('app').classList.remove('view-stocks','view-receipts','view-vehicles',
+    'view-aggregate','view-labels','view-fr-empty','view-modules');
+  renderMenu();
 }
 function officeMenuIcon(view){
   const paths={
@@ -684,6 +706,9 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
+  $('officeHomeButton').classList.toggle('active',state.view==='home');
+  $('officeHomeButton').setAttribute('aria-current',
+    state.view==='home'?'page':'false');
   for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
@@ -767,6 +792,8 @@ function showOfficePreview(type,key,label,warehouseContext=null){
   render();
 }
 function setHead(title,kicker,desc){
+  $('officeHome').classList.add('hidden');
+  $('officePageHead').classList.remove('hidden');
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
   $('newPart').classList.toggle('hidden',!partCreationTarget());
@@ -1967,6 +1994,7 @@ function drawFrenchEmptyView(){
   $('vehicleTopScroll').classList.add('hidden');
 }
 async function render(){
+  if(state.view==='home')return;
   if(state.view==='vehicles'){
     errorBanner('');
     const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
@@ -2135,6 +2163,7 @@ async function render(){
   }
 }
 function filterCurrent(){
+  if(state.view==='home')return;
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
     drawFrenchEmptyView();return;
@@ -2590,6 +2619,7 @@ $('refresh').addEventListener('click',()=>{
   state.partsCache.clear();state.detailCache.clear();render();
 });
 // Warehouse lists remain permanently visible; no expanding menu.
+$('officeHomeButton').addEventListener('click',showOfficeHome);
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 $('logout').addEventListener('click',async()=>{
   try{
