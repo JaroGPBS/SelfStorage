@@ -394,7 +394,7 @@ async function updateVehicleStock(db,user,data){
   if(previous){
     if(previous.content_hash!==hash)
       throw Error('Operacja została wcześniej zapisana z inną zawartością.');
-    return {ok:true,duplicate:true};
+    return {ok:true,duplicate:true,inwentaryzacjaWykonana:inventory?true:undefined};
   }
   const statements=[db.prepare(
     'INSERT INTO fr_vehicle_events(id,user_id,vehicle_id,type) VALUES(?,?,?,?)'
