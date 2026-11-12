@@ -4,7 +4,7 @@
 import { verifyWorkerSession, workerJson, workerAuthReady } from '../../../lib/pl-worker-auth.js';
 import {createUnverifiedPart} from '../../../lib/pl-part-create.js';
 
-const ALLOWED_ROLES = new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
+const ALLOWED_ROLES = new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
 const MAX_LINES = 5000; // operational safety ceiling; 300+ parts per sheet are supported
 const MAX_QUANTITY = 100000;
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
@@ -28,7 +28,7 @@ async function allowed(request,env,warehouseId) {
     return {error:fail('Nieprawidłowy magazyn.',400)};
   const user = await verifyWorkerSession(request,env);
   if(!user)return {error:fail('Sesja wygasła. Zaloguj się ponownie.',401)};
-  if(!ALLOWED_ROLES.has(user.role)||user.features?.inventory===false)
+  if(!user.apps?.mobile||!ALLOWED_ROLES.has(user.role)||user.features?.inventory===false)
     return {error:fail('Ta rola lub przypisane uprawnienia nie pozwalają prowadzić inwentaryzacji.',403)};
   if(!user.warehouses.some(w=>w.id===warehouseId))
     return {error:fail('Brak uprawnień do tego magazynu.',403)};
@@ -307,7 +307,7 @@ async function commitDraft(db,warehouseId,actorId,body,env) {
     "AND warehouse_id=? AND actor_id=? "+
     "AND EXISTS(SELECT 1 FROM users u LEFT JOIN user_archives ar ON ar.user_id=u.id "+
     "WHERE u.id=? AND u.active=1 AND ar.user_id IS NULL "+
-    "AND u.role_code IN ('ADMIN','KIEROWNIK','MAGAZYNIER')) "+
+    "AND u.role_code IN ('ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER')) "+
     "AND EXISTS(SELECT 1 FROM user_warehouse_access a "+
     "JOIN warehouses w ON w.id=a.warehouse_id "+
     "WHERE a.user_id=? AND a.warehouse_id=? AND w.country_code='PL' AND w.active=1) "+
