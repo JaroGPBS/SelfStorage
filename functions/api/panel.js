@@ -6,6 +6,7 @@ import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
 import {resolveFrCarClaim} from '../../lib/fr-car-review.js';
+import {readFrWeeklySettings,saveFrWeeklySettings} from '../../lib/fr-weekly-schedule.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,validAppAccess,serializeUserAccess,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
@@ -493,6 +494,7 @@ async function rotateBoxQr(env,body,actor) {
 }
 
 async function queryPanel(env,view,url) {
+  if(view==='frWeeklySettings')return readFrWeeklySettings(env.DB);
   if(view==='boxQr')return boxQrRows(env.DB);
   if(view==='usage')return adminUsage(env,url);
   if(view==='indexMigration') {
@@ -1676,6 +1678,21 @@ async function route(request,env) {
     }catch(error){
       console.error('Super Admin credential change failed',error?.name||'Error');
       return fail('Nie udało się zapisać zmiany danych logowania.',503);
+    }
+  }
+  if(body?.action==='setFrWeeklySettings'){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try{
+      const settings=await saveFrWeeklySettings(env.DB,body.settings);
+      await env.DB.prepare(
+        'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
+      ).bind(crypto.randomUUID(),session.id,'FR_WEEKLY_SETTINGS','CONFIG','FR_WEEKLY',
+        JSON.stringify({enabled:settings.enabled,weekday:settings.weekday,time:settings.time}))
+      .run();
+      return respond({ok:true,settings});
+    }catch(error){
+      console.error('FR weekly settings update failed',error?.name||'Error');
+      return fail('Nie udało się zapisać harmonogramu.',503);
     }
   }
   if(['setUserMarkets','setUserPermissions','setUserApps'].includes(body?.action)){
