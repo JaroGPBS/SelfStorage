@@ -1,0 +1,12 @@
+# Example only. Do NOT deploy without your real D1 database_id and VAPID secrets.
+name = "gpbs-fr-inwentaryzacje"
+main = "workers/fr-weekly-reminder.js"
+compatibility_date = "2026-11-12"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gpbs-storage"
+database_id = "REPLACE_WITH_EXISTING_GPBS_STORAGE_D1_ID"
