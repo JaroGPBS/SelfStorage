@@ -7,7 +7,7 @@ import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
-const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
+const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
 const WAREHOUSE=/^[A-Z0-9-]{2,50}$/;
 const PART=/^[A-Za-z0-9_-]{1,100}$/;
 const SESSION=/^PL-SES-[a-f0-9-]{36}$/;
@@ -47,7 +47,7 @@ export async function onRequestPost({request,env}){
       const user=await verifyWorkerSession(request,env)||
         await verifyRememberSession(request,env);
       if(!user)return error('Zaloguj się ponownie.',401);
-      if(!ALLOWED.has(user.role)||user.features?.stocks===false)
+      if(!user.apps?.office||!ALLOWED.has(user.role)||user.features?.stocks===false)
         return error('Brak uprawnień do katalogu.',403);
       const form=await request.formData();
       const key=String(form.get('warehouseKey')||'');
@@ -93,7 +93,7 @@ export async function onRequestPost({request,env}){
       const user=await verifyWorkerSession(request,env) ||
         await verifyRememberSession(request,env);
       if(!user)return error('Zaloguj się ponownie.',401);
-      if(!ALLOWED.has(user.role)||user.features?.stocks===false)
+      if(!user.apps?.office||!ALLOWED.has(user.role)||user.features?.stocks===false)
         return error('Brak uprawnień do katalogu.',403);
       if(!user.warehouses.some(w=>w.id===warehouseId))
         return error('Brak uprawnień do wybranego magazynu.',403);
@@ -115,7 +115,7 @@ export async function onRequestPost({request,env}){
   if(body?.action!=='remember')return error('Nieznana akcja.',400);
   try{
     const user=await verifyWorkerSession(request,env);
-    if(!user||!ALLOWED.has(user.role))return error('Zaloguj się ponownie.',401);
+    if(!user||!user.apps?.office||!ALLOWED.has(user.role))return error('Zaloguj się ponownie.',401);
     const token=await createRememberToken(env,user.id);
     return workerJson({ok:true,rememberedForDays:30},200,
       {'Set-Cookie':officeRememberCookie(token)});
@@ -131,7 +131,7 @@ export async function onRequestGet({request,env}){
   try{user=await verifyWorkerSession(request,env) || await verifyRememberSession(request,env);}
   catch{return error('Nie można potwierdzić sesji.',503);}
   if(!user)return error('Zaloguj się do panelu.',401);
-  if(!ALLOWED.has(user.role))return error('Brak dostępu do panelu biurowego.',403);
+  if(!user.apps?.office||!ALLOWED.has(user.role))return error('Brak dostępu do panelu biurowego.',403);
   const url=new URL(request.url);
   let authorizedWarehouses;
   try{authorizedWarehouses=await officeWarehouses(env.DB,user.id,user.markets);}
