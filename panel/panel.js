@@ -7,7 +7,7 @@
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     boxQr:['Magazyny BOX · QR','Generator i drukowanie kodów QR wyłącznie dla magazynów samoobsługowych we Francji.'],
-    warehouses:['Magazyny','Aktualne stany magazynów w Polsce.'],
+    warehouses:['Magazyny','Magazyny Polski i Francji. Kody QR Boxów pozostają bez zmian.'],
     parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
     boxParts:['Katalog części Boxy','Wyłącznie części dla Box Toulouse i Box Paris. Stany obu magazynów są rozdzielone.'],
     vehicleParts:['Katalog części Samochody','Wyposażenie aut: te same części co w głównym katalogu, z osobną wymaganą ilością na samochód.'],
