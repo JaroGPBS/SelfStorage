@@ -447,7 +447,7 @@ function freshBoxCode() {
 }
 function boxSlug(name) {
   return String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/ł/g,'l').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,35);
+    .replace(/[łŁ]/g,'L').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,35);
 }
 async function createBoxWarehouse(env,body,actor) {
   const name=String(body?.name||'').trim().replace(/\s+/g,' ');
