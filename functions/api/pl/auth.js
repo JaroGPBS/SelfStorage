@@ -112,7 +112,10 @@ async function login(request,env,pin) {
 
   // Current activation, archives and PL warehouse grants are mandatory.
   const user=await loadActiveWorker(env,existing.user_id);
-  if(!user)return fail('Nieprawidłowy PIN lub brak dostępu.',401);
+  if(!user||(!user.apps.mobile&&!user.apps.office))
+    return fail('Nieprawidłowy PIN lub brak dostępu.',401);
+  // The same PIN is used by both apps. Office-only coordinators may log in
+  // here, but the mobile interface and its API reject mobile=false.
   const token=await createWorkerSession(env,user);
   const {pinDigest,...safeUser}=user;
   // This endpoint is for the Polish phone interface; it must not show FR
