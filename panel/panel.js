@@ -466,7 +466,9 @@
       button.append(arrow);name.append(button);
       row.append(name);
 
-      const role=td('');role.append(pill(user.role_code,'blue'));row.append(role);
+      const role=td('');role.append(pill(user.role_code,'blue'));
+      if(user.is_test)role.append(pill('TEST','red'));
+      row.append(role);
       const pin=td('');pin.className='pin-cell';
       pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));
       if(user.active&&!state.showArchives&&!user.owner_protected) {
@@ -1486,11 +1488,19 @@
       }
       if(existing)roleInput.value=existing.role_code;
       const toggleCrewMarket=()=>{
-        $('userCrewMarketField').hidden=roleInput.value!=='EKIPA';
+        const crew=roleInput.value==='EKIPA';
+        $('userCrewMarketField').hidden=!crew;
+        const isFR=$('userCrewMarket').value==='FR';
+        $('userTestCrewField').hidden=!crew||!isFR;
+        $('userTestCrewHint').hidden=!crew||!isFR;
+        if(!crew||!isFR)$('userTestCrew').checked=false;
       };
       roleInput.onchange=toggleCrewMarket;
+      $('userCrewMarket').onchange=toggleCrewMarket;
       $('userCrewMarket').value=existing?.market_fr?'FR':
         existing?.market_pl?'PL':'FR';
+      $('userTestCrew').checked=Boolean(existing?.is_test);
+      $('userTestCrew').disabled=Boolean(existing);
       toggleCrewMarket();
 
       const assigned=new Set((existing?.warehouses||'').split(',').map(x=>x.trim()).filter(Boolean));
@@ -1526,6 +1536,7 @@
         phone:$('userPhone').value.trim(),
         role:$('userRole').value,
         crewMarket:$('userRole').value==='EKIPA' ? $('userCrewMarket').value : null,
+        isTestCrew:!userId&&$('userRole').value==='EKIPA'&&$('userCrewMarket').value==='FR'&&$('userTestCrew').checked,
         warehouses,
         ...(userId?{userId,active:Number($('userStatus').value)}:{})
       };
