@@ -145,7 +145,7 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=53"></script>
+  <script type="module" src="./js/app.js?v=54"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -191,6 +191,11 @@
           </div>
         </div>
 
+        <div id="frWeeklyWarning" class="fr-weekly-warning hidden" role="status">
+          <strong>Wymagana inwentaryzacja</strong>
+          <span>Termin cotygodniowej inwentaryzacji minął. Możesz nadal wykonywać pobrania i zwroty.</span>
+        </div>
+        <button id="frPushEnableBtn" class="instruction-link-btn fr-push-enable hidden" type="button">♧ Włącz przypomnienia na telefonie</button>
         <div class="warehouse-scan-area">
           <h2 class="warehouse-scan-title">Zeskanuj kod magazynu aby rozpocząć wizytę</h2>
           <label for="frVehiclePlate" style="display:block;margin:10px 0 4px;font-size:14px;font-weight:600">Numer rejestracyjny samochodu</label>
