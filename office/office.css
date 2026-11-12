@@ -5302,23 +5302,16 @@
     url('/images/warehouse-background.jpg?v=2') center center/cover no-repeat,
     #101821;
 }
-.app.view-home .topbar{
-  background:rgba(12,18,25,.88);
-  border-bottom:1px solid rgba(230,238,247,.12);
-}
-.app.view-home .breadcrumbs{color:#9cabba}
-.app.view-home .breadcrumbs strong{color:#e4eaf0}
-.app.view-home .breadcrumbs span{color:#667788}
-.app.view-home .top-status{color:#bccad5}
+.app.view-home .topbar{display:none}
 .app.view-home .content{
   max-width:none;
-  min-height:calc(100dvh - 70px);
+  min-height:100dvh;
   padding:0 clamp(22px,4vw,62px) 22px;
 }
 .office-home{
   display:flex;flex-direction:column;justify-content:space-between;
   width:min(100%,1220px);
-  min-height:calc(100dvh - 92px);
+  min-height:calc(100dvh - 22px);
   margin:0 auto;
 }
 .office-home-hero{
@@ -5365,8 +5358,8 @@
 .office-home-online{display:flex;align-items:center;gap:8px;color:#a3cfb5;font-weight:750}
 .office-home-online span{width:7px;height:7px;border-radius:50%;background:#3fa66d}
 @media(max-width:690px){
-  .app.view-home .content{padding:0 22px 20px;min-height:calc(100dvh - 58px)}
-  .office-home{min-height:calc(100dvh - 78px)}
+  .app.view-home .content{padding:0 22px 20px;min-height:100dvh}
+  .office-home{min-height:calc(100dvh - 20px)}
   .office-home-hero{min-height:430px}
   .office-home-shade{padding:28px 0 28px;gap:65px}
   .office-home-lockup img{width:65px;height:60px}
