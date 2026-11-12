@@ -765,7 +765,6 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     $('pageActions').classList.remove('hidden');
     setHead('Stany magazynowe','', '');
     $('warehouseCrumb').textContent=label.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
-    $('refresh').classList.add('hidden');
     $('syncTime').textContent='';
     renderMenu();
     render();
@@ -868,12 +867,13 @@ function setHead(title,kicker,desc){
   $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
-  $('refresh').classList.toggle('hidden',Boolean(state.preview?.type==='warehouse')||state.view==='vehicles');
-  // A preview with no D1 fleet source must not show a stale sync timestamp.
-  $('syncTime').classList.toggle('hidden',state.view==='vehicles');
-  if(state.view==='vehicles')$('syncTime').textContent='';
-  $('refresh').disabled=Boolean(frEmpty)||state.view==='vehicles';
-  $('refresh').title=frEmpty?'Brak danych do synchronizacji':'Odśwież dane';
+  // Keep the synchronization control on every Office screen, including fleet
+  // and French catalogues; it refreshes the current view without reloading.
+  $('refresh').classList.remove('hidden');
+  $('syncTime').classList.toggle('hidden',Boolean(frEmpty));
+  if(frEmpty)$('syncTime').textContent='';
+  $('refresh').disabled=false;
+  $('refresh').title='Pobierz aktualne dane';
   // French catalogue views can add shared parts, without creating stock.
 }
 function syncStockTabUI(){
@@ -2002,7 +2002,7 @@ function drawFrenchEmptyView(){
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
 }
-async function render(){
+async function render({silent=false}={}){
   if(state.view==='home')return;
   if(state.view==='vehicles'){
     errorBanner('');
@@ -2010,7 +2010,7 @@ async function render(){
     const french=state.preview?.type==='operation'&&state.preview.key==='vehicles';
     if(polish||french){
       const ticket=++state.requestId;
-      $('tableArea').innerHTML='<div class="loading">Wczytywanie katalogu samochodowego…</div>';
+      if(!silent)$('tableArea').innerHTML='<div class="loading">Wczytywanie katalogu samochodowego…</div>';
       try{
         // French team membership is reloaded on entering each fleet tab,
         // so a newly created Admin EKIPA appears without a second registry.
@@ -2026,6 +2026,7 @@ async function render(){
           state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],history:teamResponse.history||[]};
           drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
         }else drawVehicles();
+        markSynced();
       }catch(ex){
         if(ticket!==state.requestId)return;
         errorBanner(ex.message||'Nie udało się pobrać katalogu samochodowego.');
@@ -2054,7 +2055,7 @@ async function render(){
     const cacheKey=isBox?'FR-BOX-'+boxId:'FR-COMMON-CATALOG';
     try{
       if(!state.partsCache.has(cacheKey)){
-        setLoading();
+        if(!silent)setLoading();
         const response=isBox?await api('frBoxCatalog',{warehouse:boxId}):
           await api('frCatalog');
         if(ticket!==state.requestId)return;
@@ -2079,7 +2080,7 @@ async function render(){
     catch(error){errorBanner(error.message||'Nie udało się otworzyć drukowania etykiet.');}
     return;
   }
-  setLoading();
+  if(!silent)setLoading();
   const params={warehouse:state.warehouse};
   try{
     if(state.view==='stocks'){
@@ -2635,12 +2636,72 @@ $('search').addEventListener('input',e=>{
   }else filterCurrent();
 });
 $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';filterCurrent();});
-$('refresh').addEventListener('click',()=>{
-  if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    render();return;
+// Reload only the open screen. Never reload the page, PIN session or print
+// queue, and never interrupt a user who is editing a field or dialog.
+let syncBusy=false;
+let lastAutomaticSync=Date.now();
+async function synchronizeOffice({automatic=false}={}){
+  if(!state.user||syncBusy||!navigator.onLine)return;
+  if(automatic){
+    if(document.visibilityState!=='visible')return;
+    const active=document.activeElement;
+    if(active&&(/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)||active.isContentEditable))
+      return;
+    if(document.querySelector('dialog[open]')||
+       ['modal','docPrintModal','photoViewer'].some(id=>{
+         const el=$(id);return el&&!el.classList.contains('hidden');
+       }))return;
   }
-  if(state.view==='labels'){window.GPBSOfficeLabels?.refresh();return;}
-  state.partsCache.clear();state.detailCache.clear();render();
+  syncBusy=true;
+  const user=state.user;
+  for(const id of ['refresh','homeRefresh']){
+    const button=$(id);
+    if(button){button.disabled=true;button.setAttribute('aria-busy','true');}
+  }
+  try{
+    if(state.view==='home'||
+       state.preview?.type==='module'||
+       (state.preview?.type==='operation'&&state.view!=='vehicles')){
+      // Welcome and not-yet-connected sections: update warehouse navigation,
+      // rather than pretending their fictional/empty tables are live stock.
+      const data=await api('warehouses');
+      if(user!==state.user)return;
+      state.warehouses=data.warehouses||[];
+      renderMenu();
+      if(state.view!=='home')markSynced();
+    }else if(state.view==='labels'){
+      // The label component keeps the user's pending print queue intact.
+      await window.GPBSOfficeLabels?.refresh();
+      if(user===state.user)markSynced();
+    }else{
+      const scroll=$('tableArea');
+      const top=scroll.scrollTop,left=scroll.scrollLeft;
+      state.partsCache.clear();
+      if(!automatic)state.detailCache.clear();
+      await render({silent:automatic});
+      if(automatic&&user===state.user){
+        scroll.scrollTop=top;
+        scroll.scrollLeft=left;
+      }
+    }
+  }catch(ex){
+    if(user!==state.user)return;
+    if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
+    else if(state.view==='home'){$('homeSyncError').textContent=ex.message||'Nie udało się pobrać danych.';}
+    else errorBanner(ex.message||'Synchronizacja nie powiodła się.');
+  }finally{
+    syncBusy=false;
+    for(const id of ['refresh','homeRefresh']){
+      const button=$(id);
+      if(button){button.disabled=false;button.removeAttribute('aria-busy');}
+    }
+    if(automatic)lastAutomaticSync=Date.now();
+  }
+}
+$('refresh').addEventListener('click',()=>synchronizeOffice());
+$('homeRefresh').addEventListener('click',()=>{
+  $('homeSyncError').textContent='';
+  synchronizeOffice();
 });
 // Warehouse lists remain permanently visible; no expanding menu.
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
@@ -2737,5 +2798,19 @@ $('installOffice').addEventListener('click',async()=>{
 });
 updateOfficeInstallUI();
 (async()=>{try{setLoggedIn(await api('warehouses'));}catch{showLogin();}})();
-setInterval(()=>{if(state.user&&document.visibilityState==='visible'){state.partsCache.clear();render();}},15*60*1000);
+// Refresh only while Office is open and visible; background tabs do not
+// generate D1 reads. If someone is entering data, wait until their next idle slot.
+setInterval(()=>{
+  if(!state.user||document.visibilityState!=='visible')return;
+  if(Date.now()-lastAutomaticSync<5*60*1000)return;
+  lastAutomaticSync=Date.now();
+  synchronizeOffice({automatic:true});
+},5*60*1000);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&state.user&&
+     Date.now()-lastAutomaticSync>=5*60*1000){
+    lastAutomaticSync=Date.now();
+    synchronizeOffice({automatic:true});
+  }
+});
 })();
