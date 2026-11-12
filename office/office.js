@@ -1040,6 +1040,7 @@ function drawDocs(){
   const direction=state.view==='pz'?'PZ':'WZ';
   const opposite=direction==='PZ'?'WZ':'PZ';
   const docs=state.docs;
+  const frenchBox=!state.preview&&['FR-TOULOUSE','FR-PARIS'].includes(state.warehouse);
   const rows=docs.map(d=>{
     const over=Number(d.shortage||0)>0;
     const expanded=state.expanded===d.id;
@@ -1067,8 +1068,8 @@ function drawDocs(){
   }).join('');
   $('tableArea').innerHTML=wrapTable([
     {label:'Data'},{label:'Tydz.'},
-    {label:direction==='PZ'?'Dostawca / Ekipa':'Odbiorca'},
-    {label:direction==='PZ'?'Przyjmował':'Wydawał'},
+    {label:frenchBox?'Ekipa':direction==='PZ'?'Dostawca / Ekipa':'Odbiorca'},
+    {label:frenchBox?'Operację wykonała':direction==='PZ'?'Przyjmował':'Wydawał'},
     {label:''}
   ],rows)||'<div class="empty">Brak dokumentów.</div>';
   $('tableFooter').textContent=docs.length+' dokumentów'+
@@ -1111,6 +1112,8 @@ async function openDocumentPrint(id,direction){
     }
   }
   const warehouse=realWarehouse(state.warehouse)?.name||'Magazyn';
+  const frenchBox=realWarehouse(state.warehouse)?.country_code==='FR'&&
+    ['FR-TOULOUSE','FR-PARIS'].includes(state.warehouse);
   const isReceipt=direction==='PZ';
   const title=isReceipt?'POTWIERDZENIE PRZYJĘCIA':'POTWIERDZENIE WYDANIA';
   const items=lines.map((p,i)=>
@@ -1130,7 +1133,7 @@ async function openDocumentPrint(id,direction){
   $('docPrintSheet').innerHTML=
     '<div class="doc-print-letterhead">'+
       '<div class="doc-print-brand"><strong>GPBS</strong><span>STORAGE</span></div>'+
-      '<span class="doc-print-region">POLSKA · DOKUMENT MAGAZYNOWY</span>'+
+      '<span class="doc-print-region">'+(frenchBox?'FRANCJA · OPERACJA BOX':'POLSKA · DOKUMENT MAGAZYNOWY')+'</span>'+
     '</div>'+
     '<div class="doc-print-title-row"><div><span class="doc-print-kicker">DOKUMENT '+direction+'</span>'+
       '<h2>'+title+'</h2></div><strong class="doc-print-type">'+direction+'</strong></div>'+
@@ -1138,8 +1141,10 @@ async function openDocumentPrint(id,direction){
       printField('Magazyn',warehouse)+
       printField('Data operacji',dateText(documentRow.date))+
       printField('Tydzień',isoWeek(documentRow.date))+
-      printField(isReceipt?'Dostawca / ekipa':'Odbiorca',documentRow.counterparty,documentRow.registration_plate||'')+
-      printField(isReceipt?'Przyjmował':'Wydawał',documentRow.worker)+
+      printField(frenchBox?'Ekipa':isReceipt?'Dostawca / ekipa':'Odbiorca',
+        documentRow.counterparty,documentRow.registration_plate||'')+
+      printField(frenchBox?'Wykonała operację':isReceipt?'Przyjmował':'Wydawał',
+        documentRow.worker)+
     '</div>'+
     '<div class="doc-print-section-title">Lista części</div>'+
     '<table class="doc-print-parts"><thead><tr><th>Lp.</th><th>Indeks SAP</th><th>Nazwa części</th><th>Ilość</th></tr></thead>'+
@@ -1149,8 +1154,12 @@ async function openDocumentPrint(id,direction){
     (warn?'<p class="doc-print-warning">Uwaga: wydanie obejmuje pozycje przekraczające stan ewidencyjny.</p>':'')+
     '<div class="doc-print-bottom"><div class="doc-print-notes"><strong>Uwagi:</strong><div></div><div></div></div>'+
     '<div class="doc-print-signatures">'+
-      signature(leftName,leftPerson,isReceipt?(documentRow.registration_plate||''):null)+
-      signature(rightName,rightPerson,!isReceipt?(documentRow.registration_plate||''):null)+'</div></div>';
+      (frenchBox
+        ?signature('Ekipa wykonująca operację',documentRow.counterparty,
+          documentRow.registration_plate||'')
+        :signature(leftName,leftPerson,isReceipt?(documentRow.registration_plate||''):null)+
+         signature(rightName,rightPerson,!isReceipt?(documentRow.registration_plate||''):null))+
+      '</div></div>';
   $('docPrintModal').classList.remove('hidden');
   $('docPrintClose').focus();
 }
