@@ -217,12 +217,12 @@ export async function onRequestGet({request,env}){
         for(const crew of crews)if(crew.vehicleId)crew.stock=stocks.get(crew.vehicleId)||{};
         if(hasEvents){
           const events=(await env.DB.prepare(
-            "SELECT vehicle_id,MAX(event_at) AS last_at FROM fr_vehicle_events "+
-            "WHERE type='INWENTARYZACJA' GROUP BY vehicle_id"
+            "SELECT vehicle_id,user_id,MAX(event_at) AS last_at FROM fr_vehicle_events "+
+            "WHERE type='INWENTARYZACJA' GROUP BY vehicle_id,user_id"
           ).all()).results||[];
-          const last=new Map(events.map(x=>[x.vehicle_id,x.last_at]));
+          const last=new Map(events.map(x=>[x.user_id+'::'+x.vehicle_id,x.last_at]));
           for(const crew of crews)if(crew.vehicleId){
-            crew.lastInventory=last.get(crew.vehicleId)||null;
+            crew.lastInventory=last.get(crew.id+'::'+crew.vehicleId)||null;
             crew.inventory=Boolean(crew.lastInventory);
           }
         }
