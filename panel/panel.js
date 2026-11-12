@@ -6,7 +6,6 @@
   const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false, boxPartsSource:null,vehiclePartChoice:null};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
-    boxQr:['Magazyny BOX · QR','Generator i drukowanie kodów QR wyłącznie dla magazynów samoobsługowych we Francji.'],
     warehouses:['Magazyny','Magazyny Polski i Francji. Kody QR Boxów pozostają bez zmian.'],
     parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
     boxParts:['Katalog części Boxy','Wyłącznie części dla Box Toulouse i Box Paris. Stany obu magazynów są rozdzielone.'],
@@ -77,7 +76,6 @@
     if(!res.ok||!json?.ok)throw new Error(json?.error||'Serwer nie odpowiedział.');
     state.isSuperAdmin=Boolean(json.user?.superAdmin);
     $('superAdminNav').classList.toggle('hidden',!state.isSuperAdmin);
-    $('boxQrNav').classList.toggle('hidden',!state.isSuperAdmin);
     return json.data;
   }
 
@@ -100,7 +98,6 @@
     state.loggedIn=false;
     state.isSuperAdmin=false;
     $('superAdminNav').classList.add('hidden');
-    $('boxQrNav').classList.add('hidden');
     $('superPinForm').reset();
     $('superPasswordForm').reset();
     $('app').classList.add('hidden');
@@ -1222,6 +1219,28 @@
       'Wyłączone stare indeksy: '+retired;
   }
 
+  function renderWarehousesTable(items) {
+    const [columns,rows]=colsFor('warehouses',items);
+    columns.push('KOD QR / DRUK');
+    for(let i=0;i<items.length;i++){
+      const warehouse=items[i],code=String(warehouse.qr_code||'').trim();
+      if(!code){rows[i].push('—');continue;}
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='btn mini warehouse-show-qr';
+      button.textContent='Pokaż QR';
+      button.title='Wyświetl istniejący kod QR — bez zmiany numeru';
+      button.setAttribute('aria-label','Pokaż kod QR magazynu '+warehouse.name);
+      button.addEventListener('click',()=>showBoxQr({
+        id:warehouse.id,name:warehouse.name,code
+      }));
+      rows[i].push(button);
+    }
+    const table=buildTable(columns,rows);
+    table.classList.add('warehouses-unified-table');
+    return table;
+  }
+
   function renderList() {
     const q=$('tableSearch').value.toLocaleLowerCase('pl').trim();
     const matching=state.records.filter(row=>
@@ -1234,6 +1253,7 @@
       empty.textContent=state.records.length?'Nie znaleziono pasujących pozycji.':'Brak danych do wyświetlenia.';
       $('tableResults').append(empty);
     }else $('tableResults').append(state.view==='users'?renderUsersTable(matching)
+      :state.view==='warehouses'?renderWarehousesTable(matching)
       :state.view==='parts'||state.view==='newParts'
         ?renderPartsTable(matching,state.view==='newParts')
         :state.view==='vehicleParts'?renderVehiclePartsTable(matching)
@@ -1257,7 +1277,7 @@
   }
 
   function showView(view) {
-    if(!defs[view]||((view==='superAdmin'||view==='boxQr')&&!state.isSuperAdmin))return;
+    if(!defs[view]||(view==='superAdmin'&&!state.isSuperAdmin))return;
     state.view=view;
     $('pageHeading').classList.toggle('hidden',view==='summary');
     $('pageTitle').textContent=defs[view][0];
@@ -1270,8 +1290,7 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='boxQr'||view==='frWeeklySettings');
-    $('boxQrView').classList.toggle('hidden',view!=='boxQr');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings');
     $('frWeeklySettingsView').classList.toggle('hidden',view!=='frWeeklySettings');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
@@ -1285,6 +1304,10 @@
     $('warehouseFilter').classList.add('hidden');
     $('addPartBtn').classList.toggle('hidden',view!=='parts');
     $('vehicleAddPartBtn').classList.toggle('hidden',view!=='vehicleParts');
+    $('showBoxWarehouseFormBtn').classList.toggle('hidden',
+      view!=='warehouses'||!state.isSuperAdmin);
+    $('warehouseCreation').classList.add('hidden');
+    $('showBoxWarehouseFormBtn').setAttribute('aria-expanded','false');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
     $('tableDescription').textContent=defs[view][1];
@@ -1292,7 +1315,7 @@
   }
 
   async function navigate(view) {
-    if((view==='superAdmin'||view==='boxQr')&&!state.isSuperAdmin)return;
+    if(view==='superAdmin'&&!state.isSuperAdmin)return;
     showView(view);
     closeSide();
     try {
@@ -1306,11 +1329,6 @@
         $('frWeeklyPushNotice').textContent=settings.enabled
           ?'Harmonogram zapisany. Powiadomienia na zamkniętym telefonie wymagają dodatkowo konfiguracji Web Push w Cloudflare.'
           :'Harmonogram wyłączony.';
-        return;
-      }
-      if(view==='boxQr'){
-        state.records=await api('boxQr');
-        if(state.view==='boxQr')renderBoxQrRows();
         return;
       }
       if(view==='superAdmin'){
@@ -1368,41 +1386,6 @@
     } catch(error){message(error.message,'error');}
   }
 
-  // BOX QR generator is intentionally isolated from ordinary warehouse UI.
-  function renderBoxQrRows() {
-    const root=$('boxQrRows');
-    root.replaceChildren();
-    const records=Array.isArray(state.records)?state.records:[];
-    if(!records.length){
-      const empty=document.createElement('p');
-      empty.textContent='Brak zarejestrowanych magazynów BOX w D1. Możesz dodać nowy magazyn.';
-      root.append(empty);
-      return;
-    }
-    for(const warehouse of records){
-      const line=document.createElement('div');
-      line.className='box-qr-row';
-      const name=document.createElement('div');
-      name.className='box-qr-name';
-      const title=document.createElement('strong');title.textContent=warehouse.name;
-      const desc=document.createElement('small');
-      desc.textContent=warehouse.id+' · '+(warehouse.active?'Aktywny':'Nieaktywny')+
-        ' · kod: '+warehouse.code;
-      name.append(title,desc);
-      const actions=document.createElement('div');
-      actions.className='box-qr-row-actions';
-      const preview=document.createElement('button');preview.type='button';
-      preview.className='btn mini';preview.textContent='Pokaż QR';
-      preview.addEventListener('click',()=>showBoxQr(warehouse));
-      const regenerate=document.createElement('button');regenerate.type='button';
-      regenerate.className='btn mini ghost';regenerate.textContent='Zmień kod';
-      regenerate.title='Stary wydrukowany kod QR przestanie działać';
-      regenerate.addEventListener('click',()=>rotateBoxQr(warehouse,regenerate));
-      actions.append(preview,regenerate);
-      line.append(name,actions);root.append(line);
-    }
-  }
-
   async function createBoxQrWarehouse(event) {
     event.preventDefault();
     const button=$('boxWarehouseAdd');
@@ -1416,29 +1399,14 @@
     busy(button,true);
     try{
       const result=await post({action:'boxCreate',name});
-      state.records=await api('boxQr');
-      renderBoxQrRows();
+      state.records=await api('warehouses');
+      if(state.view==='warehouses')renderList();
       $('boxWarehouseForm').reset();
+      $('warehouseCreation').classList.add('hidden');
+      $('showBoxWarehouseFormBtn').setAttribute('aria-expanded','false');
       message('Dodano BOX '+result.warehouse.name+' i zapisano jego kod QR w D1.','info');
       showBoxQr(result.warehouse);
     }catch(error){message(error.message||'Nie udało się dodać magazynu BOX.','error');}
-    finally{busy(button,false);}
-  }
-
-  async function rotateBoxQr(warehouse,button) {
-    if(!await confirmAction({
-      title:'Zmienić kod QR magazynu '+warehouse.name+'?',
-      description:'UWAGA: dotychczasowy wydrukowany kod QR natychmiast przestanie działać. Przed zmianą przygotuj nową etykietę.',
-      confirmLabel:'Wygeneruj nowy kod',danger:true
-    }))return;
-    busy(button,true);
-    try{
-      const result=await post({action:'boxQrRotate',warehouseId:warehouse.id});
-      state.records=await api('boxQr');
-      renderBoxQrRows();
-      message('Zapisano nowy kod magazynu '+warehouse.name+'. Poprzedni kod jest nieaktywny.','info');
-      showBoxQr(result.warehouse);
-    }catch(error){message(error.message||'Nie udało się zmienić kodu.','error');}
     finally{busy(button,false);}
   }
 
@@ -1989,6 +1957,14 @@
     });
     $('sideOverlay').addEventListener('click',closeSide);
     $('boxWarehouseForm').addEventListener('submit',createBoxQrWarehouse);
+    $('showBoxWarehouseFormBtn').addEventListener('click',()=>{
+      if(!state.isSuperAdmin||state.view!=='warehouses')return;
+      const field=$('warehouseCreation');
+      const willOpen=field.classList.contains('hidden');
+      field.classList.toggle('hidden',!willOpen);
+      $('showBoxWarehouseFormBtn').setAttribute('aria-expanded',String(willOpen));
+      if(willOpen)$('boxWarehouseName').focus();
+    });
     $('boxQrClose').addEventListener('click',()=>$('boxQrDialog').close());
     $('boxQrDownload').addEventListener('click',downloadBoxQr);
     $('boxQrPrintButton').addEventListener('click',()=>window.print());
