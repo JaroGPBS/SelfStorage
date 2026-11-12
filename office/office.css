@@ -5391,3 +5391,18 @@
 .office-home-sync:hover{background:rgba(255,255,255,.13)}
 .office-home-sync:disabled{opacity:.55;cursor:wait}
 .office-home-sync-error{min-height:0;margin:9px 0 0;color:#ffc9c9;font-size:12px}
+
+/* Fleet screen hides its table toolbar: show synchronization in the top bar. */
+.app.view-vehicles .vehicle-top-export-host{
+  display:flex;align-items:center;gap:8px;min-width:0;
+}
+.app.view-vehicles .vehicle-top-export-host .sync-label{
+  margin:0;font-size:10px;white-space:nowrap;
+}
+@media(max-width:760px){
+  .app.view-vehicles .vehicle-top-export-host .sync-label{display:none}
+  .app.view-vehicles .vehicle-top-export-host #refresh{padding:6px 9px;min-height:33px;white-space:nowrap}
+}
+@media(max-width:430px){
+  .app.view-vehicles .vehicle-top-export-host #refresh span{display:none}
+}
