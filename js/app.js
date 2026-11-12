@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=8';
 
-const APP_VERSION = '0.57';
+const APP_VERSION = '0.58';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -421,7 +421,8 @@ function renderWarehouse() {
   if(plateInput && state.team?.id) {
     const current=String(state.team.samochod||'').trim();
     const stored=localStorage.getItem('gpbs-fr-car-'+state.team.id)||'';
-    if(!plateInput.value)plateInput.value=current||stored;
+    // Never carry the previous crew's typed plate into the next login.
+    plateInput.value=current||stored;
   }
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
