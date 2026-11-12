@@ -976,7 +976,12 @@ function drawStocks(parts,warehouseId){
     {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true},
     {label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}
   ],rows,'part-stock-table')||'';
-  $('tableFooter').textContent=filtered.length+' części';
+  const fromD1=parts.filter(p=>p.stock_source==='D1').length;
+  const fromSheet=parts.filter(p=>p.stock_source==='arkusz').length;
+  const sourceInfo=fromSheet
+    ?' · Ilości: '+fromD1+' z D1, '+fromSheet+' z arkusza Stock FR GPBS'
+    :fromD1?' · Ilości z D1':'';
+  $('tableFooter').textContent=filtered.length+' części'+sourceInfo;
   noteSearch(filtered.length,parts.length,'częściach');
 }
 function drawModules(){
@@ -2040,11 +2045,14 @@ async function render(){
     }
     const ticket=++state.requestId;
     const isBox=state.preview.key==='toulouse'||state.preview.key==='paris';
-    const cacheKey=isBox?'FR-BOX-CATALOG':'FR-COMMON-CATALOG';
+    const boxId=state.preview.key==='toulouse'?'FR-TOULOUSE':
+      state.preview.key==='paris'?'FR-PARIS':null;
+    const cacheKey=isBox?'FR-BOX-'+boxId:'FR-COMMON-CATALOG';
     try{
       if(!state.partsCache.has(cacheKey)){
         setLoading();
-        const response=await api(isBox?'frBoxCatalog':'frCatalog');
+        const response=isBox?await api('frBoxCatalog',{warehouse:boxId}):
+          await api('frCatalog');
         if(ticket!==state.requestId)return;
         state.partsCache.set(cacheKey,response.parts||[]);
       }
@@ -2172,7 +2180,8 @@ function filterCurrent(){
     if(state.stockTab==='modules')render();
     else drawStocks(state.partsCache.get(
       ['toulouse','paris'].includes(state.preview.key)
-        ?'FR-BOX-CATALOG':'FR-COMMON-CATALOG')||[],null);
+        ?'FR-BOX-'+(state.preview.key==='toulouse'?'FR-TOULOUSE':'FR-PARIS')
+        :'FR-COMMON-CATALOG')||[],null);
     return;
   }
   if(state.view==='stocks'){
@@ -2213,6 +2222,17 @@ async function openPart(id){
       :await api('part',{warehouse,part:id});
     if(modal.classList.contains('hidden'))return;
     const p=payload.part;
+    const selectedBox=virtualFrench?
+      (state.preview?.key==='toulouse'?'FR-TOULOUSE':
+       state.preview?.key==='paris'?'FR-PARIS':null):
+      ['FR-TOULOUSE','FR-PARIS'].includes(warehouse)?warehouse:null;
+    const current=selectedBox?state.partsCache.get(
+      virtualFrench?'FR-BOX-'+selectedBox:selectedBox
+    )?.find(item=>item.id===id):null;
+    if(current){
+      p.quantity=current.quantity;
+      p.stock_source=current.stock_source;
+    }
     state.labelPart=p;
     const amount=p.quantity;
     const uploadedPhoto=Boolean(Number(p.has_photo));
