@@ -1,11 +1,11 @@
 // GPBS Storage — read-only warehouse data for Polish mobile warehouse workers.
-// Only ADMIN, KIEROWNIK and MAGAZYNIER can use this route.
+// Authorized mobile warehouse staff, including enabled coordinators, use this route.
 // Every request verifies the signed session, live role, active account and
 // warehouse grants in D1. The legacy French /api gateway is not involved.
 import { verifyWorkerSession, workerJson, workerAuthReady } from '../../../lib/pl-worker-auth.js';
 import {ensurePartIndexes} from '../../../lib/pl-part-indexes.js';
 
-const STOCK_ROLES = new Set(['ADMIN', 'KIEROWNIK', 'MAGAZYNIER']);
+const STOCK_ROLES = new Set(['ADMIN', 'KIEROWNIK', 'KOORDYNATOR', 'MAGAZYNIER']);
 const PAGE_SIZE = 60;
 const MAX_PAGE = 100;
 
@@ -24,7 +24,7 @@ export async function onRequestGet({request,env}) {
     return failure('Nie można zweryfikować dostępu.',503);
   }
   if(!user)return failure('Sesja wygasła. Zaloguj się ponownie.',401);
-  if(!STOCK_ROLES.has(user.role))return failure('Ta rola nie ma dostępu do modułu magazynowego.',403);
+  if(!user.apps?.mobile||!STOCK_ROLES.has(user.role))return failure('Ta rola nie ma dostępu do modułu magazynowego.',403);
 
   const url=new URL(request.url);
   const warehouseId=url.searchParams.get('warehouse')||'';
