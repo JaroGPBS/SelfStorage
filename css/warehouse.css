@@ -1146,3 +1146,12 @@ body:has(#screenWarehouse.active) .app-signature img{
   max-height:35px;
   object-fit:contain;
 }
+
+
+/* Direct first-inventory action on the warehouse welcome screen. */
+#screenWarehouse .vehicle-entry-btn.is-first-inventory{
+  background:linear-gradient(145deg,#bc303a,#90232e);
+  border-color:rgba(255,157,164,.55);
+  color:#fff;
+  font-weight:850;
+}
