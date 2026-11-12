@@ -535,8 +535,8 @@
         const remove=document.createElement('button');
         remove.type='button';
         remove.className='btn mini archive-danger';
-        remove.textContent='Usuń na stałe';
-        remove.setAttribute('aria-label','Usuń na stałe ekipę '+user.name);
+        remove.textContent='Usuń';
+        remove.setAttribute('aria-label','Usuń ekipę '+user.name);
         remove.addEventListener('click',event=>{
           event.stopPropagation();
           deleteUnusedCrew(user,remove);
@@ -1628,7 +1628,7 @@
     if(!await confirmAction({
       title:'Trwale usunąć ekipę '+user.name+'?',
       description:'Konto, PIN i przypisania zostaną usunięte. Jeśli ekipa ma operacje zmieniające stany, usuwanie zostanie zablokowane. Stany magazynowe pozostają bez zmian.',
-      confirmLabel:'Usuń na stałe',danger:true
+      confirmLabel:'Usuń',danger:true
     }))return;
     busy(button,true);
     const parent=button.parentElement;
