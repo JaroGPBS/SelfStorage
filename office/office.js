@@ -1722,7 +1722,7 @@ function printVehicleInventoryReport(){
     }
   }
 }
-function drawFrenchVehicleFleet(parts,crews,history=[]){
+function drawFrenchVehicleFleet(parts,crews,history=[],handoverHistory=[]){
   const entries=Array.isArray(parts)?parts:[];
   const teams=Array.isArray(crews)?crews:[];
   if(!teams.some(c=>c.id===state.frVehicleCrew))
@@ -1757,12 +1757,15 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       String(chosen?.id===team.id)+'">'+
       '<span class="vehicle-team-caption">Ekipa</span>'+
       '<span class="vehicle-team-name">'+escapeHtml(team.team)+'</span>'+
-      '<small>'+escapeHtml(team.plate||'Bez samochodu')+'</small></button>').join('')+
+      '<small>'+escapeHtml(team.plate||'Bez samochodu')+'</small>'+ 
+      (team.plate&&!team.inventory?'<small>Wymagana inwentaryzacja</small>':'')+'</button>').join('')+
     '</div>');
   const meta=summary||!chosen?'':(
     '<div class="vehicle-setup-meta">'+
       [['Ekipa',chosen.team],['Tablica rejestracyjna',chosen.plate||'—'],
        ['Inwentaryzacja',chosen.inventory?'Wykonana':'Wymagana inwentaryzacja'],
+       ['Poprzednia ekipa',chosen.previousCrew||'—'],
+       ['Przypisano samochód',chosen.assignedAt?String(chosen.assignedAt).slice(0,16):'—'],
        ['Ostatnia inwentaryzacja',chosen.lastInventory?String(chosen.lastInventory).slice(0,10):'Brak']]
       .map(([label,value])=>'<div><span>'+escapeHtml(label)+'</span>'+
         '<div class="vehicle-preview-meta-value"><strong>'+
@@ -1860,8 +1863,25 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       '</tbody></table></div>':'<p>Brak zapisanych pobrań i zwrotów.</p>')+
     '</details>'
   ):'';
+  const assignments=Array.isArray(handoverHistory)?handoverHistory:[];
+  const handoverMarkup=!summary&&assignments.length?(
+    '<details class="vehicle-fr-history" style="margin:20px 0">'+
+    '<summary style="font-weight:700;cursor:pointer">Przypisania samochodów ('+
+      assignments.length+')</summary>'+
+    '<div style="overflow-x:auto"><table class="table"><thead><tr>'+
+    '<th>Data</th><th>Samochód</th><th>Nowa ekipa</th><th>Poprzednia ekipa</th><th>Status</th>'+
+    '</tr></thead><tbody>'+
+    assignments.map(item=>'<tr><td>'+
+      escapeHtml(String(item.assigned_at||'').slice(0,16))+'</td><td>'+
+      escapeHtml(item.plate||'—')+'</td><td>'+
+      escapeHtml(item.crew||'—')+'</td><td>'+
+      escapeHtml(item.previous_crew||'—')+'</td><td>'+
+      escapeHtml(item.verified_at?'Inwentaryzacja wykonana':'Wymagana inwentaryzacja')+
+      '</td></tr>').join('')+
+    '</tbody></table></div></details>'
+  ):'';
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
-    tabs+selection+meta+table+historyMarkup+'</div>';
+    tabs+selection+meta+table+historyMarkup+handoverMarkup+'</div>';
   $('tableFooter').textContent='Francja · '+entries.length+
     ' części · '+teams.length+' ekip · rzeczywiste dane z D1.';
   $('searchNote').classList.add('hidden');
@@ -1960,8 +1980,10 @@ async function render(){
           useVehicleCatalogueInDemo(response.parts||[]);
           drawPolishVehiclePreview();
         }else if(french){
-          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],history:teamResponse.history||[]};
-          drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
+          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],
+            history:teamResponse.history||[],handoverHistory:teamResponse.handoverHistory||[]};
+          drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,
+            state.frVehicleData.history,state.frVehicleData.handoverHistory);
         }else drawVehicles();
       }catch(ex){
         if(ticket!==state.requestId)return;
@@ -2301,7 +2323,8 @@ document.addEventListener('click',e=>{
     const id=frenchCrew.dataset.frVehicleCrew;
     if(state.frVehicleData?.crews?.some(c=>c.id===id)){
       state.frVehicleCrew=id;
-      drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
+      drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,
+        state.frVehicleData.history,state.frVehicleData.handoverHistory);
     }
     return;
   }
