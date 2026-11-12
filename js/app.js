@@ -435,8 +435,8 @@ function closeMissingVehiclePlate(){
   const error=$('frVehiclePlateError');
   if(error){error.textContent='';error.classList.add('hidden');}
 }
-function showMissingVehiclePlate(){
-  if(!state.team||String(state.team.rola||'').toUpperCase()!=='EKIPA'||
+function showMissingVehiclePlate(force=false){
+  if(!state.team||(!force&&String(state.team.rola||'').toUpperCase()!=='EKIPA')||
      String(state.team.samochod||'').trim()){
     closeMissingVehiclePlate();
     return;
@@ -1975,7 +1975,7 @@ async function startVisit(code) {
 
   try {
     if(!String(state.team.samochod||'').trim()){
-      showMissingVehiclePlate();
+      showMissingVehiclePlate(true);
       showToast('Najpierw wpisz numer rejestracyjny samochodu.',true);
       return;
     }
