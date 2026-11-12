@@ -592,6 +592,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Never cache per-team missed-week status or the live reminder text.
+  if (url.pathname === '/api/fr-weekly' ||
+      url.pathname === '/api/fr-weekly-message') return;
+
   if (request.method !== 'GET') return;
 
   if (url.href === SCANNER_LIBRARY_URL) {
