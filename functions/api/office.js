@@ -157,7 +157,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
-    frCatalog:'stocks',frBoxCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',
+    frCatalog:'stocks',frBoxCatalog:'stocks',frCatalogPhoto:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',vehicleInventories:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
@@ -182,6 +182,62 @@ export async function onRequestGet({request,env}){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
+  }
+  if(view==='vehicleInventories'){
+    // Inventory history belongs to the vehicle, not the currently logged-in crew.
+    const privileged=user.role==='ADMIN'&&
+      String(user.nickname||'').trim().toUpperCase()==='JJ';
+    if(!privileged&&!authorizedWarehouses.some(w=>w.country_code==='FR'))
+      return error('Brak dostępu do samochodów francuskich.',403);
+    const vehicleId=String(url.searchParams.get('vehicleId')||'');
+    if(!/^[A-Za-z0-9_-]{8,120}$/.test(vehicleId))
+      return error('Nieprawidłowy samochód.',400);
+    try{
+      if(!await tableExists(env.DB,'fr_vehicle_events')||
+         !await tableExists(env.DB,'fr_vehicle_event_lines'))
+        return workerJson({ok:true,inventories:[]});
+      const rows=(await env.DB.prepare(
+        'SELECT e.id,e.user_id AS userId,e.vehicle_id AS vehicleId,'+
+        'e.event_at AS date,l.part_id AS partId,'+
+        'l.quantity_before AS qtyBefore,l.quantity_after AS qtyAfter '+
+        'FROM fr_vehicle_events e '+
+        'JOIN fr_vehicle_event_lines l ON l.event_id=e.id '+
+        "WHERE e.vehicle_id=? AND e.type='INWENTARYZACJA' "+
+        'ORDER BY e.event_at DESC,e.id DESC,l.part_id'
+      ).bind(vehicleId).all()).results||[];
+      const map=new Map();
+      for(const line of rows){
+        if(!map.has(line.id))map.set(line.id,{
+          id:line.id,userId:line.userId,vehicleId:line.vehicleId,
+          date:line.date,lines:[]
+        });
+        map.get(line.id).lines.push({
+          partId:line.partId,
+          before:line.qtyBefore===null?null:Number(line.qtyBefore),
+          counted:Number(line.qtyAfter)
+        });
+      }
+      // Movements for these reports must be read by vehicle, without the
+      // global 250-line limit of the simple crew overview.
+      let movements=[];
+      if(await tableExists(env.DB,'fr_sessions')&&
+         await tableExists(env.DB,'fr_session_lines')){
+        movements=(await env.DB.prepare(
+          'SELECT s.id AS sessionId,s.user_id AS userId,'+
+          's.vehicle_id AS vehicleId,s.saved_at AS date,'+
+          's.warehouse_id AS warehouseId,w.name AS warehouseName,'+
+          'l.direction,l.quantity,l.part_id AS partId,p.name AS partName '+
+          'FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
+          'JOIN warehouses w ON w.id=s.warehouse_id '+
+          'JOIN parts p ON p.id=l.part_id WHERE s.vehicle_id=? '+
+          'ORDER BY s.saved_at DESC,s.id DESC'
+        ).bind(vehicleId).all()).results||[];
+      }
+      return workerJson({ok:true,inventories:[...map.values()],movements});
+    }catch(err){
+      console.error('FR vehicle inventory history lookup',err?.name||'Error');
+      return error('Nie udało się pobrać historii inwentaryzacji.',503);
+    }
   }
   if(view==='vehicleCrews'){
     // A crew belongs to a market, not permanently to an outsourced warehouse.

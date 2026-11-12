@@ -3,6 +3,7 @@
 import {verifyWorkerSession,workerJson} from '../../lib/pl-worker-auth.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrCarClaims,normalPlate} from '../../lib/fr-car-claims.js';
+import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
 
 const fail=(message,status=400)=>workerJson({ok:false,error:message},status);
 const clean=value=>String(value||'').trim();
@@ -23,6 +24,8 @@ async function ready(db){
 // Non-destructive first-use bootstrap. Never updates existing warehouse quantities.
 async function ensureSchema(db){
   if(await ready(db))return;
+  // First-time schema bootstrap requires actual warehouse rows for the fixed QR codes.
+  await ensureFrenchBoxSetup(db);
   const ddl=[
     "CREATE TABLE IF NOT EXISTS vehicles ("+
       "id TEXT PRIMARY KEY,registration_number TEXT NOT NULL UNIQUE COLLATE NOCASE,"+
@@ -476,6 +479,8 @@ export async function onRequestPost({request,env}){
     if(!user||!user.apps?.mobile||!user.markets?.FR||user.role!=='EKIPA')
       return fail('Brak dostępu do francuskiego magazynu. Zaloguj się ponownie.',401);
     await ensureSchema(env.DB);
+    if(['POBIERZ_DANE_STARTOWE','SKAN_MAGAZYNU'].includes(entryCode(body.action)))
+      await ensureFrenchBoxSetup(env.DB);
     await ensureFrCarClaims(env.DB);
     return workerJson(await action(env.DB,user,body));
   }catch(err){
