@@ -6,6 +6,7 @@ import {createUnverifiedPart} from '../../lib/pl-part-create.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {readFrWeeklySettings,weeklyInventoryStatus} from '../../lib/fr-weekly-schedule.js';
+import {frenchBoxDocuments,frenchBoxDocumentLines} from '../../lib/fr-office-movements.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
@@ -146,7 +147,7 @@ export async function onRequestGet({request,env}){
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
-  if(view==='documents'){
+  if(view==='documents'||view==='document'){
     const direction=url.searchParams.get('direction');
     if(direction==='PZ'&&permissions.pz===false||
        direction==='WZ'&&permissions.wz===false)
@@ -373,6 +374,31 @@ export async function onRequestGet({request,env}){
   if(!WAREHOUSE.test(warehouseId))return error('Nieprawidłowy magazyn.');
   const authorizedWarehouse=authorizedWarehouses.find(w=>w.id===warehouseId);
   if(!authorizedWarehouse)return error('Brak uprawnień do tego magazynu.',403);
+  // In FR self-storage BOXes, recorded mobile sessions are real receipts
+  // (ZWROT -> PZ) and issues (POBRANIE -> WZ). No Polish document tables used.
+  if(authorizedWarehouse.country_code==='FR' &&
+     (view==='documents'||view==='document')){
+    if(!['FR-TOULOUSE','FR-PARIS'].includes(warehouseId))
+      return error('Historia pobrań i zwrotów nie jest jeszcze dostępna dla tego magazynu.',409);
+    const direction=url.searchParams.get('direction')||'';
+    if(!['PZ','WZ'].includes(direction))return error('Nieprawidłowy typ operacji.');
+    try{
+      if(view==='documents'){
+        const focus=(url.searchParams.get('focus')||'').trim();
+        if(focus&&!/^[A-Za-z0-9_-]{8,120}$/.test(focus))
+          return error('Nieprawidłowy numer operacji.');
+        return workerJson(await frenchBoxDocuments(env.DB,warehouseId,direction,
+          url.searchParams.get('term')||'',focus));
+      }
+      const id=(url.searchParams.get('id')||'').trim();
+      if(!/^[A-Za-z0-9_-]{8,120}$/.test(id))
+        return error('Nieprawidłowy numer operacji.');
+      return workerJson(await frenchBoxDocumentLines(env.DB,warehouseId,direction,id));
+    }catch(err){
+      console.error('French BOX Office movements unavailable',err?.name||'Error');
+      return error('Nie udało się pobrać ruchów magazynu BOX z D1.',503);
+    }
+  }
   // Do not mistake PL-specific PZ/WZ/NOK tables for French operational history.
   if(authorizedWarehouse.country_code==='FR' &&
      !['stocks','part','partPhoto'].includes(view))
