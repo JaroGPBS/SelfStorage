@@ -755,6 +755,8 @@ function renderMenu(){
 }
 function showOfficePreview(type,key,label,warehouseContext=null){
   if(type==='warehouse'){
+    if(key==='toulouse'||key==='paris')
+      state.partsCache.delete('FR-BOX-'+(key==='toulouse'?'FR-TOULOUSE':'FR-PARIS'));
     // Unconnected French warehouses use exactly the same stock layout as Tychy.
     // No D1 request or invented stock quantities are made for a layout-only entry.
     ++state.requestId;
@@ -918,6 +920,9 @@ function setModuleCategory(category){
 }
 function selectView(view,warehouse,focusDocument=null){
   const targetWarehouse=warehouse||state.warehouse;
+  // Reopening a BOX should show current balances, not an old local cache.
+  if(view==='stocks'&&['FR-TOULOUSE','FR-PARIS'].includes(targetWarehouse))
+    state.partsCache.delete(targetWarehouse);
   const french=warehouse?realWarehouse(warehouse)?.country_code==='FR':
     Boolean(state.preview)||realWarehouse(targetWarehouse)?.country_code==='FR';
   const realBoxDocuments=['pz','wz'].includes(view)&&
