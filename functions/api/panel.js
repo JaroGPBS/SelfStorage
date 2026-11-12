@@ -4,7 +4,7 @@ import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
-import {ensureFrTestSchema,isFrTestAccount} from '../../lib/fr-test-store.js';
+import {isFrTestAccount} from '../../lib/fr-test-store.js';
 import {resolveFrCarClaim} from '../../lib/fr-car-review.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,ownerBySymbol} from '../../lib/user-access-settings.js';
@@ -1035,17 +1035,6 @@ async function staffMutation(env,body,actor,edit) {
 
   if(staff.role==='EKIPA' && !['PL','FR'].includes(String(body.crewMarket||'')))
     return fail('Wybierz rynek ekipy: Polska albo Francja.',400);
-  const testCrew=body.isTestCrew===true;
-  if(testCrew&&(staff.role!=='EKIPA'||body.crewMarket!=='FR'))
-    return fail('Tryb testowy można nadać tylko nowej ekipie francuskiej.',400);
-  if(edit){
-    const wasTest=await isFrTestAccount(db,id);
-    if(wasTest&&(staff.role!=='EKIPA'||body.crewMarket!=='FR'))
-      return fail('Ekipa testowa musi pozostać ekipą francuską.',409);
-    if(testCrew&&!wasTest)
-      return fail('Tryb testowy wybieraj podczas tworzenia nowej ekipy.',409);
-  }
-  if(!edit&&testCrew)await ensureFrTestSchema(db);
   if(staff.role==='EKIPA')await ensureAccessTable(db);
   const stmts=[];
   if(edit) {
@@ -1076,9 +1065,6 @@ async function staffMutation(env,body,actor,edit) {
       'fr_enabled=excluded.fr_enabled,updated_at=CURRENT_TIMESTAMP'
     ).bind(id,body.crewMarket==='PL'?1:0,body.crewMarket==='FR'?1:0));
   }
-  if(!edit&&testCrew)stmts.push(db.prepare(
-    'INSERT INTO fr_test_accounts(user_id) VALUES(?)'
-  ).bind(id));
   // Audit stores the symbol, role and warehouse assignment, NEVER phone numbers.
   stmts.push(db.prepare(
     'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
