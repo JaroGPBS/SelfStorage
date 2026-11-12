@@ -5,6 +5,7 @@ import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrTestSchema,isFrTestAccount} from '../../lib/fr-test-store.js';
+import {resolveFrCarClaim} from '../../lib/fr-car-review.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
@@ -802,30 +803,23 @@ async function queryPanel(env,view,url) {
     const hasArchiveTable=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='user_archives'"
     ).first();
-    const hasFrTest=Boolean(await env.DB.prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_test_accounts'"
+    const claimTable=Boolean(await env.DB.prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_car_claims'"
     ).first());
-    const carTableRows=(await env.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
-      "'fr_vehicle_usage','vehicles','fr_vehicle_handovers',"+
-      "'fr_test_vehicle_usage','fr_test_vehicles','fr_test_vehicle_handovers')"
+    const carTables=(await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('fr_vehicle_usage','vehicles')"
     ).all()).results||[];
-    const carTables=new Set(carTableRows.map(r=>r.name));
-    const realCars=carTables.has('fr_vehicle_usage')&&carTables.has('vehicles');
-    const testCars=carTables.has('fr_test_vehicle_usage')&&carTables.has('fr_test_vehicles');
-    const realPlate=realCars
+    const hasCars=carTables.length===2;
+    const realPlate=hasCars
       ?"(SELECT v.registration_number FROM fr_vehicle_usage a JOIN vehicles v "+
        "ON v.id=a.vehicle_id WHERE a.user_id=u.id LIMIT 1)"
       :'NULL';
-    const testPlate=testCars
-      ?"(SELECT v.registration_number FROM fr_test_vehicle_usage a JOIN fr_test_vehicles v "+
-       "ON v.id=a.vehicle_id WHERE a.user_id=u.id LIMIT 1)"
+    const pendingPlate=claimTable
+      ?"(SELECT c.requested_plate FROM fr_car_claims c WHERE c.user_id=u.id AND c.status='PENDING')"
       :'NULL';
-    const realStatus=carTables.has('fr_vehicle_handovers')
-      ?"(SELECT h.status FROM fr_vehicle_handovers h WHERE h.user_id=u.id AND h.is_current=1 LIMIT 1)"
-      :'NULL';
-    const testStatus=carTables.has('fr_test_vehicle_handovers')
-      ?"(SELECT h.status FROM fr_test_vehicle_handovers h WHERE h.user_id=u.id AND h.is_current=1 LIMIT 1)"
+    const pendingInventory=claimTable
+      ?"(SELECT CASE WHEN c.inventory_json IS NULL THEN 0 ELSE 1 END "+
+       "FROM fr_car_claims c WHERE c.user_id=u.id AND c.status='PENDING')"
       :'NULL';
     const archived=url.searchParams.get('archived')==='1';
     if(archived&&!hasArchiveTable)return [];
@@ -833,16 +827,16 @@ async function queryPanel(env,view,url) {
       'SELECT u.id,u.name,u.role_code,u.active,u.created_at,'+
       'pr.first_name,pr.last_name,pr.phone,pr.display_code, '+
       'CASE WHEN p.user_id IS NULL THEN 0 ELSE 1 END AS has_pin, '+
-      (hasFrTest?'CASE WHEN test.user_id IS NULL THEN 0 ELSE 1 END':'0')+' AS is_test, '+
-       'COALESCE('+realPlate+','+testPlate+",'') AS car_plate, "+
-       'COALESCE('+realStatus+','+testStatus+",'') AS car_status, "+
+      'COALESCE('+realPlate+",'') AS car_plate, "+
+      'COALESCE('+pendingPlate+",'') AS car_pending_plate, "+
+      'COALESCE('+pendingInventory+',0) AS car_pending_inventory, '+
       "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses, "+
       "COALESCE((SELECT GROUP_CONCAT(DISTINCT w.country_code) FROM user_warehouse_access a "+
       "JOIN warehouses w ON w.id=a.warehouse_id WHERE a.user_id=u.id),'') AS warehouse_countries "+
       'FROM users u '+
       'LEFT JOIN user_pin_credentials p ON p.user_id=u.id '+
       'LEFT JOIN user_private_profiles pr ON pr.user_id=u.id '+
-      (hasFrTest?'LEFT JOIN fr_test_accounts test ON test.user_id=u.id ':'')+
+
       (hasArchiveTable?'LEFT JOIN user_archives ar ON ar.user_id=u.id ':'')+
       (hasArchiveTable
         ? (archived?'WHERE ar.user_id IS NOT NULL ':'WHERE ar.user_id IS NULL ')
@@ -1709,6 +1703,17 @@ async function route(request,env) {
     }catch(error){
       console.error('BOX QR change failed',error?.name||'Error');
       return fail('Nie udało się zapisać kodu magazynu BOX. Sprawdź nazwę lub stan D1.',409);
+    }
+  }
+  if(body?.action==='resolveFrCarClaim'){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try{return respond(await resolveFrCarClaim(env.DB,body,session.id));}
+    catch(error){
+      const msg=String(error?.message||'').slice(0,200);
+      console.error('FR car claim resolution',error?.name||'Error');
+      return fail(/constraint|foreign key|UNIQUE/i.test(msg)
+        ?'Nie udało się zmienić przypisania. Odśwież listę i spróbuj ponownie.'
+        :msg,409);
     }
   }
   if(body?.action==='deleteUnusedCrew') {
