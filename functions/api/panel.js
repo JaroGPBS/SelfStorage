@@ -475,6 +475,9 @@ async function createBoxWarehouse(env,body,actor) {
 async function rotateBoxQr(env,body,actor) {
   const id=String(body?.warehouseId||'');
   if(!/^[A-Z0-9-]{3,50}$/.test(id))return fail('Nieprawidłowy magazyn.',400);
+  // Existing physical QR labels for these BOXes must always remain valid.
+  if(id==='FR-TOULOUSE'||id==='FR-PARIS')
+    return fail('Kod tego magazynu jest stały. Nie można zmienić wydrukowanego QR.',403);
   const db=env.DB;
   await ensureBoxQrRegistry(db);
   const row=await db.prepare(
@@ -619,7 +622,7 @@ async function queryPanel(env,view,url) {
       qrJoin+
       "WHERE w.country_code='PL' OR (w.country_code='FR' AND ("+
       "w.id IN ('FR-TOULOUSE','FR-PARIS','FR-BELLEVILLE') OR "+
-      "LOWER(w.name) LIKE '%belleville%')) "+
+      "w.id LIKE 'FR-BOX-%' OR LOWER(w.name) LIKE '%belleville%')) "+
       "GROUP BY w.id,w.name,w.country_code,w.active "+
       "ORDER BY CASE w.id WHEN 'FR-TOULOUSE' THEN 1 "+
       "WHEN 'FR-PARIS' THEN 2 ELSE CASE WHEN w.country_code='PL' THEN 0 ELSE 3 END END,"+
@@ -629,12 +632,28 @@ async function queryPanel(env,view,url) {
       ...w,name:w.id==='FR-TOULOUSE'?'Box Toulouse':
         w.id==='FR-PARIS'?'Box Paryż':w.name
     }));
-    if(!result.some(w=>w.country_code==='FR'&&
-      /belleville/i.test(w.id+' '+w.name))){
-      result.push({id:'',name:'Belleville',country_code:'FR',active:0,
-        positions:null,units:null,qr_code:null,not_configured:true});
+    // Always list the expected locations; a missing D1 warehouse must be
+    // visibly flagged, never mistaken for a working warehouse with zero stock.
+    for(const expected of [
+      {id:'FR-TOULOUSE',name:'Box Toulouse',code:'MAG-TL7A2Q'},
+      {id:'FR-PARIS',name:'Box Paryż',code:'MAG-PA5A4B'},
+      {id:'FR-BELLEVILLE',name:'Belleville',code:null}
+    ]){
+      const exists=expected.id==='FR-BELLEVILLE'
+        ?result.some(w=>w.country_code==='FR'&&/belleville/i.test(w.id+' '+w.name))
+        :result.some(w=>w.id===expected.id);
+      if(!exists)result.push({
+        id:expected.id,name:expected.name,country_code:'FR',
+        active:0,positions:null,units:null,qr_code:expected.code,
+        not_configured:true
+      });
     }
-    return result;
+    return result.sort((a,b)=>{
+      const rank=w=>w.country_code==='PL'?0:
+        w.id==='FR-TOULOUSE'?1:w.id==='FR-PARIS'?2:
+        /belleville/i.test(w.id+' '+w.name)?3:4;
+      return rank(a)-rank(b)||a.name.localeCompare(b.name,'pl');
+    });
   }
   if(view==='warehouseOptions') {
     const rows=await env.DB.prepare(
