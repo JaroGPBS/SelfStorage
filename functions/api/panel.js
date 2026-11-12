@@ -1104,11 +1104,18 @@ async function permanentlyDeleteUnusedCrew(env,body) {
       statements.push(db.prepare('DELETE FROM fr_test_warehouse_stock'));
       statements.push(db.prepare('DELETE FROM fr_test_warehouse_snapshots'));
     }
+    const existingTables=(await db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
+      "'user_private_profiles','user_warehouse_access','user_pin_credentials',"+
+      "'user_access_settings','user_archives','panel_audit_log')"
+    ).all()).results||[];
+    const tableNames=new Set(existingTables.map(row=>row.name));
     for(const table of ['user_private_profiles','user_warehouse_access',
       'user_pin_credentials','user_access_settings','user_archives']){
-      statements.push(db.prepare('DELETE FROM '+table+' WHERE user_id=?').bind(id));
+      if(tableNames.has(table))
+        statements.push(db.prepare('DELETE FROM '+table+' WHERE user_id=?').bind(id));
     }
-    statements.push(db.prepare(
+    if(tableNames.has('panel_audit_log'))statements.push(db.prepare(
       "DELETE FROM panel_audit_log WHERE target_type='USER' AND target_id=?"
     ).bind(id));
     statements.push(db.prepare("DELETE FROM users WHERE id=? AND role_code='EKIPA'").bind(id));
