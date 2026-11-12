@@ -1,7 +1,7 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
-import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
+import {readFrBoxSharedCatalog} from '../../lib/fr-box-office-stock.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
@@ -663,55 +663,8 @@ async function queryPanel(env,view,url) {
   }
   if(view==='vehicleParts')return getVehicleCatalogue(env.DB);
   if(view==='boxParts') {
-    // Admin-only scoped view. The 78-item list is from Google Stock FR GPBS.
-    // Prefer D1 quantities only when the entire warehouse import is present;
-    // otherwise identify the figures as an external spreadsheet snapshot.
-    const ids=BOX_CATALOG_SNAPSHOT.map(p=>p.part_id);
-    const questionMarks=ids.map(()=>'?').join(',');
-    const hasIndexMap=await env.DB.prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='pl_part_index_migrations'"
-    ).first();
-    const details=await env.DB.prepare(
-      'SELECT p.id,p.name,p.part_number,p.sap_number'+
-      (hasIndexMap?',ix.new_index':'')+
-      ' FROM parts p '+
-      (hasIndexMap?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
-      'WHERE p.id IN ('+questionMarks+') AND p.active=1'
-    ).bind(...ids).all();
-    const byId=new Map((details.results||[]).map(p=>[p.id,p]));
-    const rows=await env.DB.prepare(
-      "SELECT warehouse_id,part_id,quantity FROM warehouse_stock "+
-      "WHERE warehouse_id IN ('FR-TOULOUSE','FR-PARIS') AND part_id IN ("+
-      questionMarks+")"
-    ).bind(...ids).all();
-    const quantities=new Map();
-    const warehouseCounts={toulouse:0,paris:0};
-    for(const row of rows.results||[]){
-      const place=row.warehouse_id==='FR-TOULOUSE'?'toulouse':
-        row.warehouse_id==='FR-PARIS'?'paris':null;
-      if(!place)continue;
-      quantities.set(place+'|'+row.part_id,Number(row.quantity));
-      warehouseCounts[place]++;
-    }
-    const fromD1={toulouse:warehouseCounts.toulouse===ids.length,
-      paris:warehouseCounts.paris===ids.length};
-    const parts=BOX_CATALOG_SNAPSHOT.map(item=>{
-      const part=byId.get(item.part_id);
-      return {
-        id:item.part_id,
-        name:part?.name||item.name,
-        part_number:part?.new_index||part?.part_number||item.source_code,
-        source_code:item.source_code,
-        legacy_index:item.legacy_index,
-        sap_number:item.sap||part?.sap_number||'',
-        paris:fromD1.paris?quantities.get('paris|'+item.part_id):item.paris,
-        toulouse:fromD1.toulouse?quantities.get('toulouse|'+item.part_id):item.toulouse,
-        part_found:Boolean(part)
-      };
-    });
-    return {parts,fromD1,matchedParts:byId.size,
-      expectedParts:BOX_CATALOG_SNAPSHOT.length,
-      snapshotDate:'11.11.2026'};
+    // The very same source and current balances as French Office.
+    return readFrBoxSharedCatalog(env.DB);
   }
   if(view==='parts') {
     // A single catalogue is shared by every market; stock belongs to warehouses.
