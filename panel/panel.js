@@ -464,6 +464,14 @@
       const arrow=document.createElement('span');arrow.className='user-expand-arrow';
       arrow.textContent=open?'▴':'▾';arrow.setAttribute('aria-hidden','true');
       button.append(arrow);name.append(button);
+      if(user.role_code==='EKIPA'){
+        const car=document.createElement('small');
+        car.style.cssText='display:block;font-size:11px;line-height:1.4;color:var(--mute)';
+        car.textContent=user.car_pending_plate
+          ?'Auto: '+user.car_pending_plate+' · wymaga weryfikacji'
+          :user.car_plate?'Auto: '+user.car_plate:'';
+        if(car.textContent)name.append(car);
+      }
       row.append(name);
 
       const role=td('');role.append(pill(user.role_code,'blue'));row.append(role);
@@ -552,6 +560,12 @@
         ['Numer telefonu',user.phone||'—'],
         ['Przypisane magazyny',user.warehouses||'—']
       ];
+      if(user.role_code==='EKIPA'&&user.car_pending_plate){
+        fields.push(
+          ['Zgłoszony samochód',user.car_pending_plate],
+          ['Inwentaryzacja',user.car_pending_inventory?'Zapisana, czeka na decyzję':'Jeszcze niewykonana']
+        );
+      }
       for(const [title,value] of fields) {
         const field=document.createElement('div');field.className='user-detail-field';
         const label=document.createElement('span');label.className='user-detail-label';
@@ -564,6 +578,27 @@
           data.append(phone);
         }else data.textContent=value;
         field.append(label,data);box.append(field);
+      }
+      if(!state.showArchives&&user.role_code==='EKIPA'&&user.car_pending_plate){
+        const actions=document.createElement('div');
+        actions.style.cssText='display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px';
+        const number=document.createElement('input');
+        number.type='text';number.maxLength=20;number.value=user.car_pending_plate;
+        number.setAttribute('aria-label','Popraw numer rejestracyjny ekipy '+user.name);
+        number.style.cssText='width:140px;max-width:100%;padding:5px 7px;font-size:13px';
+        actions.append(number);
+        for(const [decision,title] of [
+          ['APPROVE','Zatwierdź'],['REJECT','Odrzuć'],['CORRECT','Popraw numer']
+        ]){
+          const button=document.createElement('button');
+          button.type='button';button.className='btn mini';button.textContent=title;
+          button.addEventListener('click',event=>{
+            event.stopPropagation();
+            reviewCrewCarClaim(user,decision,number.value,button);
+          });
+          actions.append(button);
+        }
+        box.append(actions);
       }
       cell.append(box);
 
@@ -1556,6 +1591,35 @@
       if(state.view==='users')renderList();
       message('Użytkownik '+nickname+' jest w archiwum. Zachowano ID i historię.','info');
     } catch(error) {message(error.message,'error');}
+    finally{busy(button,false);}
+  }
+
+  async function reviewCrewCarClaim(user,decision,correctedPlate,button){
+    if(!user?.car_pending_plate)return;
+    const newPlate=String(correctedPlate||'').toUpperCase().replace(/\s+/g,'');
+    if(decision==='CORRECT'&&(!/^[A-Z0-9-]{3,20}$/.test(newPlate)||
+      newPlate===user.car_pending_plate)){
+      message('Wpisz poprawny, inny numer rejestracyjny.','error');return;
+    }
+    if(!await confirmAction({
+      title:decision==='APPROVE'?'Zatwierdzić samochód '+user.car_pending_plate+' dla '+user.name+'?':
+        decision==='REJECT'?'Odrzucić samochód '+user.car_pending_plate+'?':
+        'Poprawić numer na '+newPlate+'?',
+      description:decision==='APPROVE'
+        ?'Nowa ekipa przejmie samochód, a jej zapisana inwentaryzacja zostanie zatwierdzona.'
+        :decision==='REJECT'?'Zgłoszenie i oczekująca inwentaryzacja nie zmienią stanów samochodu.':
+        'Skorygowana rejestracja zostanie przypisana, jeśli nie ma konfliktu.',
+      confirmLabel:decision==='APPROVE'?'Zatwierdź':decision==='REJECT'?'Odrzuć':'Popraw',
+      danger:decision==='REJECT'
+    }))return;
+    busy(button,true);
+    try{
+      const result=await post({action:'resolveFrCarClaim',userId:user.id,decision,
+        ...(decision==='CORRECT'?{correctedPlate:newPlate}:{})});
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      message(result.message||'Zapisano zmianę samochodu.','info');
+    }catch(error){message(error.message||'Nie udało się zapisać decyzji.','error');}
     finally{busy(button,false);}
   }
 
