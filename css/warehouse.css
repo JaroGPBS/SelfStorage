@@ -1049,3 +1049,100 @@ body:has(#screenVehicleInventory.active) .app-signature {
     grid-template-columns: minmax(0, 1fr) 76px;
   }
 }
+
+
+/* Warehouse entry screen only: concise crew heading and first inventory notice. */
+#screenWarehouse .warehouse-login-line{
+  align-items:center;
+  gap:8px 12px;
+}
+#screenWarehouse .warehouse-login-copy #teamRole{
+  display:none!important;
+}
+#screenWarehouse .warehouse-login-copy .eyebrow{
+  font-size:18px;
+  letter-spacing:0;
+  text-transform:none;
+}
+#screenWarehouse .warehouse-login-copy .eyebrow::after{
+  content:": ";
+}
+#screenWarehouse .crew-vehicle-plate{
+  min-height:26px;
+  padding:3px 9px;
+  border-radius:8px;
+  font-size:13px;
+  line-height:1.2;
+}
+.first-vehicle-inventory-notice{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:16px 2px 0;
+  padding:12px 14px;
+  border:1px solid rgba(237,104,111,.46);
+  border-radius:12px;
+  background:rgba(92,28,34,.83);
+  color:#fce9eb;
+}
+.first-vehicle-inventory-notice strong{
+  font-size:15px;
+  line-height:1.35;
+  font-weight:850;
+}
+.first-vehicle-inventory-notice span{
+  font-size:13px;
+  line-height:1.45;
+  color:#f0d0d3;
+}
+#screenWarehouse:has(.first-vehicle-inventory-notice:not(.hidden)) .warehouse-scan-area{
+  margin-top:28px;
+}
+
+/* Keep the logout button and Jaro signature in separate layout rows.
+   Never put a fixed-position signature over the interactive button. */
+body:has(#screenWarehouse.active) .app-shell{
+  display:flex;
+  flex-direction:column;
+  height:100dvh;
+  min-height:0;
+  overflow:hidden;
+}
+body:has(#screenWarehouse.active) .app-header{
+  flex:0 0 auto;
+}
+body:has(#screenWarehouse.active) .app-main{
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  padding:8px 0 0;
+}
+body:has(#screenWarehouse.active) #screenWarehouse{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding-bottom:0;
+}
+body:has(#screenWarehouse.active) #logoutBtn{
+  flex:0 0 auto;
+  margin-top:auto;
+  margin-bottom:12px;
+}
+body:has(#screenWarehouse.active) .app-signature{
+  position:static;
+  flex:0 0 40px;
+  width:100%;
+  min-height:0;
+  padding:0 0 6px;
+  margin:0;
+  transform:none;
+  opacity:.52;
+}
+body:has(#screenWarehouse.active) .app-signature img{
+  width:80px!important;
+  height:auto;
+  max-height:35px;
+  object-fit:contain;
+}
