@@ -5322,20 +5322,8 @@
 }
 .office-home-shade{
   flex:1;display:flex;flex-direction:column;
-  justify-content:space-between;gap:64px;
-  padding:clamp(32px,5vw,60px) 0 20px;
-}
-.office-home-lockup{display:flex;align-items:center;gap:14px}
-.office-home-lockup img{
-  width:76px;height:68px;object-fit:contain;
-  filter:drop-shadow(0 5px 15px rgba(0,0,0,.32));
-}
-.office-home-lockup>span{
-  font-weight:850;font-size:18px;letter-spacing:.09em;line-height:1.25;
-}
-.office-home-lockup small{
-  display:block;margin-top:5px;font-size:10px;letter-spacing:.25em;
-  font-weight:750;color:#c2cfda;
+  justify-content:flex-start;
+  padding:clamp(36px,5vw,64px) 0 20px;
 }
 .office-home-bottom{max-width:650px}
 .office-home-kicker{
@@ -5352,7 +5340,7 @@
 }
 .office-home-note{
   display:flex;flex-wrap:wrap;align-items:center;gap:12px 22px;
-  padding:12px 0;color:#9eacba;font-size:12px;
+  margin-top:30px;padding:16px 0;color:#9eacba;font-size:12px;
   border-top:1px solid rgba(226,237,248,.13);
 }
 .office-home-online{display:flex;align-items:center;gap:8px;color:#a3cfb5;font-weight:750}
@@ -5361,9 +5349,7 @@
   .app.view-home .content{padding:0 22px 20px;min-height:100dvh}
   .office-home{min-height:calc(100dvh - 20px)}
   .office-home-hero{min-height:430px}
-  .office-home-shade{padding:28px 0 28px;gap:65px}
-  .office-home-lockup img{width:65px;height:60px}
-  .office-home-lockup>span{font-size:15px}
+  .office-home-shade{padding:32px 0 28px}
   .office-home-bottom h1{font-size:32px}
   .office-home-note{font-size:11px}
 }
