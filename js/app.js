@@ -1449,6 +1449,12 @@ function openWeeklyReport() {
 
 function closeWeeklyReport() {
   vehicleInventoryParts = [];
+  // If the first mandatory inventory is cancelled, go straight back to the
+  // crew home screen. Do not introduce the intermediate Stan auta screen.
+  if(firstInventoryRequired!==false && !state.visit?.idWizyty){
+    renderWarehouse();
+    return;
+  }
   const data = getVehicleCacheEntry()?.data;
 
   if (data) {
