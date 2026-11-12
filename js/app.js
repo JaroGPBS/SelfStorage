@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=8';
 
-const APP_VERSION = '0.53';
+const APP_VERSION = '0.54';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -1237,6 +1237,9 @@ function openWeeklyReport() {
   }
 
   const data = getVehicleCacheEntry()?.data;
+  const reportTitle=$('vehicleReportTitle');
+  if(reportTitle)reportTitle.textContent=data?.wymagaWeryfikacji
+    ?'Inwentaryzacja po przejęciu samochodu':'Cotygodniowy raport';
   const parts = (Array.isArray(data?.czesci) ? data.czesci : [])
     .slice()
     .sort((a, b) =>
