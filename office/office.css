@@ -5407,3 +5407,132 @@
 @media(max-width:430px){
   .app.view-vehicles .vehicle-top-export-host #refresh span{display:none}
 }
+
+
+/* Box Toulouse / Box Paryż — final Office layout, sample visits for review. */
+/* Every selector is scoped to this new FR-only view; Polish screens are untouched. */
+.app.view-fr-movements .fr-mov-design{min-width:0;background:#fff}
+.app.view-fr-movements .fr-mov-intro{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:18px 20px;border-bottom:1px solid #ebedf0;
+}
+.app.view-fr-movements .fr-mov-intro>div{display:flex;flex-direction:column;gap:4px}
+.app.view-fr-movements .fr-mov-intro strong{
+  color:#2d353e;font-size:14px;font-weight:800;
+}
+.app.view-fr-movements .fr-mov-intro>div>span{font-size:11px;color:#7b8490}
+.app.view-fr-movements .fr-mov-preview-badge{
+  flex:none;padding:6px 10px;border-radius:6px;border:1px solid #d5d9df;
+  background:#f5f6f8;color:#58636e;font-size:10px;font-weight:800;
+  letter-spacing:.025em;
+}
+.app.view-fr-movements .fr-mov-table-scroll{overflow-x:auto;width:100%}
+.app.view-fr-movements .fr-mov-table{
+  width:100%;min-width:690px;border-collapse:collapse;
+  font-size:12px;table-layout:auto;
+}
+.app.view-fr-movements .fr-mov-table>thead th{
+  text-align:left;text-transform:uppercase;font-size:10px;letter-spacing:.035em;
+  color:#7b8490;background:#f8f9fa;padding:12px 14px;
+  border-bottom:1px solid #e5e8eb;white-space:nowrap;font-weight:800;
+}
+.app.view-fr-movements .fr-mov-table>thead th:nth-child(4),
+.app.view-fr-movements .fr-mov-table>thead th:nth-child(5){text-align:center}
+.app.view-fr-movements .fr-mov-table>tbody>tr.fr-mov-session-row:hover{background:#fafbfc}
+.app.view-fr-movements .fr-mov-table>tbody>tr.fr-mov-session-row.is-open{
+  background:#fcfcfd;
+}
+.app.view-fr-movements .fr-mov-table>tbody>tr.fr-mov-session-row>td{
+  padding:13px 14px;border-bottom:1px solid #eceef0;vertical-align:middle;
+}
+.app.view-fr-movements .fr-mov-date,
+.app.view-fr-movements .fr-mov-team{white-space:nowrap}
+.app.view-fr-movements .fr-mov-date strong,
+.app.view-fr-movements .fr-mov-team strong{
+  display:block;font-size:12px;color:#2c3540;font-weight:800;
+}
+.app.view-fr-movements .fr-mov-date small,
+.app.view-fr-movements .fr-mov-team small{
+  display:block;margin-top:3px;font-size:10px;color:#89929e;font-weight:550;
+}
+.app.view-fr-movements .fr-mov-kind{
+  display:inline-block;border:1px solid #dce1e6;background:#f5f7f8;color:#58616c;
+  border-radius:6px;padding:5px 9px;font-size:10px;font-weight:800;
+  white-space:nowrap;
+}
+.app.view-fr-movements .fr-mov-kind.mixed{
+  background:#f2f4f9;border-color:#d5dbe9;color:#465678;
+}
+.app.view-fr-movements .fr-mov-kind.pickup{
+  background:#f2f7fa;border-color:#d0e3eb;color:#326378;
+}
+.app.view-fr-movements .fr-mov-kind.return{
+  background:#f2f8f4;border-color:#d4e7da;color:#407553;
+}
+.app.view-fr-movements .fr-mov-qty{
+  font-variant-numeric:tabular-nums;text-align:center;font-weight:850;
+}
+.app.view-fr-movements .fr-mov-session-row .fr-mov-pickup{color:#385a70;font-size:13px}
+.app.view-fr-movements .fr-mov-session-row .fr-mov-return{color:#367050;font-size:13px}
+.app.view-fr-movements .fr-mov-detail-cell{text-align:right}
+.app.view-fr-movements .fr-mov-detail-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:7px 10px;border:1px solid #d9dde3;border-radius:6px;
+  background:white;color:#3b4753;font-size:11px;font-weight:750;
+  white-space:nowrap;
+}
+.app.view-fr-movements .fr-mov-detail-btn:hover,
+.app.view-fr-movements .fr-mov-detail-btn[aria-expanded="true"]{
+  border-color:#c9a4a7;background:#fff7f7;color:#ab343f;
+}
+.app.view-fr-movements .fr-mov-expansion>td{
+  padding:0 13px 14px!important;background:#fbfcfd;
+  border-bottom:1px solid #dfe3e7;
+}
+.app.view-fr-movements .fr-mov-expanded-card{
+  padding:17px 19px 15px;border:1px solid #e0e4e8;border-radius:9px;background:#fff;
+  box-shadow:0 4px 12px #222e3a08;
+}
+.app.view-fr-movements .fr-mov-expanded-top{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+  margin-bottom:14px;flex-wrap:wrap;
+}
+.app.view-fr-movements .fr-mov-expanded-top>div strong{display:block;font-size:13px}
+.app.view-fr-movements .fr-mov-expanded-top>div span{
+  display:block;margin-top:4px;font-size:11px;color:#737f8a;
+}
+.app.view-fr-movements .fr-mov-example-id{font-size:10px;color:#a0a7ae}
+.app.view-fr-movements .fr-mov-lines-wrap{overflow-x:auto}
+.app.view-fr-movements .fr-mov-lines{
+  width:100%;min-width:450px;border-collapse:collapse;font-size:11px;
+}
+.app.view-fr-movements .fr-mov-lines th{
+  padding:10px 12px;text-transform:uppercase;letter-spacing:.03em;
+  font-size:10px;color:#6f7b88;font-weight:800;background:#f7f8fa;
+  border-bottom:1px solid #e4e8eb;text-align:left;
+}
+.app.view-fr-movements .fr-mov-lines th:nth-child(n+3),
+.app.view-fr-movements .fr-mov-lines td:nth-child(n+3){text-align:center;width:90px}
+.app.view-fr-movements .fr-mov-lines td{
+  padding:9px 12px;border-bottom:1px solid #edf0f2;color:#394551;
+}
+.app.view-fr-movements .fr-mov-lines tfoot th,
+.app.view-fr-movements .fr-mov-lines tfoot td{
+  padding:10px 12px;background:#f7f8fa;color:#293540;font-weight:850;
+  border-top:1px solid #e0e4e8;
+}
+.app.view-fr-movements .fr-mov-note{
+  margin-top:12px;padding:10px 12px;font-size:11px;color:#64707c;
+  background:#f8f9fa;border-radius:6px;
+}
+.app.view-fr-movements .fr-mov-note strong{color:#3f4c59}
+.app.view-fr-movements .fr-mov-no-results{
+  text-align:center;padding:32px;color:#858f99;font-size:12px;
+}
+@media(max-width:700px){
+  .app.view-fr-movements .fr-mov-intro{padding:13px;align-items:flex-start}
+  .app.view-fr-movements .fr-mov-intro strong{font-size:13px}
+  .app.view-fr-movements .fr-mov-preview-badge{font-size:9px;padding:5px 7px}
+  .app.view-fr-movements .fr-mov-expanded-card{padding:12px}
+  .app.view-fr-movements .fr-mov-example-id{display:none}
+}

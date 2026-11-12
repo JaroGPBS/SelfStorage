@@ -24,6 +24,53 @@ const FR_LAYOUT_WAREHOUSES=[
   {key:'bovis-marseille',name:'Bovis Marsylia',aliases:['Bovis Marseille']},
   {key:'bovis-toulouse',name:'Bovis Tuluza',aliases:['Bovis Toulouse']}
 ];
+// Docelowy ekran Box FR: na razie tylko jawnie fikcyjna historia do oceny UI.
+// Po akceptacji wyglądu podmienimy źródło na wizyty w D1, bez przebudowy strony.
+// Nie zapisujemy przykładów do D1 ani do pamięci urządzenia.
+const FR_BOX_MOVEMENT_EXAMPLES={
+  toulouse:[
+    {id:'FR-PREVIEW-TL-01',date:'12.11.2026',time:'09:20',team:'TEST-A',plate:'TEST 001',
+      note:'Przykładowa wizyta mieszana. Wydanie i zwrot podczas jednego przyjazdu.',
+      lines:[
+        {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:3,returned:0},
+        {code:'MG-000-021',name:'CEOWNIK DACHU DŁUGI',pickup:2,returned:1},
+        {code:'MG-000-025',name:'CZUJNIK T0',pickup:0,returned:4}
+      ]},
+    {id:'FR-PREVIEW-TL-02',date:'10.11.2026',time:'15:40',team:'TEST-B',plate:'TEST 002',
+      note:'Przykładowe pobranie bez zwrotu.',
+      lines:[
+        {code:'MG-000-030',name:'DASZEK LED',pickup:5,returned:0},
+        {code:'MG-000-027',name:'CZUJNIK T2',pickup:2,returned:0}
+      ]},
+    {id:'FR-PREVIEW-TL-03',date:'08.11.2026',time:'11:15',team:'TEST-C',plate:'TEST 003',
+      note:'Przykładowy zwrot bez pobrania.',
+      lines:[
+        {code:'MG-000-015',name:'ANTENA INDOOR',pickup:0,returned:3},
+        {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:2}
+      ]}
+  ],
+  paris:[
+    {id:'FR-PREVIEW-PA-01',date:'12.11.2026',time:'16:04',team:'TEST-A',plate:'TEST 001',
+      note:'Przykładowe pobranie i zwrot części podczas tej samej wizyty.',
+      lines:[
+        {code:'MG-000-015',name:'ANTENA INDOOR',pickup:10,returned:0},
+        {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:10,returned:0},
+        {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:10}
+      ]},
+    {id:'FR-PREVIEW-PA-02',date:'11.11.2026',time:'13:18',team:'TEST-D',plate:'TEST 004',
+      note:'Przykładowe pobranie z Box Paryż.',
+      lines:[
+        {code:'MG-000-027',name:'CZUJNIK T2',pickup:4,returned:0},
+        {code:'MG-000-030',name:'DASZEK LED',pickup:2,returned:0}
+      ]},
+    {id:'FR-PREVIEW-PA-03',date:'09.11.2026',time:'08:35',team:'TEST-B',plate:'TEST 002',
+      note:'Przykładowy zwrot do magazynu.',
+      lines:[
+        {code:'MG-000-021',name:'CEOWNIK DACHU DŁUGI',pickup:0,returned:2},
+        {code:'MG-000-025',name:'CZUJNIK T0',pickup:0,returned:1}
+      ]}
+  ]
+};
 const BELLEVILLE_SERVICE={key:'service',name:'Serwisy',icon:'⚙'};
 // TEMPORARY POLISH OFFICE PREVIEW ONLY. These two imaginary crews and all
 // quantities exist only in client-side JavaScript. Never write them into D1.
@@ -528,7 +575,7 @@ function showOfficeHome(){
   $('vehicleTopContext').classList.add('hidden');
   $('vehicleTopExportHost').classList.add('hidden');
   $('app').classList.remove('view-stocks','view-receipts','view-vehicles',
-    'view-aggregate','view-labels','view-fr-empty','view-modules');
+    'view-aggregate','view-labels','view-fr-empty','view-modules','view-fr-movements');
   renderMenu();
 }
 function officeMenuIcon(view){
@@ -612,9 +659,15 @@ function renderMenu(){
         'Stany magazynowe</button>');
     // NOK is not used in Belleville or either French BOX. Keep
     // inventories and label printing available as before.
+    const isBox=key==='toulouse'||key==='paris';
     const warehouseOperations=permittedOperations('FR').filter(op=>
+      !(isBox&&['pz','wz'].includes(op.view))&&
       !(['belleville','toulouse','paris'].includes(key)&&op.view==='nok')
     );
+    // Only the two self-storage BOX menus replace separate PZ/WZ with one view.
+    // Polish menus and other French warehouses are deliberately unchanged.
+    if(isBox&&(state.user?.features?.pz!==false||state.user?.features?.wz!==false))
+      warehouseOperations.unshift({view:'frMovements',label:'Ruchy magazynowe',icon:'⇄'});
     const children=stockButton+warehouseOperations.map(op=>
       '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
         'data-fr-operation="'+escapeHtml(key)+'" data-fr-real-id="'+escapeHtml(realId)+'" '+
@@ -731,6 +784,8 @@ function renderMenu(){
     const isFrWarehouseExpanded=Boolean(el.dataset.frWarehouseToggle)&&
       state.frExpanded===el.dataset.frWarehouseToggle;
     const isFrOperation=Boolean(el.dataset.frOperation)&&(
+      (state.view==='frMovements'&&state.preview?.type==='fr-box-movements'&&
+        el.dataset.view==='frMovements'&&el.dataset.frOperation===state.preview.warehouseKey)||
       (state.preview?.type==='operation'&&
         state.preview.warehouseKey===el.dataset.frOperation&&
         state.preview.key===el.dataset.view)||
@@ -790,6 +845,32 @@ function showOfficePreview(type,key,label,warehouseContext=null){
   renderMenu();
   render();
 }
+function showFrBoxMovements(key,realId,warehouseName){
+  if(key!=='toulouse'&&key!=='paris')return;
+  const expectedId=key==='toulouse'?'FR-TOULOUSE':'FR-PARIS';
+  const real=realId===expectedId&&realWarehouse(realId)?.country_code==='FR';
+  const label=warehouseName||(key==='toulouse'?'Box Toulouse':'Box Paryż');
+  ++state.requestId;
+  state.view='frMovements';
+  state.preview={type:'fr-box-movements',warehouseKey:key,warehouseName:label};
+  if(real)state.warehouse=realId;
+  state.frExpanded=key;
+  state.bovisExpanded=false;
+  state.warehouseMenus.FR=true;
+  state.search='';
+  state.expanded=null;
+  state.focusDocument=null;
+  $('sidebar').classList.remove('open');
+  $('officePreview').classList.add('hidden');
+  $('pageActions').classList.remove('hidden');
+  setHead('Ruchy magazynowe','GPBS STORAGE / FRANCJA',
+    'Wizyty ekip w magazynie: pobrania i zwroty w jednym zestawieniu.');
+  $('warehouseCrumb').textContent=label.toLocaleUpperCase('pl');
+  $('warehouseCrumb').classList.remove('hidden');
+  $('syncTime').textContent='';
+  renderMenu();
+  render();
+}
 function setHead(title,kicker,desc){
   $('app').classList.remove('view-home');
   $('officeHome').classList.add('hidden');
@@ -807,8 +888,9 @@ function setHead(title,kicker,desc){
   $('officeTableCard').classList.toggle('hidden',workingLabels);
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate'].includes(state.view));
+  $('export').classList.toggle('hidden',state.view==='frMovements');
   $('search').closest('.search-wrap').classList.toggle('hidden',state.view==='vehicles');
-  $('search').placeholder=state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
+  $('search').placeholder=state.view==='frMovements'?'Szukaj: ekipa, data, rejestracja, część...':state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
@@ -817,9 +899,10 @@ function setHead(title,kicker,desc){
   const aggregateView=state.view==='aggregate';
   const inventoriesView=state.view==='inventories';
   const compactView=documentsView||vehicleView||aggregateView||inventoriesView||
-    state.view==='nok'||frEmpty;
+    state.view==='nok'||state.view==='frMovements'||frEmpty;
   $('app').classList.toggle('view-stocks',stockView);
   $('app').classList.toggle('view-receipts',compactView);
+  $('app').classList.toggle('view-fr-movements',state.view==='frMovements');
   $('app').classList.toggle('view-vehicles',vehicleView);
   $('app').classList.toggle('view-aggregate',aggregateView);
   $('app').classList.toggle('view-labels',workingLabels);
@@ -840,11 +923,12 @@ function setHead(title,kicker,desc){
   $('vehicleTopScroll').classList.add('hidden');
   if(compactView){
     $('receiptToolbarInfo').querySelector('strong').textContent=state.preview?.type==='module'
-      ?state.preview.label:aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':
+      ?state.preview.label:state.view==='frMovements'?'Ruchy magazynowe':aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':
       inventoriesView?'Inwentaryzacje':state.view==='labels'?'Drukowanie etykiet':
       state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
     $('receiptToolbarInfo').querySelector('span').textContent=state.preview?.type==='module'
-      ?'':state.view==='labels'?'Lista części i etykiet.'
+      ?'':state.view==='frMovements'?'Wizyty ekip — pobrania i zwroty razem.'
+      :state.view==='labels'?'Lista części i etykiet.'
       :aggregateView?'Porównanie stanów części pomiędzy magazynami.'
       :vehicleView?'Ewidencja części na samochodach serwisowych.'
       :inventoriesView?'Historia inwentaryzacji i bilanse.'
@@ -873,8 +957,8 @@ function setHead(title,kicker,desc){
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
   // Keep the synchronization control on every Office screen, including fleet
   // and French catalogues; it refreshes the current view without reloading.
-  $('refresh').classList.remove('hidden');
-  $('syncTime').classList.toggle('hidden',Boolean(frEmpty)&&!vehicleView);
+  $('refresh').classList.toggle('hidden',state.view==='frMovements');
+  $('syncTime').classList.toggle('hidden',state.view==='frMovements'||Boolean(frEmpty)&&!vehicleView);
   if(frEmpty&&!vehicleView)$('syncTime').textContent='';
   $('refresh').disabled=false;
   $('refresh').title='Pobierz aktualne dane';
@@ -1079,6 +1163,78 @@ function drawNokStock(){
   noteSearch(data.length,(state.nokParts||[]).length,'częściach');
 }
 
+// One Office entry per BOX visit, with both columns as in Stock FR GPBS / WZ/PZ Ekipy.
+// This is a permanent page layout fed with fictional examples ONLY for design review.
+function drawFrBoxMovements(){
+  const key=state.preview?.warehouseKey;
+  const entries=FR_BOX_MOVEMENT_EXAMPLES[key]||[];
+  const query=state.search.trim().toLocaleLowerCase('pl');
+  const matches=visit=>{
+    if(!query)return true;
+    const haystack=[visit.date,visit.time,visit.team,visit.plate,visit.note,
+      ...visit.lines.flatMap(line=>[line.code,line.name])]
+      .join(' ').toLocaleLowerCase('pl');
+    return haystack.includes(query);
+  };
+  const visible=entries.filter(matches);
+  const sum=(visit,direction)=>visit.lines.reduce((acc,line)=>acc+Number(line[direction]||0),0);
+  const qty=value=>Number(value)>0?escapeHtml(value):'—';
+  const warehouse=state.preview?.warehouseName||'Box';
+  const rows=visible.map(visit=>{
+    const pickup=sum(visit,'pickup'),returned=sum(visit,'returned');
+    const expanded=state.expanded===visit.id;
+    const kind=pickup&&returned?'Mieszana':pickup?'Pobranie':'Zwrot';
+    const badge=kind==='Mieszana'?'mixed':kind==='Pobranie'?'pickup':'return';
+    const lines=visit.lines.map(line=>'<tr>'+
+      '<td>'+escapeHtml(line.code)+'</td>'+
+      '<td>'+escapeHtml(line.name)+'</td>'+
+      '<td class="fr-mov-qty">'+qty(line.pickup)+'</td>'+
+      '<td class="fr-mov-qty">'+qty(line.returned)+'</td></tr>').join('');
+    const details=expanded?'<tr class="fr-mov-expansion"><td colspan="6">'+
+      '<div class="fr-mov-expanded-card">'+
+      '<div class="fr-mov-expanded-top"><div><strong>Wizyta '+escapeHtml(visit.team)+'</strong>'+
+      '<span>'+escapeHtml(warehouse)+' · '+escapeHtml(visit.date)+' · '+escapeHtml(visit.time)+
+      ' · '+escapeHtml(visit.plate)+'</span></div>'+
+      '<span class="fr-mov-example-id">'+escapeHtml(visit.id)+'</span></div>'+
+      '<div class="fr-mov-lines-wrap"><table class="fr-mov-lines">'+
+      '<thead><tr><th>Indeks</th><th>Nazwa części</th>'+
+      '<th>Pobranie</th><th>Zwrot</th></tr></thead>'+
+      '<tbody>'+lines+'</tbody>'+
+      '<tfoot><tr><th colspan="2">Łącznie sztuk</th>'+
+      '<td class="fr-mov-qty">'+pickup+'</td>'+
+      '<td class="fr-mov-qty">'+returned+'</td></tr></tfoot>'+
+      '</table></div>'+
+      (visit.note?'<div class="fr-mov-note"><strong>Komentarz:</strong> '+
+      escapeHtml(visit.note)+'</div>':'')+
+      '</div></td></tr>':'';
+    return '<tr class="fr-mov-session-row'+(expanded?' is-open':'')+'">'+
+      '<td class="fr-mov-date"><strong>'+escapeHtml(visit.date)+'</strong>'+
+        '<small>'+escapeHtml(visit.time)+'</small></td>'+
+      '<td><span class="fr-mov-team"><strong>'+escapeHtml(visit.team)+'</strong>'+
+        '<small>'+escapeHtml(visit.plate)+'</small></span></td>'+
+      '<td><span class="fr-mov-kind '+badge+'">'+kind+'</span></td>'+
+      '<td class="fr-mov-qty fr-mov-pickup">'+(pickup||'—')+'</td>'+
+      '<td class="fr-mov-qty fr-mov-return">'+(returned||'—')+'</td>'+
+      '<td class="fr-mov-detail-cell"><button type="button" class="fr-mov-detail-btn" '+
+        'data-fr-movement-example="'+escapeHtml(visit.id)+'" aria-expanded="'+expanded+'">'+
+        (expanded?'Ukryj':'Szczegóły')+
+        '<span aria-hidden="true">'+(expanded?'▴':'▾')+'</span></button></td>'+
+      '</tr>'+details;
+  }).join('');
+  $('tableArea').innerHTML='<div class="fr-mov-design">'+
+    '<div class="fr-mov-intro"><div><strong>Historia wizyt ekip</strong>'+
+    '<span>Jedna wizyta = pobrania i zwroty w jednym wpisie.</span></div>'+
+    '<span class="fr-mov-preview-badge">Dane przykładowe</span></div>'+
+    '<div class="fr-mov-table-scroll"><table class="fr-mov-table">'+
+    '<thead><tr><th>Data / godz.</th><th>Ekipa / samochód</th><th>Operacja</th>'+
+    '<th>Pobrano</th><th>Zwrócono</th><th></th></tr></thead>'+
+    '<tbody>'+(rows||'<tr><td class="fr-mov-no-results" colspan="6">Brak pasujących wizyt.</td></tr>')+
+    '</tbody></table></div></div>';
+  $('tableFooter').textContent=visible.length+' z '+entries.length+
+    ' przykładowych wizyt · bez połączenia z historią D1';
+  $('searchNote').classList.toggle('hidden',!query);
+  $('searchNote').textContent=query?'Wyszukiwanie w przykładach: '+visible.length+' wyników.':'';
+}
 function drawDocs(){
   const direction=state.view==='pz'?'PZ':'WZ';
   const opposite=direction==='PZ'?'WZ':'PZ';
@@ -2131,6 +2287,11 @@ function drawFrenchEmptyView(){
 }
 async function render({silent=false}={}){
   if(state.view==='home')return;
+  if(state.view==='frMovements'){
+    errorBanner('');
+    drawFrBoxMovements();
+    return;
+  }
   if(state.view==='vehicles'){
     errorBanner('');
     const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
@@ -2305,6 +2466,7 @@ async function render({silent=false}={}){
 }
 function filterCurrent(){
   if(state.view==='home')return;
+  if(state.view==='frMovements'){drawFrBoxMovements();return;}
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
     drawFrenchEmptyView();return;
@@ -2647,6 +2809,11 @@ document.addEventListener('click',e=>{
   if(frOperation){
     const key=frOperation.dataset.frOperation;
     const view=frOperation.dataset.view;
+    if(view==='frMovements'){
+      if(key==='toulouse'||key==='paris')
+        showFrBoxMovements(key,frOperation.dataset.frRealId,frOperation.dataset.frWarehouseName);
+      return;
+    }
     if(!OFFICE_MARKET_OPERATIONS.some(op=>op.view===view))return;
     state.frExpanded=key;state.bovisExpanded=false;
     const realId=frOperation.dataset.frRealId;
@@ -2699,6 +2866,13 @@ document.addEventListener('click',e=>{
       selectView(view,preferred);
       return;
     }
+  }
+  const movement=e.target.closest('[data-fr-movement-example]');
+  if(movement&&state.view==='frMovements'){
+    state.expanded=state.expanded===movement.dataset.frMovementExample
+      ?null:movement.dataset.frMovementExample;
+    drawFrBoxMovements();
+    return;
   }
   const v=e.target.closest('[data-view]');if(v){selectView(v.dataset.view);return;}
   const part=e.target.closest('[data-part]');if(part){openPart(part.dataset.part);return;}
