@@ -207,12 +207,15 @@ async function startVisit(db,user,data){
         "SELECT id AS warehouse_id,name FROM warehouses "+
         "WHERE id=? AND country_code='FR' AND active=1"
       ).bind(boxId).first();
-      if(box){
-        await db.prepare(
-          'INSERT OR IGNORE INTO fr_warehouse_qr(warehouse_id,code) VALUES(?,?)'
-        ).bind(boxId,qr).run();
-        warehouse=box;
-      }
+      if(!box)throw Error(
+        boxId==='FR-TOULOUSE'
+          ?'Kod QR jest poprawny, ale Box Toulouse nie jest aktywny w systemie.'
+          :'Kod QR jest poprawny, ale Box Paryż nie jest aktywny w systemie.'
+      );
+      await db.prepare(
+        'INSERT OR IGNORE INTO fr_warehouse_qr(warehouse_id,code) VALUES(?,?)'
+      ).bind(boxId,qr).run();
+      warehouse=box;
     }
   }
   if(!warehouse)throw Error('Nieznany lub nieaktywny kod magazynu.');
