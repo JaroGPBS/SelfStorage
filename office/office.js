@@ -497,6 +497,59 @@ function greetingName(user){
   if(/^(ekipa|zespół|team|grupa)\s+/i.test(raw))return raw;
   return raw.split(' ')[0];
 }
+// Warn on the Office homepage and above FR work screens whenever a physical
+// pickup exceeded D1 stock. Never automatically approve/correct a discrepancy.
+let frDiscrepancyRequest=0;
+async function refreshFrStockDiscrepancies(){
+  const notice=$('frStockDiscrepancyNotice');
+  const request=++frDiscrepancyRequest;
+  const hasFrance=state.user?.markets?.FR!==false&&
+    state.warehouses.some(w=>w.country_code==='FR');
+  if(!state.user||!hasFrance||state.user.features?.stocks===false){
+    notice.innerHTML='';
+    notice.classList.add('hidden');
+    return;
+  }
+  try{
+    const response=await api('frStockDiscrepancies');
+    if(request!==frDiscrepancyRequest||!state.user)return;
+    const rows=Array.isArray(response.rows)?response.rows:[];
+    if(!rows.length){
+      notice.innerHTML='';
+      notice.classList.add('hidden');
+      return;
+    }
+    const tableRows=rows.map(row=>'<tr>'+
+      '<td>'+escapeHtml(dateText(row.date))+'</td>'+
+      '<td>'+escapeHtml(row.warehouseName||row.warehouseId||'—')+'</td>'+
+      '<td>'+escapeHtml(row.team||'—')+
+        (row.plate?' · '+escapeHtml(row.plate):'')+'</td>'+
+      '<td>'+escapeHtml(row.sap||'—')+' · '+escapeHtml(row.partName||'—')+'</td>'+
+      '<td class="num">'+escapeHtml(row.stockBefore)+'</td>'+
+      '<td class="num">'+escapeHtml(row.pickedQty)+'</td>'+
+      '<td class="num">'+escapeHtml(row.returnedQty)+'</td>'+
+      '<td class="num warning-text">-'+escapeHtml(row.missingQty)+'</td>'+
+      '</tr>').join('');
+    notice.innerHTML='<div class="office-fr-discrepancy-title">'+
+      '<strong>⚠ Niezgodność stanów magazynowych</strong>'+
+      '<span>'+rows.length+' '+(rows.length===1?'pozycja wymaga':'pozycji wymaga')+
+        ' wyjaśnienia</span></div>'+
+      '<p>Ekipa pobrała więcej części, niż wykazywał system. '+
+      'Pobranie zostało zapisane; stan magazynu nie spadł poniżej zera.</p>'+
+      '<details><summary>Pokaż szczegóły pobrań</summary>'+
+      '<div class="office-fr-discrepancy-scroll"><table class="table">'+
+      '<thead><tr><th>Data</th><th>Magazyn</th><th>Ekipa / auto</th>'+
+      '<th>Część</th><th>Stan przed</th><th>Pobrano</th><th>Zwrócono</th>'+
+      '<th>Brak w ewidencji</th></tr></thead>'+
+      '<tbody>'+tableRows+'</tbody></table></div></details>';
+    notice.classList.remove('hidden');
+  }catch(error){
+    if(request!==frDiscrepancyRequest||!state.user)return;
+    notice.innerHTML='<strong>Nie udało się sprawdzić niezgodności stanów FR.</strong> '+
+      'Odśwież Office, aby pobrać aktualne ostrzeżenia.';
+    notice.classList.remove('hidden');
+  }
+}
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
@@ -507,6 +560,7 @@ function setLoggedIn(payload){
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
   showOfficeHome();
+  refreshFrStockDiscrepancies();
 }
 function showOfficeHome(){
   // No stock data request on login: only the welcome screen.
@@ -2829,6 +2883,7 @@ async function synchronizeOffice(){
     else errorBanner(ex.message||'Synchronizacja nie powiodła się.');
   }finally{
     syncBusy=false;
+    if(user===state.user)refreshFrStockDiscrepancies();
     for(const id of ['refresh','homeRefresh']){
       const button=$(id);
       if(button){button.disabled=false;button.removeAttribute('aria-busy');}
