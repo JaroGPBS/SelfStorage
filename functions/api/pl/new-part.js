@@ -23,7 +23,7 @@ export async function onRequestPost({request,env}){
     await verifyRememberSession(request,env);}
   catch{return fail('Nie można potwierdzić sesji.',503);}
   if(!user)return fail('Zaloguj się ponownie.',401);
-  if(!ALLOWED.has(user.role))return fail('Brak uprawnień do dodawania części.',403);
+  if((!user.apps?.mobile&&!user.apps?.office)||!ALLOWED.has(user.role))return fail('Brak uprawnień do dodawania części.',403);
 
   let form;
   try{form=await request.formData();}
