@@ -2011,11 +2011,12 @@ async function render(){
       return;
     }
     const ticket=++state.requestId;
-    const cacheKey='FR-COMMON-CATALOG';
+    const isBox=state.preview.key==='toulouse'||state.preview.key==='paris';
+    const cacheKey=isBox?'FR-BOX-CATALOG':'FR-COMMON-CATALOG';
     try{
       if(!state.partsCache.has(cacheKey)){
         setLoading();
-        const response=await api('frCatalog');
+        const response=await api(isBox?'frBoxCatalog':'frCatalog');
         if(ticket!==state.requestId)return;
         state.partsCache.set(cacheKey,response.parts||[]);
       }
@@ -2140,7 +2141,9 @@ function filterCurrent(){
   }
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){
     if(state.stockTab==='modules')render();
-    else drawStocks(state.partsCache.get('FR-COMMON-CATALOG')||[],null);
+    else drawStocks(state.partsCache.get(
+      ['toulouse','paris'].includes(state.preview.key)
+        ?'FR-BOX-CATALOG':'FR-COMMON-CATALOG')||[],null);
     return;
   }
   if(state.view==='stocks'){
