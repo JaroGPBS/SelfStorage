@@ -187,7 +187,7 @@ async function assignVehicle(db,user,value){
 async function startVisit(db,user,data){
   const id=clean(data.idWizyty)||'WIZ-'+uuid();
   if(!validId(id))throw Error('Nieprawidłowy identyfikator wizyty.');
-  const qr=entryCode(data.kodMagazynu).replace(/\\s+/g,'');
+  const qr=entryCode(data.kodMagazynu).replace(/\s+/g,'');
   const matches=(await db.prepare(
     "SELECT q.warehouse_id,w.name FROM fr_warehouse_qr q JOIN warehouses w "+
     "ON w.id=q.warehouse_id WHERE q.code=? AND w.country_code='FR' AND w.active=1"
