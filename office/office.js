@@ -332,7 +332,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehicleScope:'real',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -1722,9 +1722,35 @@ function printVehicleInventoryReport(){
     }
   }
 }
-function drawFrenchVehicleFleet(parts,crews,history=[],handoverHistory=[]){
+function drawFrenchVehicleFleet(){
+  const data=state.frVehicleData||{};
+  const production=data.real||{crews:[],history:[],handoverHistory:[]};
+  const testing=data.test||{crews:[],history:[],handoverHistory:[]};
+  if(state.vehicleScope==='test'&&!(testing.crews||[]).length)
+    state.vehicleScope='real';
+  const testMode=state.vehicleScope==='test';
+  const selected=testMode?testing:production;
+  const parts=data.parts||[];
+  const crews=selected.crews||[];
+  const history=selected.history||[];
+  const handoverHistory=selected.handoverHistory||[];
   const entries=Array.isArray(parts)?parts:[];
   const teams=Array.isArray(crews)?crews:[];
+  const testCount=(testing.crews||[]).length;
+  const realCount=(production.crews||[]).length;
+  const scopeSwitch=testCount?(
+    '<div class="vehicle-fleet-scope" role="group" aria-label="Dane ekip francuskich">'+
+    '<button type="button" data-fr-fleet-scope="real" aria-pressed="'+
+      String(!testMode)+'" class="'+(!testMode?'active':'')+'">Rzeczywiste ('+
+      realCount+')</button>'+
+    '<button type="button" data-fr-fleet-scope="test" aria-pressed="'+
+      String(testMode)+'" class="'+(testMode?'active':'')+'">Testowe ('+
+      testCount+')</button></div>'
+  ):'';
+  const testNote=testMode?(
+    '<p class="vehicle-test-note">TRYB TESTOWY – dane ekip, samochodów i części '+
+    'są oddzielone od rzeczywistych stanów.</p>'
+  ):'';
   if(!teams.some(c=>c.id===state.frVehicleCrew))
     state.frVehicleCrew=teams[0]?.id||null;
   const chosen=teams.find(c=>c.id===state.frVehicleCrew)||null;
@@ -1742,9 +1768,11 @@ function drawFrenchVehicleFleet(parts,crews,history=[],handoverHistory=[]){
   const summary=state.vehicleTab==='summary';
   const tabs=vehicleViewTabs(state.vehicleTab,false);
   if(state.vehicleTab==='transfers'){
-    $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+tabs+
-      fleetTransfersPlaceholder()+'</div>';
-    $('tableFooter').textContent='Transfery francuskie — brak zapisanych operacji.';
+    $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
+      tabs+scopeSwitch+testNote+fleetTransfersPlaceholder()+'</div>';
+    $('tableFooter').textContent=testMode
+      ?'Francja · TEST · transfery testowe nie są jeszcze dostępne.'
+      :'Transfery francuskie — brak zapisanych operacji.';
     $('searchNote').classList.add('hidden');
     $('vehicleTopScroll').classList.add('hidden');
     return;
@@ -1881,9 +1909,10 @@ function drawFrenchVehicleFleet(parts,crews,history=[],handoverHistory=[]){
     '</tbody></table></div></details>'
   ):'';
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+
-    tabs+selection+meta+table+historyMarkup+handoverMarkup+'</div>';
+    tabs+scopeSwitch+testNote+selection+meta+table+historyMarkup+handoverMarkup+'</div>';
   $('tableFooter').textContent='Francja · '+entries.length+
-    ' części · '+teams.length+' ekip · rzeczywiste dane z D1.';
+    ' części · '+teams.length+' ekip · '+
+    (testMode?'TEST – oddzielne stany D1.':'rzeczywiste dane z D1.');
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
   if(summary&&teams.length){
@@ -1980,10 +2009,20 @@ async function render(){
           useVehicleCatalogueInDemo(response.parts||[]);
           drawPolishVehiclePreview();
         }else if(french){
-          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],
-            history:teamResponse.history||[],handoverHistory:teamResponse.handoverHistory||[]};
-          drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,
-            state.frVehicleData.history,state.frVehicleData.handoverHistory);
+          if(!state.frVehicleData&&
+             !(teamResponse.real?.crews||teamResponse.crews||[]).length&&
+             (teamResponse.test?.crews||[]).length){
+            state.vehicleScope='test';
+          }
+          state.frVehicleData={
+            parts:response.parts||[],
+            real:teamResponse.real||{
+              crews:teamResponse.crews||[],history:teamResponse.history||[],
+              handoverHistory:teamResponse.handoverHistory||[]
+            },
+            test:teamResponse.test||{crews:[],history:[],handoverHistory:[]}
+          };
+          drawFrenchVehicleFleet();
         }else drawVehicles();
       }catch(ex){
         if(ticket!==state.requestId)return;
@@ -2317,14 +2356,24 @@ document.addEventListener('click',e=>{
     }
     return;
   }
+  const scopeChoice=e.target.closest('[data-fr-fleet-scope]');
+  if(scopeChoice&&state.view==='vehicles'&&
+     state.preview?.type==='operation'&&state.preview.key==='vehicles'){
+    const scope=scopeChoice.dataset.frFleetScope;
+    if(scope==='real'||scope==='test'){
+      state.vehicleScope=scope;
+      state.frVehicleCrew=null;
+      drawFrenchVehicleFleet();
+    }
+    return;
+  }
   const frenchCrew=e.target.closest('[data-fr-vehicle-crew]');
   if(frenchCrew&&state.view==='vehicles'&&
      state.preview?.type==='operation'&&state.preview.key==='vehicles'){
     const id=frenchCrew.dataset.frVehicleCrew;
     if(state.frVehicleData?.crews?.some(c=>c.id===id)){
       state.frVehicleCrew=id;
-      drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,
-        state.frVehicleData.history,state.frVehicleData.handoverHistory);
+      drawFrenchVehicleFleet();
     }
     return;
   }
