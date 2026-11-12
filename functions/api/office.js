@@ -217,7 +217,23 @@ export async function onRequestGet({request,env}){
           counted:Number(line.qtyAfter)
         });
       }
-      return workerJson({ok:true,inventories:[...map.values()]});
+      // Movements for these reports must be read by vehicle, without the
+      // global 250-line limit of the simple crew overview.
+      let movements=[];
+      if(await tableExists(env.DB,'fr_sessions')&&
+         await tableExists(env.DB,'fr_session_lines')){
+        movements=(await env.DB.prepare(
+          'SELECT s.id AS sessionId,s.user_id AS userId,'+
+          's.vehicle_id AS vehicleId,s.saved_at AS date,'+
+          's.warehouse_id AS warehouseId,w.name AS warehouseName,'+
+          'l.direction,l.quantity,l.part_id AS partId,p.name AS partName '+
+          'FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
+          'JOIN warehouses w ON w.id=s.warehouse_id '+
+          'JOIN parts p ON p.id=l.part_id WHERE s.vehicle_id=? '+
+          'ORDER BY s.saved_at DESC,s.id DESC'
+        ).bind(vehicleId).all()).results||[];
+      }
+      return workerJson({ok:true,inventories:[...map.values()],movements});
     }catch(err){
       console.error('FR vehicle inventory history lookup',err?.name||'Error');
       return error('Nie udało się pobrać historii inwentaryzacji.',503);
