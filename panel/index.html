@@ -8,9 +8,9 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=28">
+  <link rel="stylesheet" href="./panel.css?v=29">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=58" defer></script>
+  <script src="./panel.js?v=59" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -52,6 +52,7 @@
         <button data-view="indexMigration" class="nav-item" type="button"><span class="nav-symbol">⇢</span> Wymiana indeksów</button>
         <div class="side-section administrative">ADMINISTRACJA</div>
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
+        <button data-view="frWeeklySettings" class="nav-item" type="button"><span class="nav-symbol">♧</span> Powiadomienia FR</button>
         <button data-view="security" class="nav-item" type="button"><span class="nav-symbol">⚿</span> Bezpieczeństwo</button>
         <button data-view="settings" class="nav-item" type="button"><span class="nav-symbol">⚙</span> Ustawienia</button>
         <button data-view="superAdmin" id="superAdminNav" class="nav-item hidden" type="button"><span class="nav-symbol">♛</span> Super Admin</button>
@@ -307,6 +308,37 @@
             <p class="index-migration-info">Nowe indeksy mają format <strong>MG-000-000</strong>. W Belleville nie ma etykiet do wymiany. Stary numer możesz wyłączyć po potwierdzeniu wymiany w Tuluzie i Paryżu.</p>
             <div id="indexMigrationResults" class="table-scroll"></div>
             <div id="indexMigrationFooter" class="table-footer" role="status" aria-live="polite"></div>
+          </div>
+        </section>
+        <section id="frWeeklySettingsView" class="view hidden">
+          <div class="table-panel">
+            <div class="table-title"><div>
+              <h2>Cotygodniowa inwentaryzacja ekip francuskich</h2>
+              <p>Ustaw dzień i godzinę w czasie francuskim. Przypomnienie nie blokuje aplikacji.</p>
+            </div></div>
+            <form id="frWeeklySettingsForm" class="fr-weekly-form">
+              <label class="fr-weekly-enable"><input type="checkbox" id="frWeeklyEnabled">
+                <span>Włącz cotygodniowe przypomnienia i liczenie pominiętych tygodni</span></label>
+              <div class="fr-weekly-fields">
+                <div><label for="frWeeklyDay">Dzień tygodnia</label>
+                  <select id="frWeeklyDay" class="select">
+                    <option value="1">Poniedziałek</option>
+                    <option value="2">Wtorek</option>
+                    <option value="3">Środa</option>
+                    <option value="4">Czwartek</option>
+                    <option value="5">Piątek</option>
+                    <option value="6">Sobota</option>
+                    <option value="7">Niedziela</option>
+                  </select></div>
+                <div><label for="frWeeklyTime">Godzina (Francja)</label>
+                  <input id="frWeeklyTime" type="time" value="16:00" required></div>
+              </div>
+              <label for="frWeeklyMessage">Treść przypomnienia</label>
+              <textarea id="frWeeklyMessage" rows="3" maxlength="200" required>Przypomnienie: wykonaj cotygodniową inwentaryzację części na samochodzie.</textarea>
+              <p class="hint">Brak inwentaryzacji oznaczamy w aplikacji i w Office; pobrania oraz zwroty pozostają dostępne. Liczenie braków rozpocznie się od włączenia harmonogramu, bez wpisywania zaległości wstecz.</p>
+              <button type="submit" class="btn primary" id="frWeeklySave">Zapisz ustawienia</button>
+              <p id="frWeeklyPushNotice" class="hint"></p>
+            </form>
           </div>
         </section>
         <section id="boxQrView" class="view hidden" aria-labelledby="boxQrTitle">
