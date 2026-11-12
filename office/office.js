@@ -2717,7 +2717,9 @@ async function synchronizeOffice({automatic=false}={}){
       const button=$(id);
       if(button){button.disabled=false;button.removeAttribute('aria-busy');}
     }
-    if(automatic)lastAutomaticSync=Date.now();
+    // A manual refresh also restarts the 5-minute interval; do not make
+    // another D1 request immediately after the user clicked Synchronizuj.
+    lastAutomaticSync=Date.now();
   }
 }
 $('refresh').addEventListener('click',()=>synchronizeOffice());
