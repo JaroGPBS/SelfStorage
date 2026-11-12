@@ -61,6 +61,8 @@ async function closeTopOverlayForSystemBack() {
     await closeScanner();
     return true;
   }
+  // Missing first-login plate is required; Back must not bypass it.
+  if ($('frVehiclePlateModal')?.classList.contains('show')) return true;
 
   if ($('vehicleChangeModal')?.classList.contains('show')) {
     closeVehicleChangeModal();
@@ -302,6 +304,7 @@ function resetState() {
   pendingWeeklySave = null;
   vehicleManualPart = null;
   vehicleInventoryParts = [];
+  closeMissingVehiclePlate();
   clearState();
 }
 
@@ -416,18 +419,43 @@ function cleanEmptyDraft() {
   }
 }
 
-function renderWarehouse() {
-  const plateInput=$('frVehiclePlate');
-  if(plateInput && state.team?.id) {
-    const current=String(state.team.samochod||'').trim();
-    const stored=localStorage.getItem('gpbs-fr-car-'+state.team.id)||'';
-    // Never carry the previous crew's typed plate into the next login.
-    plateInput.value=current||stored;
+function updateCrewPlateBadges(){
+  const plate=String(state.team?.samochod||'').trim().toUpperCase();
+  for(const id of ['crewVehiclePlateBadge','visitVehiclePlateBadge']){
+    const badge=$(id);
+    if(!badge)continue;
+    badge.textContent=plate;
+    badge.classList.toggle('hidden',!plate);
   }
+}
+function closeMissingVehiclePlate(){
+  const modal=$('frVehiclePlateModal');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden','true');
+  const error=$('frVehiclePlateError');
+  if(error){error.textContent='';error.classList.add('hidden');}
+}
+function showMissingVehiclePlate(){
+  if(!state.team||String(state.team.rola||'').toUpperCase()!=='EKIPA'||
+     String(state.team.samochod||'').trim()){
+    closeMissingVehiclePlate();
+    return;
+  }
+  const modal=$('frVehiclePlateModal'),input=$('frVehiclePlate');
+  if(!modal||!input)return;
+  input.value='';
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden','false');
+  // Focus after the login loading overlay has disappeared.
+  setTimeout(()=>{if(modal.classList.contains('show'))input.focus();},0);
+}
+function renderWarehouse() {
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
   $('vehicleStatePreBtn')?.classList.toggle('hidden',!state.team?.samochod);
+  updateCrewPlateBadges();
   showScreen('screenWarehouse');
+  showMissingVehiclePlate();
   refreshFrenchWeeklyNotice();
 }
 
@@ -496,6 +524,7 @@ function renderVisit() {
   $('visitWarehouseShort').textContent = warehouseName;
   $('visitTeam').textContent = state.team?.nazwa || '—';
   $('visitId').textContent = state.visit?.idWizyty || '—';
+  updateCrewPlateBadges();
 
   const role = String(state.team?.rola || '').trim().toUpperCase();
   const canInventory = ['KIEROWNIK', 'KOORDYNATOR', 'ADMIN'].includes(role);
@@ -1909,9 +1938,8 @@ async function assignCurrentVehicle() {
     vehicleInventoryParts=[];
   }
   state.team.samochod=result.samochod.registration_number;
+  updateCrewPlateBadges();
   $('vehicleStatePreBtn')?.classList.remove('hidden');
-  localStorage.setItem('gpbs-fr-car-'+state.team.id,state.team.samochod);
-  $('frVehiclePlate').value=state.team.samochod;
   persist();
   return result;
 }
@@ -1946,9 +1974,9 @@ async function startVisit(code) {
   setLoading(true, 'Rozpoczynanie wizyty…');
 
   try {
-    const assignment=await assignCurrentVehicle();
-    if(assignment.samochod?.wymagaZatwierdzenia){
-      showToast('Rejestracja samochodu czeka na decyzję w Adminie. Inwentaryzację możesz już zapisać.',true);
+    if(!String(state.team.samochod||'').trim()){
+      showMissingVehiclePlate();
+      showToast('Najpierw wpisz numer rejestracyjny samochodu.',true);
       return;
     }
     const result = await api.startVisit({
@@ -2595,22 +2623,30 @@ function bindEvents() {
   });
 
   $('frVehicleAssignBtn')?.addEventListener('click',async()=>{
+    const button=$('frVehicleAssignBtn'),error=$('frVehiclePlateError');
+    button.disabled=true;
     try{
-      setLoading(true,'Przypisywanie samochodu…');
-      const assignment=await assignCurrentVehicle();
-      showToast(assignment.samochod?.wymagaZatwierdzenia
-        ?'Rejestracja zapisana do weryfikacji. Możesz wykonać inwentaryzację.'
-        :'Samochód przypisany do ekipy. Otwórz Stan auta, aby zrobić inwentaryzację.');
-    }catch(error){showToast(messageFromError(error),true);}
-    finally{setLoading(false);}
+      setLoading(true,'Zapisywanie numeru samochodu…');
+      const assigned=await assignCurrentVehicle();
+      if(assigned.samochod?.wymagaZatwierdzenia)
+        throw Error('Nie udało się zatwierdzić numeru samochodu.');
+      closeMissingVehiclePlate();
+      updateCrewPlateBadges();
+    }catch(ex){
+      error.textContent=messageFromError(ex);
+      error.classList.remove('hidden');
+    }finally{
+      setLoading(false);button.disabled=false;
+    }
   });
   $('frVehiclePlate')?.addEventListener('input',event=>{
     event.target.value=event.target.value.toUpperCase();
+    $('frVehiclePlateError')?.classList.add('hidden');
   });
-  $('vehicleStatePreBtn')?.addEventListener('click',async()=>{
-    try{await assignCurrentVehicle();await openVehicleStock();}
-    catch(error){showToast(messageFromError(error),true);}
+  $('frVehiclePlate')?.addEventListener('keydown',event=>{
+    if(event.key==='Enter'){event.preventDefault();$('frVehicleAssignBtn')?.click();}
   });
+  $('vehicleStatePreBtn')?.addEventListener('click',openVehicleStock);
   $('vehiclePartsBtn')?.addEventListener('click', openVehicleStock);
 
   $('vehicleBackBtn')?.addEventListener('click', () => {
