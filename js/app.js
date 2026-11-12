@@ -1,10 +1,10 @@
-import { api } from './api.js?v=3';
+import { api } from './api.js?v=4';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=8';
 
-const APP_VERSION = '0.54';
+const APP_VERSION = '0.55';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -1848,11 +1848,11 @@ async function login() {
   }
 }
 
-async function assignCurrentVehicle() {
+async function assignCurrentVehicle(potwierdzPrzejecie=false) {
   const raw=String($('frVehiclePlate')?.value||'').toUpperCase().replace(/\s+/g,'');
   if(!/^[A-Z0-9-]{3,20}$/.test(raw))
     throw new Error('Wpisz numer rejestracyjny samochodu.');
-  const result=await api.assignVehicle(raw);
+  const result=await api.assignVehicle(raw,potwierdzPrzejecie);
   if(state.team.samochod!==result.samochod.registration_number || result.wymagaWeryfikacji){
     state.vehicleStockCache=null;
     state.vehicleVisitDelta={};
@@ -2551,7 +2551,7 @@ function bindEvents() {
   $('frVehicleAssignBtn')?.addEventListener('click',async()=>{
     try{
       setLoading(true,'Przypisywanie samochodu…');
-      const assignment=await assignCurrentVehicle();
+      const assignment=await assignCurrentVehicle(true);
       if(assignment.wymagaWeryfikacji){
         await openVehicleStock(true);
         showToast('Samochód przypisany. Teraz wykonaj inwentaryzację wyposażenia.');
