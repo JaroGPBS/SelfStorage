@@ -27,6 +27,8 @@ let pendingManualSave = null;
 let pendingWeeklySave = null;
 let vehicleManualPart = null;
 let vehicleInventoryParts = [];
+// null = inventory status not checked since restoring a session.
+let firstInventoryRequired = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -304,6 +306,7 @@ function resetState() {
   pendingWeeklySave = null;
   vehicleManualPart = null;
   vehicleInventoryParts = [];
+  firstInventoryRequired = null;
   closeMissingVehiclePlate();
   clearState();
 }
@@ -449,11 +452,47 @@ function showMissingVehiclePlate(force=false){
   // Focus after the login loading overlay has disappeared.
   setTimeout(()=>{if(modal.classList.contains('show'))input.focus();},0);
 }
+function updateInitialInventoryAccess(){
+  const crew=String(state.team?.rola||'').toUpperCase()==='EKIPA';
+  const plate=String(state.team?.samochod||'').trim();
+  // Until the server confirms the first inventory, scanning is locked.
+  const locked=crew&&Boolean(plate)&&firstInventoryRequired!==false;
+  const scanner=$('openWarehouseScannerBtn');
+  if(scanner){scanner.disabled=locked;scanner.classList.toggle('hidden',locked);}
+  const title=document.querySelector('#screenWarehouse .warehouse-scan-title');
+  title?.classList.toggle('hidden',locked);
+  const manual=document.querySelector('#screenWarehouse .warehouse-manual-details');
+  if(manual){
+    if(locked)manual.open=false;
+    manual.classList.toggle('hidden',locked);
+  }
+  const input=$('warehouseCodeInput'),confirm=$('manualWarehouseBtn');
+  if(input)input.disabled=locked;
+  if(confirm)confirm.disabled=locked;
+  $('vehicleStatePreBtn')?.classList.toggle('hidden',!plate);
+}
+async function checkRestoredVehicleInventory(){
+  if(!state.team?.id||isAdminTeam()||!state.team.samochod)return;
+  const teamId=state.team.id,plate=state.team.samochod;
+  try{
+    const data=await api.getVehicleSyncMeta(teamId,state.team.nazwa||'',DEVICE_ID);
+    if(state.team?.id!==teamId||state.team?.samochod!==plate)return;
+    if(typeof data.inwentaryzacjaWykonana!=='boolean')
+      throw Error('Nie udało się sprawdzić pierwszej inwentaryzacji.');
+    firstInventoryRequired=!data.inwentaryzacjaWykonana;
+    updateInitialInventoryAccess();
+  }catch(error){
+    if(state.team?.id===teamId){
+      console.warn('Sprawdzenie pierwszej inwentaryzacji nie powiodło się.',error);
+      showToast('Nie udało się sprawdzić inwentaryzacji. Otwórz Stan auta.',true);
+    }
+  }
+}
 function renderWarehouse() {
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
-  $('vehicleStatePreBtn')?.classList.toggle('hidden',!state.team?.samochod);
   updateCrewPlateBadges();
+  updateInitialInventoryAccess();
   showScreen('screenWarehouse');
   showMissingVehiclePlate();
   refreshFrenchWeeklyNotice();
@@ -465,7 +504,8 @@ async function refreshFrenchWeeklyNotice(){
   banner.classList.add('hidden');
   button.classList.add('hidden');
   const userId=state.team?.id;
-  if(!userId||String(state.team?.rola||'').toUpperCase()!=='EKIPA')return;
+  if(!userId||String(state.team?.rola||'').toUpperCase()!=='EKIPA'||
+     firstInventoryRequired!==false)return;
   try{
     const response=await fetch('/api/fr-weekly',{credentials:'same-origin',cache:'no-store'});
     if(!response.ok)return;
@@ -1520,6 +1560,10 @@ async function saveWeeklyReport() {
     vehicleInventoryParts = [];
     vehicleManualDraft = {};
     pendingWeeklySave = null;
+    if(result.inwentaryzacjaWykonana===true){
+      firstInventoryRequired=false;
+      updateInitialInventoryAccess();
+    }
 
     if (localData) {
       storeVehicleStockCache(localData);
@@ -1547,7 +1591,7 @@ async function saveWeeklyReport() {
 
 function renderVehicleStock(data) {
   const inWarehouseVisit = Boolean(state.visit?.idWizyty);
-  const inventoryDone = data?.inwentaryzacjaWykonana !== false;
+  const inventoryDone = data?.inwentaryzacjaWykonana === true;
   const waitingAdmin = Boolean(data?.oczekujeNaZatwierdzenie);
 
   let parts = (Array.isArray(data?.czesci) ? data.czesci : [])
@@ -1629,6 +1673,8 @@ function renderVehicleStock(data) {
 
   if (weeklyButton) {
     weeklyButton.classList.toggle('hidden', inWarehouseVisit);
+    weeklyButton.classList.toggle('is-first-inventory',!inventoryDone&&!inWarehouseVisit);
+    weeklyButton.textContent=inventoryDone?'Cotygodniowy raport':'Inwentaryzacja';
   }
 
   if (vehicleInstructionButton) {
@@ -1772,7 +1818,8 @@ async function openVehicleStock() {
 
   const entry = getVehicleCacheEntry();
 
-  if (entry?.data) {
+  if (entry?.data && firstInventoryRequired===false &&
+      entry.data.inwentaryzacjaWykonana===true) {
     state.vehicleStockCache = {
       ...entry,
       teamId: state.team.id,
@@ -1794,6 +1841,10 @@ async function openVehicleStock() {
 
   try {
     const data = await fetchVehicleStockOnce();
+    if(typeof data?.inwentaryzacjaWykonana==='boolean'){
+      firstInventoryRequired=!data.inwentaryzacjaWykonana;
+      updateInitialInventoryAccess();
+    }
     renderVehicleStock(data);
   } catch (error) {
     const message = messageFromError(error);
@@ -1902,6 +1953,7 @@ async function login() {
     }
 
     state.team = team;
+    firstInventoryRequired=adminLogin?false:!Boolean(loginResult.inwentaryzacjaWykonana);
     state.startData = startData;
     state.visit = null;
     state.pendingStart = null;
@@ -1938,6 +1990,8 @@ async function assignCurrentVehicle() {
     vehicleInventoryParts=[];
   }
   state.team.samochod=result.samochod.registration_number;
+  firstInventoryRequired=!Boolean(result.inwentaryzacjaWykonana);
+  updateInitialInventoryAccess();
   updateCrewPlateBadges();
   $('vehicleStatePreBtn')?.classList.remove('hidden');
   persist();
@@ -1960,6 +2014,10 @@ async function startVisit(code) {
 
   if (!navigator.onLine) {
     showToast('Rozpoczęcie nowej wizyty wymaga teraz internetu.', true);
+    return;
+  }
+  if(!isAdminTeam()&&firstInventoryRequired!==false){
+    showToast('Najpierw wykonaj inwentaryzację samochodu.',true);
     return;
   }
 
@@ -2872,6 +2930,7 @@ async function init() {
       renderWarehouse();
     } else {
       renderWarehouse();
+      checkRestoredVehicleInventory();
       refreshTeamDataInBackground(state.team.id);
     }
   } else {
