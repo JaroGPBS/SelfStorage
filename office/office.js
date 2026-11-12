@@ -2579,7 +2579,7 @@ $('loginForm').addEventListener('submit',async e=>{
     const response=await fetch('/api/pl/auth',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',pin:$('pin').value})});
     const payload=await response.json().catch(()=>({}));
     if(!response.ok||!payload.ok)throw Error(payload.error||'Nieprawidłowy PIN.');
-    if(!['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER'].includes(payload.user?.role))throw Error('Brak dostępu do panelu biurowego.');
+    if(!['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA'].includes(payload.user?.role)||!payload.user?.apps?.office)throw Error('Brak dostępu do panelu biurowego.');
     const rememberWanted=$('rememberMe').checked;
     const rememberResponse=await fetch('/api/office',{
       method:'POST',credentials:'same-origin',
