@@ -338,3 +338,25 @@ p { color: var(--muted); line-height: 1.5; }
 .fr-weekly-warning span{font-size:12px;line-height:1.45;color:#d4c6ae}
 .fr-push-enable{font-size:12px!important;margin:0 0 10px;padding:4px 0!important;
   text-align:left;color:#a7caff!important}
+
+
+/* French crew vehicle: compact badge, unchanged warehouse workflow. */
+.warehouse-login-line{gap:10px;flex-wrap:wrap}
+.crew-vehicle-plate{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;max-width:100%;padding:8px 12px;
+  border:1px solid rgba(108,175,255,.49);border-radius:10px;
+  background:linear-gradient(135deg,#295b9a,#1e457d);
+  color:#f6faff;font-size:14px;font-weight:800;letter-spacing:.045em;
+  overflow-wrap:anywhere;font-variant-numeric:tabular-nums;
+  box-shadow:0 4px 14px rgba(9,45,93,.2);
+}
+.visit-vehicle-plate{margin-top:10px}
+#frVehiclePlateModal{align-items:center;z-index:900;padding:18px}
+.fr-plate-dialog{width:min(100%,380px);border-radius:16px;padding:24px 20px}
+.fr-plate-dialog h3{font-size:20px;line-height:1.25;margin-bottom:9px}
+.fr-plate-dialog p{font-size:13px;margin-bottom:14px}
+.fr-plate-dialog .field-label{margin:8px 0 7px}
+.fr-plate-dialog .text-input{text-align:center;text-transform:uppercase;font-size:18px;font-weight:750;letter-spacing:.08em}
+.fr-plate-dialog .btn{margin-top:17px}
+.fr-plate-dialog .fr-plate-error{margin:9px 0 0;color:#ffb5ba;font-size:12px}
