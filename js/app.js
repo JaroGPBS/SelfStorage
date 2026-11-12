@@ -36,6 +36,8 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(screen => {
     screen.classList.toggle('active', screen.id === id);
   });
+  const testBanner=$('frTestBanner');
+  if(testBanner)testBanner.hidden=!(state.team?.trybTestowy&&id!=='screenLogin');
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -423,7 +425,7 @@ function renderWarehouse() {
     const stored=localStorage.getItem('gpbs-fr-car-'+state.team.id)||'';
     if(!plateInput.value)plateInput.value=current||stored;
   }
-  $('teamName').textContent = state.team?.nazwa || 'Ekipa';
+  $('teamName').textContent = (state.team?.trybTestowy?'TEST · ':'')+(state.team?.nazwa||'Ekipa');
   $('teamRole').textContent = state.team?.rola || '';
   showScreen('screenWarehouse');
 }
@@ -433,7 +435,7 @@ function renderVisit() {
 
   $('visitWarehouse').textContent = warehouseName;
   $('visitWarehouseShort').textContent = warehouseName;
-  $('visitTeam').textContent = state.team?.nazwa || '—';
+  $('visitTeam').textContent = (state.team?.trybTestowy?'TEST · ':'')+(state.team?.nazwa||'—');
   $('visitId').textContent = state.visit?.idWizyty || '—';
 
   const role = String(state.team?.rola || '').trim().toUpperCase();
@@ -1791,7 +1793,8 @@ async function login() {
       return;
     }
     const loginResult = await api.login(pin);
-    const team = {...loginResult.ekipa, samochod:loginResult.samochod||''};
+    const team = {...loginResult.ekipa, samochod:loginResult.samochod||'',
+      trybTestowy:Boolean(loginResult.trybTestowy)};
     const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
 
     let startData = null;
