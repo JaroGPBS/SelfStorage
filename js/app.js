@@ -428,6 +428,65 @@ function renderWarehouse() {
   $('teamRole').textContent = state.team?.rola || '';
   $('vehicleStatePreBtn')?.classList.toggle('hidden',!state.team?.samochod);
   showScreen('screenWarehouse');
+  refreshFrenchWeeklyNotice();
+}
+
+async function refreshFrenchWeeklyNotice(){
+  const banner=$('frWeeklyWarning'),button=$('frPushEnableBtn');
+  if(!banner||!button)return;
+  banner.classList.add('hidden');
+  button.classList.add('hidden');
+  const userId=state.team?.id;
+  if(!userId||String(state.team?.rola||'').toUpperCase()!=='EKIPA')return;
+  try{
+    const response=await fetch('/api/fr-weekly',{credentials:'same-origin',cache:'no-store'});
+    if(!response.ok)return;
+    const info=await response.json();
+    if(state.team?.id!==userId)return;
+    banner.classList.toggle('hidden',!info.enabled||!info.due);
+    const canPush=info.enabled&&info.pushAvailable&&
+      'serviceWorker' in navigator&&'Notification' in window&&
+      Notification.permission!=='denied';
+    if(!canPush)return;
+    const registration=await navigator.serviceWorker.ready;
+    const current=registration.pushManager?await registration.pushManager.getSubscription():null;
+    if(state.team?.id!==userId)return;
+    button.classList.toggle('hidden',Boolean(current));
+    button.dataset.vapid=info.vapidPublicKey||'';
+  }catch(error){
+    console.warn('Przypomnienie o inwentaryzacji niedostępne.',error?.name||'Error');
+  }
+}
+async function enableFrenchPush(){
+  const button=$('frPushEnableBtn');
+  if(!button||!('Notification' in window)||!('serviceWorker' in navigator))return;
+  try{
+    // Permission is requested only after a real tap, never during login.
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted'){
+      button.classList.add('hidden');
+      return;
+    }
+    const registration=await navigator.serviceWorker.ready;
+    if(!registration.pushManager)throw Error('Ten telefon nie obsługuje powiadomień.');
+    const key=button.dataset.vapid||'';
+    const base64=key.replace(/-/g,'+').replace(/_/g,'/');
+    const raw=atob(base64.padEnd(Math.ceil(base64.length/4)*4,'='));
+    const bytes=Uint8Array.from(raw,ch=>ch.charCodeAt(0));
+    const subscription=await registration.pushManager.subscribe({
+      userVisibleOnly:true,applicationServerKey:bytes
+    });
+    const response=await fetch('/api/fr-weekly',{
+      method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'subscribe',subscription:subscription.toJSON()})
+    });
+    if(!response.ok)throw Error('Nie udało się zapisać zgody na powiadomienia.');
+    button.classList.add('hidden');
+    showToast('Powiadomienia włączone.');
+  }catch(error){
+    showToast(error.message||'Nie udało się włączyć powiadomień.',true);
+  }
 }
 
 function renderVisit() {
@@ -1439,6 +1498,7 @@ async function saveWeeklyReport() {
     }
 
     showToast('Inwentaryzacja została zapisana.');
+    refreshFrenchWeeklyNotice();
 
     fetchVehicleStockOnce()
       .then(data => {
@@ -2525,6 +2585,7 @@ function bindEvents() {
   });
 
   $('loginBtn').addEventListener('click', login);
+  $('frPushEnableBtn')?.addEventListener('click',enableFrenchPush);
   $('logoutBtn').addEventListener('click', logout);
   $('openWarehouseScannerBtn').addEventListener('click', () => openCodeScanner('warehouse'));
   $('closeScannerBtn').addEventListener('click', closeScanner);
