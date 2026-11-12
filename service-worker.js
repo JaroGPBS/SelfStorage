@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v147';
+const CACHE_NAME = 'selfstorage-shell-v148';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LOCAL_DATA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const API_CACHE_DB = 'selfstorage-api-cache-v1';
@@ -13,11 +13,11 @@ const authChecks = new Map();
 const APP_SHELL = [
   './',
   './index.html',
-  './css/app.css?v=5',
+  './css/app.css?v=6',
   './css/warehouse.css?v=17',
   './css/theme-gpbs.css?v=7',
-  './js/app.js?v=52',
-  './js/pl-integration.js?v=8',
+  './js/app.js?v=54',
+  './js/pl-integration.js?v=9',
   './js/api.js?v=3',
   './js/api.js',
   './js/device.js',
@@ -635,4 +635,26 @@ self.addEventListener('fetch', event => {
       return Response.error();
     }
   })());
+});
+// System push intentionally does NOT open the weekly inventory or any other page.
+// Tapping the reminder just dismisses it; work in the mobile app is never blocked.
+self.addEventListener('push',event=>{
+  event.waitUntil((async()=>{
+    let message='Przypomnienie: wykonaj cotygodniową inwentaryzację części na samochodzie.';
+    try {
+      const response=await fetch('/api/fr-weekly-message',{cache:'no-store'});
+      if(response.ok){
+        const data=await response.json();
+        if(typeof data.message==='string'&&data.message.length<=200)message=data.message;
+      }
+    }catch{}
+    await self.registration.showNotification('GPBS Storage · Inwentaryzacja',{
+      body:message,icon:'/icons/app-icon-192.png?v=8',
+      badge:'/icons/app-icon-192.png?v=8',
+      tag:'gbps-fr-weekly',renotify:false
+    });
+  })());
+});
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
 });
