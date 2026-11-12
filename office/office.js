@@ -707,9 +707,14 @@ function renderMenu(){
         :!state.preview&&el.dataset.frRealId===state.warehouse);
     const isFrWarehouseExpanded=Boolean(el.dataset.frWarehouseToggle)&&
       state.frExpanded===el.dataset.frWarehouseToggle;
-    const isFrOperation=Boolean(el.dataset.frOperation)&&
-      state.preview?.type==='operation'&&state.preview.warehouseKey===el.dataset.frOperation&&
-      state.preview.key===el.dataset.view;
+    const isFrOperation=Boolean(el.dataset.frOperation)&&(
+      (state.preview?.type==='operation'&&
+        state.preview.warehouseKey===el.dataset.frOperation&&
+        state.preview.key===el.dataset.view)||
+      (!state.preview&&state.view===el.dataset.view&&
+        el.dataset.frRealId===state.warehouse&&
+        realWarehouse(state.warehouse)?.country_code==='FR')
+    );
     const isService=Boolean(el.dataset.bellevilleService)&&
       state.preview?.type==='module'&&state.preview?.key===BELLEVILLE_SERVICE.key&&
       state.preview?.warehouseKey==='belleville';
@@ -828,7 +833,10 @@ function setHead(title,kicker,desc){
     $('pageActions').insertBefore($('syncTime'),$('newPart'));
     $('pageActions').insertBefore($('refresh'),$('newPart'));
   }
-  $('warehouseCrumb').classList.toggle('hidden',!stockView&&!Boolean(state.preview?.warehouseName));
+  const frBoxDocuments=!state.preview&&documentsView&&
+    ['FR-TOULOUSE','FR-PARIS'].includes(state.warehouse);
+  $('warehouseCrumb').classList.toggle('hidden',!stockView&&!frBoxDocuments&&
+    !Boolean(state.preview?.warehouseName));
   $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
@@ -885,7 +893,10 @@ function selectView(view,warehouse,focusDocument=null){
   const targetWarehouse=warehouse||state.warehouse;
   const french=warehouse?realWarehouse(warehouse)?.country_code==='FR':
     Boolean(state.preview)||realWarehouse(targetWarehouse)?.country_code==='FR';
-  if(french&&view!=='stocks'&&view!=='aggregate'){
+  const realBoxDocuments=['pz','wz'].includes(view)&&
+    ['FR-TOULOUSE','FR-PARIS'].includes(targetWarehouse)&&
+    realWarehouse(targetWarehouse)?.country_code==='FR';
+  if(french&&view!=='stocks'&&view!=='aggregate'&&!realBoxDocuments){
     return showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view]||view);
   }
   if(warehouse||view==='aggregate'||state.preview?.type==='warehouse')state.preview=null;
@@ -2247,7 +2258,11 @@ document.addEventListener('click',e=>{
   if(related){
     const direction=related.dataset.relatedDirection;
     const session=related.dataset.relatedSession;
-    if((direction==='PZ'||direction==='WZ')&&/^PL-SES-[a-f0-9-]{36}$/.test(session)){
+    const frenchBox=['FR-TOULOUSE','FR-PARIS'].includes(state.warehouse)&&
+      !state.preview;
+    const validSession=frenchBox?/^[A-Za-z0-9_-]{8,120}$/.test(session):
+      /^PL-SES-[a-f0-9-]{36}$/.test(session);
+    if((direction==='PZ'||direction==='WZ')&&validSession){
       selectView(direction==='PZ'?'pz':'wz',state.warehouse,session);
     }
     return;
@@ -2436,9 +2451,15 @@ document.addEventListener('click',e=>{
     state.frExpanded=key;state.bovisExpanded=false;
     const realId=frOperation.dataset.frRealId;
     if(realId&&realWarehouse(realId)?.country_code==='FR')state.warehouse=realId;
-    showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view],{
-      warehouseKey:key,warehouseName:frOperation.dataset.frWarehouseName
-    });
+    if(['pz','wz'].includes(view)&&['toulouse','paris'].includes(key)&&
+       ['FR-TOULOUSE','FR-PARIS'].includes(realId)&&
+       realWarehouse(realId)?.country_code==='FR'){
+      selectView(view,realId);
+    }else{
+      showOfficePreview('operation',view,OFFICE_OPERATION_PREVIEWS[view],{
+        warehouseKey:key,warehouseName:frOperation.dataset.frWarehouseName
+      });
+    }
     return;
   }
   const service=e.target.closest('[data-belleville-service]');
