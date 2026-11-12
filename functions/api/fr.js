@@ -3,6 +3,7 @@
 import {verifyWorkerSession,workerJson} from '../../lib/pl-worker-auth.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrTestSchema,isFrTestAccount,seedFrTestWarehouse,frTables} from '../../lib/fr-test-store.js';
+import {ensureFrHandoverSchema,currentFrHandover,handoverTable} from '../../lib/fr-vehicle-handover.js';
 
 const fail=(message,status=400)=>workerJson({ok:false,error:message},status);
 const clean=value=>String(value||'').trim();
@@ -143,28 +144,65 @@ async function fingerprint(data){
 }
 async function assignVehicle(db,user,value){
   const t=frTables(user.testCrew);
+  const h=handoverTable(user.testCrew);
   const number=plate(value);
   if(!/^[A-Z0-9-]{3,20}$/.test(number))
     throw Error('Podaj poprawny numer rejestracyjny samochodu.');
-  const existing=await db.prepare('SELECT id FROM '+t.vehicles+' WHERE registration_number=? COLLATE NOCASE')
+  const found=await db.prepare('SELECT id FROM '+t.vehicles+' WHERE registration_number=? COLLATE NOCASE')
     .bind(number).first();
-  const id=existing?.id||'GPBS-V-'+uuid();
-  if(!existing)
-    await db.prepare('INSERT OR IGNORE INTO '+t.vehicles+'(id,registration_number,active) VALUES(?,?,1)')
-      .bind(id,number).run();
-  const current=await db.prepare('SELECT id FROM '+t.vehicles+' WHERE registration_number=? COLLATE NOCASE')
-    .bind(number).first();
+  const id=found?.id||(user.testCrew?'GPBS-TEST-V-':'GPBS-V-')+uuid();
+  if(!found)await db.prepare(
+    'INSERT OR IGNORE INTO '+t.vehicles+'(id,registration_number,active) VALUES(?,?,1)'
+  ).bind(id,number).run();
+  const current=await db.prepare(
+    'SELECT id FROM '+t.vehicles+' WHERE registration_number=? COLLATE NOCASE'
+  ).bind(number).first();
   if(!current)throw Error('Nie udało się ustalić samochodu.');
-  const resolved=current.id;
-  // A crew taking a vehicle automatically supersedes the former crew.
-  await db.batch([
-    db.prepare('DELETE FROM '+t.usage+' WHERE vehicle_id=? AND user_id<>?').bind(resolved,user.id),
+  const carId=current.id;
+  const own=await vehicle(db,user.id,user.testCrew);
+  const handover=await currentFrHandover(db,user,carId);
+  if(own?.id===carId&&handover)return {
+    id:carId,registration_number:number,zmianaEkipy:false,
+    wymagaWeryfikacji:handover.status!=='ACTIVE',
+    poprzedniaEkipa:handover.previous_crew||''
+  };
+  // Prevent a new crew from taking a vehicle while its current crew has a visit.
+  const running=await db.prepare(
+    'SELECT 1 FROM '+t.visits+" WHERE vehicle_id=? AND status='ACTIVE' LIMIT 1"
+  ).bind(carId).first();
+  if(running)throw Error('Samochód ma niezakończoną wizytę. Najpierw ją zakończ.');
+  if(own&&own.id!==carId){
+    const ownVisit=await db.prepare(
+      'SELECT 1 FROM '+t.visits+" WHERE user_id=? AND status='ACTIVE' LIMIT 1"
+    ).bind(user.id).first();
+    if(ownVisit)throw Error('Najpierw zakończ wizytę na obecnym samochodzie.');
+  }
+  const previous=await db.prepare(
+    'SELECT a.user_id,u.name FROM '+t.usage+' a '+
+    'JOIN users u ON u.id=a.user_id WHERE a.vehicle_id=? AND a.user_id<>?'
+  ).bind(carId,user.id).first();
+  // Old assignments without a handover row are treated as unverified.
+  // No update or reset of the car's existing quantities on assignment.
+  const statements=[
+    db.prepare('UPDATE '+h+' SET is_current=0 WHERE is_current=1 AND (vehicle_id=? OR user_id=?)')
+      .bind(carId,user.id),
+    db.prepare('DELETE FROM '+t.usage+' WHERE vehicle_id=? AND user_id<>?').bind(carId,user.id),
     db.prepare(
       'INSERT INTO '+t.usage+'(user_id,vehicle_id,assigned_at) VALUES(?,?,CURRENT_TIMESTAMP) '+
       'ON CONFLICT(user_id) DO UPDATE SET vehicle_id=excluded.vehicle_id,assigned_at=CURRENT_TIMESTAMP'
-    ).bind(user.id,resolved)
-  ]);
-  return {id:resolved,registration_number:number};
+    ).bind(user.id,carId),
+    db.prepare(
+      'INSERT INTO '+h+'(id,vehicle_id,user_id,previous_crew,status,is_current) '+
+      "VALUES(?,?,?,?,'PENDING_INVENTORY',1)"
+    ).bind(uuid(),carId,user.id,previous?.name||null)
+  ];
+  await db.batch(statements);
+  return {
+    id:carId,registration_number:number,
+    zmianaEkipy:Boolean(previous),
+    wymagaWeryfikacji:true,
+    poprzedniaEkipa:previous?.name||''
+  };
 }
 async function startVisit(db,user,data){
   const t=frTables(user.testCrew);
@@ -178,6 +216,9 @@ async function startVisit(db,user,data){
   if(matches.length!==1)throw Error('Nieznany lub nieaktywny kod magazynu.');
   const car=await vehicle(db,user.id,user.testCrew);
   if(!car)throw Error('Najpierw wpisz numer rejestracyjny samochodu.');
+  const handover=await currentFrHandover(db,user,car.id);
+  if(!handover||handover.status!=='ACTIVE')
+    throw Error('Przed wizytą wykonaj inwentaryzację przejętego samochodu.');
   const warehouse=matches[0];
   if(user.testCrew)await seedFrTestWarehouse(db,warehouse.warehouse_id);
   const found=await db.prepare('SELECT * FROM '+t.visits+' WHERE id=?').bind(id).first();
@@ -215,6 +256,9 @@ async function saveSession(db,user,data){
   if(visit.warehouse_id!==clean(data.idMagazynu))throw Error('Nieprawidłowy magazyn.');
   const activeCar=await vehicle(db,user.id,user.testCrew);
   if(!activeCar||activeCar.id!==visit.vehicle_id)throw Error('Samochód zmienił się w trakcie wizyty. Sprawdź przypisanie.');
+  const verified=await currentFrHandover(db,user,activeCar.id);
+  if(!verified||verified.status!=='ACTIVE')
+    throw Error('Samochód wymaga inwentaryzacji przed zapisaniem operacji.');
   const pob=await resolveParts(db,data.pobranie||[]);
   const zwr=await resolveParts(db,data.zwrot||[]);
   if(!pob.size&&!zwr.size)throw Error('Brak części do zapisania.');
@@ -294,9 +338,12 @@ async function vehicleStock(db,user){
     "SELECT MAX(event_at) AS last_at FROM "+t.events+" "+
     "WHERE vehicle_id=? AND type='INWENTARYZACJA'"
   ).bind(car.id).first();
-  const inventoryDone=Boolean(inventory?.last_at);
+  const handover=await currentFrHandover(db,user,car.id);
+  const verificationPending=!handover||handover.status!=='ACTIVE';
+  const inventoryDone=Boolean(inventory?.last_at)&&!verificationPending;
   return {ok:true,ekipa:{id:user.id,nazwa:user.nickname},
     samochod:car.registration_number,inwentaryzacjaWykonana:inventoryDone,
+    wymagaWeryfikacji:verificationPending,poprzedniaEkipa:handover?.previous_crew||'',
     ostatniaInwentaryzacja:inventory?.last_at||'',
     czesci:catalogue.parts.filter(x=>x.id).map(x=>({
       kod:x.source_code||x.old_index||x.part_number||x.id,
@@ -313,6 +360,9 @@ async function updateVehicleStock(db,user,data){
   const eventId=clean(data.idZmiany);
   if(!validId(eventId))throw Error('Brak identyfikatora zmiany.');
   const inventory=entryCode(data.typZmiany).includes('INWENT');
+  const currentHandover=await currentFrHandover(db,user,car.id);
+  const pending=!currentHandover||currentHandover.status!=='ACTIVE';
+  if(pending&&!inventory)throw Error('Najpierw wykonaj inwentaryzację przejętego samochodu.');
   const changes=Array.isArray(data.zmiany)?data.zmiany:[];
   if(!changes.length||changes.length>1000)throw Error('Brak poprawnej listy części.');
   const catalogue=await parts(db);
@@ -331,6 +381,11 @@ async function updateVehicleStock(db,user,data){
     if(!Number.isSafeInteger(value)||(absolute&&value<0)||(!absolute&&value===0))
       throw Error('Nieprawidłowa ilość części.');
     byId.set(id,{absolute,value});
+  }
+  if(pending&&inventory){
+    if(!allowedParts.size)throw Error('Katalog samochodowy jest pusty.');
+    if(byId.size!==allowedParts.size||[...byId.values()].some(v=>!v.absolute))
+      throw Error('Przy przejęciu samochodu policz wszystkie części i wpisz stan każdej pozycji (również 0).');
   }
   const hash=await fingerprint({car:car.id,inventory,
     changes:[...byId.entries()].map(([id,v])=>[id,v.absolute,v.value])
@@ -363,8 +418,14 @@ async function updateVehicleStock(db,user,data){
       'ON CONFLICT(vehicle_id,part_id) DO UPDATE SET quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP'
     ).bind(car.id,id,after));
   }
+  if(inventory&&currentHandover?.status==='PENDING_INVENTORY')
+    statements.push(db.prepare(
+      'UPDATE '+handoverTable(user.testCrew)+
+      " SET status='ACTIVE',verified_at=CURRENT_TIMESTAMP,inventory_event_id=? "+
+      "WHERE id=? AND user_id=? AND vehicle_id=? AND is_current=1 AND status='PENDING_INVENTORY'"
+    ).bind(eventId,currentHandover.id,user.id,car.id));
   await db.batch(statements);
-  return {ok:true,inwentaryzacjaWykonana:inventory?true:undefined,
+  return {ok:true,wymagaWeryfikacji:false,inwentaryzacjaWykonana:inventory?true:undefined,
     ostatniaInwentaryzacja:inventory?new Date().toISOString():undefined};
 }
 async function action(db,user,body){
@@ -386,7 +447,11 @@ async function action(db,user,body){
       ).all()).results.map(w=>({id:w.id,nazwa:w.name,kodQr:w.code,aktywny:true,gotowy:true})),
       ustawienia:{logowanieOfflineDni:0,autoSynchronizacja:true,whatsappAlert:false}};
   }
-  if(type==='USTAW_SAMOCHOD')return {ok:true,samochod:await assignVehicle(db,user,data.numerRejestracyjny)};
+  if(type==='USTAW_SAMOCHOD'){
+    const assignment=await assignVehicle(db,user,data.numerRejestracyjny);
+    return {ok:true,samochod:assignment,wymagaWeryfikacji:assignment.wymagaWeryfikacji,
+      poprzedniaEkipa:assignment.poprzedniaEkipa,zmianaEkipy:assignment.zmianaEkipy};
+  }
   if(type==='SKAN_MAGAZYNU')return startVisit(db,user,data);
   if(type==='ZAKONCZ_WIZYTE')return endVisit(db,user,data);
   if(type==='ZAPISZ_SESJE')return saveSession(db,user,data);
@@ -419,6 +484,7 @@ export async function onRequestPost({request,env}){
     await ensureSchema(env.DB);
     user.testCrew=await isFrTestAccount(env.DB,user.id);
     if(user.testCrew)await ensureFrTestSchema(env.DB);
+    await ensureFrHandoverSchema(env.DB,user.testCrew);
     return workerJson(await action(env.DB,user,body));
   }catch(err){
     console.error('FR D1 action failed',err?.name||'Error');
