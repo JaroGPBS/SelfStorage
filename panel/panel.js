@@ -464,17 +464,9 @@
       const arrow=document.createElement('span');arrow.className='user-expand-arrow';
       arrow.textContent=open?'▴':'▾';arrow.setAttribute('aria-hidden','true');
       button.append(arrow);name.append(button);
-      if(user.role_code==='EKIPA'&&user.car_plate){
-        const car=document.createElement('small');
-        car.style.cssText='display:block;font-size:11px;line-height:1.5;margin:3px 0;color:var(--mute)';
-        car.textContent='Auto: '+user.car_plate+(user.car_status!=='ACTIVE'?' · Wymagana inwentaryzacja':'');
-        name.append(car);
-      }
       row.append(name);
 
-      const role=td('');role.append(pill(user.role_code,'blue'));
-      if(user.is_test)role.append(pill('TEST','red'));
-      row.append(role);
+      const role=td('');role.append(pill(user.role_code,'blue'));row.append(role);
       const pin=td('');pin.className='pin-cell';
       pin.append(user.has_pin?pill('Nadany','green'):pill('Brak PIN-u','red'));
       if(user.active&&!state.showArchives&&!user.owner_protected) {
@@ -560,12 +552,6 @@
         ['Numer telefonu',user.phone||'—'],
         ['Przypisane magazyny',user.warehouses||'—']
       ];
-      if(user.role_code==='EKIPA')fields.push(
-        ['Samochód',user.car_plate||'—'],
-        ['Weryfikacja auta',user.car_plate
-          ?(user.car_status==='ACTIVE'?'Inwentaryzacja wykonana':'Wymagana inwentaryzacja')
-          :'Brak przypisania']
-      );
       for(const [title,value] of fields) {
         const field=document.createElement('div');field.className='user-detail-field';
         const label=document.createElement('span');label.className='user-detail-label';
@@ -1500,19 +1486,11 @@
       }
       if(existing)roleInput.value=existing.role_code;
       const toggleCrewMarket=()=>{
-        const crew=roleInput.value==='EKIPA';
-        $('userCrewMarketField').hidden=!crew;
-        const isFR=$('userCrewMarket').value==='FR';
-        $('userTestCrewField').hidden=!crew||!isFR;
-        $('userTestCrewHint').hidden=!crew||!isFR;
-        if(!crew||!isFR)$('userTestCrew').checked=false;
+        $('userCrewMarketField').hidden=roleInput.value!=='EKIPA';
       };
       roleInput.onchange=toggleCrewMarket;
-      $('userCrewMarket').onchange=toggleCrewMarket;
       $('userCrewMarket').value=existing?.market_fr?'FR':
         existing?.market_pl?'PL':'FR';
-      $('userTestCrew').checked=Boolean(existing?.is_test);
-      $('userTestCrew').disabled=Boolean(existing);
       toggleCrewMarket();
 
       const assigned=new Set((existing?.warehouses||'').split(',').map(x=>x.trim()).filter(Boolean));
@@ -1548,7 +1526,6 @@
         phone:$('userPhone').value.trim(),
         role:$('userRole').value,
         crewMarket:$('userRole').value==='EKIPA' ? $('userCrewMarket').value : null,
-        isTestCrew:!userId&&$('userRole').value==='EKIPA'&&$('userCrewMarket').value==='FR'&&$('userTestCrew').checked,
         warehouses,
         ...(userId?{userId,active:Number($('userStatus').value)}:{})
       };
