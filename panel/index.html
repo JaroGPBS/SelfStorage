@@ -8,9 +8,9 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=30">
+  <link rel="stylesheet" href="./panel.css?v=31">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=60" defer></script>
+  <script src="./panel.js?v=61" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -44,7 +44,6 @@
       <nav aria-label="Nawigacja panelu" id="mainNav">
         <button data-view="summary" class="nav-item active" type="button"><span class="nav-symbol">◈</span> Pulpit</button>
         <button data-view="warehouses" class="nav-item" type="button"><span class="nav-symbol">▣</span> Magazyny</button>
-        <button data-view="boxQr" id="boxQrNav" class="nav-item hidden" type="button"><span class="nav-symbol">▦</span> Magazyny BOX · QR</button>
         <button data-view="parts" class="nav-item" type="button"><span class="nav-symbol">▤</span> Katalog części</button>
         <button data-view="boxParts" class="nav-item" type="button"><span class="nav-symbol">▥</span> Katalog części Boxy</button>
         <button data-view="vehicleParts" class="nav-item" type="button"><span class="nav-symbol">▤</span> Katalog części Samochody</button>
@@ -341,31 +340,25 @@
             </form>
           </div>
         </section>
-        <section id="boxQrView" class="view hidden" aria-labelledby="boxQrTitle">
-          <div class="table-panel">
-            <div class="table-title"><div>
-              <h2 id="boxQrTitle">Magazyny BOX · kody QR</h2>
-              <p>Wyłącznie samoobsługowe magazyny Self Storage we Francji. Dotychczasowe kody pozostają bez zmian.</p>
-            </div></div>
-            <form id="boxWarehouseForm" class="box-warehouse-form" autocomplete="off">
-              <label for="boxWarehouseName">Nowy magazyn BOX</label>
-              <input type="text" id="boxWarehouseName" maxlength="70" minlength="3"
-                     placeholder="Np. Lyon" aria-label="Nazwa nowego magazynu BOX" required>
-              <button type="submit" id="boxWarehouseAdd" class="btn primary">+ Dodaj i wygeneruj QR</button>
-            </form>
-            <p class="hint">Dodanie magazynu nie tworzy stanów ani operacji. Nowy BOX zaczyna z pustą ewidencją. Kody można pobrać i wydrukować.</p>
-            <div id="boxQrRows" class="box-qr-list" aria-live="polite"></div>
-          </div>
-        </section>
         <section id="tableView" class="view hidden">
           <div class="table-panel">
             <div class="table-title">
               <div><h2 id="tableTitle"></h2><p id="tableDescription"></p></div>
               <button id="vehicleAddPartBtn" class="btn mini hidden" type="button">+ Dodaj część do samochodów</button>
+              <button id="showBoxWarehouseFormBtn" class="btn mini hidden" type="button" aria-expanded="false" aria-controls="warehouseCreation">+ Dodaj BOX</button>
               <input id="tableSearch" class="search-input" type="search" autocomplete="off" placeholder="Szukaj w tabeli…">
             </div>
             <div id="tableResults" class="table-scroll"></div>
             <div id="tableFooter" class="table-footer"></div>
+            <div id="warehouseCreation" class="warehouse-creation hidden">
+              <form id="boxWarehouseForm" class="box-warehouse-form" autocomplete="off">
+                <label for="boxWarehouseName">Nowy magazyn BOX</label>
+                <input type="text" id="boxWarehouseName" maxlength="70" minlength="3"
+                       placeholder="Np. Lyon" aria-label="Nazwa nowego magazynu BOX" required>
+                <button type="submit" id="boxWarehouseAdd" class="btn primary">Dodaj i wygeneruj QR</button>
+              </form>
+              <p class="hint">Nowy BOX zaczyna bez stanów i historii. Istniejące kody QR innych magazynów pozostają bez zmian.</p>
+            </div>
           </div>
         </section>
         <div class="workspace-footer">GPBS Storage <span>•</span> Panel biurowy i administracyjny <span>•</span> Cloudflare D1</div>
