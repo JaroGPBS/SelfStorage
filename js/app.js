@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=8';
 
-const APP_VERSION = '0.56';
+const APP_VERSION = '0.57';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
@@ -425,6 +425,7 @@ function renderWarehouse() {
   }
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
+  $('vehicleStatePreBtn')?.classList.toggle('hidden',!state.team?.samochod);
   showScreen('screenWarehouse');
 }
 
@@ -1436,7 +1437,7 @@ async function saveWeeklyReport() {
       renderVehicleStock(localData);
     }
 
-    showToast('Cotygodniowy raport zapisany.');
+    showToast('Inwentaryzacja została zapisana.');
 
     fetchVehicleStockOnce()
       .then(data => {
@@ -1457,6 +1458,7 @@ async function saveWeeklyReport() {
 function renderVehicleStock(data) {
   const inWarehouseVisit = Boolean(state.visit?.idWizyty);
   const inventoryDone = data?.inwentaryzacjaWykonana !== false;
+  const waitingAdmin = Boolean(data?.oczekujeNaZatwierdzenie);
 
   let parts = (Array.isArray(data?.czesci) ? data.czesci : [])
     .slice();
@@ -1555,8 +1557,8 @@ function renderVehicleStock(data) {
       : 'Inwentaryzacja niewykonana';
     modeNote.classList.remove('hidden');
   } else {
-    modeNote.textContent = '';
-    modeNote.classList.add('hidden');
+    modeNote.textContent=waitingAdmin?'Rejestracja oczekuje na zatwierdzenie w Adminie.':'';
+    modeNote.classList.toggle('hidden',!waitingAdmin);
   }
 
   updateVehicleBackButton();
@@ -1600,7 +1602,7 @@ function renderVehicleStock(data) {
 
     qty.append(current);
 
-    if (!inWarehouseVisit && inventoryDone && displayQty !== null) {
+    if (!inWarehouseVisit && inventoryDone && !waitingAdmin && displayQty !== null) {
       row.classList.add('is-editable');
 
       const hint = document.createElement('span');
@@ -1846,6 +1848,7 @@ async function assignCurrentVehicle() {
     vehicleInventoryParts=[];
   }
   state.team.samochod=result.samochod.registration_number;
+  $('vehicleStatePreBtn')?.classList.remove('hidden');
   localStorage.setItem('gpbs-fr-car-'+state.team.id,state.team.samochod);
   $('frVehiclePlate').value=state.team.samochod;
   persist();
@@ -1882,7 +1885,11 @@ async function startVisit(code) {
   setLoading(true, 'Rozpoczynanie wizyty…');
 
   try {
-    await assignCurrentVehicle();
+    const assignment=await assignCurrentVehicle();
+    if(assignment.samochod?.wymagaZatwierdzenia){
+      showToast('Rejestracja samochodu czeka na decyzję w Adminie. Inwentaryzację możesz już zapisać.',true);
+      return;
+    }
     const result = await api.startVisit({
       idEkipy: state.team.id,
       kodMagazynu: cleanCode,
@@ -2528,8 +2535,10 @@ function bindEvents() {
   $('frVehicleAssignBtn')?.addEventListener('click',async()=>{
     try{
       setLoading(true,'Przypisywanie samochodu…');
-      await assignCurrentVehicle();
-      showToast('Samochód przypisany do ekipy.');
+      const assignment=await assignCurrentVehicle();
+      showToast(assignment.samochod?.wymagaZatwierdzenia
+        ?'Rejestracja zapisana do weryfikacji. Możesz wykonać inwentaryzację.'
+        :'Samochód przypisany do ekipy. Otwórz Stan auta, aby zrobić inwentaryzację.');
     }catch(error){showToast(messageFromError(error),true);}
     finally{setLoading(false);}
   });
