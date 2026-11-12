@@ -2,7 +2,7 @@
 // Never calls the legacy French Apps Script API or accepts raw PINs.
 import {verifyWorkerSession,workerJson,workerAuthReady} from '../../../lib/pl-worker-auth.js';
 
-const ROLES=new Set(['ADMIN','KIEROWNIK','MAGAZYNIER']);
+const ROLES=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
 const ID=/^PL-SES-[a-f0-9-]{36}$/;
 const WH=/^[A-Z0-9-]{2,50}$/;
 const PART=/^[A-Za-z0-9_-]{1,100}$/;
@@ -18,7 +18,7 @@ async function authorized(request,env,warehouseId){
   if(!WH.test(warehouseId))return {error:fail('Nieprawidłowy magazyn.',400)};
   const user=await verifyWorkerSession(request,env);
   if(!user)return {error:fail('Sesja wygasła. Zaloguj się ponownie.',401)};
-  if(!ROLES.has(user.role))return {error:fail('Brak uprawnień do operacji magazynowych.',403)};
+  if(!user.apps?.mobile||!ROLES.has(user.role))return {error:fail('Brak uprawnień do operacji magazynowych.',403)};
   if(!user.warehouses.some(w=>w.id===warehouseId))
     return {error:fail('Brak dostępu do wybranego magazynu.',403)};
   const warehouse=await env.DB.prepare(
@@ -309,7 +309,7 @@ async function commit(db,input,actorId){
     'commit_guard) VALUES ('+(hasPlate?'?,?,?,?,?, ':'?,?,?,?, ')+
     'CASE WHEN EXISTS(SELECT 1 FROM users u LEFT JOIN user_archives a ON a.user_id=u.id '+
     "WHERE u.id=? AND u.active=1 AND a.user_id IS NULL AND "+
-    "u.role_code IN ('ADMIN','KIEROWNIK','MAGAZYNIER')) "+
+    "u.role_code IN ('ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER')) "+
     'AND EXISTS(SELECT 1 FROM user_warehouse_access g JOIN warehouses w '+
     "ON w.id=g.warehouse_id WHERE g.user_id=? AND g.warehouse_id=? "+
     "AND w.active=1 AND w.country_code='PL') AND "+
