@@ -187,15 +187,37 @@ async function assignVehicle(db,user,value){
 async function startVisit(db,user,data){
   const id=clean(data.idWizyty)||'WIZ-'+uuid();
   if(!validId(id))throw Error('Nieprawidłowy identyfikator wizyty.');
-  const qr=entryCode(data.kodMagazynu);
+  const qr=entryCode(data.kodMagazynu).replace(/\\s+/g,'');
   const matches=(await db.prepare(
     "SELECT q.warehouse_id,w.name FROM fr_warehouse_qr q JOIN warehouses w "+
     "ON w.id=q.warehouse_id WHERE q.code=? AND w.country_code='FR' AND w.active=1"
   ).bind(qr).all()).results||[];
-  if(matches.length!==1)throw Error('Nieznany lub nieaktywny kod magazynu.');
+  let warehouse=matches.length===1?matches[0]:null;
+  if(!warehouse){
+    // The original printed BOX codes are immutable. Older D1 databases may
+    // have the QR table without its two rows: Admin can still display those
+    // codes, but a direct QR lookup would otherwise reject them.
+    const fixedBoxes={
+      'MAG-TL7A2Q':'FR-TOULOUSE',
+      'MAG-PA5A4B':'FR-PARIS'
+    };
+    const boxId=fixedBoxes[qr];
+    if(boxId){
+      const box=await db.prepare(
+        "SELECT id AS warehouse_id,name FROM warehouses "+
+        "WHERE id=? AND country_code='FR' AND active=1"
+      ).bind(boxId).first();
+      if(box){
+        await db.prepare(
+          'INSERT OR IGNORE INTO fr_warehouse_qr(warehouse_id,code) VALUES(?,?)'
+        ).bind(boxId,qr).run();
+        warehouse=box;
+      }
+    }
+  }
+  if(!warehouse)throw Error('Nieznany lub nieaktywny kod magazynu.');
   const car=await vehicle(db,user.id);
   if(!car)throw Error('Najpierw wpisz numer rejestracyjny samochodu.');
-  const warehouse=matches[0];
   const found=await db.prepare('SELECT * FROM fr_visits WHERE id=?').bind(id).first();
   if(found){
     if(found.user_id!==user.id||found.warehouse_id!==warehouse.warehouse_id||
