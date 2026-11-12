@@ -7,7 +7,7 @@ import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
 import {resolveFrCarClaim} from '../../lib/fr-car-review.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
-import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,ownerBySymbol} from '../../lib/user-access-settings.js';
+import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,validAppAccess,serializeUserAccess,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
   ensurePhotoTables,readValidatedPhoto,reservePhotoWrite,releasePhotoBytes}
   from '../../lib/pl-r2-photos.js';
@@ -1678,7 +1678,7 @@ async function route(request,env) {
       return fail('Nie udało się zapisać zmiany danych logowania.',503);
     }
   }
-  if(body?.action==='setUserMarkets'||body?.action==='setUserPermissions'){
+  if(['setUserMarkets','setUserPermissions','setUserApps'].includes(body?.action)){
     if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
     try{
       const userId=String(body.userId||'');
@@ -1695,17 +1695,21 @@ async function route(request,env) {
       if(await isProtectedOwnerRecord(env.DB,user))
         return fail('Uprawnienia głównego administratora są niezmienne.',403);
       const access=await readUserAccess(env.DB,user);
-      let markets=access.markets,features=access.features;
+      let markets=access.markets,features=access.features,apps=access.apps;
       if(body.action==='setUserMarkets'){
         if(!body.markets||typeof body.markets!=='object'||Array.isArray(body.markets)||
           Object.keys(body.markets).sort().join(',')!=='FR,PL'||
           typeof body.markets.PL!=='boolean'||typeof body.markets.FR!=='boolean')
           return fail('Nieprawidłowe uprawnienia rynków.',400);
         markets={PL:body.markets.PL,FR:body.markets.FR};
-      }else{
+      }else if(body.action==='setUserPermissions'){
         if(!validExtraPermissions(body.permissions))
           return fail('Nieprawidłowe uprawnienia dodatkowe.',400);
         features=body.permissions;
+      }else{
+        if(!validAppAccess(body.apps))
+          return fail('Nieprawidłowe uprawnienia aplikacji.',400);
+        apps=body.apps;
       }
       await ensureAccessTable(env.DB);
       await env.DB.batch([
@@ -1713,14 +1717,16 @@ async function route(request,env) {
           'INSERT INTO user_access_settings(user_id,pl_enabled,fr_enabled,extra_permissions) VALUES(?,?,?,?) '+
           'ON CONFLICT(user_id) DO UPDATE SET pl_enabled=excluded.pl_enabled,'+
           'fr_enabled=excluded.fr_enabled,extra_permissions=excluded.extra_permissions,updated_at=CURRENT_TIMESTAMP'
-        ).bind(userId,Number(markets.PL),Number(markets.FR),JSON.stringify(features)),
+        ).bind(userId,Number(markets.PL),Number(markets.FR),serializeUserAccess(features,apps)),
         env.DB.prepare(
           'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?)'
         ).bind(crypto.randomUUID(),session.id,
-          body.action==='setUserMarkets'?'USER_MARKETS_UPDATE':'USER_FEATURES_UPDATE',
-          'USER',userId,JSON.stringify(body.action==='setUserMarkets'?{markets}:{features}))
+          body.action==='setUserMarkets'?'USER_MARKETS_UPDATE':
+             body.action==='setUserApps'?'USER_APPS_UPDATE':'USER_FEATURES_UPDATE',
+          'USER',userId,JSON.stringify(body.action==='setUserMarkets'?{markets}:
+            body.action==='setUserApps'?{apps}:{features}))
       ]);
-      return respond({ok:true,markets,permissions:features});
+      return respond({ok:true,markets,permissions:features,apps});
     }catch(error){
       console.error('User access update failed',error?.name||'Error');
       return fail('Nie udało się zapisać uprawnień użytkownika.',503);
