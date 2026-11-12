@@ -1016,17 +1016,20 @@ function drawAggregate(realSets){
     {label:'SUMA',numeric:true}
   ];
   const rows=filtered.map(part=>{
-    let total=0,complete=true;
+    let total=0,known=0,unknown=0;
     const values=quantities.map(stock=>{
       const value=stock.get(part.id);
       if(value===null||value===undefined||!Number.isFinite(Number(value))){
-        complete=false;
+        unknown++;
       }else{
+        known++;
         total+=Number(value);
       }
       return '<td class="num">'+quantity(value)+'</td>';
     }).join('');
-    const displayed=complete?escapeHtml(total):'<span title="Brak stanu w co najmniej jednym magazynie">—</span>';
+    const displayed=known?
+      '<span'+(unknown?' title="Suma znanych stanów; '+unknown+' magazynów bez danych"':'')+'>'+escapeHtml(total)+'</span>':
+      '<span title="Brak potwierdzonych stanów we wszystkich magazynach">—</span>';
     return '<tr><td>'+escapeHtml(part.sap_number||'—')+'</td>'+
       '<td>'+escapeHtml(part.name)+'</td>'+values+
       '<td class="num aggregate-total">'+displayed+'</td></tr>';
@@ -1869,10 +1872,16 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
     return q!==undefined?String(q):(team.inventory?'0':'—');
   };
   const total=part=>{
-    if(!teams.length)return '—';
-    const values=teams.filter(team=>!team.carPending).map(team=>reading(team,part));
-    return !values.length||values.some(value=>value==='—')?'—':
-      String(values.reduce((a,b)=>a+Number(b),0));
+    // Stocks belong to physical cars. Two crews using one plate count once.
+    const uniqueCars=new Map();
+    for(const team of teams){
+      if(!team.vehicleId||team.carPending)continue;
+      const prev=uniqueCars.get(team.vehicleId);
+      if(!prev||(team.inventory&&!prev.inventory))uniqueCars.set(team.vehicleId,team);
+    }
+    const values=[...uniqueCars.values()].map(team=>reading(team,part))
+      .filter(value=>value!=='—'&&Number.isFinite(Number(value)));
+    return values.length?String(values.reduce((a,b)=>a+Number(b),0)):'—';
   };
   const summary=state.vehicleTab==='summary';
   const tabs=vehicleViewTabs(state.vehicleTab,false);
@@ -2827,11 +2836,6 @@ async function synchronizeOffice(){
   }
 }
 $('refresh').addEventListener('click',()=>synchronizeOffice());
-$('homeRefresh').addEventListener('click',()=>{
-  $('homeSyncError').textContent='';
-  $('homeSyncError').classList.remove('is-error');
-  synchronizeOffice();
-});
 // Warehouse lists remain permanently visible; no expanding menu.
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 $('logout').addEventListener('click',async()=>{
