@@ -292,7 +292,8 @@ export async function onRequestGet({request,env}){
         const claims=new Map(pending.map(row=>[row.user_id,row]));
         for(const crew of crews){
           const claim=claims.get(crew.id);
-          if(!claim)continue;
+          // Directly linked car wins over obsolete pre-approval requests.
+          if(!claim||crew.vehicleId)continue;
           crew.carPending=true;
           crew.plate=claim.requested_plate;
           crew.vehicleId=null;
