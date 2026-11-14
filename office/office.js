@@ -1322,7 +1322,8 @@ function drawFrCrewHistory(){
       escapeHtml('Wizyta '+(all.length-all.indexOf(visit))+
         ' · '+frPreviewWarehouseName(visit.warehouseKey)+
         ' · '+visit.date+' · '+visit.time)+'">'+
-      '<strong>'+escapeHtml(visit.date)+'</strong></th>'
+      '<strong>'+escapeHtml(visit.date)+'</strong>'+
+      '<small>'+escapeHtml(frPreviewWarehouseName(visit.warehouseKey))+'</small></th>'
   ).join('');
   const subHead=visits.map(()=>
     '<th class="fr-matrix-subhead" scope="col">Wydanie</th>'+
@@ -1339,25 +1340,6 @@ function drawFrCrewHistory(){
     '<td class="fr-matrix-number fr-matrix-total-pickup">'+qty(part.pickup)+'</td>'+
     '<td class="fr-matrix-number fr-matrix-total-return">'+qty(part.returned)+'</td>'+
     '</tr>').join('');
-  const visitTotals=visits.map(visit=>{
-    const movement=parts.reduce((totals,part)=>{
-      const value=part.byVisit.get(visit.id);
-      totals.pickup+=value?.pickup||0;
-      totals.returned+=value?.returned||0;
-      return totals;
-    },{pickup:0,returned:0});
-    return '<td class="fr-matrix-number">'+qty(movement.pickup)+'</td>'+
-      '<td class="fr-matrix-number">'+qty(movement.returned)+'</td>';
-  }).join('');
-  const visibleTotals=parts.reduce((acc,part)=>{
-    acc.pickup+=part.pickup;acc.returned+=part.returned;return acc;
-  },{pickup:0,returned:0});
-  const footer='<tr class="fr-matrix-footer">'+
-    '<th class="fr-matrix-index" scope="row">SUMA</th>'+
-    '<th class="fr-matrix-name" scope="row">Łącznie sztuk</th>'+
-    visitTotals+
-    '<td class="fr-matrix-number fr-matrix-total-pickup">'+qty(visibleTotals.pickup)+'</td>'+
-    '<td class="fr-matrix-number fr-matrix-total-return">'+qty(visibleTotals.returned)+'</td></tr>';
   // Matching visit dates retains the whole visit. Matching a part shows
   // the same ten visit columns but only rows for that part.
   const compact=window.matchMedia('(max-width:720px)').matches;
@@ -1387,7 +1369,7 @@ function drawFrCrewHistory(){
     '</tr></thead><tbody>'+
     (rows||'<tr><td class="fr-matrix-empty" colspan="'+(visits.length*2+4)+
       '">Brak pasujących części.</td></tr>')+
-    '</tbody><tfoot>'+footer+'</tfoot></table></div>';
+    '</tbody></table></div>';
   syncFrCrewToolbar();
   $('tableArea').innerHTML='<div class="fr-crew-history">'+matrix+'</div>';
   $('tableFooter').textContent=visits.length+' z '+all.length+
