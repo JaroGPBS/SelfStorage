@@ -1389,6 +1389,10 @@ function drawFrCrewHistory(){
     'Wyszukiwanie w historii ekipy: '+parts.length+' części, '+visits.length+' wizyt.':'';
   const scroll=$('tableArea').querySelector('.fr-crew-matrix-viewport');
   const track=$('tableArea').querySelector('.fr-crew-matrix-track');
+  // Keep the top scrollbar's scroll range equal to the table's range,
+  // despite the always-visible arrow buttons on either side.
+  track.firstElementChild.style.width=Math.max(track.clientWidth,
+    scroll.scrollWidth-scroll.clientWidth+track.clientWidth)+'px';
   const position=Number(state.frCrewMatrixScroll)||0;
   scroll.scrollLeft=position;
   track.scrollLeft=position;
