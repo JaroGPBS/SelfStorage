@@ -470,7 +470,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frMovementCrew:null,frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -667,7 +667,8 @@ function showOfficeHome(){
   $('vehicleTopContext').classList.add('hidden');
   $('vehicleTopExportHost').classList.add('hidden');
   $('app').classList.remove('view-stocks','view-receipts','view-vehicles',
-    'view-aggregate','view-labels','view-fr-empty','view-modules','view-fr-movements');
+    'view-aggregate','view-labels','view-fr-empty','view-modules','view-fr-movements','view-fr-crew-history');
+  $('officeTableCard').querySelector('.fr-crew-toolbar')?.remove();
   renderMenu();
 }
 function officeMenuIcon(view){
@@ -952,7 +953,8 @@ function showFrBoxMovements(key,realId,warehouseName){
   state.search='';
   state.expanded=null;
   state.frMovementCrew=null;
-    state.frCrewMatrixScroll=0;
+  state.frCrewWarehouseFilter='all';
+  state.frCrewMatrixScroll=0;
   state.focusDocument=null;
   $('sidebar').classList.remove('open');
   $('officePreview').classList.add('hidden');
@@ -997,6 +999,7 @@ function setHead(title,kicker,desc){
   $('app').classList.toggle('view-stocks',stockView);
   $('app').classList.toggle('view-receipts',compactView);
   $('app').classList.toggle('view-fr-movements',state.view==='frMovements');
+  syncFrCrewToolbar();
   $('app').classList.toggle('view-vehicles',vehicleView);
   $('app').classList.toggle('view-aggregate',aggregateView);
   $('app').classList.toggle('view-labels',workingLabels);
@@ -1258,17 +1261,42 @@ function drawNokStock(){
 }
 
 
+// FR-only compact header, shared by the existing Office screen.
+function syncFrCrewToolbar(){
+  const active=state.view==='frMovements'&&Boolean(state.frMovementCrew);
+  $('app').classList.toggle('view-fr-crew-history',active);
+  const surface=$('officeTableCard').querySelector('.table-toolbar');
+  let bar=surface.querySelector('.fr-crew-toolbar');
+  if(!active){bar?.remove();return;}
+  if(!bar){
+    bar=document.createElement('div');
+    bar.className='fr-crew-toolbar';
+    surface.prepend(bar);
+  }
+  const labels=[['all','Wszystkie'],['toulouse','Tuluza'],['paris','Paryż']];
+  bar.innerHTML='<button type="button" class="fr-crew-back-compact" '+
+    'data-fr-crew-back="1" aria-label="Wróć do ruchów magazynowych">‹ Powrót</button>'+
+    '<strong class="fr-crew-compact-title">Historia ekipy '+escapeHtml(state.frMovementCrew)+'</strong>'+
+    '<div class="fr-crew-warehouse-filter" role="group" aria-label="Filtruj wizyty według magazynu">'+
+    labels.map(([key,label])=>'<button type="button" data-fr-warehouse-filter="'+key+
+      '" aria-pressed="'+(state.frCrewWarehouseFilter===key)+'"'+
+      (state.frCrewWarehouseFilter===key?' class="active"':'')+'>'+
+      label+'</button>').join('')+'</div>'+
+    '<span class="fr-crew-sample-indicator">Przykład</span>';
+}
 function drawFrCrewHistory(){
   const team=state.frMovementCrew;
   const all=frCrewPreviewVisits(team);
+  const chosen=all.filter(visit=>state.frCrewWarehouseFilter==='all'||
+    visit.warehouseKey===state.frCrewWarehouseFilter);
   const query=state.search.trim().toLocaleLowerCase('pl');
   // Search the visit header or the part name. Looking up one part keeps
   // every visit column visible, so its movements can be compared over time.
   const visitMatches=visit=>[visit.date,visit.time,visit.team,visit.plate,
     frPreviewWarehouseName(visit.warehouseKey),visit.note]
     .join(' ').toLocaleLowerCase('pl').includes(query);
-  const filterVisits=Boolean(query)&&all.some(visitMatches);
-  const visits=filterVisits?all.filter(visitMatches):all;
+  const filterVisits=Boolean(query)&&chosen.some(visitMatches);
+  const visits=filterVisits?chosen.filter(visitMatches):chosen;
   const catalogue=new Map();
   for(const visit of visits){
     for(const line of visit.lines){
@@ -1288,25 +1316,14 @@ function drawFrCrewHistory(){
     !query||filterVisits||(part.code+' '+part.name)
       .toLocaleLowerCase('pl').includes(query))
     .sort((a,b)=>a.name.localeCompare(b.name,'pl')||a.code.localeCompare(b.code));
-  const totalPickups=all.reduce((n,visit)=>n+frPreviewVisitQty(visit,'pickup'),0);
-  const totalReturns=all.reduce((n,visit)=>n+frPreviewVisitQty(visit,'returned'),0);
-  const stats='<div class="fr-crew-stat-grid">'+
-    '<div><span>Wszystkie wizyty</span><strong>'+all.length+'</strong></div>'+
-    '<div><span>Łącznie pobrano</span><strong>'+totalPickups+' szt.</strong></div>'+
-    '<div><span>Łącznie zwrócono</span><strong>'+totalReturns+' szt.</strong></div>'+
-    '</div>';
   const qty=n=>n>0?escapeHtml(n):'—';
-  const visitHead=visits.map(visit=>{
-    const visitNumber=all.length-all.indexOf(visit);
-    return '<th scope="colgroup" class="fr-matrix-visit" colspan="2" title="'+
-      escapeHtml(frPreviewWarehouseName(visit.warehouseKey))+' · '+escapeHtml(visit.date)+
-      ' '+escapeHtml(visit.time)+'">'+
-      '<span>Wizyta '+visitNumber+'</span>'+
-      '<strong>'+escapeHtml(visit.date)+'</strong>'+
-      '<small>'+escapeHtml(visit.time)+' · '+
-        escapeHtml(visit.warehouseKey==='toulouse'?'Toulouse':'Paryż')+
-      '</small></th>';
-  }).join('');
+  const visitHead=visits.map(visit=>
+    '<th scope="colgroup" class="fr-matrix-visit" colspan="2" title="'+
+      escapeHtml('Wizyta '+(all.length-all.indexOf(visit))+
+        ' · '+frPreviewWarehouseName(visit.warehouseKey)+
+        ' · '+visit.date+' · '+visit.time)+'">'+
+      '<strong>'+escapeHtml(visit.date)+'</strong></th>'
+  ).join('');
   const subHead=visits.map(()=>
     '<th class="fr-matrix-subhead" scope="col">Wydanie</th>'+
     '<th class="fr-matrix-subhead" scope="col">Przyjęcie</th>'
@@ -1371,22 +1388,13 @@ function drawFrCrewHistory(){
     (rows||'<tr><td class="fr-matrix-empty" colspan="'+(visits.length*2+4)+
       '">Brak pasujących części.</td></tr>')+
     '</tbody><tfoot>'+footer+'</tfoot></table></div>';
-  $('tableArea').innerHTML='<div class="fr-crew-history">'+
-    '<div class="fr-crew-heading">'+
-    '<button type="button" data-fr-crew-back="1" class="fr-crew-back">‹ Wróć do ruchów magazynowych</button>'+
-    '<div class="fr-crew-heading-title"><div><h2>Historia ekipy '+
-      escapeHtml(team)+'</h2><p>Wszystkie wizyty w Box Toulouse i Box Paryż</p></div>'+
-    '<span class="fr-mov-preview-badge">Dane przykładowe</span></div></div>'+
-    stats+
-    '<div class="fr-crew-matrix-intro"><strong>Części według wizyt</strong>'+
-    '<span>Wydanie = ekipa pobrała · Przyjęcie = ekipa zwróciła · na końcu suma</span></div>'+
-    matrix+'</div>';
+  syncFrCrewToolbar();
+  $('tableArea').innerHTML='<div class="fr-crew-history">'+matrix+'</div>';
   $('tableFooter').textContent=visits.length+' z '+all.length+
-    ' fikcyjnych wizyt ekipy '+team+' · '+parts.length+
-    ' części · bez połączenia z D1';
+    ' wizyt ekipy '+team+' · '+parts.length+' części · dane przykładowe';
   $('searchNote').classList.toggle('hidden',!query);
   $('searchNote').textContent=query?
-    'Wyszukiwanie w historii ekipy: '+parts.length+' części, '+visits.length+' wizyt.':'';
+    'Znaleziono: '+parts.length+' części · '+visits.length+' wizyt.':'';
   const scroll=$('tableArea').querySelector('.fr-crew-matrix-viewport');
   const track=$('tableArea').querySelector('.fr-crew-matrix-track');
   // Keep the top scrollbar's scroll range equal to the table's range,
@@ -1409,6 +1417,7 @@ function drawFrCrewHistory(){
 // One Office entry per BOX visit, with both columns as in Stock FR GPBS / WZ/PZ Ekipy.
 // This is a permanent page layout fed with fictional examples ONLY for design review.
 function drawFrBoxMovements(){
+  syncFrCrewToolbar();
   if(state.frMovementCrew){drawFrCrewHistory();return;}
   const key=state.preview?.warehouseKey;
   const entries=frBoxPreviewVisits(key);
@@ -3116,8 +3125,9 @@ document.addEventListener('click',e=>{
     const team=crew.dataset.frMovementCrew;
     if(!frCrewPreviewVisits(team).length)return;
     state.frMovementCrew=team;
+    state.frCrewWarehouseFilter='all';
     state.frCrewMatrixScroll=0;
-      state.search='';
+    state.search='';
     $('search').value='';
     $('search').placeholder='Szukaj w historii: data, magazyn, część...';
     $('warehouseCrumb').textContent='FRANCJA · EKIPA '+team;
@@ -3128,10 +3138,21 @@ document.addEventListener('click',e=>{
   const backToBox=e.target.closest('[data-fr-crew-back]');
   if(backToBox&&state.view==='frMovements'){
     state.frMovementCrew=null;
-      state.search='';
+    state.frCrewWarehouseFilter='all';
+    state.frCrewMatrixScroll=0;
+    state.search='';
     $('search').value='';
     $('search').placeholder='Szukaj: ekipa, data, rejestracja, część...';
     $('warehouseCrumb').textContent=String(state.preview?.warehouseName||'Box').toLocaleUpperCase('pl');
+    drawFrBoxMovements();
+    return;
+  }
+  const warehouseFilter=e.target.closest('[data-fr-warehouse-filter]');
+  if(warehouseFilter&&state.view==='frMovements'&&state.frMovementCrew){
+    const value=warehouseFilter.dataset.frWarehouseFilter;
+    if(!['all','toulouse','paris'].includes(value))return;
+    state.frCrewWarehouseFilter=value;
+    state.frCrewMatrixScroll=0;
     drawFrBoxMovements();
     return;
   }
