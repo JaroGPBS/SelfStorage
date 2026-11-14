@@ -5842,4 +5842,10 @@
   .app.view-fr-movements .fr-crew-matrix .fr-matrix-name{
     left:86px;width:150px;min-width:150px;max-width:150px;font-size:10px;
   }
+  .app.view-fr-movements .fr-crew-matrix .fr-matrix-total-pickup{
+    right:70px;width:70px;min-width:70px;
+  }
+  .app.view-fr-movements .fr-crew-matrix .fr-matrix-total-return{
+    right:0;width:70px;min-width:70px;
+  }
 }
