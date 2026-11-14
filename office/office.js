@@ -71,6 +71,98 @@ const FR_BOX_MOVEMENT_EXAMPLES={
       ]}
   ]
 };
+
+// Ekipa BG: ten sam przykład jest widoczny w obydwu Boxach.
+// Wszystkie daty, numery i ilości są fikcyjne; nie istnieją w D1.
+const FR_BG_EXAMPLE_VISITS=[
+  {id:'FR-PREVIEW-BG-10',warehouseKey:'toulouse',date:'13.11.2026',time:'08:20',
+    team:'BG',plate:'TEST BG 01',note:'Przykładowa wizyta mieszana.',
+    lines:[
+      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:4,returned:1},
+      {code:'MG-000-030',name:'DASZEK LED',pickup:2,returned:0},
+      {code:'MG-000-025',name:'CZUJNIK T0',pickup:0,returned:3}
+    ]},
+  {id:'FR-PREVIEW-BG-09',warehouseKey:'paris',date:'28.10.2026',time:'16:45',
+    team:'BG',plate:'TEST BG 01',note:'Przykładowe pobranie.',
+    lines:[
+      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:5,returned:0},
+      {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:1,returned:0},
+      {code:'MG-000-027',name:'CZUJNIK T2',pickup:3,returned:0}
+    ]},
+  {id:'FR-PREVIEW-BG-08',warehouseKey:'toulouse',date:'09.10.2026',time:'12:05',
+    team:'BG',plate:'TEST BG 01',note:'Przykładowy zwrot.',
+    lines:[
+      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:0,returned:2},
+      {code:'MG-000-030',name:'DASZEK LED',pickup:0,returned:3}
+    ]},
+  {id:'FR-PREVIEW-BG-07',warehouseKey:'paris',date:'23.09.2026',time:'14:30',
+    team:'BG',plate:'TEST BG 01',note:'Przykładowe pobranie i zwrot.',
+    lines:[
+      {code:'MG-000-030',name:'DASZEK LED',pickup:4,returned:1},
+      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:2,returned:0},
+      {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:1}
+    ]},
+  {id:'FR-PREVIEW-BG-06',warehouseKey:'toulouse',date:'04.09.2026',time:'10:10',
+    team:'BG',plate:'TEST BG 01',note:'Przykładowe pobranie.',
+    lines:[
+      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:6,returned:0},
+      {code:'MG-000-025',name:'CZUJNIK T0',pickup:2,returned:0}
+    ]},
+  {id:'FR-PREVIEW-BG-05',warehouseKey:'paris',date:'12.08.2026',time:'17:05',
+    team:'BG',plate:'TEST BG 02',note:'Przykładowa wizyta mieszana.',
+    lines:[
+      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:2,returned:4},
+      {code:'MG-000-027',name:'CZUJNIK T2',pickup:3,returned:0}
+    ]},
+  {id:'FR-PREVIEW-BG-04',warehouseKey:'toulouse',date:'29.07.2026',time:'09:30',
+    team:'BG',plate:'TEST BG 02',note:'Przykładowe pobranie.',
+    lines:[
+      {code:'MG-000-021',name:'CEOWNIK DACHU DŁUGI',pickup:5,returned:0},
+      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:1,returned:0}
+    ]},
+  {id:'FR-PREVIEW-BG-03',warehouseKey:'paris',date:'16.06.2026',time:'15:18',
+    team:'BG',plate:'TEST BG 02',note:'Przykładowy zwrot.',
+    lines:[
+      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:0,returned:1},
+      {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:2}
+    ]},
+  {id:'FR-PREVIEW-BG-02',warehouseKey:'toulouse',date:'03.06.2026',time:'08:50',
+    team:'BG',plate:'TEST BG 02',note:'Przykładowe pobranie i zwrot.',
+    lines:[
+      {code:'MG-000-030',name:'DASZEK LED',pickup:3,returned:2},
+      {code:'MG-000-025',name:'CZUJNIK T0',pickup:1,returned:0},
+      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:0,returned:1}
+    ]},
+  {id:'FR-PREVIEW-BG-01',warehouseKey:'paris',date:'07.05.2026',time:'13:05',
+    team:'BG',plate:'TEST BG 02',note:'Przykładowe pobranie.',
+    lines:[
+      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:2,returned:0},
+      {code:'MG-000-030',name:'DASZEK LED',pickup:4,returned:0}
+    ]}
+];
+function frPreviewVisitSort(a,b){
+  const stamp=v=>{
+    const [day,month,year]=v.date.split('.');
+    return year+month+day+'T'+v.time;
+  };
+  return stamp(b).localeCompare(stamp(a));
+}
+function frBoxPreviewVisits(key){
+  return [...(FR_BOX_MOVEMENT_EXAMPLES[key]||[]),
+    ...FR_BG_EXAMPLE_VISITS.filter(v=>v.warehouseKey===key)]
+    .sort(frPreviewVisitSort);
+}
+function frCrewPreviewVisits(team){
+  return ['toulouse','paris']
+    .flatMap(frBoxPreviewVisits)
+    .filter(v=>v.team===team).sort(frPreviewVisitSort);
+}
+function frPreviewWarehouseName(key){
+  return key==='toulouse'?'Box Toulouse':'Box Paryż';
+}
+function frPreviewVisitQty(visit,type){
+  return visit.lines.reduce((total,line)=>total+Number(line[type]||0),0);
+}
 const BELLEVILLE_SERVICE={key:'service',name:'Serwisy',icon:'⚙'};
 // TEMPORARY POLISH OFFICE PREVIEW ONLY. These two imaginary crews and all
 // quantities exist only in client-side JavaScript. Never write them into D1.
@@ -378,7 +470,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frMovementCrew:null,frMovementCrewTab:'history',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -859,6 +951,8 @@ function showFrBoxMovements(key,realId,warehouseName){
   state.warehouseMenus.FR=true;
   state.search='';
   state.expanded=null;
+  state.frMovementCrew=null;
+  state.frMovementCrewTab='history';
   state.focusDocument=null;
   $('sidebar').classList.remove('open');
   $('officePreview').classList.add('hidden');
@@ -1163,11 +1257,106 @@ function drawNokStock(){
   noteSearch(data.length,(state.nokParts||[]).length,'częściach');
 }
 
+
+function drawFrCrewHistory(){
+  const team=state.frMovementCrew;
+  const all=frCrewPreviewVisits(team);
+  const query=state.search.trim().toLocaleLowerCase('pl');
+  const matching=visit=>{
+    if(!query)return true;
+    return [visit.date,visit.time,visit.team,visit.plate,
+      frPreviewWarehouseName(visit.warehouseKey),visit.note,
+      ...visit.lines.flatMap(line=>[line.code,line.name])]
+      .join(' ').toLocaleLowerCase('pl').includes(query);
+  };
+  const visible=all.filter(matching);
+  const totalPickups=all.reduce((n,visit)=>n+frPreviewVisitQty(visit,'pickup'),0);
+  const totalReturns=all.reduce((n,visit)=>n+frPreviewVisitQty(visit,'returned'),0);
+  const stats='<div class="fr-crew-stat-grid">'+
+    '<div><span>Wszystkie wizyty</span><strong>'+all.length+'</strong></div>'+
+    '<div><span>Łącznie pobrano</span><strong>'+totalPickups+' szt.</strong></div>'+
+    '<div><span>Łącznie zwrócono</span><strong>'+totalReturns+' szt.</strong></div>'+
+    '</div>';
+  const tabs='<div class="fr-crew-tabs" role="group" aria-label="Widok historii ekipy">'+
+    '<button type="button" data-fr-crew-tab="history" aria-pressed="'+
+    (state.frMovementCrewTab==='history')+'"' +
+    (state.frMovementCrewTab==='history'?' class="active"':'')+
+    '>Historia wizyt</button>'+
+    '<button type="button" data-fr-crew-tab="summary" aria-pressed="'+
+    (state.frMovementCrewTab==='summary')+'"' +
+    (state.frMovementCrewTab==='summary'?' class="active"':'')+
+    '>Podsumowanie części</button></div>';
+  let content='';
+  if(state.frMovementCrewTab==='summary'){
+    const parts=new Map();
+    for(const visit of visible)for(const line of visit.lines){
+      const entry=parts.get(line.code)||{code:line.code,name:line.name,pickup:0,returned:0};
+      entry.pickup+=Number(line.pickup||0);
+      entry.returned+=Number(line.returned||0);
+      parts.set(line.code,entry);
+    }
+    const aggregate=[...parts.values()].sort((a,b)=>b.pickup-a.pickup||
+      b.returned-a.returned||a.name.localeCompare(b.name,'pl'));
+    const body=aggregate.map(line=>'<tr>'+
+      '<td>'+escapeHtml(line.code)+'</td>'+
+      '<td>'+escapeHtml(line.name)+'</td>'+
+      '<td class="fr-mov-qty">'+(line.pickup||'—')+'</td>'+
+      '<td class="fr-mov-qty">'+(line.returned||'—')+'</td></tr>').join('');
+    content='<p class="fr-crew-subheading">Zestawienie części z '+
+      (query?'wyszukanych':'wszystkich')+
+      ' wizyt ekipy, od najczęściej pobieranych.</p>'+
+      '<div class="fr-crew-table-scroll"><table class="fr-crew-summary-table">'+
+      '<thead><tr><th>Indeks</th><th>Nazwa części</th>'+
+      '<th>Łącznie pobrano</th><th>Łącznie zwrócono</th></tr></thead>'+
+      '<tbody>'+(body||'<tr><td colspan="4" class="fr-crew-empty">Brak części.</td></tr>')+
+      '</tbody></table></div>';
+  }else{
+    content='<p class="fr-crew-subheading">'+
+      'Każda wizyta pokazuje wszystkie części, które ekipa pobrała lub zwróciła.</p>'+
+      '<div class="fr-crew-visit-list">'+visible.map((visit,i)=>{
+        const pickup=frPreviewVisitQty(visit,'pickup');
+        const returned=frPreviewVisitQty(visit,'returned');
+        const lines=visit.lines.map(line=>'<tr>'+
+          '<td>'+escapeHtml(line.code)+'</td>'+
+          '<td>'+escapeHtml(line.name)+'</td>'+
+          '<td class="fr-mov-qty">'+(line.pickup||'—')+'</td>'+
+          '<td class="fr-mov-qty">'+(line.returned||'—')+'</td></tr>').join('');
+        return '<section class="fr-crew-visit">'+
+          '<div class="fr-crew-visit-heading"><div>'+
+          '<span class="fr-crew-visit-number">Wizyta '+(all.length-all.indexOf(visit))+'</span>'+
+          '<strong>'+escapeHtml(visit.date)+' · '+escapeHtml(visit.time)+'</strong>'+
+          '<span>'+escapeHtml(frPreviewWarehouseName(visit.warehouseKey))+
+            ' · Samochód '+escapeHtml(visit.plate)+'</span></div>'+
+          '<div class="fr-crew-visit-totals">'+
+          '<span>Pobrano <b>'+pickup+'</b></span>'+
+          '<span>Zwrócono <b>'+returned+'</b></span></div></div>'+
+          '<div class="fr-crew-table-scroll"><table class="fr-crew-parts-table">'+
+          '<thead><tr><th>Indeks</th><th>Nazwa części</th>'+
+          '<th>Pobranie</th><th>Zwrot</th></tr></thead>'+
+          '<tbody>'+lines+'</tbody></table></div>'+
+          '</section>';
+      }).join('')+
+      (visible.length?'':'<div class="fr-crew-empty">Brak pasujących wizyt.</div>')+'</div>';
+  }
+  $('tableArea').innerHTML='<div class="fr-crew-history">'+
+    '<div class="fr-crew-heading">'+
+    '<button type="button" data-fr-crew-back="1" class="fr-crew-back">‹ Wróć do ruchów magazynowych</button>'+
+    '<div class="fr-crew-heading-title"><div><h2>Historia ekipy '+
+      escapeHtml(team)+'</h2><p>Wszystkie wizyty w Box Toulouse i Box Paryż</p></div>'+
+    '<span class="fr-mov-preview-badge">Dane przykładowe</span></div></div>'+
+    stats+tabs+content+'</div>';
+  $('tableFooter').textContent=visible.length+' z '+all.length+
+    ' fikcyjnych wizyt ekipy '+team+' · bez połączenia z D1';
+  $('searchNote').classList.toggle('hidden',!query);
+  $('searchNote').textContent=query?'Wyszukiwanie w historii ekipy: '+visible.length+' wizyt.':'';
+}
+
 // One Office entry per BOX visit, with both columns as in Stock FR GPBS / WZ/PZ Ekipy.
 // This is a permanent page layout fed with fictional examples ONLY for design review.
 function drawFrBoxMovements(){
+  if(state.frMovementCrew){drawFrCrewHistory();return;}
   const key=state.preview?.warehouseKey;
-  const entries=FR_BOX_MOVEMENT_EXAMPLES[key]||[];
+  const entries=frBoxPreviewVisits(key);
   const query=state.search.trim().toLocaleLowerCase('pl');
   const matches=visit=>{
     if(!query)return true;
@@ -1210,7 +1399,7 @@ function drawFrBoxMovements(){
     return '<tr class="fr-mov-session-row'+(expanded?' is-open':'')+'">'+
       '<td class="fr-mov-date"><strong>'+escapeHtml(visit.date)+'</strong>'+
         '<small>'+escapeHtml(visit.time)+'</small></td>'+
-      '<td><span class="fr-mov-team"><strong>'+escapeHtml(visit.team)+'</strong>'+
+      '<td><span class="fr-mov-team"><button type="button" class="fr-mov-team-button" data-fr-movement-crew="'+escapeHtml(visit.team)+'" title="Pokaż pełną historię ekipy">'+escapeHtml(visit.team)+'</button>'+
         '<small>'+escapeHtml(visit.plate)+'</small></span></td>'+
       '<td><span class="fr-mov-kind '+badge+'">'+kind+'</span></td>'+
       '<td class="fr-mov-qty fr-mov-pickup">'+(pickup||'—')+'</td>'+
@@ -2866,6 +3055,39 @@ document.addEventListener('click',e=>{
       selectView(view,preferred);
       return;
     }
+  }
+  const crew=e.target.closest('[data-fr-movement-crew]');
+  if(crew&&state.view==='frMovements'){
+    const team=crew.dataset.frMovementCrew;
+    if(!frCrewPreviewVisits(team).length)return;
+    state.frMovementCrew=team;
+    state.frMovementCrewTab='history';
+    state.search='';
+    $('search').value='';
+    $('search').placeholder='Szukaj w historii: data, magazyn, część...';
+    $('warehouseCrumb').textContent='FRANCJA · EKIPA '+team;
+    state.expanded=null;
+    drawFrBoxMovements();
+    return;
+  }
+  const backToBox=e.target.closest('[data-fr-crew-back]');
+  if(backToBox&&state.view==='frMovements'){
+    state.frMovementCrew=null;
+    state.frMovementCrewTab='history';
+    state.search='';
+    $('search').value='';
+    $('search').placeholder='Szukaj: ekipa, data, rejestracja, część...';
+    $('warehouseCrumb').textContent=String(state.preview?.warehouseName||'Box').toLocaleUpperCase('pl');
+    drawFrBoxMovements();
+    return;
+  }
+  const crewTab=e.target.closest('[data-fr-crew-tab]');
+  if(crewTab&&state.view==='frMovements'&&state.frMovementCrew){
+    const tab=crewTab.dataset.frCrewTab;
+    if(tab!=='history'&&tab!=='summary')return;
+    state.frMovementCrewTab=tab;
+    drawFrBoxMovements();
+    return;
   }
   const movement=e.target.closest('[data-fr-movement-example]');
   if(movement&&state.view==='frMovements'){
