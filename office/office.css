@@ -5682,3 +5682,164 @@
   .app.view-fr-movements .fr-crew-visit-heading{padding:11px;align-items:flex-start;flex-direction:column}
   .app.view-fr-movements .fr-crew-subheading{padding:12px}
 }
+
+
+/* France BOX only: Sheets-style history, parts in vertical rows and visits in horizontal pairs. */
+.app.view-fr-movements .fr-crew-matrix-intro{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 17px;
+  justify-content:space-between;padding:13px 20px 8px;
+}
+.app.view-fr-movements .fr-crew-matrix-intro strong{
+  color:#35414e;font-size:12px;font-weight:850;
+}
+.app.view-fr-movements .fr-crew-matrix-intro span{
+  color:#7e8994;font-size:11px;
+}
+.app.view-fr-movements .fr-crew-matrix-rail{
+  display:flex;align-items:center;gap:6px;padding:4px 20px 9px;
+}
+.app.view-fr-movements .fr-crew-matrix-rail>button{
+  flex:0 0 30px;height:28px;border-radius:6px;
+  border:1px solid #d7dee5;background:#f7f9fb;
+  color:#435467;font-size:22px;line-height:1;
+  display:flex;justify-content:center;align-items:center;
+  cursor:pointer;
+}
+.app.view-fr-movements .fr-crew-matrix-rail>button:hover{
+  background:#edf1f5;border-color:#bbc7d2;
+}
+.app.view-fr-movements .fr-crew-matrix-track{
+  flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;
+  height:21px;border:1px solid #e4e9ee;border-radius:6px;
+  background:#f8fafc;scrollbar-color:#8594a4 #eef2f5;
+  scrollbar-width:auto;
+}
+.app.view-fr-movements .fr-crew-matrix-track::-webkit-scrollbar,
+.app.view-fr-movements .fr-crew-matrix-viewport::-webkit-scrollbar{height:13px}
+.app.view-fr-movements .fr-crew-matrix-track::-webkit-scrollbar-thumb,
+.app.view-fr-movements .fr-crew-matrix-viewport::-webkit-scrollbar-thumb{
+  background:#9aa6b4;border-radius:8px;border:2px solid #eef2f5;
+}
+.app.view-fr-movements .fr-crew-matrix-viewport{
+  width:100%;max-width:100%;overflow-x:auto;
+  overflow-y:hidden;border-top:1px solid #e4e8ed;
+  scrollbar-color:#8594a4 #eef2f5;
+}
+.app.view-fr-movements .fr-crew-matrix{
+  border-collapse:separate;border-spacing:0;table-layout:fixed;
+  font-size:11px;color:#33404c;
+}
+.app.view-fr-movements .fr-crew-matrix th,
+.app.view-fr-movements .fr-crew-matrix td{
+  box-sizing:border-box;padding:8px 7px;
+  border-right:1px solid #e9edf0;border-bottom:1px solid #e9edf0;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.app.view-fr-movements .fr-crew-matrix thead th{
+  background:#f3f6f9;color:#51606e;
+  font-size:10px;text-align:center;
+  font-weight:800;line-height:1.3;
+}
+.app.view-fr-movements .fr-crew-matrix thead th.fr-matrix-visit{
+  padding:8px 3px 7px;border-right:2px solid #cdd6df;
+  background:#edf1f6;
+}
+.app.view-fr-movements .fr-matrix-visit span,
+.app.view-fr-movements .fr-matrix-visit strong,
+.app.view-fr-movements .fr-matrix-visit small{
+  display:block;white-space:nowrap;
+}
+.app.view-fr-movements .fr-matrix-visit span{
+  font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:#84909e;
+}
+.app.view-fr-movements .fr-matrix-visit strong{
+  margin-top:3px;color:#334453;font-size:11px;font-variant-numeric:tabular-nums;
+}
+.app.view-fr-movements .fr-matrix-visit small{
+  margin-top:3px;font-weight:600;color:#778494;font-size:9px;
+}
+.app.view-fr-movements .fr-crew-matrix thead th.fr-matrix-subhead{
+  padding:7px 3px;font-size:9px;
+}
+.app.view-fr-movements .fr-crew-matrix tbody tr:nth-child(even){background:#f9fafc}
+.app.view-fr-movements .fr-crew-matrix tbody tr:hover{background:#edf5fb}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-index{
+  position:sticky;left:0;z-index:2;
+  width:116px;min-width:116px;max-width:116px;
+  background:#fff;color:#617182;font-weight:700;
+  text-align:left;white-space:nowrap;
+  box-shadow:1px 0 0 #e0e5ea;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-name{
+  position:sticky;left:116px;z-index:2;
+  width:238px;min-width:238px;max-width:238px;
+  text-align:left;background:#fff;color:#2d3c4b;
+  font-weight:750;white-space:normal;overflow-wrap:anywhere;
+  box-shadow:2px 0 0 #d8e0e7;
+}
+.app.view-fr-movements .fr-crew-matrix tbody tr:nth-child(even) .fr-matrix-index,
+.app.view-fr-movements .fr-crew-matrix tbody tr:nth-child(even) .fr-matrix-name{
+  background:#f9fafc;
+}
+.app.view-fr-movements .fr-crew-matrix tbody tr:hover .fr-matrix-index,
+.app.view-fr-movements .fr-crew-matrix tbody tr:hover .fr-matrix-name{
+  background:#edf5fb;
+}
+.app.view-fr-movements .fr-crew-matrix thead .fr-matrix-index,
+.app.view-fr-movements .fr-crew-matrix thead .fr-matrix-name{
+  background:#eaf0f6;z-index:5;text-transform:uppercase;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-number{
+  text-align:center;white-space:nowrap;
+  font-variant-numeric:tabular-nums;font-size:11px;font-weight:700;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-number.is-pickup{
+  color:#355a75;font-weight:850;background:#edf5fa;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-number.is-return{
+  color:#397354;font-weight:850;background:#edf7f0;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-total-title{
+  position:sticky;right:0;z-index:4;
+  background:#e3eaf3;color:#33435a;border-left:2px solid #b3c2d4;
+  font-size:11px;letter-spacing:.04em;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-total-pickup{
+  position:sticky;right:78px;z-index:3;
+  width:78px;min-width:78px;background:#eff3f8;color:#354b62;
+  border-left:2px solid #b3c2d4;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-total-return{
+  position:sticky;right:0;z-index:3;
+  width:78px;min-width:78px;background:#eff3f8;color:#354b62;
+}
+.app.view-fr-movements .fr-crew-matrix tbody .fr-matrix-total-pickup,
+.app.view-fr-movements .fr-crew-matrix tbody .fr-matrix-total-return{
+  background:#f1f5f9;color:#304d68;font-weight:850;
+}
+.app.view-fr-movements .fr-crew-matrix tfoot th,
+.app.view-fr-movements .fr-crew-matrix tfoot td{
+  background:#e9eef4;color:#32475a;font-weight:850;
+  border-top:2px solid #bfccd8;
+}
+.app.view-fr-movements .fr-crew-matrix tfoot .fr-matrix-index,
+.app.view-fr-movements .fr-crew-matrix tfoot .fr-matrix-name{
+  background:#e9eef4;z-index:3;
+}
+.app.view-fr-movements .fr-crew-matrix tfoot .fr-matrix-total-pickup,
+.app.view-fr-movements .fr-crew-matrix tfoot .fr-matrix-total-return{
+  background:#e1eaf4;color:#243e57;z-index:4;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-empty{
+  padding:25px;text-align:center;color:#87929e;
+}
+@media(max-width:720px){
+  .app.view-fr-movements .fr-crew-matrix-intro{padding:11px 12px}
+  .app.view-fr-movements .fr-crew-matrix-rail{padding:4px 12px 9px}
+  .app.view-fr-movements .fr-crew-matrix .fr-matrix-index{
+    width:86px;min-width:86px;max-width:86px;font-size:9px;
+  }
+  .app.view-fr-movements .fr-crew-matrix .fr-matrix-name{
+    left:86px;width:150px;min-width:150px;max-width:150px;font-size:10px;
+  }
+}
