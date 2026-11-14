@@ -470,7 +470,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frMovementCrew:null,frMovementCrewTab:'history',labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frMovementCrew:null,frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -952,7 +952,7 @@ function showFrBoxMovements(key,realId,warehouseName){
   state.search='';
   state.expanded=null;
   state.frMovementCrew=null;
-  state.frMovementCrewTab='history';
+    state.frCrewMatrixScroll=0;
   state.focusDocument=null;
   $('sidebar').classList.remove('open');
   $('officePreview').classList.add('hidden');
@@ -1262,14 +1262,32 @@ function drawFrCrewHistory(){
   const team=state.frMovementCrew;
   const all=frCrewPreviewVisits(team);
   const query=state.search.trim().toLocaleLowerCase('pl');
-  const matching=visit=>{
-    if(!query)return true;
-    return [visit.date,visit.time,visit.team,visit.plate,
-      frPreviewWarehouseName(visit.warehouseKey),visit.note,
-      ...visit.lines.flatMap(line=>[line.code,line.name])]
-      .join(' ').toLocaleLowerCase('pl').includes(query);
-  };
-  const visible=all.filter(matching);
+  // Search the visit header or the part name. Looking up one part keeps
+  // every visit column visible, so its movements can be compared over time.
+  const visitMatches=visit=>[visit.date,visit.time,visit.team,visit.plate,
+    frPreviewWarehouseName(visit.warehouseKey),visit.note]
+    .join(' ').toLocaleLowerCase('pl').includes(query);
+  const filterVisits=Boolean(query)&&all.some(visitMatches);
+  const visits=filterVisits?all.filter(visitMatches):all;
+  const catalogue=new Map();
+  for(const visit of visits){
+    for(const line of visit.lines){
+      if(!catalogue.has(line.code))catalogue.set(line.code,{
+        code:line.code,name:line.name,byVisit:new Map(),pickup:0,returned:0
+      });
+      const part=catalogue.get(line.code);
+      const amount=part.byVisit.get(visit.id)||{pickup:0,returned:0};
+      amount.pickup+=Number(line.pickup||0);
+      amount.returned+=Number(line.returned||0);
+      part.byVisit.set(visit.id,amount);
+      part.pickup+=Number(line.pickup||0);
+      part.returned+=Number(line.returned||0);
+    }
+  }
+  const parts=[...catalogue.values()].filter(part=>
+    !query||filterVisits||(part.code+' '+part.name)
+      .toLocaleLowerCase('pl').includes(query))
+    .sort((a,b)=>a.name.localeCompare(b.name,'pl')||a.code.localeCompare(b.code));
   const totalPickups=all.reduce((n,visit)=>n+frPreviewVisitQty(visit,'pickup'),0);
   const totalReturns=all.reduce((n,visit)=>n+frPreviewVisitQty(visit,'returned'),0);
   const stats='<div class="fr-crew-stat-grid">'+
@@ -1277,78 +1295,115 @@ function drawFrCrewHistory(){
     '<div><span>Łącznie pobrano</span><strong>'+totalPickups+' szt.</strong></div>'+
     '<div><span>Łącznie zwrócono</span><strong>'+totalReturns+' szt.</strong></div>'+
     '</div>';
-  const tabs='<div class="fr-crew-tabs" role="group" aria-label="Widok historii ekipy">'+
-    '<button type="button" data-fr-crew-tab="history" aria-pressed="'+
-    (state.frMovementCrewTab==='history')+'"' +
-    (state.frMovementCrewTab==='history'?' class="active"':'')+
-    '>Historia wizyt</button>'+
-    '<button type="button" data-fr-crew-tab="summary" aria-pressed="'+
-    (state.frMovementCrewTab==='summary')+'"' +
-    (state.frMovementCrewTab==='summary'?' class="active"':'')+
-    '>Podsumowanie części</button></div>';
-  let content='';
-  if(state.frMovementCrewTab==='summary'){
-    const parts=new Map();
-    for(const visit of visible)for(const line of visit.lines){
-      const entry=parts.get(line.code)||{code:line.code,name:line.name,pickup:0,returned:0};
-      entry.pickup+=Number(line.pickup||0);
-      entry.returned+=Number(line.returned||0);
-      parts.set(line.code,entry);
-    }
-    const aggregate=[...parts.values()].sort((a,b)=>b.pickup-a.pickup||
-      b.returned-a.returned||a.name.localeCompare(b.name,'pl'));
-    const body=aggregate.map(line=>'<tr>'+
-      '<td>'+escapeHtml(line.code)+'</td>'+
-      '<td>'+escapeHtml(line.name)+'</td>'+
-      '<td class="fr-mov-qty">'+(line.pickup||'—')+'</td>'+
-      '<td class="fr-mov-qty">'+(line.returned||'—')+'</td></tr>').join('');
-    content='<p class="fr-crew-subheading">Zestawienie części z '+
-      (query?'wyszukanych':'wszystkich')+
-      ' wizyt ekipy, od najczęściej pobieranych.</p>'+
-      '<div class="fr-crew-table-scroll"><table class="fr-crew-summary-table">'+
-      '<thead><tr><th>Indeks</th><th>Nazwa części</th>'+
-      '<th>Łącznie pobrano</th><th>Łącznie zwrócono</th></tr></thead>'+
-      '<tbody>'+(body||'<tr><td colspan="4" class="fr-crew-empty">Brak części.</td></tr>')+
-      '</tbody></table></div>';
-  }else{
-    content='<p class="fr-crew-subheading">'+
-      'Każda wizyta pokazuje wszystkie części, które ekipa pobrała lub zwróciła.</p>'+
-      '<div class="fr-crew-visit-list">'+visible.map((visit,i)=>{
-        const pickup=frPreviewVisitQty(visit,'pickup');
-        const returned=frPreviewVisitQty(visit,'returned');
-        const lines=visit.lines.map(line=>'<tr>'+
-          '<td>'+escapeHtml(line.code)+'</td>'+
-          '<td>'+escapeHtml(line.name)+'</td>'+
-          '<td class="fr-mov-qty">'+(line.pickup||'—')+'</td>'+
-          '<td class="fr-mov-qty">'+(line.returned||'—')+'</td></tr>').join('');
-        return '<section class="fr-crew-visit">'+
-          '<div class="fr-crew-visit-heading"><div>'+
-          '<span class="fr-crew-visit-number">Wizyta '+(all.length-all.indexOf(visit))+'</span>'+
-          '<strong>'+escapeHtml(visit.date)+' · '+escapeHtml(visit.time)+'</strong>'+
-          '<span>'+escapeHtml(frPreviewWarehouseName(visit.warehouseKey))+
-            ' · Samochód '+escapeHtml(visit.plate)+'</span></div>'+
-          '<div class="fr-crew-visit-totals">'+
-          '<span>Pobrano <b>'+pickup+'</b></span>'+
-          '<span>Zwrócono <b>'+returned+'</b></span></div></div>'+
-          '<div class="fr-crew-table-scroll"><table class="fr-crew-parts-table">'+
-          '<thead><tr><th>Indeks</th><th>Nazwa części</th>'+
-          '<th>Pobranie</th><th>Zwrot</th></tr></thead>'+
-          '<tbody>'+lines+'</tbody></table></div>'+
-          '</section>';
-      }).join('')+
-      (visible.length?'':'<div class="fr-crew-empty">Brak pasujących wizyt.</div>')+'</div>';
-  }
+  const qty=n=>n>0?escapeHtml(n):'—';
+  const visitHead=visits.map(visit=>{
+    const visitNumber=all.length-all.indexOf(visit);
+    return '<th scope="colgroup" class="fr-matrix-visit" colspan="2" title="'+
+      escapeHtml(frPreviewWarehouseName(visit.warehouseKey))+' · '+escapeHtml(visit.date)+
+      ' '+escapeHtml(visit.time)+'">'+
+      '<span>Wizyta '+visitNumber+'</span>'+
+      '<strong>'+escapeHtml(visit.date)+'</strong>'+
+      '<small>'+escapeHtml(visit.time)+' · '+
+        escapeHtml(visit.warehouseKey==='toulouse'?'Toulouse':'Paryż')+
+      '</small></th>';
+  }).join('');
+  const subHead=visits.map(()=>
+    '<th class="fr-matrix-subhead" scope="col">Wydanie</th>'+
+    '<th class="fr-matrix-subhead" scope="col">Przyjęcie</th>'
+  ).join('');
+  const rows=parts.map(part=>'<tr>'+
+    '<td class="fr-matrix-index">'+escapeHtml(part.code)+'</td>'+
+    '<th scope="row" class="fr-matrix-name">'+escapeHtml(part.name)+'</th>'+
+    visits.map(visit=>{
+      const value=part.byVisit.get(visit.id)||{pickup:0,returned:0};
+      return '<td class="fr-matrix-number'+(value.pickup?' is-pickup':'')+'">'+qty(value.pickup)+'</td>'+
+        '<td class="fr-matrix-number'+(value.returned?' is-return':'')+'">'+qty(value.returned)+'</td>';
+    }).join('')+
+    '<td class="fr-matrix-number fr-matrix-total-pickup">'+qty(part.pickup)+'</td>'+
+    '<td class="fr-matrix-number fr-matrix-total-return">'+qty(part.returned)+'</td>'+
+    '</tr>').join('');
+  const visitTotals=visits.map(visit=>{
+    const movement=parts.reduce((totals,part)=>{
+      const value=part.byVisit.get(visit.id);
+      totals.pickup+=value?.pickup||0;
+      totals.returned+=value?.returned||0;
+      return totals;
+    },{pickup:0,returned:0});
+    return '<td class="fr-matrix-number">'+qty(movement.pickup)+'</td>'+
+      '<td class="fr-matrix-number">'+qty(movement.returned)+'</td>';
+  }).join('');
+  const visibleTotals=parts.reduce((acc,part)=>{
+    acc.pickup+=part.pickup;acc.returned+=part.returned;return acc;
+  },{pickup:0,returned:0});
+  const footer='<tr class="fr-matrix-footer">'+
+    '<th class="fr-matrix-index" scope="row">SUMA</th>'+
+    '<th class="fr-matrix-name" scope="row">Łącznie sztuk</th>'+
+    visitTotals+
+    '<td class="fr-matrix-number fr-matrix-total-pickup">'+qty(visibleTotals.pickup)+'</td>'+
+    '<td class="fr-matrix-number fr-matrix-total-return">'+qty(visibleTotals.returned)+'</td></tr>';
+  // Matching visit dates retains the whole visit. Matching a part shows
+  // the same ten visit columns but only rows for that part.
+  const compact=window.matchMedia('(max-width:720px)').matches;
+  const indexWidth=compact?86:116,nameWidth=compact?150:238,cellWidth=compact?70:78;
+  const matrixWidth=indexWidth+nameWidth+(visits.length*2+2)*cellWidth;
+  const columns='<col style="width:'+indexWidth+'px">'+
+    '<col style="width:'+nameWidth+'px">'+
+    Array.from({length:visits.length*2+2},()=>'<col style="width:'+cellWidth+'px">').join('');
+  const matrix='<div class="fr-crew-matrix-rail">'+
+    '<button type="button" data-fr-crew-scroll="-1" aria-label="Przewiń wizyty w lewo">‹</button>'+
+    '<div class="fr-crew-matrix-track" tabindex="0" role="region" aria-label="Przewijanie historii wizyt">'+
+    '<div style="width:'+matrixWidth+'px;height:1px"></div></div>'+
+    '<button type="button" data-fr-crew-scroll="1" aria-label="Przewiń wizyty w prawo">›</button>'+
+    '</div>'+
+    '<div class="fr-crew-matrix-viewport" tabindex="0" role="region" '+
+    'aria-label="Tabela historii wizyt ekipy '+escapeHtml(team)+'">'+
+    '<table class="fr-crew-matrix" style="width:'+matrixWidth+'px">'+
+    '<colgroup>'+columns+'</colgroup>'+
+    '<thead><tr>'+
+    '<th class="fr-matrix-index" scope="col" rowspan="2">Indeks</th>'+
+    '<th class="fr-matrix-name" scope="col" rowspan="2">Nazwa części</th>'+
+    visitHead+
+    '<th class="fr-matrix-total-title" scope="colgroup" colspan="2">SUMA</th>'+
+    '</tr><tr>'+subHead+
+    '<th class="fr-matrix-total-pickup" scope="col">Wydanie</th>'+
+    '<th class="fr-matrix-total-return" scope="col">Przyjęcie</th>'+
+    '</tr></thead><tbody>'+
+    (rows||'<tr><td class="fr-matrix-empty" colspan="'+(visits.length*2+4)+
+      '">Brak pasujących części.</td></tr>')+
+    '</tbody><tfoot>'+footer+'</tfoot></table></div>';
   $('tableArea').innerHTML='<div class="fr-crew-history">'+
     '<div class="fr-crew-heading">'+
     '<button type="button" data-fr-crew-back="1" class="fr-crew-back">‹ Wróć do ruchów magazynowych</button>'+
     '<div class="fr-crew-heading-title"><div><h2>Historia ekipy '+
       escapeHtml(team)+'</h2><p>Wszystkie wizyty w Box Toulouse i Box Paryż</p></div>'+
     '<span class="fr-mov-preview-badge">Dane przykładowe</span></div></div>'+
-    stats+tabs+content+'</div>';
-  $('tableFooter').textContent=visible.length+' z '+all.length+
-    ' fikcyjnych wizyt ekipy '+team+' · bez połączenia z D1';
+    stats+
+    '<div class="fr-crew-matrix-intro"><strong>Części według wizyt</strong>'+
+    '<span>Wydanie = ekipa pobrała · Przyjęcie = ekipa zwróciła · na końcu suma</span></div>'+
+    matrix+'</div>';
+  $('tableFooter').textContent=visits.length+' z '+all.length+
+    ' fikcyjnych wizyt ekipy '+team+' · '+parts.length+
+    ' części · bez połączenia z D1';
   $('searchNote').classList.toggle('hidden',!query);
-  $('searchNote').textContent=query?'Wyszukiwanie w historii ekipy: '+visible.length+' wizyt.':'';
+  $('searchNote').textContent=query?
+    'Wyszukiwanie w historii ekipy: '+parts.length+' części, '+visits.length+' wizyt.':'';
+  const scroll=$('tableArea').querySelector('.fr-crew-matrix-viewport');
+  const track=$('tableArea').querySelector('.fr-crew-matrix-track');
+  // Keep the top scrollbar's scroll range equal to the table's range,
+  // despite the always-visible arrow buttons on either side.
+  track.firstElementChild.style.width=Math.max(track.clientWidth,
+    scroll.scrollWidth-scroll.clientWidth+track.clientWidth)+'px';
+  const position=Number(state.frCrewMatrixScroll)||0;
+  scroll.scrollLeft=position;
+  track.scrollLeft=position;
+  scroll.addEventListener('scroll',()=>{
+    state.frCrewMatrixScroll=scroll.scrollLeft;
+    if(track.scrollLeft!==scroll.scrollLeft)track.scrollLeft=scroll.scrollLeft;
+  });
+  track.addEventListener('scroll',()=>{
+    state.frCrewMatrixScroll=track.scrollLeft;
+    if(scroll.scrollLeft!==track.scrollLeft)scroll.scrollLeft=track.scrollLeft;
+  });
 }
 
 // One Office entry per BOX visit, with both columns as in Stock FR GPBS / WZ/PZ Ekipy.
@@ -3061,8 +3116,8 @@ document.addEventListener('click',e=>{
     const team=crew.dataset.frMovementCrew;
     if(!frCrewPreviewVisits(team).length)return;
     state.frMovementCrew=team;
-    state.frMovementCrewTab='history';
-    state.search='';
+    state.frCrewMatrixScroll=0;
+      state.search='';
     $('search').value='';
     $('search').placeholder='Szukaj w historii: data, magazyn, część...';
     $('warehouseCrumb').textContent='FRANCJA · EKIPA '+team;
@@ -3073,20 +3128,17 @@ document.addEventListener('click',e=>{
   const backToBox=e.target.closest('[data-fr-crew-back]');
   if(backToBox&&state.view==='frMovements'){
     state.frMovementCrew=null;
-    state.frMovementCrewTab='history';
-    state.search='';
+      state.search='';
     $('search').value='';
     $('search').placeholder='Szukaj: ekipa, data, rejestracja, część...';
     $('warehouseCrumb').textContent=String(state.preview?.warehouseName||'Box').toLocaleUpperCase('pl');
     drawFrBoxMovements();
     return;
   }
-  const crewTab=e.target.closest('[data-fr-crew-tab]');
-  if(crewTab&&state.view==='frMovements'&&state.frMovementCrew){
-    const tab=crewTab.dataset.frCrewTab;
-    if(tab!=='history'&&tab!=='summary')return;
-    state.frMovementCrewTab=tab;
-    drawFrBoxMovements();
+  const crewScroll=e.target.closest('[data-fr-crew-scroll]');
+  if(crewScroll&&state.view==='frMovements'&&state.frMovementCrew){
+    const area=$('tableArea').querySelector('.fr-crew-matrix-viewport');
+    area?.scrollBy({left:Number(crewScroll.dataset.frCrewScroll)*320,behavior:'smooth'});
     return;
   }
   const movement=e.target.closest('[data-fr-movement-example]');
