@@ -2293,9 +2293,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       '<span class="vehicle-team-caption">Ekipa</span>'+
       '<span class="vehicle-team-name">'+escapeHtml(team.team)+'</span>'+
       '<small>'+escapeHtml(team.plate||'Bez samochodu')+(team.carPending?' · Do weryfikacji':'')+'</small>'+
-      ((team.missedWeeks||[]).length?'<small class="vehicle-weekly-missed">'+
-        escapeHtml('Pominięte: '+team.missedWeeks.map(w=>w.split('-W').reverse().join('/')).join(', '))+
-        '</small>':'')+'</button>').join('')+
+      '</button>').join('')+
     '</div>');
   const meta=summary||!chosen?'':(
     '<div class="vehicle-setup-meta">'+
