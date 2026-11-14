@@ -1308,8 +1308,8 @@ function drawFrCrewHistory(){
       '</small></th>';
   }).join('');
   const subHead=visits.map(()=>
-    '<th class="fr-matrix-subhead" scope="col">Pobranie</th>'+
-    '<th class="fr-matrix-subhead" scope="col">Zwrot</th>'
+    '<th class="fr-matrix-subhead" scope="col">Wydanie</th>'+
+    '<th class="fr-matrix-subhead" scope="col">Przyjęcie</th>'
   ).join('');
   const rows=parts.map(part=>'<tr>'+
     '<td class="fr-matrix-index">'+escapeHtml(part.code)+'</td>'+
@@ -1322,10 +1322,16 @@ function drawFrCrewHistory(){
     '<td class="fr-matrix-number fr-matrix-total-pickup">'+qty(part.pickup)+'</td>'+
     '<td class="fr-matrix-number fr-matrix-total-return">'+qty(part.returned)+'</td>'+
     '</tr>').join('');
-  const visitTotals=visits.map(visit=>
-    '<td class="fr-matrix-number">'+qty(frPreviewVisitQty(visit,'pickup'))+'</td>'+
-    '<td class="fr-matrix-number">'+qty(frPreviewVisitQty(visit,'returned'))+'</td>'
-  ).join('');
+  const visitTotals=visits.map(visit=>{
+    const movement=parts.reduce((totals,part)=>{
+      const value=part.byVisit.get(visit.id);
+      totals.pickup+=value?.pickup||0;
+      totals.returned+=value?.returned||0;
+      return totals;
+    },{pickup:0,returned:0});
+    return '<td class="fr-matrix-number">'+qty(movement.pickup)+'</td>'+
+      '<td class="fr-matrix-number">'+qty(movement.returned)+'</td>';
+  }).join('');
   const visibleTotals=parts.reduce((acc,part)=>{
     acc.pickup+=part.pickup;acc.returned+=part.returned;return acc;
   },{pickup:0,returned:0});
@@ -1337,7 +1343,8 @@ function drawFrCrewHistory(){
     '<td class="fr-matrix-number fr-matrix-total-return">'+qty(visibleTotals.returned)+'</td></tr>';
   // Matching visit dates retains the whole visit. Matching a part shows
   // the same ten visit columns but only rows for that part.
-  const indexWidth=116,nameWidth=238,cellWidth=78;
+  const compact=window.matchMedia('(max-width:720px)').matches;
+  const indexWidth=compact?86:116,nameWidth=compact?150:238,cellWidth=compact?70:78;
   const matrixWidth=indexWidth+nameWidth+(visits.length*2+2)*cellWidth;
   const columns='<col style="width:'+indexWidth+'px">'+
     '<col style="width:'+nameWidth+'px">'+
@@ -1358,8 +1365,8 @@ function drawFrCrewHistory(){
     visitHead+
     '<th class="fr-matrix-total-title" scope="colgroup" colspan="2">SUMA</th>'+
     '</tr><tr>'+subHead+
-    '<th class="fr-matrix-total-pickup" scope="col">Pobranie</th>'+
-    '<th class="fr-matrix-total-return" scope="col">Zwrot</th>'+
+    '<th class="fr-matrix-total-pickup" scope="col">Wydanie</th>'+
+    '<th class="fr-matrix-total-return" scope="col">Przyjęcie</th>'+
     '</tr></thead><tbody>'+
     (rows||'<tr><td class="fr-matrix-empty" colspan="'+(visits.length*2+4)+
       '">Brak pasujących części.</td></tr>')+
@@ -1372,7 +1379,7 @@ function drawFrCrewHistory(){
     '<span class="fr-mov-preview-badge">Dane przykładowe</span></div></div>'+
     stats+
     '<div class="fr-crew-matrix-intro"><strong>Części według wizyt</strong>'+
-    '<span>Każda wizyta: pobranie / zwrot · na końcu suma z całego okresu</span></div>'+
+    '<span>Wydanie = ekipa pobrała · Przyjęcie = ekipa zwróciła · na końcu suma</span></div>'+
     matrix+'</div>';
   $('tableFooter').textContent=visits.length+' z '+all.length+
     ' fikcyjnych wizyt ekipy '+team+' · '+parts.length+
