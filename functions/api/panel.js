@@ -1097,41 +1097,66 @@ async function identifyAaPresentationReturn(db,userId){
     'LEFT JOIN fr_visits v ON v.id=s.visit_id '+
     'WHERE s.user_id=? ORDER BY s.saved_at,s.id'
   ).bind(userId).all()).results||[];
-  // Exactly one recorded session, one real row. Any unexpected second part,
-  // visit, date or location blocks the entire cleanup.
-  if(records.length!==1)return {error:
-    'AA ma inną liczbę zapisanych operacji niż ta jedna testowa. Nie zmieniono stanów.'};
-  const row=records[0],qty=Number(row.quantity);
-  if(row.warehouseId!=='FR-TOULOUSE'||row.visitWarehouse!=='FR-TOULOUSE'||
-     row.visitUser!==userId||row.localDate!=='2026-11-12'||
-     row.direction!=='ZWROT'||!Number.isSafeInteger(qty)||qty<=0)
-    return {error:'Wizyta AA nie odpowiada testowemu zwrotowi do Box Toulouse z 12.11.2026. Niczego nie cofnięto.'};
+  // One physical VISIT may have several PZ/WZ sessions and movement lines.
+  // The two AA inventories are in separate event tables and never count here.
+  if(!records.length||records.length>1000)return {error:
+    'Nie udało się jednoznacznie odczytać testowej wizyty AA. Niczego nie usunięto.'};
+  const visitIds=new Set(records.map(row=>row.visitId));
+  if(visitIds.size!==1||![...visitIds][0])return {error:
+    'AA ma '+visitIds.size+' zapisanych wizyt magazynowych. Cofnięcie wymaga sprawdzenia. Nie zmieniono stanów.'};
+  const visitId=records[0].visitId;
+  const deltas=new Map();
+  let firstAt=records[0].savedAt;
+  for(const row of records){
+    const qty=Number(row.quantity);
+    if(row.visitId!==visitId||row.warehouseId!=='FR-TOULOUSE'||
+       row.visitWarehouse!=='FR-TOULOUSE'||row.visitUser!==userId||
+       row.localDate!=='2026-11-12'||!row.partId||
+       !['POBRANIE','ZWROT'].includes(row.direction)||
+       !Number.isSafeInteger(qty)||qty<=0)
+      return {error:'W zapisach AA jest operacja inna niż testowa wizyta w Box Toulouse z 12.11.2026. Nie zmieniono stanów.'};
+    firstAt=firstAt<row.savedAt?firstAt:row.savedAt;
+    const delta=row.direction==='ZWROT'?qty:-qty;
+    deltas.set(row.partId,(deltas.get(row.partId)||0)+delta);
+  }
+  // The part index is validated from the current catalogue, not guessed
+  // from a displayed name or a historical preview label.
   const hasIndex=Boolean(await db.prepare(
     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='pl_part_index_migrations'"
   ).first());
-  const part=await db.prepare(
-    'SELECT p.id,p.part_number'+(hasIndex?',ix.new_index':'')+
-    ' FROM parts p '+(hasIndex?
-      'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
-    'WHERE p.id=?'
-  ).bind(row.partId).first();
-  if(!part||![part.part_number,part.new_index].some(x=>
-    String(x||'').trim().toUpperCase()==='MG-000-022'))
-    return {error:'Zapis AA nie dotyczy dokładnie indeksu MG-000-022. Stany pozostały bez zmian.'};
-  // If this part was touched by any subsequent operation, restoring to 0
-  // could erase a legitimate balance; require manual reconciliation instead.
+  const sql='SELECT DISTINCT p.id FROM parts p '+
+    (hasIndex?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
+    "WHERE UPPER(TRIM(p.part_number))='MG-000-022'"+
+    (hasIndex?" OR UPPER(TRIM(ix.new_index))='MG-000-022'":'');
+  const matching=(await db.prepare(sql).all()).results||[];
+  if(matching.length!==1)return {error:
+    'Indeks MG-000-022 nie jest jednoznacznie przypisany w katalogu. Niczego nie zmieniono.'};
+  const partId=matching[0].id;
+  const quantity=deltas.get(partId)||0;
+  if(!Number.isSafeInteger(quantity)||quantity<=0)return {error:
+    'Testowa wizyta AA nie potwierdza przyjęcia MG-000-022 do Tuluzy. Niczego nie cofnięto.'};
+  const otherChanges=[...deltas].filter(([id,delta])=>id!==partId&&delta!==0);
+  if(otherChanges.length)return {error:
+    'AA ma również zmiany innych części ('+otherChanges.length+
+    ' pozycji). Nie cofnięto niczego, żeby nie naruszyć pozostałych stanów magazynowych.'};
+  // No other crew may have touched this part after AA's first recorded
+  // session. Ignore other lines of this SAME visit (they are verified above).
   const later=await db.prepare(
     'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
-    'WHERE s.warehouse_id=? AND l.part_id=? AND s.id<>? '+
+    'WHERE s.warehouse_id=? AND l.part_id=? AND s.visit_id<>? '+
     'AND s.saved_at>=? LIMIT 1'
-  ).bind('FR-TOULOUSE',row.partId,row.sessionId,row.savedAt).first();
-  if(later)return {error:'Po teście AA były następne ruchy tej części w Tuluzie. Automatyczne cofnięcie zablokowano.'};
+  ).bind('FR-TOULOUSE',partId,visitId,firstAt).first();
+  if(later)return {error:
+    'Po teście AA były następne ruchy tej części w Tuluzie. Automatyczne cofnięcie jest zablokowane.'};
   const stock=await db.prepare(
     'SELECT quantity FROM warehouse_stock WHERE warehouse_id=? AND part_id=?'
-  ).bind('FR-TOULOUSE',row.partId).first();
-  if(!stock||Number(stock.quantity)!==qty)return {error:
-    'Stan MG-000-022 w Tuluzie różni się od zapisanego zwrotu AA. Nie zmieniono stanu; wymagana kontrola.'};
-  return {sessionId:row.sessionId,partId:row.partId,quantity:qty};
+  ).bind('FR-TOULOUSE',partId).first();
+  if(!stock||Number(stock.quantity)!==quantity)return {error:
+    'Stan MG-000-022 w Tuluzie nie odpowiada łącznemu testowemu zwrotowi AA ('+
+    quantity+' szt.). Nie zmieniono magazynu.'};
+  return {visitId,partId,quantity,
+    sessionCount:new Set(records.map(row=>row.sessionId)).size,
+    movementCount:records.length};
 }
 // Permanent removal is intentionally restricted to crew accounts without
 // operational history. Never touch warehouse_stock, movements or inventories.
