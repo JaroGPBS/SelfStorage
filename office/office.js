@@ -13,20 +13,28 @@ const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.i
 // Isolated example quantities for evaluating the French Bovis Paryż module screen.
 // Never saved, never treated as confirmed balances and never merged into Bovis totals.
 const BOVIS_PARIS_MODULE_EXAMPLES=[
-  // Fictitious S/N quantities are deliberately varied: the OUTDOOR view has
-  // a longer column so the real table height and scrolling can be reviewed.
-  // Overall: 25 OK + 5 NOK = 30 machines, no changes to the displayed totals.
-  {group:'outdoor',type:'FM',ok:9,nok:1},
-  {group:'outdoor',type:'LQ',ok:4,nok:1},
-  {group:'outdoor',type:'RQ',ok:2,nok:0},
-  {group:'outdoor',type:'XS',ok:1,nok:0},
-  {group:'outdoor',type:'ODL',ok:2,nok:0},
-  {group:'outdoor',type:'ODR',ok:1,nok:0},
-  {group:'indoor',type:'CU',ok:2,nok:0},
-  {group:'indoor',type:'HICU',ok:1,nok:1},
-  {group:'indoor',type:'CU RJ45',ok:1,nok:0},
-  {group:'bq',type:'CU OUT',ok:1,nok:1},
-  {group:'newgen',type:'DUO L',ok:1,nok:1}
+  // Only Bovis Paryż: deliberately expanded fictional registry for visual review.
+  // Counts and the S/N list share the same source and never write to D1.
+  {group:'outdoor',type:'FM',ok:15,nok:2},
+  {group:'outdoor',type:'LQ',ok:12,nok:2},
+  {group:'outdoor',type:'RQ',ok:9,nok:1},
+  {group:'outdoor',type:'XS',ok:7,nok:1},
+  {group:'outdoor',type:'ODL',ok:7,nok:1},
+  {group:'outdoor',type:'ODR',ok:6,nok:1},
+  {group:'indoor',type:'CU',ok:8,nok:1},
+  {group:'indoor',type:'DUO',ok:5,nok:1},
+  {group:'indoor',type:'HICU',ok:5,nok:1},
+  {group:'indoor',type:'HIDUO',ok:3,nok:1},
+  {group:'indoor',type:'HIUno',ok:4,nok:1},
+  {group:'indoor',type:'CU RJ45',ok:3,nok:1},
+  {group:'indoor',type:'HICU RJ45',ok:2,nok:1},
+  {group:'bq',type:'CU',ok:3,nok:1},
+  {group:'bq',type:'DUO',ok:3,nok:1},
+  {group:'bq',type:'CU OUT',ok:3,nok:1},
+  {group:'bq',type:'DUO OUT',ok:2,nok:1},
+  {group:'newgen',type:'CU',ok:3,nok:1},
+  {group:'newgen',type:'DUO L',ok:3,nok:1},
+  {group:'newgen',type:'DUO R',ok:3,nok:1}
 ];
 
 // Sample Bovis dashboard figures, local to this screen only. No writes and no
@@ -1659,7 +1667,7 @@ function bovisParisExampleSerials(item,status){
   const category=String(item?.group||'').slice(0,3).toUpperCase();
   return Array.from({length:count},(_,index)=>
     'TEST-26-'+category.slice(0,1)+slug.slice(0,5)+'-'+
-    String(index+1).padStart(3,'0'));
+    String(index+1+(status==='nok'?Number(item?.ok||0):0)).padStart(3,'0'));
 }
 // On Bovis Paryż only: keep the full module table on the left and the
 // capacity/status dashboard in the previously unused right-hand area.
