@@ -7795,3 +7795,16 @@
   width:100%;
   flex:none;
 }
+
+/* FR crew history labels: clarify actor without widening columns. */
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-subhead,
+.app.view-fr-movements .fr-crew-matrix thead .fr-matrix-total-pickup,
+.app.view-fr-movements .fr-crew-matrix thead .fr-matrix-total-return{
+  white-space:normal;
+  line-height:1.2;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-subhead span,
+.app.view-fr-movements .fr-crew-matrix thead .fr-matrix-total-pickup span,
+.app.view-fr-movements .fr-crew-matrix thead .fr-matrix-total-return span{
+  display:block;
+}
