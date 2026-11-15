@@ -5811,13 +5811,13 @@
   font-size:11px;letter-spacing:.04em;
 }
 .app.view-fr-movements .fr-crew-matrix .fr-matrix-total-pickup{
-  position:sticky;right:78px;z-index:3;
-  width:78px;min-width:78px;background:#eff3f8;color:#354b62;
+  position:sticky;right:70px;z-index:3;
+  width:70px;min-width:70px;background:#eff3f8;color:#354b62;
   border-left:2px solid #b3c2d4;
 }
 .app.view-fr-movements .fr-crew-matrix .fr-matrix-total-return{
   position:sticky;right:0;z-index:3;
-  width:78px;min-width:78px;background:#eff3f8;color:#354b62;
+  width:70px;min-width:70px;background:#eff3f8;color:#354b62;
 }
 .app.view-fr-movements .fr-crew-matrix tbody .fr-matrix-total-pickup,
 .app.view-fr-movements .fr-crew-matrix tbody .fr-matrix-total-return{
@@ -5849,10 +5849,10 @@
     left:86px;width:150px;min-width:150px;max-width:150px;font-size:10px;
   }
   .app.view-fr-movements .fr-crew-matrix .fr-matrix-total-pickup{
-    right:70px;width:70px;min-width:70px;
+    right:66px;width:66px;min-width:66px;
   }
   .app.view-fr-movements .fr-crew-matrix .fr-matrix-total-return{
-    right:0;width:70px;min-width:70px;
+    right:0;width:66px;min-width:66px;
   }
 }
 
@@ -6142,4 +6142,34 @@
     flex:1 1 auto;
     padding:6px 7px;
   }
+}
+
+
+/* Shared FR crew movements: fit more visits on screen and make actual values stand out.
+   Used by Box histories and the French vehicle-crew preview; never applies to PL. */
+.app.view-fr-movements .fr-crew-matrix thead th.fr-matrix-subhead{
+  font-size:8px;
+  padding:5px 1px;
+  white-space:nowrap;
+}
+.app.view-fr-movements .fr-crew-matrix tbody td.fr-matrix-number{
+  padding:5px 2px;
+}
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-number.is-empty{
+  font-weight:400;
+  color:#b4beca;
+}
+/* Each visit ends after its Przyjęcie column. Keep the stronger
+   boundary continuous from the header through all part rows. */
+.app.view-fr-movements .fr-crew-matrix .fr-matrix-visit-end{
+  border-right:2px solid #b3bfcd;
+}
+.app.view-fr-movements .fr-crew-matrix thead th.fr-matrix-visit{
+  border-right:2px solid #b3bfcd;
+}
+/* Older inventory columns also stay visually separate in French crew stock.
+   Polish inventory styles are deliberately unchanged. */
+.app.view-vehicles .vehicle-fr-split .vehicle-split-history-table th:not(:last-child),
+.app.view-vehicles .vehicle-fr-split .vehicle-split-history-table td:not(:last-child){
+  border-right:2px solid #b3bfcd;
 }
