@@ -1467,7 +1467,8 @@ function bovisParisExampleSerials(item,status){
   const slug=String(item?.type||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
   const category=String(item?.group||'').slice(0,3).toUpperCase();
   return Array.from({length:count},(_,index)=>
-    'TEST-26-'+category+'-'+slug+'-'+String(index+1).padStart(5,'0'));
+    'TEST-26-'+category.slice(0,1)+slug.slice(0,5)+'-'+
+    String(index+1).padStart(3,'0'));
 }
 // On Bovis Paryż only: keep the full module table on the left and the
 // capacity/status dashboard in the previously unused right-hand area.
@@ -1586,7 +1587,7 @@ function drawBovisParisSerials(group,search){
     columns.map(col=>{
       const serial=col.serials[index];
       return '<td>'+(serial
-        ?'<span class="fr-paris-serial-number">'+escapeHtml(serial)+'</span>'
+        ?'<span class="fr-paris-serial-number" title="'+escapeHtml(serial)+'">'+escapeHtml(serial)+'</span>'
         :'<span class="fr-paris-serial-empty">—</span>')+'</td>';
     }).join('')+'</tr>').join('');
   $('tableArea').innerHTML=bovisParisModuleLayout(top+
