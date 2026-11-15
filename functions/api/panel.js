@@ -1110,22 +1110,34 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     const others=await db.prepare(
       'SELECT 1 FROM fr_test_accounts WHERE user_id<>? LIMIT 1'
     ).bind(id).first();
-    const hasTestHandover=Boolean(await db.prepare(
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_test_vehicle_handovers'"
-    ).first());
-    const statements=[
-      db.prepare('DELETE FROM fr_test_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)').bind(id),
-      db.prepare('DELETE FROM fr_test_vehicle_event_lines WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)').bind(id),
-      db.prepare('DELETE FROM fr_test_vehicle_events WHERE user_id=?').bind(id),
-      db.prepare('DELETE FROM fr_test_session_lines WHERE session_id IN (SELECT id FROM fr_test_sessions WHERE user_id=?)').bind(id),
-      db.prepare('DELETE FROM fr_test_sessions WHERE user_id=?').bind(id),
-      db.prepare('DELETE FROM fr_test_visits WHERE user_id=?').bind(id),
-      db.prepare('DELETE FROM fr_test_vehicle_usage WHERE user_id=?').bind(id),
-      db.prepare('DELETE FROM fr_test_accounts WHERE user_id=?').bind(id)
-    ];
-    if(hasTestHandover)statements.push(
-      db.prepare('DELETE FROM fr_test_vehicle_handovers WHERE user_id=?').bind(id)
-    );
+    // Older isolated test modes used slightly different table sets.
+    // Check exact table names before composing one atomic D1 cleanup batch.
+    const legacyRows=(await db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'fr_test_%'"
+    ).all()).results||[];
+    const legacy=new Set(legacyRows.map(row=>row.name));
+    const statements=[];
+    const addLegacy=(table,sql)=>{
+      if(legacy.has(table))statements.push(db.prepare(sql).bind(id));
+    };
+    if(legacy.has('fr_test_vehicle_events')){
+      addLegacy('fr_test_vehicle_event_fingerprints',
+        'DELETE FROM fr_test_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)');
+      addLegacy('fr_test_vehicle_event_lines',
+        'DELETE FROM fr_test_vehicle_event_lines WHERE event_id IN (SELECT id FROM fr_test_vehicle_events WHERE user_id=?)');
+      addLegacy('fr_test_vehicle_events',
+        'DELETE FROM fr_test_vehicle_events WHERE user_id=?');
+    }
+    if(legacy.has('fr_test_sessions')){
+      addLegacy('fr_test_session_lines',
+        'DELETE FROM fr_test_session_lines WHERE session_id IN (SELECT id FROM fr_test_sessions WHERE user_id=?)');
+      addLegacy('fr_test_sessions','DELETE FROM fr_test_sessions WHERE user_id=?');
+    }
+    addLegacy('fr_test_visits','DELETE FROM fr_test_visits WHERE user_id=?');
+    addLegacy('fr_test_vehicle_usage','DELETE FROM fr_test_vehicle_usage WHERE user_id=?');
+    addLegacy('fr_test_vehicle_handovers',
+      'DELETE FROM fr_test_vehicle_handovers WHERE user_id=?');
+    addLegacy('fr_test_accounts','DELETE FROM fr_test_accounts WHERE user_id=?');
     // Remove vehicle-only trial history without modifying actual BOX stock.
     const frTables=(await db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
@@ -1165,11 +1177,13 @@ async function permanentlyDeleteUnusedCrew(env,body) {
       statements.push(db.prepare('DELETE FROM fr_visits WHERE user_id=?').bind(id));
 
     if(!others){
-      // Last test crew: discard all fake cars and BOX snapshots together.
-      statements.push(db.prepare('DELETE FROM fr_test_vehicle_stock'));
-      statements.push(db.prepare('DELETE FROM fr_test_vehicles'));
-      statements.push(db.prepare('DELETE FROM fr_test_warehouse_stock'));
-      statements.push(db.prepare('DELETE FROM fr_test_warehouse_snapshots'));
+      // Last legacy test crew only: discard isolated fake balances.
+      // NEVER touch warehouse_stock, parts or any real French BOX balances.
+      for(const table of ['fr_test_vehicle_stock','fr_test_vehicles',
+        'fr_test_warehouse_stock','fr_test_warehouse_snapshots']){
+        if(legacy.has(table))
+          statements.push(db.prepare('DELETE FROM '+table));
+      }
     }
     const existingTables=(await db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
