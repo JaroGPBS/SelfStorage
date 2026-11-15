@@ -1719,6 +1719,100 @@ function bovisParisModuleLayout(mainHtml,groupId){
   return '<div class="fr-paris-module-workspace'+(groupId?' fr-paris-module-workspace--serial':'')+'">'+
     '<div class="fr-paris-module-content">'+mainHtml+'</div>'+right+'</div>';
 }
+// Bovis Paryż SUMA: monthly HISTORY PREVIEW, isolated from real stock / D1.
+// This source can later be replaced with snapshots reconstructed from the
+// initial warehouse inventory + every confirmed PZ/WZ movement. A snapshot is
+// the stock at month end, NOT the sum of all movements during the month.
+// Machine footprint must eventually come from actual machine/type dimensions,
+// rather than today's temporary 2 m² per machine assumption.
+// Never invent historical snapshots when the initial balance is unknown.
+const BOVIS_PARIS_MONTHLY_SAMPLE_2026=[
+  {month:1,machines:75,occupied:150},
+  {month:2,machines:72,occupied:144},
+  {month:3,machines:65,occupied:130},
+  {month:4,machines:60,occupied:120},
+  {month:5,machines:55,occupied:110},
+  {month:6,machines:50,occupied:100},
+  {month:7,machines:47,occupied:94},
+  {month:8,machines:44,occupied:88},
+  {month:9,machines:40,occupied:80},
+  {month:10,machines:35,occupied:70}
+];
+const BOVIS_PARIS_MONTH_NAMES=[
+  ['Styczeń','Sty'],['Luty','Lut'],['Marzec','Mar'],['Kwiecień','Kwi'],
+  ['Maj','Maj'],['Czerwiec','Cze'],['Lipiec','Lip'],['Sierpień','Sie'],
+  ['Wrzesień','Wrz'],['Październik','Paź'],['Listopad','Lis'],['Grudzień','Gru']
+];
+// Shared contract for future real snapshots: {month:1..12,machines,occupied}.
+// Null means no historical evidence; never turn a missing month into zero.
+function bovisParisMonthlyHistoryModel(snapshots,capacity){
+  const area=Number(capacity);
+  const validArea=Number.isFinite(area)&&area>0?area:0;
+  const values=new Map((snapshots||[]).filter(row=>
+    Number.isInteger(row.month)&&row.month>=1&&row.month<=12&&
+    Number.isFinite(row.machines)&&row.machines>=0&&
+    Number.isFinite(row.occupied)&&row.occupied>=0
+  ).map(row=>[row.month,row]));
+  return BOVIS_PARIS_MONTH_NAMES.map(([name,short],i)=>{
+    const month=i+1;
+    const found=values.get(month);
+    if(!found||!validArea)return {month,name,short,machines:null,occupied:null,free:null,percent:null};
+    const occupied=Math.min(validArea,found.occupied);
+    return {month,name,short,machines:found.machines,occupied,
+      free:Math.max(0,validArea-occupied),
+      percent:Math.round(occupied/validArea*100)};
+  });
+}
+function bovisParisMonthlyHistoryPreview(){
+  const source=BOVIS_OVERVIEW_PREVIEW.warehouses.find(w=>w.key==='bovis-paris');
+  const capacity=Number(source?.area||0);
+  const machineCount=BOVIS_PARIS_MODULE_EXAMPLES.reduce((total,row)=>
+    total+row.ok+row.nok,0);
+  const currentSample={month:11,machines:machineCount,
+    occupied:machineCount*BOVIS_OVERVIEW_PREVIEW.squareMetersPerMachine};
+  const data=bovisParisMonthlyHistoryModel(
+    [...BOVIS_PARIS_MONTHLY_SAMPLE_2026,currentSample],capacity);
+  const maxMachines=Math.max(1,...data.map(row=>row.machines||0));
+  const monthColumn=(row,kind)=>{
+    const available=row.machines!==null;
+    const title=available
+      ?row.name+': '+row.machines+' maszyn, '+row.occupied+' m² zajęte, '+
+        row.free+' m² wolne ('+row.percent+'%)'+
+        (row.month===11?' – bieżący przykład':' – stan na koniec miesiąca')
+      :row.name+': brak danych';
+    const value=available
+      ?kind==='machines'?row.machines+' szt.':row.percent+'%'
+      :'—';
+    const height=available?(kind==='machines'
+      ?Math.round(row.machines/maxMachines*100):row.percent):0;
+    return '<div class="fr-paris-monthly-column'+(available?'':' is-missing')+
+        '" title="'+escapeHtml(title)+'" role="img" aria-label="'+escapeHtml(title)+'">'+
+      '<span class="fr-paris-monthly-value">'+escapeHtml(value)+'</span>'+
+      '<div class="fr-paris-monthly-track">'+
+        (available?'<span class="fr-paris-monthly-fill'+
+          (kind==='area'?' is-area':'')+'" style="height:'+height+'%"></span>':'')+
+      '</div><span class="fr-paris-monthly-label">'+row.short+'</span></div>';
+  };
+  const monthChart=(kind,heading,subheading)=>
+    '<div class="fr-paris-monthly-card">'+
+      '<div class="fr-paris-monthly-card-head"><strong>'+heading+'</strong>'+
+        '<span>'+subheading+'</span></div>'+
+      '<div class="fr-paris-monthly-plot">'+
+        data.map(row=>monthColumn(row,kind)).join('')+
+      '</div></div>';
+  return '<section class="fr-paris-monthly-history" aria-label="Przykładowa miesięczna historia wykorzystania Bovis Paryż">'+
+    '<div class="fr-paris-monthly-heading"><h3>Historia miesięczna — 2026</h3>'+
+      '<span>DANE FIKCYJNE</span></div>'+
+    '<p>Stan na koniec miesiąca. Listopad pokazuje obecne dane przykładowe, '+
+      'grudzień nie ma jeszcze danych. W przyszłości wykres powstanie z rzeczywistych stanów i dokumentów PZ/WZ.</p>'+
+    '<div class="fr-paris-monthly-charts">'+
+      monthChart('machines','Liczba maszyn','szt. w magazynie')+
+      monthChart('area','Wykorzystanie powierzchni','z '+capacity+' m²')+
+    '</div><div class="fr-paris-monthly-legend">'+
+      '<span><i class="is-used"></i>Zajęta powierzchnia</span>'+
+      '<span><i class="is-free"></i>Wolna powierzchnia (do '+capacity+' m²)</span>'+
+    '</div></section>';
+}
 function drawBovisParisSum(items,search){
   const source=BOVIS_PARIS_MODULE_EXAMPLES;
   const groups=MODULE_GROUPS;
@@ -1748,7 +1842,8 @@ function drawBovisParisSum(items,search){
         '<td class="num module-count-ok">'+ok+'</td><td class="num module-count-nok">'+nok+'</td>'+
         '<td class="num">'+(ok+nok)+'</td></tr>':'')+
       '</tbody></table>';
-  $('tableArea').innerHTML=bovisParisModuleLayout(table,null);
+  $('tableArea').innerHTML=bovisParisModuleLayout(table,null)+
+    bovisParisMonthlyHistoryPreview();
   $('tableFooter').textContent='Bovis Paryż · przykładowe wartości. Powierzchnia na podstawie '+
     BOVIS_OVERVIEW_PREVIEW.squareMetersPerMachine+
     ' m² na maszynę. Ruchy magazynowe nie są jeszcze podłączone.';
