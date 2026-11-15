@@ -147,6 +147,20 @@ function frPreviewVisitSort(a,b){
   };
   return stamp(b).localeCompare(stamp(a));
 }
+// ISO week number and ISO week-year from the fictional FR visit's DD.MM.YYYY.
+ // Year matters around New Year's, when week 01 can belong to the next year.
+function frBoxWeek(dateTextValue){
+  const match=String(dateTextValue||'').match(/^(\\d{2})\\.(\\d{2})\\.(\\d{4})$/);
+  if(!match)return {week:0,year:0};
+  const day=Number(match[1]),month=Number(match[2]),year=Number(match[3]);
+  const date=new Date(Date.UTC(year,month-1,day));
+  if(date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||
+     date.getUTCDate()!==day)return {week:0,year:0};
+  date.setUTCDate(date.getUTCDate()+4-(date.getUTCDay()||7));
+  const isoYear=date.getUTCFullYear();
+  const start=new Date(Date.UTC(isoYear,0,1));
+  return {week:Math.ceil((((date-start)/86400000)+1)/7),year:isoYear};
+}
 function frBoxPreviewVisits(key){
   return [...(FR_BOX_MOVEMENT_EXAMPLES[key]||[]),
     ...FR_BG_EXAMPLE_VISITS.filter(v=>v.warehouseKey===key)]
@@ -750,11 +764,11 @@ function renderMenu(){
         'data-fr-warehouse-name="'+escapeHtml(label)+'">'+
         '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('stocks')+'</span>'+
         'Stany magazynowe</button>');
-    // NOK is not used in Belleville or either French BOX. Keep
-    // inventories and label printing available as before.
+    // Box Toulouse and Box Paryż need only stock, movements and inventories.
+    // Label printing remains available elsewhere (including the PL menus).
     const isBox=key==='toulouse'||key==='paris';
     const warehouseOperations=permittedOperations('FR').filter(op=>
-      !(isBox&&['pz','wz'].includes(op.view))&&
+      !(isBox&&['pz','wz','labels'].includes(op.view))&&
       !(['belleville','toulouse','paris'].includes(key)&&op.view==='nok')
     );
     // Only the two self-storage BOX menus replace separate PZ/WZ with one view.
@@ -1411,21 +1425,27 @@ function drawFrBoxMovements(){
       .join(' ').toLocaleLowerCase('pl');
     return haystack.includes(query);
   };
-  const visible=entries.filter(matches);
+  // Group order is newest ISO week first, then newest visit inside each week.
+  const weekSort=(a,b)=>{
+    const wa=frBoxWeek(a.date),wb=frBoxWeek(b.date);
+    return wb.year-wa.year||wb.week-wa.week||frPreviewVisitSort(a,b);
+  };
+  const visible=entries.filter(matches).sort(weekSort);
   const sum=(visit,direction)=>visit.lines.reduce((acc,line)=>acc+Number(line[direction]||0),0);
   const qty=value=>Number(value)>0?escapeHtml(value):'—';
   const warehouse=state.preview?.warehouseName||'Box';
   const rows=visible.map(visit=>{
     const pickup=sum(visit,'pickup'),returned=sum(visit,'returned');
     const expanded=state.expanded===visit.id;
-    const kind=pickup&&returned?'Mieszana':pickup?'Pobranie':'Zwrot';
-    const badge=kind==='Mieszana'?'mixed':kind==='Pobranie'?'pickup':'return';
+    const kind=pickup&&returned?'WZ/PZ':pickup?'Pobranie':'Zwrot';
+    const badge=pickup&&returned?'mixed':pickup?'pickup':'return';
+    const iso=frBoxWeek(visit.date);
     const lines=visit.lines.map(line=>'<tr>'+
       '<td>'+escapeHtml(line.code)+'</td>'+
       '<td>'+escapeHtml(line.name)+'</td>'+
       '<td class="fr-mov-qty">'+qty(line.pickup)+'</td>'+
       '<td class="fr-mov-qty">'+qty(line.returned)+'</td></tr>').join('');
-    const details=expanded?'<tr class="fr-mov-expansion"><td colspan="6">'+
+    const details=expanded?'<tr class="fr-mov-expansion"><td colspan="7">'+
       '<div class="fr-mov-expanded-card">'+
       '<div class="fr-mov-expanded-top"><div><strong>Wizyta '+escapeHtml(visit.team)+'</strong>'+
       '<span>'+escapeHtml(warehouse)+' · '+escapeHtml(visit.date)+' · '+escapeHtml(visit.time)+
@@ -1445,6 +1465,7 @@ function drawFrBoxMovements(){
     return '<tr class="fr-mov-session-row'+(expanded?' is-open':'')+'">'+
       '<td class="fr-mov-date"><strong>'+escapeHtml(visit.date)+'</strong>'+
         '<small>'+escapeHtml(visit.time)+'</small></td>'+
+      '<td class="fr-mov-week">'+(iso.week?escapeHtml(iso.week)+' / '+escapeHtml(iso.year):'—')+'</td>'+
       '<td><span class="fr-mov-team"><button type="button" class="fr-mov-team-button" data-fr-movement-crew="'+escapeHtml(visit.team)+'" title="Pokaż pełną historię ekipy">'+escapeHtml(visit.team)+'</button>'+
         '<small>'+escapeHtml(visit.plate)+'</small></span></td>'+
       '<td><span class="fr-mov-kind '+badge+'">'+kind+'</span></td>'+
@@ -1461,9 +1482,9 @@ function drawFrBoxMovements(){
     '<span>Jedna wizyta = pobrania i zwroty w jednym wpisie.</span></div>'+
     '<span class="fr-mov-preview-badge">Dane przykładowe</span></div>'+
     '<div class="fr-mov-table-scroll"><table class="fr-mov-table">'+
-    '<thead><tr><th>Data / godz.</th><th>Ekipa / samochód</th><th>Operacja</th>'+
+    '<thead><tr><th>Data / godz.</th><th>Tydz.</th><th>Ekipa / samochód</th><th>Operacja</th>'+
     '<th>Pobrano</th><th>Zwrócono</th><th></th></tr></thead>'+
-    '<tbody>'+(rows||'<tr><td class="fr-mov-no-results" colspan="6">Brak pasujących wizyt.</td></tr>')+
+    '<tbody>'+(rows||'<tr><td class="fr-mov-no-results" colspan="7">Brak pasujących wizyt.</td></tr>')+
     '</tbody></table></div></div>';
   $('tableFooter').textContent=visible.length+' z '+entries.length+
     ' przykładowych wizyt · bez połączenia z historią D1';
