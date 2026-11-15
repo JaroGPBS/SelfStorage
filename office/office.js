@@ -1276,8 +1276,12 @@ function drawAggregateModules(realSets){
     '<tr><td colspan="'+headers.length+'" class="office-aggregate-empty">'+
     'Brak pasujących typów modułów.</td></tr>',
     'aggregate-table aggregate-modules-table');
-  $('tableFooter').textContent=visible.length+' typów modułów · '+
-    realSets.length+' magazynów · OK / NOK · kreski oznaczają brak danych o ilościach';
+  const plural=(n,one,few,many)=>n===1?one:
+    n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?few:many;
+  $('tableFooter').textContent=visible.length+' '+
+    plural(visible.length,'typ modułu','typy modułów','typów modułów')+' · '+
+    realSets.length+' '+plural(realSets.length,'magazyn','magazyny','magazynów')+
+    ' · OK / NOK · kreski oznaczają brak danych o ilościach';
   noteSearch(visible.length,all.length,'typach modułów');
 }
 function drawAggregate(realSets){
