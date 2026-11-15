@@ -7777,3 +7777,21 @@
   .fr-paris-module-aside-counts > .fr-bovis-group-nok small{
   color:#c13d42;
 }
+
+
+/* Bovis SUMA chart: vertical OK / NOK / free stacking inside each monthly column.
+   The light track is always 100% of the warehouse capacity.
+   Bottom: OK; immediately above: NOK; top remains light/free. */
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-bovis-month-occupied{
+  flex-direction:column-reverse;
+  align-items:stretch;
+  justify-content:flex-start;
+}
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-bovis-month-occupied > .fr-bovis-month-ok,
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-bovis-month-occupied > .fr-bovis-month-nok{
+  width:100%;
+  flex:none;
+}
