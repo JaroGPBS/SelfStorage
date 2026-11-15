@@ -557,7 +557,7 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -762,7 +762,7 @@ function setLoggedIn(payload){
 function showOfficeHome(){
   // No stock data request on login: only the welcome screen.
   ++state.requestId;
-  state.view='home';state.preview=null;state.frExpanded=null;
+  state.view='home';state.preview=null;state.frExpanded=null;state.bovisParisProcess=null;
   state.bovisExpanded=false;state.expanded=null;state.focusDocument=null;
   state.search='';state.vehicleSelectedInventory=0;
   $('sidebar').classList.remove('open');
@@ -1022,6 +1022,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     // Unconnected French warehouses use exactly the same stock layout as Tychy.
     // No D1 request or invented stock quantities are made for a layout-only entry.
     ++state.requestId;
+    state.bovisParisProcess=null;
     state.view='stocks';state.preview={type,key,label};
     state.stockTab=frenchStockKind('',state.preview)==='bovis'?'modules':'parts';
     state.moduleCategory='all';state.search='';state.focusDocument=null;
@@ -1231,6 +1232,7 @@ function setHead(title,kicker,desc){
   $('modulesTab').textContent=polishStocks?'CZĘŚCI NIEKOMPLETNE':'MODUŁY';
   // The visual order is reversed only in Bovis Paryż during layout review.
   $('app').classList.toggle('view-bovis-paris',isBovisParisStock());
+  for(const id of ['bovisParisPzTab','bovisParisWzTab'])$(id).classList.toggle('hidden',!isBovisParisStock());
   // Boxes have no machines: show only Części, without an inactive Moduły tab.
   const boxStocks=state.view==='stocks'&&
     frenchStockKind(state.warehouse,state.preview)==='box';
@@ -1325,22 +1327,33 @@ function setHead(title,kicker,desc){
   // French catalogue views can add shared parts, without creating stock.
 }
 function syncStockTabUI(){
-  const modules=state.view==='stocks'&&state.stockTab==='modules';
-  const nok=state.view==='stocks'&&state.stockTab==='nok';
+  const process=isBovisParisStock()?state.bovisParisProcess:null;
+  const modules=state.view==='stocks'&&state.stockTab==='modules'&&!process;
+  const nok=state.view==='stocks'&&state.stockTab==='nok'&&!process;
   const secondary=modules||nok;
   $('app').classList.toggle('view-modules',modules);
   $('moduleCategories').classList.toggle('hidden',!modules);
-  for(const [id,active] of [['partsTab',!secondary],['modulesTab',secondary]]){
+  for(const [id,active] of [['partsTab',!secondary&&!process],['modulesTab',secondary&&!process]]){
     $(id).classList.toggle('active',active);
     $(id).setAttribute('aria-selected',String(active));
   }
+  for(const [id,view] of [['bovisParisPzTab','pz'],['bovisParisWzTab','wz']]){
+    $(id).classList.toggle('active',process===view);
+    $(id).setAttribute('aria-selected',String(process===view));
+  }
+  $('search').closest('.search-wrap').classList.toggle('hidden',Boolean(process));
+  $('sort').classList.toggle('hidden',Boolean(process)||!['stocks','aggregate'].includes(state.view));
+  $('export').classList.toggle('hidden',Boolean(process)||state.view==='frMovements');
+  const sampleExport=isBovisParisModuleExample()&&!process;
+  $('export').disabled=!sampleExport;
+  $('export').title=sampleExport?'Przykładowy eksport modułów Bovis Paryż (dane fikcyjne)':'Eksport będzie dostępny później';
   $('newPart').textContent=modules?'+ Dodaj moduł':'+ Dodaj część';
-  const canAdd=!secondary&&Boolean(partCreationTarget());
+  const canAdd=!secondary&&!process&&Boolean(partCreationTarget());
   $('newPart').disabled=!canAdd;
   $('newPart').classList.toggle('hidden',!canAdd);
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
     modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
-  $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
+  $('tableCaption').querySelector('strong').textContent=process?(process==='pz'?'PZ — Przyjęcia magazynowe':'WZ — Wydania magazynowe'):modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
   $('search').placeholder=modules?(isBovisParisStock()?'Szukaj typu lub numeru seryjnego':'Szukaj typu modułu'):'Szukaj po SAP lub nazwie części';
   $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   document.querySelectorAll('[data-module-category]').forEach(btn=>{
@@ -1351,15 +1364,15 @@ function syncStockTabUI(){
 }
 function setStockTab(tab){
   const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
-  if(!['parts',polish?'nok':'modules'].includes(tab)||state.view!=='stocks'||state.stockTab===tab||
+  if(!['parts',polish?'nok':'modules'].includes(tab)||state.view!=='stocks'||(state.stockTab===tab&&!state.bovisParisProcess)||
     (tab==='modules'&&frenchStockKind(state.warehouse,state.preview)==='box'))return;
-  state.stockTab=tab;state.moduleCategory='all';state.search='';state.expanded=null;
+  state.bovisParisProcess=null;state.stockTab=tab;state.moduleCategory='all';state.search='';state.expanded=null;
   if(isBovisParisStock())state.bovisParisSnStatus='ok';
   $('search').value='';
   syncStockTabUI();render();
 }
 function setModuleCategory(category){
-  if(state.view!=='stocks'||state.stockTab!=='modules')return;
+  if(state.view!=='stocks'||state.stockTab!=='modules'||state.bovisParisProcess)return;
   if(!MODULE_CATEGORIES.some(c=>c.id===category)||state.moduleCategory===category)return;
   state.moduleCategory=category;
   if(isBovisParisStock())state.bovisParisSnStatus='ok';
@@ -1384,6 +1397,7 @@ function selectView(view,warehouse,focusDocument=null){
   if(warehouse||view==='aggregate'||state.preview?.type==='warehouse')state.preview=null;
   $('officePreview').classList.add('hidden');
   $('pageActions').classList.remove('hidden');
+  state.bovisParisProcess=null;
   state.view=view;state.stockTab=view==='stocks'&&
     frenchStockKind(targetWarehouse)==='bovis'?'modules':'parts';
   state.moduleCategory='all';state.search='';
@@ -1459,6 +1473,34 @@ function isBovisParisStock(){
 function isBovisParisModuleExample(){
   return state.stockTab==='modules'&&isBovisParisStock();
 }
+function setBovisParisProcess(process){
+  if(!isBovisParisStock()||!['pz','wz'].includes(process))return;
+  ++state.requestId;
+  state.bovisParisProcess=process;
+  state.search='';
+  $('search').value='';
+  syncStockTabUI();
+  render();
+}
+function drawBovisParisProcess(){
+  if(!isBovisParisStock()||!['pz','wz'].includes(state.bovisParisProcess))return;
+  const incoming=state.bovisParisProcess==='pz';
+  const title=incoming?'PZ — Przyjęcia magazynowe':'WZ — Wydania magazynowe';
+  const details=incoming
+    ?'Tutaj będzie można rejestrować dostawy modułów i części do Bovis Paryż. '+
+      'Po poznaniu dokumentów przekazywanych przez InPost oraz rzeczywistego sposobu przyjmowania dostaw '+
+      'ustalimy sposób wpisywania danych i ewentualny import z Excela.'
+    :'Tutaj będzie można rejestrować wydania modułów i części z Bovis Paryż. '+
+      'Szczegóły przygotujemy po poznaniu zasad wydawania i dokumentów używanych w tym procesie.';
+  errorBanner('');
+  $('tableArea').innerHTML='<section class="fr-paris-process-preview" aria-label="'+escapeHtml(title)+'">'+
+    '<span class="fr-paris-process-tag">W OPRACOWANIU</span>'+
+    '<h2>'+escapeHtml(title)+'</h2><p>'+escapeHtml(details)+'</p>'+
+    '<small>Na tym etapie nie ma formularza, importu ani zapisu danych.</small></section>';
+  $('tableFooter').textContent='Bovis Paryż · funkcja do opracowania po uzyskaniu informacji o procesie.';
+  $('searchNote').classList.add('hidden');
+}
+
 // Source of the temporary serial-number presentation. Counts and example
 // numbers come from the SAME list; nothing is saved or sent to a server.
 // Later, confirmed movement records can replace this one data source.
@@ -1502,8 +1544,7 @@ function bovisParisModuleLayout(mainHtml,groupId){
       ['Maszyny',machines+' szt.'],
       ['Powierzchnia całkowita',area+' m²'],
       ['Zajęta powierzchnia',occupied+' m²'],
-      ['Wolna powierzchnia',free+' m²'],
-      ['Wykorzystanie',percent+'%']
+      ['Wolna powierzchnia',free+' m²']
     ];
   const groupSummary=group
     ?'<div class="fr-paris-module-aside-group"><strong>'+escapeHtml(group.name)+' — W TEJ GRUPIE</strong>'+
@@ -3087,6 +3128,7 @@ function drawFrenchEmptyView(){
 }
 async function render({silent=false}={}){
   if(state.view==='home')return;
+  if(isBovisParisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
   if(state.view==='bovisOverview'){
     errorBanner('');drawBovisOverview();return;
   }
@@ -3270,6 +3312,7 @@ async function render({silent=false}={}){
 }
 function filterCurrent(){
   if(state.view==='home')return;
+  if(isBovisParisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
   if(state.view==='frMovements'){drawFrBoxMovements();return;}
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
@@ -3532,6 +3575,8 @@ document.addEventListener('click',e=>{
     }
     return;
   }
+  const parisProcess=e.target.closest('[data-bovis-paris-process]');
+  if(parisProcess){setBovisParisProcess(parisProcess.dataset.bovisParisProcess);return;}
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
   if(e.target.closest('[data-label-add-current]')){
     const part=state.labelPart;
