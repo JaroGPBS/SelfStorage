@@ -1351,27 +1351,33 @@ function drawFrCrewHistory({embed=false,crewOverride=null,visitsOverride=null,qu
   ).join('');
   const subHead=visits.map(()=>
     '<th class="fr-matrix-subhead" scope="col">Wydanie</th>'+
-    '<th class="fr-matrix-subhead" scope="col">Przyjęcie</th>'
+    '<th class="fr-matrix-subhead fr-matrix-visit-end" scope="col">Przyjęcie</th>'
   ).join('');
   const rows=parts.map(part=>'<tr>'+
     '<td class="fr-matrix-index">'+escapeHtml(part.code)+'</td>'+
     '<th scope="row" class="fr-matrix-name">'+escapeHtml(part.name)+'</th>'+
     visits.map(visit=>{
       const value=part.byVisit.get(visit.id)||{pickup:0,returned:0};
-      return '<td class="fr-matrix-number'+(value.pickup?' is-pickup':'')+'">'+qty(value.pickup)+'</td>'+
-        '<td class="fr-matrix-number'+(value.returned?' is-return':'')+'">'+qty(value.returned)+'</td>';
+      return '<td class="fr-matrix-number'+(value.pickup>0?' is-pickup':' is-empty')+'">'+qty(value.pickup)+'</td>'+
+        '<td class="fr-matrix-number fr-matrix-visit-end'+
+          (value.returned>0?' is-return':' is-empty')+'">'+qty(value.returned)+'</td>';
     }).join('')+
-    '<td class="fr-matrix-number fr-matrix-total-pickup">'+qty(part.pickup)+'</td>'+
-    '<td class="fr-matrix-number fr-matrix-total-return">'+qty(part.returned)+'</td>'+
+    '<td class="fr-matrix-number fr-matrix-total-pickup'+
+      (part.pickup>0?'':' is-empty')+'">'+qty(part.pickup)+'</td>'+
+    '<td class="fr-matrix-number fr-matrix-total-return'+
+      (part.returned>0?'':' is-empty')+'">'+qty(part.returned)+'</td>'+
     '</tr>').join('');
   // Matching visit dates retains the whole visit. Matching a part shows
   // the same ten visit columns but only rows for that part.
   const compact=window.matchMedia('(max-width:720px)').matches;
-  const indexWidth=compact?86:116,nameWidth=compact?150:238,cellWidth=compact?70:78;
-  const matrixWidth=indexWidth+nameWidth+(visits.length*2+2)*cellWidth;
+  const indexWidth=compact?86:116,nameWidth=compact?150:238;
+  // Narrow each Wydanie/Przyjęcie pair without shrinking the pinned part names.
+  const visitWidth=compact?52:56,totalWidth=compact?66:70;
+  const matrixWidth=indexWidth+nameWidth+visits.length*2*visitWidth+2*totalWidth;
   const columns='<col style="width:'+indexWidth+'px">'+
     '<col style="width:'+nameWidth+'px">'+
-    Array.from({length:visits.length*2+2},()=>'<col style="width:'+cellWidth+'px">').join('');
+    Array.from({length:visits.length*2},()=>'<col style="width:'+visitWidth+'px">').join('')+
+    Array.from({length:2},()=>'<col style="width:'+totalWidth+'px">').join('');
   const matrix='<div class="fr-crew-matrix-rail">'+
     '<button type="button" data-fr-crew-scroll="-1" aria-label="Przewiń wizyty w lewo">‹</button>'+
     '<div class="fr-crew-matrix-track" tabindex="0" role="region" aria-label="Przewijanie historii wizyt">'+
