@@ -7748,3 +7748,32 @@
   .app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-occupied .fr-bovis-month-machines{font-size:8px}
   .app.view-bovis-layout.view-stocks.view-modules .fr-bovis-area-split-values b{font-size:12px}
 }
+
+
+/* Bovis module groups only: clearer OK/NOK labels and stronger m² values.
+   The "Razem" tile, warehouse utilization and SUMA remain unchanged. */
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-paris-module-aside-counts > .fr-bovis-group-ok,
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-paris-module-aside-counts > .fr-bovis-group-nok{
+  font-size:10px;
+}
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-paris-module-aside-counts > .fr-bovis-group-ok small,
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-paris-module-aside-counts > .fr-bovis-group-nok small{
+  flex:1 1 100%;
+  text-align:center;
+  font-size:14px;
+  font-weight:850;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-paris-module-aside-counts > .fr-bovis-group-ok small{
+  color:#187647;
+}
+.app.view-bovis-layout.view-stocks.view-modules
+  .fr-paris-module-aside-counts > .fr-bovis-group-nok small{
+  color:#c13d42;
+}
