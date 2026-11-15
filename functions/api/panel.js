@@ -1143,6 +1143,8 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   if(!user)return fail('Nie znaleziono ekipy. Odśwież listę użytkowników.',404);
   if(user.role_code!=='EKIPA')return fail('Trwale można usuwać tylko konta ekip.',403);
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
+  const markedTest=await isFrTestAccount(db,id);
+  let aaTrialReversal=null;
   const realSessions=await db.prepare(
     "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('fr_sessions','fr_session_lines')"
   ).all();
@@ -1152,10 +1154,17 @@ async function permanentlyDeleteUnusedCrew(env,body) {
       'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
       'WHERE s.user_id=? LIMIT 1'
     ).bind(id).first();
-    if(hasLiveOperations)return fail(
-      'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
+    if(hasLiveOperations){
+      // The ONLY allowed exception is AA's strictly verified 12 Nov demo
+      // return of MG-000-022. Other recorded warehouse movements remain locked.
+      if(markedTest&&String(user.name||'').trim().toUpperCase()==='AA'){
+        aaTrialReversal=await identifyAaPresentationReturn(db,id);
+        if(aaTrialReversal.error)return fail(aaTrialReversal.error,409);
+      }else return fail(
+        'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
+    }
   }
-  if(await isFrTestAccount(db,id)){
+  if(markedTest){
     // Legacy separated test records are removed, as well as any car-only
     // inventories recorded after restoring the normal mobile workflow.
     // The real tables warehouse_stock, vehicle_stock and fr_* are untouched.
@@ -1169,6 +1178,21 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     ).all()).results||[];
     const legacy=new Set(legacyRows.map(row=>row.name));
     const statements=[];
+    if(aaTrialReversal){
+      // The original Box Toulouse balance was 0. Restore only MG-000-022
+      // and only when D1 still contains exactly the observed test quantity.
+      // SQLite integer overflow aborts the entire D1 batch if stock changes
+      // between validation and the write. No partial record deletion.
+      statements.push(db.prepare(
+        'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) '+
+        'VALUES(?,?,CASE WHEN (SELECT quantity FROM warehouse_stock '+
+        'WHERE warehouse_id=? AND part_id=?)=? THEN 0 '+
+        'ELSE abs(-9223372036854775808) END,CURRENT_TIMESTAMP) '+
+        'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
+        'quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP'
+      ).bind('FR-TOULOUSE',aaTrialReversal.partId,
+        'FR-TOULOUSE',aaTrialReversal.partId,aaTrialReversal.quantity));
+    }
     const addLegacy=(table,sql)=>{
       if(legacy.has(table))statements.push(db.prepare(sql).bind(id));
     };
@@ -1195,7 +1219,7 @@ async function permanentlyDeleteUnusedCrew(env,body) {
       "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
       "'fr_car_claims','fr_vehicle_events','fr_vehicle_event_lines',"+
       "'fr_vehicle_event_fingerprints','fr_vehicle_usage','fr_vehicle_handovers',"+
-      "'fr_visits','fr_sessions','fr_session_lines',"+
+      "'fr_visits','fr_sessions','fr_session_lines','fr_stock_discrepancies',"+
       "'fr_crew_first_inventory','fr_crew_stock','fr_crew_stock_revisions')"
     ).all()).results||[];
     const has=new Set(frTables.map(t=>t.name));
@@ -1220,6 +1244,9 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     if(has.has('fr_vehicle_usage'))
       statements.push(db.prepare('DELETE FROM fr_vehicle_usage WHERE user_id=?').bind(id));
     if(has.has('fr_sessions')){
+      if(has.has('fr_stock_discrepancies'))statements.push(db.prepare(
+        'DELETE FROM fr_stock_discrepancies WHERE session_id IN (SELECT id FROM fr_sessions WHERE user_id=?)'
+      ).bind(id));
       if(has.has('fr_session_lines'))statements.push(db.prepare(
         'DELETE FROM fr_session_lines WHERE session_id IN (SELECT id FROM fr_sessions WHERE user_id=?)'
       ).bind(id));
@@ -1254,7 +1281,9 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     statements.push(db.prepare("DELETE FROM users WHERE id=? AND role_code='EKIPA'").bind(id));
     await db.batch(statements);
     return respond({ok:true,userId:id,
-      message:'Usunięto ekipę testową i jej testowe operacje. Prawdziwe stany pozostały bez zmian.'});
+      message:aaTrialReversal?
+        'Usunięto AA i jej historię. Cofnięto wyłącznie testowy zwrot MG-000-022 w Box Toulouse do stanu 0.':
+        'Usunięto ekipę testową i jej testowe operacje. Prawdziwe stany pozostały bez zmian.'});
   }
 
 
