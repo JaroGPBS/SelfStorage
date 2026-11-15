@@ -1156,21 +1156,22 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     ).bind(id).first();
     if(hasLiveOperations){
       // The ONLY allowed exception is AA's strictly verified 12 Nov demo
-      // return of MG-000-022. Other recorded warehouse movements remain locked.
-      if(markedTest&&String(user.name||'').trim().toUpperCase()==='AA'){
+      // return of MG-000-022, even if its old test-account flag was removed.
+      // Other recorded warehouse movements remain locked.
+      if(String(user.name||'').trim().toUpperCase()==='AA'){
         aaTrialReversal=await identifyAaPresentationReturn(db,id);
         if(aaTrialReversal.error)return fail(aaTrialReversal.error,409);
       }else return fail(
         'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
     }
   }
-  if(markedTest){
+  if(markedTest||aaTrialReversal){
     // Legacy separated test records are removed, as well as any car-only
     // inventories recorded after restoring the normal mobile workflow.
     // The real tables warehouse_stock, vehicle_stock and fr_* are untouched.
-    const others=await db.prepare(
+    const others=markedTest?await db.prepare(
       'SELECT 1 FROM fr_test_accounts WHERE user_id<>? LIMIT 1'
-    ).bind(id).first();
+    ).bind(id).first():null;
     // Older isolated test modes used slightly different table sets.
     // Check exact table names before composing one atomic D1 cleanup batch.
     const legacyRows=(await db.prepare(
