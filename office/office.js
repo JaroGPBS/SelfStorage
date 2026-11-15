@@ -537,6 +537,21 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
     .filter(Boolean).some(alias=>name===normalizeWarehouseName(alias));
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
+// Only Bovis warehouses open on Moduły. Self-service boxes contain parts only.
+// Belleville and other warehouses retain their previous default (Części).
+function frenchStockKind(warehouseId,preview=null){
+  if(preview?.type==='warehouse'){
+    if(preview.key==='toulouse'||preview.key==='paris')return 'box';
+    if(String(preview.key||'').startsWith('bovis-'))return 'bovis';
+    return 'other';
+  }
+  const warehouse=realWarehouse(warehouseId);
+  if(warehouse?.country_code!=='FR')return 'other';
+  if(isBovisWarehouse(warehouse.name))return 'bovis';
+  if(['FR-TOULOUSE','FR-PARIS'].includes(warehouse.id))return 'box';
+  const location=FR_LAYOUT_WAREHOUSES.find(item=>matchesFrenchWarehouse(warehouse,item));
+  return ['toulouse','paris'].includes(location?.key)?'box':'other';
+}
 
 const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
@@ -1004,7 +1019,8 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     // No D1 request or invented stock quantities are made for a layout-only entry.
     ++state.requestId;
     state.view='stocks';state.preview={type,key,label};
-    state.stockTab='modules';state.moduleCategory='all';state.search='';state.focusDocument=null;
+    state.stockTab=frenchStockKind('',state.preview)==='bovis'?'modules':'parts';
+    state.moduleCategory='all';state.search='';state.focusDocument=null;
     $('sidebar').classList.remove('open');
     $('officePreview').classList.add('hidden');
     $('pageActions').classList.remove('hidden');
@@ -1209,6 +1225,10 @@ function setHead(title,kicker,desc){
   const polishStocks=state.view==='stocks'&&!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
   $('modulesTab').dataset.stockTab=polishStocks?'nok':'modules';
   $('modulesTab').textContent=polishStocks?'CZĘŚCI NIEKOMPLETNE':'MODUŁY';
+  // Boxes have no machines: show only Części, without an inactive Moduły tab.
+  const boxStocks=state.view==='stocks'&&
+    frenchStockKind(state.warehouse,state.preview)==='box';
+  $('modulesTab').classList.toggle('hidden',boxStocks);
   const frEmpty=state.preview?.type==='operation'||state.preview?.type==='module';
   const workingLabels=state.view==='labels'&&!frEmpty;
   const isBovisOverview=state.view==='bovisOverview';
@@ -1325,7 +1345,8 @@ function syncStockTabUI(){
 }
 function setStockTab(tab){
   const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
-  if(!['parts',polish?'nok':'modules'].includes(tab)||state.view!=='stocks'||state.stockTab===tab)return;
+  if(!['parts',polish?'nok':'modules'].includes(tab)||state.view!=='stocks'||state.stockTab===tab||
+    (tab==='modules'&&frenchStockKind(state.warehouse,state.preview)==='box'))return;
   state.stockTab=tab;state.moduleCategory='all';state.search='';state.expanded=null;
   $('search').value='';
   syncStockTabUI();render();
@@ -1355,7 +1376,9 @@ function selectView(view,warehouse,focusDocument=null){
   if(warehouse||view==='aggregate'||state.preview?.type==='warehouse')state.preview=null;
   $('officePreview').classList.add('hidden');
   $('pageActions').classList.remove('hidden');
-  state.view=view;state.stockTab=view==='stocks'&&french?'modules':'parts';state.moduleCategory='all';state.search='';
+  state.view=view;state.stockTab=view==='stocks'&&
+    frenchStockKind(targetWarehouse)==='bovis'?'modules':'parts';
+  state.moduleCategory='all';state.search='';
   if(view==='aggregate'){state.aggregateTab='parts';state.frAggregateSets=null;}
   if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
