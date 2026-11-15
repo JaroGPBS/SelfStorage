@@ -1131,11 +1131,17 @@ async function permanentlyDeleteUnusedCrew(env,body) {
       "SELECT name FROM sqlite_master WHERE type='table' AND name IN ("+
       "'fr_car_claims','fr_vehicle_events','fr_vehicle_event_lines',"+
       "'fr_vehicle_event_fingerprints','fr_vehicle_usage','fr_vehicle_handovers',"+
-      "'fr_visits','fr_sessions','fr_session_lines')"
+      "'fr_visits','fr_sessions','fr_session_lines',"+
+      "'fr_crew_first_inventory','fr_crew_stock','fr_crew_stock_revisions')"
     ).all()).results||[];
     const has=new Set(frTables.map(t=>t.name));
     if(has.has('fr_car_claims'))
       statements.push(db.prepare('DELETE FROM fr_car_claims WHERE user_id=?').bind(id));
+    // Crew-owned stock and the first-inventory reference are removed before
+    // deleting the team's event records; no warehouse balances are touched.
+    for(const table of ['fr_crew_first_inventory','fr_crew_stock',
+      'fr_crew_stock_revisions'])if(has.has(table))
+      statements.push(db.prepare('DELETE FROM '+table+' WHERE user_id=?').bind(id));
     if(has.has('fr_vehicle_events')){
       if(has.has('fr_vehicle_event_fingerprints'))statements.push(db.prepare(
         'DELETE FROM fr_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_vehicle_events WHERE user_id=?)'
@@ -1196,6 +1202,8 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     'user_pin_credentials','user_access_settings','user_archives','fr_vehicle_usage',
     'fr_car_claims','fr_vehicle_handovers']);
   const visitTables=new Set(['fr_visits','fr_sessions','fr_vehicle_events']);
+  const crewTables=new Set(['fr_crew_first_inventory','fr_crew_stock',
+    'fr_crew_stock_revisions']);
   const possibleColumns=new Set(['user_id','actor_id','operator_id','created_by',
     'team_id','assigned_by','reviewed_by','performed_by','verified_by',
     'approved_by','submitted_by','owner_user_id','updated_by','archived_by',
@@ -1203,7 +1211,7 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   for(const entry of rows){
     const table=String(entry.name||'');
     if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)||table==='users'||
-       metadata.has(table)||visitTables.has(table))continue;
+       metadata.has(table)||visitTables.has(table)||crewTables.has(table))continue;
     const schema=String(entry.sql||'').toLowerCase();
     if(![...possibleColumns].some(col=>schema.includes(col)) &&
        !/\breferences\s+["']?users\b/i.test(schema))continue;
@@ -1235,6 +1243,10 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   }
 
   const statements=[];
+  // Allow safe unused-crew removal after an inventory, without deleting
+  // any BOX quantities or movements. References must be removed first.
+  for(const table of crewTables)if(present.has(table))
+    statements.push(db.prepare('DELETE FROM '+table+' WHERE user_id=?').bind(id));
   if(present.has('fr_vehicle_events')){
     if(present.has('fr_vehicle_event_fingerprints'))statements.push(db.prepare(
       'DELETE FROM fr_vehicle_event_fingerprints WHERE event_id IN (SELECT id FROM fr_vehicle_events WHERE user_id=?)'
