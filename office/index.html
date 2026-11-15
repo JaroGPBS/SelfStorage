@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=104">
+  <link rel="stylesheet" href="./office.css?v=105">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -122,7 +122,7 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=127"></script>
+  <script defer src="./office.js?v=128"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -274,6 +274,7 @@
           <p id="officePreviewDescription">To jest miejsce przygotowane na przyszły moduł.</p>
           <p class="office-placeholder-note">Dane i obsługę podłączymy w kolejnym etapie. Tutaj nie są wyświetlane żadne testowe stany magazynowe.</p>
         </section>
+        <section id="officeBovisDashboard" class="office-bovis-dashboard hidden" aria-label="Zbiorcze podsumowanie magazynów Bovis"></section>
         <section id="officeTableCard" class="table-card" aria-label="Dane">
           <div class="table-toolbar">
             <div id="aggregateTabs" class="aggregate-tabs hidden" role="tablist" aria-label="Rodzaj zestawienia Francja">
