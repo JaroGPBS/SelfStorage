@@ -1337,7 +1337,7 @@ function syncStockTabUI(){
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
     modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
   $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
-  $('search').placeholder=modules?'Szukaj typu modułu':'Szukaj po SAP lub nazwie części';
+  $('search').placeholder=modules?(isBovisParisStock()?'Szukaj typu lub numeru seryjnego':'Szukaj typu modułu'):'Szukaj po SAP lub nazwie części';
   $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   document.querySelectorAll('[data-module-category]').forEach(btn=>{
     const selected=btn.dataset.moduleCategory===state.moduleCategory;
@@ -1558,9 +1558,11 @@ function drawBovisParisSerials(group,search){
       '<thead><tr>'+headers+'</tr></thead>'+
       '<tbody>'+rows+'</tbody></table></div>';
   const total=columns.reduce((sum,col)=>sum+col.serials.length,0);
+  const sampleNoun=total===1?'przykładowy numer':total>=2&&total<=4
+    ?'przykładowe numery':'przykładowych numerów';
   $('tableFooter').textContent='Bovis Paryż · '+group.name+' · S/N '+
-    status.toUpperCase()+' · '+total+
-    ' przykładowych numerów, nie są to rzeczywiste numery maszyn.';
+    status.toUpperCase()+' · '+total+' '+sampleNoun+
+    ' (nie są to rzeczywiste numery maszyn).';
   noteSearch(columns.length,group.types.length,'typach modułów');
 }
 function drawModules(){
