@@ -10,6 +10,21 @@ const MODULE_GROUPS=[
   {id:'newgen',name:'NEW GEN',types:['CU IN','DUO L','DUO R']}
 ];
 const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.id,name:g.name}))];
+// Isolated example quantities for evaluating the French Bovis Paryż module screen.
+// Never saved, never treated as confirmed balances and never merged into Bovis totals.
+const BOVIS_PARIS_MODULE_EXAMPLES=[
+  {group:'outdoor',type:'FM',ok:4,nok:1},
+  {group:'outdoor',type:'LQ',ok:3,nok:1},
+  {group:'outdoor',type:'RQ',ok:3,nok:0},
+  {group:'outdoor',type:'ODL',ok:2,nok:1},
+  {group:'outdoor',type:'ODR',ok:2,nok:0},
+  {group:'indoor',type:'CU',ok:3,nok:0},
+  {group:'indoor',type:'HICU',ok:2,nok:1},
+  {group:'indoor',type:'CU RJ45',ok:2,nok:0},
+  {group:'bq',type:'CU OUT',ok:2,nok:1},
+  {group:'newgen',type:'DUO L',ok:2,nok:0}
+];
+
 // Sample Bovis dashboard figures, local to this screen only. No writes and no
 // guesses about actual storage capacity. All quantities and sizes are fictional.
 const BOVIS_OVERVIEW_PREVIEW={
@@ -989,7 +1004,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     // No D1 request or invented stock quantities are made for a layout-only entry.
     ++state.requestId;
     state.view='stocks';state.preview={type,key,label};
-    state.stockTab='parts';state.moduleCategory='all';state.search='';state.focusDocument=null;
+    state.stockTab='modules';state.moduleCategory='all';state.search='';state.focusDocument=null;
     $('sidebar').classList.remove('open');
     $('officePreview').classList.add('hidden');
     $('pageActions').classList.remove('hidden');
@@ -1300,7 +1315,7 @@ function syncStockTabUI(){
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
     modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
   $('tableCaption').querySelector('strong').textContent=modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
-  $('search').placeholder=modules?'Wyszukaj po numerze seryjnym':'Szukaj po SAP lub nazwie części';
+  $('search').placeholder=modules?'Szukaj typu modułu':'Szukaj po SAP lub nazwie części';
   $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   document.querySelectorAll('[data-module-category]').forEach(btn=>{
     const selected=btn.dataset.moduleCategory===state.moduleCategory;
@@ -1340,7 +1355,7 @@ function selectView(view,warehouse,focusDocument=null){
   if(warehouse||view==='aggregate'||state.preview?.type==='warehouse')state.preview=null;
   $('officePreview').classList.add('hidden');
   $('pageActions').classList.remove('hidden');
-  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';
+  state.view=view;state.stockTab=view==='stocks'&&french?'modules':'parts';state.moduleCategory='all';state.search='';
   if(view==='aggregate'){state.aggregateTab='parts';state.frAggregateSets=null;}
   if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
@@ -1402,10 +1417,58 @@ function drawStocks(parts,warehouseId){
     (inFrenchStock?'':sourceInfo);
   noteSearch(filtered.length,parts.length,'częściach');
 }
+function isBovisParisModuleExample(){
+  if(state.view!=='stocks'||state.stockTab!=='modules')return false;
+  if(state.preview?.type==='warehouse')return state.preview.key==='bovis-paris';
+  const warehouse=realWarehouse(state.warehouse);
+  const paris=FR_LAYOUT_WAREHOUSES.find(w=>w.key==='bovis-paris');
+  return Boolean(warehouse?.country_code==='FR'&&paris&&matchesFrenchWarehouse(warehouse,paris));
+}
 function drawModules(){
-  $('tableArea').innerHTML='<div class="empty">Brak danych modułów. Ewidencja modułów nie jest jeszcze dostępna.</div>';
-  $('tableFooter').textContent='0 modułów w ewidencji';
-  noteSearch(0,0,'modułach');
+  if(!isBovisParisModuleExample()){
+    $('tableArea').innerHTML='<div class="empty">Brak danych modułów. Ewidencja modułów nie jest jeszcze dostępna.</div>';
+    $('tableFooter').textContent='Brak zapisanych modułów';
+    noteSearch(0,0,'modułach');
+    return;
+  }
+  const search=state.search.trim().toLocaleLowerCase('pl');
+  const visible=BOVIS_PARIS_MODULE_EXAMPLES.filter(item=>
+    (state.moduleCategory==='all'||item.group===state.moduleCategory)&&
+    (!search||[item.group,item.type,
+      MODULE_GROUPS.find(g=>g.id===item.group)?.name].some(x=>
+        String(x||'').toLocaleLowerCase('pl').includes(search))));
+  const groups=MODULE_GROUPS.filter(g=>state.moduleCategory==='all'||g.id===state.moduleCategory);
+  const rows=groups.map(group=>{
+    const entries=visible.filter(item=>item.group===group.id);
+    if(!entries.length)return '';
+    return '<tr class="module-group-row"><th scope="rowgroup" colspan="4">'+
+      escapeHtml(group.name)+'</th></tr>'+
+      (state.sortReverse?[...entries].reverse():entries).map(item=>
+        '<tr class="fr-paris-module-row"><th scope="row" class="module-type">'+
+        escapeHtml(item.type)+'</th>'+
+        '<td class="num module-count-ok">'+item.ok+'</td>'+
+        '<td class="num module-count-nok">'+item.nok+'</td>'+
+        '<td class="num module-count-total">'+(item.ok+item.nok)+'</td></tr>'
+      ).join('');
+  }).join('');
+  const ok=visible.reduce((sum,item)=>sum+item.ok,0);
+  const nok=visible.reduce((sum,item)=>sum+item.nok,0);
+  const total=ok+nok;
+  $('tableArea').innerHTML='<table class="table module-summary-table fr-paris-modules-table">'+
+    '<thead><tr><th scope="col">Typ modułu</th>'+
+      '<th scope="col" class="num">OK</th>'+
+      '<th scope="col" class="num">NOK</th>'+
+      '<th scope="col" class="num">SUMA</th></tr></thead>'+
+    '<tbody>'+(rows||'<tr><td colspan="4" class="module-no-results">Brak pasujących modułów.</td></tr>')+
+    (visible.length?'<tr class="module-grand-total">'+
+      '<th scope="row">ŁĄCZNIE</th>'+
+      '<td class="num">'+ok+'</td><td class="num">'+nok+'</td>'+
+      '<td class="num">'+total+'</td></tr>':'')+
+    '</tbody></table>';
+  $('tableFooter').textContent='Bovis Paryż · przykładowe ilości: '+
+    visible.length+' typów, '+total+
+    ' maszyn (OK: '+ok+', NOK: '+nok+'). Bez zapisu do magazynu.';
+  noteSearch(visible.length,BOVIS_PARIS_MODULE_EXAMPLES.length,'typach modułów');
 }
 function drawAggregateModules(realSets){
   const all=MODULE_GROUPS.flatMap(group=>group.types.map(type=>({
@@ -2914,8 +2977,7 @@ async function render({silent=false}={}){
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){
     errorBanner('');
     if(state.stockTab==='modules'){
-      $('tableArea').innerHTML='<div class="empty">Brak danych.</div>';
-      $('tableFooter').textContent='';
+      drawModules();
       return;
     }
     const ticket=++state.requestId;
@@ -3055,7 +3117,7 @@ function filterCurrent(){
     drawFrenchEmptyView();return;
   }
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){
-    if(state.stockTab==='modules')render();
+    if(state.stockTab==='modules')drawModules();
     else drawStocks(state.partsCache.get(
       ['toulouse','paris'].includes(state.preview.key)
         ?'FR-BOX-'+(state.preview.key==='toulouse'?'FR-TOULOUSE':'FR-PARIS')
