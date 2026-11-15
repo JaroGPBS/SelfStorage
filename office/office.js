@@ -1242,7 +1242,8 @@ function setHead(title,kicker,desc){
   // The visual order is reversed only in Bovis Paryż during layout review.
   $('app').classList.toggle('view-bovis-paris',isBovisParisStock());
   $('app').classList.toggle('view-bovis-layout',isBovisStock());
-  $('bovisParisDemoNotice').classList.toggle('hidden',!isBovisParisStock());
+  $('bovisParisDemoNotice').classList.toggle('hidden',
+    !(isBovisParisStock()||state.view==='bovisOverview'));
   for(const id of ['bovisParisPzTab','bovisParisWzTab'])$(id).classList.toggle('hidden',!isBovisStock());
   // Boxes have no machines: show only Części, without an inactive Moduły tab.
   const boxStocks=state.view==='stocks'&&
