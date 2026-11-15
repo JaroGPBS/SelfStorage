@@ -1489,12 +1489,22 @@ function bovisParisModuleLayout(mainHtml,groupId){
   const groupItems=group?all.filter(item=>item.group===group.id):[];
   const groupOk=groupItems.reduce((sum,item)=>sum+item.ok,0);
   const groupNok=groupItems.reduce((sum,item)=>sum+item.nok,0);
-  const metrics=[
-    ['Maszyny',machines+' szt.'],
-    ['Powierzchnia całkowita',area+' m²'],
-    ['Zajęta powierzchnia',occupied+' m²'],
-    ['Wolna przestrzeń',free+' m²']
-  ];
+  // Preserve the original five-measure SUMA view. Only the four
+  // individual module tabs receive the compact four-card layout.
+  const metrics=group
+    ?[
+      ['Maszyny',machines+' szt.'],
+      ['Powierzchnia całkowita',area+' m²'],
+      ['Zajęta powierzchnia',occupied+' m²'],
+      ['Wolna przestrzeń',free+' m²']
+    ]
+    :[
+      ['Maszyny',machines+' szt.'],
+      ['Powierzchnia całkowita',area+' m²'],
+      ['Zajęta powierzchnia',occupied+' m²'],
+      ['Wolna powierzchnia',free+' m²'],
+      ['Wykorzystanie',percent+'%']
+    ];
   const groupSummary=group
     ?'<div class="fr-paris-module-aside-group"><strong>'+escapeHtml(group.name)+' — W TEJ GRUPIE</strong>'+
       '<div class="fr-paris-module-aside-counts">'+
