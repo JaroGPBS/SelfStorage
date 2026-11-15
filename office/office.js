@@ -10,6 +10,35 @@ const MODULE_GROUPS=[
   {id:'newgen',name:'NEW GEN',types:['CU IN','DUO L','DUO R']}
 ];
 const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.id,name:g.name}))];
+// Sample Bovis dashboard figures, local to this screen only. No writes and no
+// guesses about actual storage capacity. All quantities and sizes are fictional.
+const BOVIS_OVERVIEW_PREVIEW={
+  squareMetersPerMachine:2,
+  warehouses:[
+    {key:'bovis-paris',name:'Paryż',area:300,stock:{
+      'outdoor:FM':22,'outdoor:LQ':16,'outdoor:RQ':9,'outdoor:ODL':6,
+      'outdoor:ODR':5,'indoor:CU':4,'indoor:HICU':3,'indoor:DUO':2,'bq:CU':1}},
+    {key:'bovis-lille',name:'Lille',area:220,stock:{
+      'outdoor:FM':12,'outdoor:LQ':10,'outdoor:RQ':7,'outdoor:ODL':4,
+      'outdoor:ODR':3,'indoor:CU':3,'indoor:HICU':2,'bq:DUO':1}},
+    {key:'bovis-nantes',name:'Nantes',area:180,stock:{
+      'outdoor:FM':15,'outdoor:LQ':8,'outdoor:RQ':11,'outdoor:ODL':5,
+      'outdoor:ODR':4,'indoor:CU':3,'indoor:DUO':2,'bq:CU OUT':1,
+      'newgen:CU IN':1}},
+    {key:'bovis-nancy',name:'Nancy',area:150,stock:{
+      'outdoor:FM':11,'outdoor:LQ':7,'outdoor:RQ':6,'outdoor:ODL':3,
+      'outdoor:ODR':3,'indoor:HICU':2,'indoor:CU RJ45':1,
+      'newgen:DUO L':1}},
+    {key:'bovis-marseille',name:'Marsylia',area:240,stock:{
+      'outdoor:FM':26,'outdoor:LQ':17,'outdoor:RQ':12,'outdoor:ODL':6,
+      'outdoor:ODR':5,'outdoor:XS':3,'indoor:CU':2,
+      'indoor:HICU RJ45':1,'newgen:DUO R':1}},
+    {key:'bovis-toulouse',name:'Tuluza',area:210,stock:{
+      'outdoor:FM':14,'outdoor:LQ':11,'outdoor:RQ':8,'outdoor:ODL':3,
+      'outdoor:ODR':3,'indoor:CU':2,'indoor:HIDUO':1,'bq:DUO OUT':1}}
+  ]
+};
+
 // Office presentation only. These locations are NOT created in D1 and no fake stock is loaded.
 const FR_LAYOUT_WAREHOUSES=[
   {key:'belleville',name:'Belleville'},
@@ -707,6 +736,7 @@ function showOfficeHome(){
   $('officeHome').classList.remove('hidden');
   $('app').classList.add('view-home');
   $('officeTableCard').classList.add('hidden');
+  $('officeBovisDashboard').classList.add('hidden');
   $('officeLabelsView').classList.add('hidden');
   $('officePreview').classList.add('hidden');
   $('errorBanner').classList.add('hidden');
@@ -716,7 +746,7 @@ function showOfficeHome(){
   $('vehicleTopContext').classList.add('hidden');
   $('vehicleTopExportHost').classList.add('hidden');
   $('app').classList.remove('view-stocks','view-receipts','view-vehicles',
-    'view-aggregate','view-labels','view-fr-empty','view-modules','view-fr-movements','view-fr-crew-history');
+    'view-aggregate','view-labels','view-fr-empty','view-modules','view-fr-movements','view-fr-crew-history','view-bovis-overview');
   $('officeTableCard').querySelector('.fr-crew-toolbar')?.remove();
   renderMenu();
 }
@@ -904,12 +934,13 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
     const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket==='FR';
+    const isBovis=el.hasAttribute('data-bovis-toggle')&&state.view==='bovisOverview';
     const isPolishScoped=Boolean(el.dataset.plWarehouse)&&!state.preview&&
       el.dataset.plWarehouse===state.warehouse&&state.view===el.dataset.view;
     const isMarketView=el.dataset.marketView==='PL'
@@ -946,7 +977,7 @@ function renderMenu(){
       :el.dataset.marketVehicles==='PL'
         ?!state.preview&&state.view==='vehicles'&&
           realWarehouse(state.warehouse)?.country_code==='PL':false;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped));
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isBovis));
     if(el.dataset.frWarehouseToggle)el.classList.toggle('is-expanded',isFrWarehouseExpanded);
   }
 }
@@ -985,6 +1016,25 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     $('warehouseCrumb').textContent=warehouseContext.warehouseName.toLocaleUpperCase('pl');
     $('warehouseCrumb').classList.remove('hidden');
   }
+  $('syncTime').textContent='';
+  renderMenu();
+  render();
+}
+function showBovisOverview(){
+  // Click of Bovis opens this layout only. No server requests or state changes.
+  ++state.requestId;
+  state.view='bovisOverview';
+  state.preview={type:'bovis-overview'};
+  state.frExpanded=null;
+  state.warehouseMenus.FR=true;
+  state.search='';
+  state.expanded=null;
+  state.focusDocument=null;
+  $('sidebar').classList.remove('open');
+  $('officePreview').classList.add('hidden');
+  $('pageActions').classList.remove('hidden');
+  setHead('Bovis – Zestawienie zbiorcze','GPBS STORAGE / FRANCJA','');
+  $('warehouseCrumb').classList.add('hidden');
   $('syncTime').textContent='';
   renderMenu();
   render();
@@ -1047,8 +1097,10 @@ function setHead(title,kicker,desc){
   $('modulesTab').textContent=polishStocks?'CZĘŚCI NIEKOMPLETNE':'MODUŁY';
   const frEmpty=state.preview?.type==='operation'||state.preview?.type==='module';
   const workingLabels=state.view==='labels'&&!frEmpty;
+  const isBovisOverview=state.view==='bovisOverview';
   $('officeLabelsView').classList.toggle('hidden',!workingLabels);
-  $('officeTableCard').classList.toggle('hidden',workingLabels);
+  $('officeBovisDashboard').classList.toggle('hidden',!isBovisOverview);
+  $('officeTableCard').classList.toggle('hidden',workingLabels||isBovisOverview);
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate'].includes(state.view));
   $('export').classList.toggle('hidden',state.view==='frMovements');
@@ -1070,6 +1122,7 @@ function setHead(title,kicker,desc){
   syncFrCrewToolbar();
   $('app').classList.toggle('view-vehicles',vehicleView);
   $('app').classList.toggle('view-aggregate',aggregateView);
+  $('app').classList.toggle('view-bovis-overview',isBovisOverview);
   $('app').classList.toggle('view-labels',workingLabels);
   $('app').classList.toggle('view-fr-empty',frEmpty);
   $('vehicleTopContext').classList.toggle('hidden',!vehicleView);
@@ -2711,6 +2764,9 @@ function drawFrenchEmptyView(){
 }
 async function render({silent=false}={}){
   if(state.view==='home')return;
+  if(state.view==='bovisOverview'){
+    errorBanner('');drawBovisOverview();return;
+  }
   if(state.view==='frMovements'){
     errorBanner('');
     drawFrBoxMovements();
@@ -3170,7 +3226,7 @@ document.addEventListener('click',e=>{
   if(bovisToggle){
     state.bovisExpanded=!state.bovisExpanded;
     state.frExpanded=null;
-    renderMenu();
+    showBovisOverview();
     return;
   }
   const frStock=e.target.closest('[data-fr-stock]');
