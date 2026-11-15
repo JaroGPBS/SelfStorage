@@ -1083,83 +1083,9 @@ async function staffMutation(env,body,actor,edit) {
 
 // One-time guarded cleanup of AA's leaked presentation visit (12 Nov 2026).
 // It is NOT a general "undo movements" option. Never rewrite arbitrary stock.
-async function identifyAaPresentationReturn(db,userId){
-  const records=(await db.prepare(
-    'SELECT s.id AS sessionId,s.visit_id AS visitId,'+
-    's.warehouse_id AS warehouseId,s.saved_at AS savedAt,'+
-    "date(s.saved_at,'+1 hour') AS localDate,"+
-    'l.part_id AS partId,l.direction,l.quantity,'+
-    'p.part_number AS partNumber,p.name AS partName,'+
-    'v.user_id AS visitUser,v.warehouse_id AS visitWarehouse '+
-    'FROM fr_sessions s '+
-    'LEFT JOIN fr_session_lines l ON l.session_id=s.id '+
-    'LEFT JOIN parts p ON p.id=l.part_id '+
-    'LEFT JOIN fr_visits v ON v.id=s.visit_id '+
-    'WHERE s.user_id=? ORDER BY s.saved_at,s.id'
-  ).bind(userId).all()).results||[];
-  // One physical VISIT may have several PZ/WZ sessions and movement lines.
-  // The two AA inventories are in separate event tables and never count here.
-  if(!records.length||records.length>1000)return {error:
-    'Nie udało się jednoznacznie odczytać testowej wizyty AA. Niczego nie usunięto.'};
-  const visitIds=new Set(records.map(row=>row.visitId));
-  if(visitIds.size!==1||![...visitIds][0])return {error:
-    'AA ma '+visitIds.size+' zapisanych wizyt magazynowych. Cofnięcie wymaga sprawdzenia. Nie zmieniono stanów.'};
-  const visitId=records[0].visitId;
-  const deltas=new Map();
-  let firstAt=records[0].savedAt;
-  for(const row of records){
-    const qty=Number(row.quantity);
-    if(row.visitId!==visitId||row.warehouseId!=='FR-TOULOUSE'||
-       row.visitWarehouse!=='FR-TOULOUSE'||row.visitUser!==userId||
-       row.localDate!=='2026-11-12'||!row.partId||
-       !['POBRANIE','ZWROT'].includes(row.direction)||
-       !Number.isSafeInteger(qty)||qty<=0)
-      return {error:'W zapisach AA jest operacja inna niż testowa wizyta w Box Toulouse z 12.11.2026. Nie zmieniono stanów.'};
-    firstAt=firstAt<row.savedAt?firstAt:row.savedAt;
-    const delta=row.direction==='ZWROT'?qty:-qty;
-    deltas.set(row.partId,(deltas.get(row.partId)||0)+delta);
-  }
-  // The part index is validated from the current catalogue, not guessed
-  // from a displayed name or a historical preview label.
-  const hasIndex=Boolean(await db.prepare(
-    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='pl_part_index_migrations'"
-  ).first());
-  const sql='SELECT DISTINCT p.id FROM parts p '+
-    (hasIndex?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
-    "WHERE UPPER(TRIM(p.part_number))='MG-000-022'"+
-    (hasIndex?" OR UPPER(TRIM(ix.new_index))='MG-000-022'":'');
-  const matching=(await db.prepare(sql).all()).results||[];
-  if(matching.length!==1)return {error:
-    'Indeks MG-000-022 nie jest jednoznacznie przypisany w katalogu. Niczego nie zmieniono.'};
-  const partId=matching[0].id;
-  const quantity=deltas.get(partId)||0;
-  if(!Number.isSafeInteger(quantity)||quantity<=0)return {error:
-    'Testowa wizyta AA nie potwierdza przyjęcia MG-000-022 do Tuluzy. Niczego nie cofnięto.'};
-  const otherChanges=[...deltas].filter(([id,delta])=>id!==partId&&delta!==0);
-  if(otherChanges.length)return {error:
-    'AA ma również zmiany innych części ('+otherChanges.length+
-    ' pozycji). Nie cofnięto niczego, żeby nie naruszyć pozostałych stanów magazynowych.'};
-  // No other crew may have touched this part after AA's first recorded
-  // session. Ignore other lines of this SAME visit (they are verified above).
-  const later=await db.prepare(
-    'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
-    'WHERE s.warehouse_id=? AND l.part_id=? AND s.visit_id<>? '+
-    'AND s.saved_at>=? LIMIT 1'
-  ).bind('FR-TOULOUSE',partId,visitId,firstAt).first();
-  if(later)return {error:
-    'Po teście AA były następne ruchy tej części w Tuluzie. Automatyczne cofnięcie jest zablokowane.'};
-  const stock=await db.prepare(
-    'SELECT quantity FROM warehouse_stock WHERE warehouse_id=? AND part_id=?'
-  ).bind('FR-TOULOUSE',partId).first();
-  if(!stock||Number(stock.quantity)!==quantity)return {error:
-    'Stan MG-000-022 w Tuluzie nie odpowiada łącznemu testowemu zwrotowi AA ('+
-    quantity+' szt.). Nie zmieniono magazynu.'};
-  return {visitId,partId,quantity,
-    sessionCount:new Set(records.map(row=>row.sessionId)).size,
-    movementCount:records.length};
-}
-// Permanent removal is intentionally restricted to crew accounts without
-// operational history. Never touch warehouse_stock, movements or inventories.
+// Permanent removal of regular crews requires no stock-affecting operations.
+// Explicit one-off exception: presentation crew AA may be deleted with all
+// its history, WITHOUT changing any real stock quantities or the catalogue.
 async function permanentlyDeleteUnusedCrew(env,body) {
   const id=String(body?.userId||'');
   if(!id||id.length>150||/[\u0000-\u001f]/.test(id))return fail('Nieprawidłowy identyfikator ekipy.',400);
@@ -1169,7 +1095,10 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   if(user.role_code!=='EKIPA')return fail('Trwale można usuwać tylko konta ekip.',403);
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
   const markedTest=await isFrTestAccount(db,id);
-  let aaTrialReversal=null;
+  const deleteAa=String(user.name||'').trim().toUpperCase()==='AA';
+  // AA is an explicitly identified presentation crew. The operator chose to
+  // discard its historical movements without adjusting warehouse balances.
+  // NEVER use this exception for another crew.
   const realSessions=await db.prepare(
     "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('fr_sessions','fr_session_lines')"
   ).all();
@@ -1179,22 +1108,13 @@ async function permanentlyDeleteUnusedCrew(env,body) {
       'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
       'WHERE s.user_id=? LIMIT 1'
     ).bind(id).first();
-    if(hasLiveOperations){
-      // The ONLY allowed exception is AA's strictly verified 12 Nov demo
-      // return of MG-000-022, even if its old test-account flag was removed.
-      // Other recorded warehouse movements remain locked.
-      if(String(user.name||'').trim().toUpperCase()==='AA'){
-        aaTrialReversal=await identifyAaPresentationReturn(db,id);
-        if(aaTrialReversal.error)return fail(aaTrialReversal.error,409);
-      }else return fail(
-        'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
-    }
+    if(hasLiveOperations&&!deleteAa)return fail(
+      'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
   }
-  if(markedTest||aaTrialReversal||
-     String(user.name||'').trim().toUpperCase()==='AA'){
-    // Legacy separated test records are removed, as well as any car-only
-    // inventories recorded after restoring the normal mobile workflow.
-    // The real tables warehouse_stock, vehicle_stock and fr_* are untouched.
+  if(markedTest||deleteAa){
+    // Delete this crew's isolated test history plus its own recorded
+    // in-app visits and inventories. No stock balance or part catalogue writes.
+    // Changes previously applied to warehouse_stock are NOT reversed here.
     const hasTestAccounts=Boolean(await db.prepare(
       "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_test_accounts'"
     ).first());
@@ -1208,21 +1128,6 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     ).all()).results||[];
     const legacy=new Set(legacyRows.map(row=>row.name));
     const statements=[];
-    if(aaTrialReversal){
-      // The original Box Toulouse balance was 0. Restore only MG-000-022
-      // and only when D1 still contains exactly the observed test quantity.
-      // SQLite integer overflow aborts the entire D1 batch if stock changes
-      // between validation and the write. No partial record deletion.
-      statements.push(db.prepare(
-        'INSERT INTO warehouse_stock(warehouse_id,part_id,quantity,updated_at) '+
-        'VALUES(?,?,CASE WHEN (SELECT quantity FROM warehouse_stock '+
-        'WHERE warehouse_id=? AND part_id=?)=? THEN 0 '+
-        'ELSE abs(-9223372036854775808) END,CURRENT_TIMESTAMP) '+
-        'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
-        'quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP'
-      ).bind('FR-TOULOUSE',aaTrialReversal.partId,
-        'FR-TOULOUSE',aaTrialReversal.partId,aaTrialReversal.quantity));
-    }
     const addLegacy=(table,sql)=>{
       if(legacy.has(table))statements.push(db.prepare(sql).bind(id));
     };
@@ -1311,8 +1216,8 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     statements.push(db.prepare("DELETE FROM users WHERE id=? AND role_code='EKIPA'").bind(id));
     await db.batch(statements);
     return respond({ok:true,userId:id,
-      message:aaTrialReversal?
-        'Usunięto AA i jej historię. Cofnięto wyłącznie testowy zwrot MG-000-022 w Box Toulouse do stanu 0.':
+      message:deleteAa?
+        'Usunięto AA, PIN, wizyty, ruchy i inwentaryzacje. Stanów magazynowych nie zmieniono — wymagają późniejszego porównania z arkuszem Stock FR GPBS.':
         'Usunięto ekipę testową i jej testowe operacje. Prawdziwe stany pozostały bez zmian.'});
   }
 
