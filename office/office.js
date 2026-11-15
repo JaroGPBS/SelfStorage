@@ -1501,6 +1501,155 @@ function drawBovisParisProcess(){
   $('searchNote').classList.add('hidden');
 }
 
+// Bovis Paryż: a read-only export prototype. All S/N, arrival dates and
+// routes below are fictional and come ONLY from local preview constants.
+const BOVIS_PARIS_EXPORT_SAMPLE_DELIVERIES=[
+  {date:'26.10.2026',week:'44',route:'Dostawa InPost – Paryż A',routeNo:'TR-101'},
+  {date:'29.10.2026',week:'44',route:'Dostawa InPost – Paryż B',routeNo:'TR-102'},
+  {date:'02.11.2026',week:'45',route:'Dostawa InPost – Paryż A',routeNo:'TR-103'},
+  {date:'05.11.2026',week:'45',route:'Dostawa InPost – Paryż B',routeNo:'TR-104'},
+  {date:'09.11.2026',week:'46',route:'Dostawa InPost – Paryż A',routeNo:'TR-105'},
+  {date:'12.11.2026',week:'46',route:'Dostawa InPost – Paryż B',routeNo:'TR-106'}
+];
+const BOVIS_PARIS_EXPORT_FIELDS=[
+  {key:'serial',label:'Numer seryjny'},
+  {key:'date',label:'Data przyjęcia'},
+  {key:'week',label:'Tydzień'},
+  {key:'route',label:'Nazwa trasy'},
+  {key:'routeNo',label:'Numer trasy'}
+];
+let bovisParisExportSelection=null;
+function bovisParisExportTypes(group){
+  return MODULE_GROUPS.filter(item=>group==='all'||item.id===group)
+    .flatMap(item=>item.types.map(type=>({
+      group:item.id,groupName:item.name,type,key:item.id+':'+type
+    })));
+}
+function bovisParisExportRows(){
+  let counter=0;
+  return BOVIS_PARIS_MODULE_EXAMPLES.flatMap(item=>
+    ['ok','nok'].flatMap(status=>
+      bovisParisExampleSerials(item,status).map(serial=>{
+        const delivery=BOVIS_PARIS_EXPORT_SAMPLE_DELIVERIES[
+          counter++%BOVIS_PARIS_EXPORT_SAMPLE_DELIVERIES.length];
+        return {group:item.group,
+          groupName:MODULE_GROUPS.find(g=>g.id===item.group)?.name||item.group,
+          type:item.type,status:status.toUpperCase(),serial,...delivery};
+      })
+    )
+  );
+}
+function bovisParisExportSelectedRows(){
+  if(!bovisParisExportSelection)return [];
+  return bovisParisExportRows().filter(row=>
+    bovisParisExportSelection.types.has(row.group+':'+row.type)&&
+    (bovisParisExportSelection.status==='all'||
+     row.status.toLowerCase()===bovisParisExportSelection.status));
+}
+function renderBovisParisExportTypes(){
+  const model=bovisParisExportSelection;
+  const container=$('bovisExportTypes');
+  if(!model||!container)return;
+  const available=bovisParisExportTypes(model.group);
+  const allChecked=available.length>0&&available.every(x=>model.types.has(x.key));
+  container.innerHTML=
+    '<label class="fr-paris-export-all"><input type="checkbox" data-bovis-export-all-types '+
+      (allChecked?'checked':'')+'> Zaznacz wszystkie typy</label>'+
+    '<div class="fr-paris-export-type-grid">'+available.map(item=>
+      '<label><input type="checkbox" data-bovis-export-type="'+escapeHtml(item.key)+'" '+
+        (model.types.has(item.key)?'checked':'')+'>'+
+        '<span>'+escapeHtml(model.group==='all'?item.groupName+' · '+item.type:item.type)+'</span></label>'
+    ).join('')+'</div>';
+}
+function bovisParisExportResetPreview(){
+  if(!bovisParisExportSelection)return;
+  bovisParisExportSelection.previewReady=false;
+  const preview=$('bovisExportPreview');
+  if(preview)preview.innerHTML='<p class="fr-paris-export-hint">'+
+    'Wybierz zakres i kliknij „Pokaż podgląd”.</p>';
+  if($('bovisExportDownload'))$('bovisExportDownload').disabled=true;
+}
+function openBovisParisExport(){
+  if(!isBovisParisModuleExample()||state.bovisParisProcess)return;
+  const initial=state.moduleCategory==='all'?'all':state.moduleCategory;
+  bovisParisExportSelection={
+    group:initial,status:'all',
+    types:new Set(bovisParisExportTypes(initial).map(item=>item.key)),
+    fields:new Set(BOVIS_PARIS_EXPORT_FIELDS.map(field=>field.key)),
+    previewReady:false
+  };
+  const modal=$('modal'),body=$('modalBody');
+  modal.classList.remove('hidden');
+  modal.querySelector('.modal-card').classList.add('bovis-export-dialog');
+  body.innerHTML='<div class="fr-paris-export-ui">'+
+    '<h2 id="modalTitle">Eksport modułów — Bovis Paryż</h2>'+
+    '<p class="fr-paris-export-warning">PRZYKŁADOWY EKRAN: numery seryjne, daty przyjęcia i trasy są fikcyjne. '+
+      'Nie są pobierane z dokumentów InPost ani z rzeczywistych stanów.</p>'+
+    '<div class="fr-paris-export-filters">'+
+      '<label>Grupa modułów<select id="bovisExportGroup">'+
+        '<option value="all">Wszystkie grupy</option>'+
+        MODULE_GROUPS.map(g=>'<option value="'+g.id+'"'+(initial===g.id?' selected':'')+'>'+
+          escapeHtml(g.name)+'</option>').join('')+'</select></label>'+
+      '<label>Stan<select id="bovisExportStatus">'+
+        '<option value="all">Wszystkie (OK i NOK)</option>'+
+        '<option value="ok">Tylko OK</option><option value="nok">Tylko NOK</option>'+
+      '</select></label></div>'+
+    '<div class="fr-paris-export-section"><h3>Wybierz typy maszyn</h3>'+
+      '<div id="bovisExportTypes"></div></div>'+
+    '<div class="fr-paris-export-section"><h3>Kolumny w eksporcie</h3>'+
+      '<div class="fr-paris-export-fields">'+BOVIS_PARIS_EXPORT_FIELDS.map(field=>
+        '<label><input type="checkbox" data-bovis-export-field="'+field.key+'" checked>'+
+          escapeHtml(field.label)+'</label>').join('')+'</div></div>'+
+    '<div class="fr-paris-export-actions">'+
+      '<button type="button" class="btn dark" data-bovis-export-preview>Pokaż podgląd</button>'+
+      '<button type="button" id="bovisExportDownload" class="btn outline" '+
+        'data-bovis-export-download disabled>Pobierz CSV (Excel)</button></div>'+
+    '<div id="bovisExportPreview" class="fr-paris-export-preview" aria-live="polite"></div>'+
+    '</div>';
+  renderBovisParisExportTypes();
+  bovisParisExportResetPreview();
+}
+function drawBovisParisExportPreview(){
+  const model=bovisParisExportSelection;
+  const target=$('bovisExportPreview');
+  if(!model||!target)return;
+  const rows=bovisParisExportSelectedRows();
+  model.previewReady=true;
+  const fields=BOVIS_PARIS_EXPORT_FIELDS.filter(x=>model.fields.has(x.key));
+  const columns=[{key:'groupName',label:'Grupa'},{key:'type',label:'Typ'},
+    {key:'status',label:'Stan'},...fields];
+  target.innerHTML='<p class="fr-paris-export-result">Przykładowy raport: '+
+      rows.length+' maszyn. Dane fikcyjne — tylko do oceny układu.</p>'+
+    (rows.length
+      ?'<div class="fr-paris-export-scroll"><table><thead><tr>'+
+        columns.map(col=>'<th scope="col">'+escapeHtml(col.label)+'</th>').join('')+
+        '</tr></thead><tbody>'+rows.map(row=>'<tr>'+
+          columns.map(col=>'<td>'+escapeHtml(row[col.key]||'—')+'</td>').join('')+
+        '</tr>').join('')+'</tbody></table></div>'
+      :'<p class="fr-paris-export-hint">Brak maszyn dla wybranych filtrów.</p>');
+  $('bovisExportDownload').disabled=!rows.length;
+}
+function downloadBovisParisExampleCsv(){
+  const model=bovisParisExportSelection;
+  if(!model?.previewReady||$('bovisExportDownload')?.disabled)return;
+  const rows=bovisParisExportSelectedRows();
+  if(!rows.length)return;
+  const fields=[{key:'groupName',label:'Grupa'},{key:'type',label:'Typ'},
+    {key:'status',label:'Stan'},...BOVIS_PARIS_EXPORT_FIELDS.filter(x=>
+      model.fields.has(x.key))];
+  const csvCell=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+  const csv=[fields.map(col=>csvCell(col.label)).join(';'),
+    ...rows.map(row=>fields.map(col=>csvCell(row[col.key])).join(';'))].join('\r\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='Bovis_Paryz_moduly_DANE_PRZYKLADOWE.csv';
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 // Source of the temporary serial-number presentation. Counts and example
 // numbers come from the SAME list; nothing is saved or sent to a server.
 // Later, confirmed movement records can replace this one data source.
@@ -3448,10 +3597,17 @@ function closeModal(){
   clearVehicleInventoryPrintStyle();
   if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
   $('modal').classList.add('hidden');
-  $('modal').querySelector('.modal-card').classList.remove('part-detail-card','vehicle-history-card');
+  $('modal').querySelector('.modal-card').classList.remove('part-detail-card','vehicle-history-card','bovis-export-dialog');
+  bovisParisExportSelection=null;
   $('modalBody').innerHTML='';
 }
 document.addEventListener('click',e=>{
+  if(e.target.closest('[data-bovis-export-preview]')){
+    drawBovisParisExportPreview();return;
+  }
+  if(e.target.closest('[data-bovis-export-download]')){
+    downloadBovisParisExampleCsv();return;
+  }
   if(e.target.closest('[data-vehicle-report-excel]')){
     downloadVehicleInventoryReport();
     return;
@@ -3844,6 +4000,34 @@ $('tableArea').addEventListener('change',e=>{
     return;
   }
   if(e.target.dataset.diff){if(e.target.dataset.diff==='positive')state.positive=e.target.checked;else state.negative=e.target.checked;drawInventories();}
+});
+$('export').addEventListener('click',openBovisParisExport);
+document.addEventListener('change',e=>{
+  const model=bovisParisExportSelection;
+  if(!model||$('modal').classList.contains('hidden'))return;
+  if(e.target.id==='bovisExportGroup'){
+    model.group=e.target.value;
+    model.types=new Set(bovisParisExportTypes(model.group).map(item=>item.key));
+    renderBovisParisExportTypes();bovisParisExportResetPreview();
+  }else if(e.target.id==='bovisExportStatus'){
+    model.status=e.target.value;bovisParisExportResetPreview();
+  }else if(e.target.matches('[data-bovis-export-all-types]')){
+    model.types=e.target.checked
+      ?new Set(bovisParisExportTypes(model.group).map(item=>item.key)):new Set();
+    renderBovisParisExportTypes();bovisParisExportResetPreview();
+  }else if(e.target.matches('[data-bovis-export-type]')){
+    const key=e.target.dataset.bovisExportType;
+    if(e.target.checked)model.types.add(key);
+    else model.types.delete(key);
+    const all=$('bovisExportTypes')?.querySelector('[data-bovis-export-all-types]');
+    if(all)all.checked=bovisParisExportTypes(model.group).every(x=>model.types.has(x.key));
+    bovisParisExportResetPreview();
+  }else if(e.target.matches('[data-bovis-export-field]')){
+    const field=e.target.dataset.bovisExportField;
+    if(e.target.checked)model.fields.add(field);
+    else model.fields.delete(field);
+    bovisParisExportResetPreview();
+  }
 });
 $('newPart').addEventListener('click',openOfficeNewPart);
 $('officeNewPartForm').addEventListener('submit',saveOfficeNewPart);
