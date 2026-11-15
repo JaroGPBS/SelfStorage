@@ -5,6 +5,8 @@ Stan ustaleń: 15.11.2026. Ten plik służy do kontynuowania pracy w kolejnych r
 ## Zasada główna
 - W tej fazie projektujemy **wizualny układ modułów i dokumentów**. Nie uruchamiamy prawdziwych PZ/WZ ani importu, dopóki użytkownik nie pozna rzeczywistego procesu i rodzaju dokumentów. Nie dodajemy danych do Cloudflare D1.
 - **Bovis Paryż** ma wyłącznie **fikcyjne dane pokazowe**. Przy nazwie magazynu widoczny jest czerwony napis „FIKCYJNE DANE SŁUŻĄCE DO PREZENTACJI”.
+- **Bovis – Zestawienie zbiorcze** również pokazuje ten sam czerwony napis w nagłówku; zbiorcze zestawienie nadal bazuje na danych przykładowych.
+- **Wygląd Bovis jest zaakceptowany i zamknięty na etapie prezentacji**. Późniejsze uruchomienie właściwej ewidencji to odrębny etap po poznaniu procedur i dokumentów.
 - **Bovis Lille, Nantes, Nancy, Marsylia i Tuluza** dostają **ten sam układ wizualny** (zakładki, tabelę, panel powierzchni, 12-miesięczny wykres i ramki), ale **bez fikcyjnych stanów, metrów, maszyn, numerów seryjnych i historii**. Nie wpisywać „0” zamiast nieznanego stanu. Puste pola oznaczać „—” / „Brak danych”.
 - Nie przenosić tych zmian do Box Toulouse, Box Paryż, Belleville ani magazynów polskich. Polska jest ukończona i zamrożona.
 - Stany samochodowe Bovis pozostają **na koniec**, nie dodawać ich teraz.
