@@ -215,6 +215,65 @@ export async function onRequestGet({request,env}){
       return error('Nie udało się pobrać niezgodności stanów FR.',503);
     }
   }
+  // French BOX visit history: real confirmed sessions only, shared by
+  // the warehouse and crew views. No fake visits or extra stock writes.
+  if(view==='frBoxVisits'){
+    const boxIds=authorizedWarehouses.filter(w=>w.country_code==='FR'&&
+      ['FR-TOULOUSE','FR-PARIS'].includes(w.id)).map(w=>w.id);
+    if(!boxIds.length)return error('Brak dostępu do magazynów BOX.',403);
+    try{
+      if(!await tableExists(env.DB,'fr_visits')||
+         !await tableExists(env.DB,'fr_sessions')||
+         !await tableExists(env.DB,'fr_session_lines'))
+        return workerJson({ok:true,visits:[],limit:200});
+      const placeholders=boxIds.map(()=>'?').join(',');
+      const sql='WITH recent AS ('+
+        'SELECT v.id FROM fr_visits v WHERE v.warehouse_id IN ('+placeholders+') '+
+        'AND EXISTS(SELECT 1 FROM fr_sessions x WHERE x.visit_id=v.id) '+
+        'ORDER BY v.started_at DESC,v.id DESC LIMIT 200) '+
+        'SELECT v.id AS visitId,v.warehouse_id AS warehouseId,'+
+        'v.started_at AS startedAt,v.ended_at AS endedAt,'+
+        'v.user_id AS userId,COALESCE(u.name,v.user_id) AS team,'+
+        "COALESCE(car.registration_number,'') AS plate,"+
+        's.id AS sessionId,s.comment,s.saved_at AS sessionAt,'+
+        'l.part_id AS partId,p.part_number AS partNumber,p.name AS partName,'+
+        'l.direction,l.quantity '+
+        'FROM recent r JOIN fr_visits v ON v.id=r.id '+
+        'JOIN fr_sessions s ON s.visit_id=v.id '+
+        'JOIN fr_session_lines l ON l.session_id=s.id '+
+        'JOIN parts p ON p.id=l.part_id '+
+        'LEFT JOIN users u ON u.id=v.user_id '+
+        'LEFT JOIN vehicles car ON car.id=v.vehicle_id '+
+        'ORDER BY v.started_at DESC,v.id DESC,s.saved_at,s.id,l.part_id';
+      const records=(await env.DB.prepare(sql).bind(...boxIds).all()).results||[];
+      const visits=new Map();
+      for(const record of records){
+        let visit=visits.get(record.visitId);
+        if(!visit){
+          visit={id:record.visitId,warehouseId:record.warehouseId,
+            startedAt:record.startedAt,endedAt:record.endedAt,
+            userId:record.userId,team:record.team,plate:record.plate,
+            note:'',lines:[]};
+          visits.set(record.visitId,visit);
+        }
+        const comment=String(record.comment||'').trim();
+        if(comment&&!visit.note.split(' / ').includes(comment))
+          visit.note+=(visit.note?' / ':'')+comment;
+        let line=visit.lines.find(x=>x.partId===record.partId);
+        if(!line){
+          line={partId:record.partId,code:record.partNumber||record.partId,
+            name:record.partName,pickup:0,returned:0};
+          visit.lines.push(line);
+        }
+        if(record.direction==='POBRANIE')line.pickup+=Number(record.quantity)||0;
+        else if(record.direction==='ZWROT')line.returned+=Number(record.quantity)||0;
+      }
+      return workerJson({ok:true,visits:[...visits.values()],limit:200});
+    }catch(err){
+      console.error('French BOX visit history',err?.name||'Error');
+      return error('Nie udało się pobrać historii wizyt BOX z D1.',503);
+    }
+  }
   if(view==='vehicleInventories'){
     // Inventory history belongs to the vehicle, not the currently logged-in crew.
     const privileged=user.role==='ADMIN'&&
