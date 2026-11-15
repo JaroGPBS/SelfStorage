@@ -19,13 +19,13 @@ const BOVIS_PARIS_MODULE_EXAMPLES=[
   {group:'outdoor',type:'FM',ok:10,nok:1},
   {group:'outdoor',type:'LQ',ok:4,nok:1},
   {group:'outdoor',type:'RQ',ok:2,nok:0},
-  {group:'outdoor',type:'ODL',ok:1,nok:1},
+  {group:'outdoor',type:'ODL',ok:2,nok:0},
   {group:'outdoor',type:'ODR',ok:1,nok:0},
   {group:'indoor',type:'CU',ok:2,nok:0},
   {group:'indoor',type:'HICU',ok:1,nok:1},
   {group:'indoor',type:'CU RJ45',ok:1,nok:0},
   {group:'bq',type:'CU OUT',ok:1,nok:1},
-  {group:'newgen',type:'DUO L',ok:2,nok:0}
+  {group:'newgen',type:'DUO L',ok:1,nok:1}
 ];
 
 // Sample Bovis dashboard figures, local to this screen only. No writes and no
