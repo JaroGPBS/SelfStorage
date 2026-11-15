@@ -356,20 +356,28 @@ async function saveSession(db,user,data){
       'ON CONFLICT(warehouse_id,part_id) DO UPDATE SET '+
       'quantity=MAX(0,warehouse_stock.quantity+?),updated_at=CURRENT_TIMESTAMP'
     ).bind(visit.warehouse_id,id,delta,delta));
-    // Only parts belonging to the vehicle catalogue change the car balance.
+    // French mobile parts belong to the crew, never to a shared plate.
     if(vehiclePartIds.has(id))statements.push(db.prepare(
-      'INSERT INTO vehicle_stock(vehicle_id,part_id,quantity,updated_at) '+
+      'INSERT INTO fr_crew_stock(user_id,part_id,quantity,updated_at) '+
       'VALUES(?,?,MAX(0,?),CURRENT_TIMESTAMP) '+
-      'ON CONFLICT(vehicle_id,part_id) DO UPDATE SET '+
-      'quantity=MAX(0,vehicle_stock.quantity+?),updated_at=CURRENT_TIMESTAMP'
-    ).bind(visit.vehicle_id,id,-delta,-delta));
+      'ON CONFLICT(user_id,part_id) DO UPDATE SET '+
+      'quantity=MAX(0,fr_crew_stock.quantity+?),updated_at=CURRENT_TIMESTAMP'
+    ).bind(user.id,id,-delta,-delta));
   }
+  if([...deltas].some(([id,delta])=>delta!==0&&vehiclePartIds.has(id)))
+    statements.push(db.prepare(
+      'INSERT INTO fr_crew_stock_revisions(user_id,revision,updated_at) '+
+      'VALUES(?,1,CURRENT_TIMESTAMP) '+
+      'ON CONFLICT(user_id) DO UPDATE SET '+
+      'revision=fr_crew_stock_revisions.revision+1,updated_at=CURRENT_TIMESTAMP'
+    ).bind(user.id));
   await db.batch(statements);
   const shortages=(await db.prepare(
     'SELECT part_id AS partId,shortage_qty AS missingQty '+
     'FROM fr_stock_discrepancies WHERE session_id=?'
   ).bind(sessionId).all()).results||[];
   return {ok:true,idSesji:sessionId,idWizyty:visitId,status:'ZAPISANA',
+    wersjaStanuAuta:await crewStockVersion(db,user.id),
     discrepancies:shortages.map(x=>({partId:x.partId,missingQty:Number(x.missingQty)}))};
 }
 async function vehicleStock(db,user){
@@ -377,16 +385,17 @@ async function vehicleStock(db,user){
   if(!car)throw Error('Najpierw przypisz samochód.');
   const catalogue=await getVehicleCatalogue(db);
   const balances=(await db.prepare(
-    'SELECT part_id,quantity FROM vehicle_stock WHERE vehicle_id=?'
-  ).bind(car.id).all()).results||[];
+    'SELECT part_id,quantity FROM fr_crew_stock WHERE user_id=?'
+  ).bind(user.id).all()).results||[];
   const stock=new Map(balances.map(row=>[row.part_id,Number(row.quantity)]));
   const last=await db.prepare(
     "SELECT MAX(event_at) AS last_at FROM fr_vehicle_events "+
-    "WHERE vehicle_id=? AND user_id=? AND type='INWENTARYZACJA'"
-  ).bind(car.id,user.id).first();
+    "WHERE user_id=? AND type='INWENTARYZACJA'"
+  ).bind(user.id).first();
   const lastAt=last?.last_at||'';
-  const inventoryDone=Boolean(lastAt);
-  return {ok:true,ekipa:{id:user.id,nazwa:user.nickname},
+  const inventoryDone=await hasCrewVehicleInventory(db,user.id,car.id);
+  return {ok:true,wersjaStanu:await crewStockVersion(db,user.id),
+    wersjaListy:'D1',ekipa:{id:user.id,nazwa:user.nickname},
     samochod:car.registration_number,
     oczekujeNaZatwierdzenie:false,inwentaryzacjaWykonana:inventoryDone,
     ostatniaInwentaryzacja:lastAt,
@@ -509,7 +518,7 @@ async function action(db,user,body){
   if(type==='POBIERZ_STAN_AUTA')return vehicleStock(db,user);
   if(type==='SPRAWDZ_SYNC_AUTA'){
     const car=await vehicle(db,user.id);
-    return {ok:true,wersjaStanu:0,wersjaListy:'D1',samochod:car?.registration_number||'',
+    return {ok:true,wersjaStanu:await crewStockVersion(db,user.id),wersjaListy:'D1',samochod:car?.registration_number||'',
       inwentaryzacjaWykonana:car?await hasCrewVehicleInventory(db,user.id,car.id):false};
   }
   if(type==='AKTUALIZUJ_STAN_AUTA')return updateVehicleStock(db,user,data);
