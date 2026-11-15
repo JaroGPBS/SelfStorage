@@ -2010,7 +2010,7 @@ function syncFrCrewToolbar(){
       '" aria-pressed="'+(state.frCrewWarehouseFilter===key)+'"'+
       (state.frCrewWarehouseFilter===key?' class="active"':'')+'>'+
       label+'</button>').join('')+'</div>'+
-    '<span class="fr-crew-sample-indicator">Przykład</span>';
+    '<span class="fr-crew-sample-indicator">Zapisane w D1</span>';
 }
 function drawFrCrewHistory({embed=false,crewOverride=null,visitsOverride=null,queryOverride=null}={}){
   const team=crewOverride||state.frMovementCrew;
