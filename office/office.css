@@ -7138,3 +7138,34 @@
     padding:7px;
   }
 }
+
+
+/* Bovis Paryż preview: compact occupied/free labels around the usage bar,
+   and consistent OK/NOK colors even in the SUMA footer row. */
+.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-usage-labels{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:13px 2px 9px;
+  font-size:11px;
+  color:#748392;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-usage-labels span:last-child{
+  text-align:right;
+}
+.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-usage-labels b{
+  font-size:15px;
+  font-weight:800;
+  color:#354e65;
+}
+.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-progress{
+  margin-bottom:15px;
+}
+.app.view-bovis-paris.view-stocks.view-modules .fr-paris-modules-table .module-grand-total td.module-count-ok{
+  color:#277654;
+}
+.app.view-bovis-paris.view-stocks.view-modules .fr-paris-modules-table .module-grand-total td.module-count-nok{
+  color:#c13f49;
+}
