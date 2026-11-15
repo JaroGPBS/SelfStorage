@@ -2109,7 +2109,7 @@ function drawFrCrewHistory({embed=false,crewOverride=null,visitsOverride=null,qu
   syncFrCrewToolbar();
   $('tableArea').innerHTML='<div class="fr-crew-history">'+matrix+'</div>';
   $('tableFooter').textContent=visits.length+' z '+all.length+
-    ' wizyt ekipy '+team+' · '+parts.length+' części · dane przykładowe';
+    ' wizyt ekipy '+team+' · '+parts.length+' części';
   $('searchNote').classList.toggle('hidden',!query);
   $('searchNote').textContent=query?
     'Znaleziono: '+parts.length+' części · '+visits.length+' wizyt.':'';
@@ -2137,7 +2137,7 @@ function attachFrCrewMatrixScroll(){
 }
 
 // One Office entry per BOX visit, with both columns as in Stock FR GPBS / WZ/PZ Ekipy.
-// This is a permanent page layout fed with fictional examples ONLY for design review.
+// Permanent Office layout, now loaded from confirmed D1 visit movements.
 function drawFrBoxMovements(){
   syncFrCrewToolbar();
   if(state.frMovementCrew){drawFrCrewHistory();return;}
@@ -2205,16 +2205,17 @@ function drawFrBoxMovements(){
   $('tableArea').innerHTML='<div class="fr-mov-design">'+
     '<div class="fr-mov-intro"><div><strong>Historia wizyt ekip</strong>'+
     '<span>Jedna wizyta = pobrania i zwroty w jednym wpisie.</span></div>'+
-    '<span class="fr-mov-preview-badge">Dane przykładowe</span></div>'+
+    '<span class="fr-mov-preview-badge">Zapisane w D1</span></div>'+
     '<div class="fr-mov-table-scroll"><table class="fr-mov-table">'+
     '<thead><tr><th>Data / godz.</th><th>Tydz.</th><th>Ekipa / samochód</th><th>Operacja</th>'+
     '<th>Pobrano</th><th>Zwrócono</th><th></th></tr></thead>'+
-    '<tbody>'+(rows||'<tr><td class="fr-mov-no-results" colspan="7">Brak pasujących wizyt.</td></tr>')+
+    '<tbody>'+(rows||'<tr><td class="fr-mov-no-results" colspan="7">'+
+      (query?'Brak pasujących wizyt.':'Brak zapisanych wizyt.')+'</td></tr>')+
     '</tbody></table></div></div>';
   $('tableFooter').textContent=visible.length+' z '+entries.length+
-    ' przykładowych wizyt';
+    ' zapisanych wizyt';
   $('searchNote').classList.toggle('hidden',!query);
-  $('searchNote').textContent=query?'Wyszukiwanie w przykładach: '+visible.length+' wyników.':'';
+  $('searchNote').textContent=query?'Wyszukiwanie wizyt: '+visible.length+' wyników.':'';
 }
 function drawDocs(){
   const direction=state.view==='pz'?'PZ':'WZ';
