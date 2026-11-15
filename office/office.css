@@ -6315,22 +6315,6 @@
   background:rgba(230,63,68,.13);
   box-shadow:inset 3px 0 #e63f44;
 }
-.app.view-bovis-overview .bovis-summary-cards{
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;
-}
-.app.view-bovis-overview .bovis-summary-card{
-  min-width:0;display:flex;flex-direction:column;gap:5px;
-  padding:11px 13px;
-  border:1px solid #e2e7ed;border-radius:7px;background:#fff;
-}
-.app.view-bovis-overview .bovis-summary-card span{
-  color:#687687;font-size:11px;font-weight:650;
-}
-.app.view-bovis-overview .bovis-summary-card strong{
-  color:#303e4b;font-size:22px;font-weight:850;
-  line-height:1.2;font-variant-numeric:tabular-nums;
-  white-space:nowrap;
-}
 .app.view-bovis-overview .bovis-section{
   min-width:0;border:1px solid #e1e6eb;
   border-radius:7px;overflow:hidden;
@@ -6467,19 +6451,12 @@
   margin-left:8px;background:#edf1f5;
 }
 @media(max-width:1050px){
-  .app.view-bovis-overview .bovis-summary-cards{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
   .app.view-bovis-overview .bovis-charts{
     grid-template-columns:1fr;
   }
 }
 @media(max-width:650px){
   .app.view-bovis-overview .content{padding:8px 8px 18px}
-  .app.view-bovis-overview .bovis-summary-cards{gap:6px}
-  .app.view-bovis-overview .bovis-summary-card{padding:9px}
-  .app.view-bovis-overview .bovis-summary-card strong{font-size:17px}
-  .app.view-bovis-overview .bovis-summary-card span{font-size:10px}
   .app.view-bovis-overview .bovis-chart-list{padding:11px 9px}
   .app.view-bovis-overview .bovis-chart-row{gap:6px}
   .app.view-bovis-overview .bovis-chart-name{flex-basis:63px;font-size:10px}
@@ -6534,4 +6511,87 @@
   .app.view-bovis-overview .vehicle-top-export-host .sync-label{display:none}
   .app.view-bovis-overview .vehicle-top-export-host #refresh{padding:5px 7px}
   .app.view-bovis-overview .vehicle-top-export-host #refresh span{display:none}
+}
+
+
+/* Bovis only: put warehouse totals and machine-type matrix alongside each other.
+   Each table can scroll horizontally on narrow Office windows, without clipping data. */
+.app.view-bovis-overview .bovis-tables-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 43fr) minmax(0, 57fr);
+  align-items:start;
+  gap:9px;
+  min-width:0;
+  width:100%;
+}
+.app.view-bovis-overview .bovis-tables-grid > .bovis-section{
+  min-width:0;
+}
+.app.view-bovis-overview .bovis-tables-grid .bovis-section-heading{
+  padding:7px 9px;
+  min-height:33px;
+  align-items:center;
+}
+.app.view-bovis-overview .bovis-tables-grid .bovis-section-heading h2{
+  font-size:12px;
+}
+.app.view-bovis-overview .bovis-tables-grid .bovis-table{
+  font-size:10px;
+  table-layout:fixed;
+  width:100%;
+}
+.app.view-bovis-overview .bovis-tables-grid .bovis-table th,
+.app.view-bovis-overview .bovis-tables-grid .bovis-table td{
+  padding:5px 4px;
+  line-height:1.25;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  overflow:hidden;
+}
+.app.view-bovis-overview .bovis-tables-grid .bovis-table thead th{
+  font-size:9px;
+  letter-spacing:0;
+  line-height:1.25;
+}
+.app.view-bovis-overview .bovis-tables-grid .bovis-warehouses-table{
+  min-width:440px;
+}
+.app.view-bovis-overview .bovis-warehouses-table th:first-child{
+  width:93px;
+}
+.app.view-bovis-overview .bovis-warehouses-table thead th:nth-child(2){width:53px}
+.app.view-bovis-overview .bovis-warehouses-table thead th:nth-child(3){width:75px}
+.app.view-bovis-overview .bovis-warehouses-table thead th:nth-child(4){width:69px}
+.app.view-bovis-overview .bovis-warehouses-table thead th:nth-child(5){width:69px}
+.app.view-bovis-overview .bovis-warehouses-table thead th:nth-child(6){width:81px}
+.app.view-bovis-overview .bovis-tables-grid .bovis-machines-table{
+  min-width:540px;
+}
+.app.view-bovis-overview .bovis-machines-table thead th:first-child{width:67px}
+.app.view-bovis-overview .bovis-machines-table thead th:nth-child(2){width:104px}
+.app.view-bovis-overview .bovis-machines-table thead th:nth-child(n+3){width:53px}
+.app.view-bovis-overview .bovis-machine-scroll{
+  max-height:355px;
+  overflow-x:auto;
+  overflow-y:auto;
+  scrollbar-width:thin;
+}
+.app.view-bovis-overview .bovis-table-scroll{
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
+@media(max-width:1150px){
+  .app.view-bovis-overview .bovis-tables-grid{
+    grid-template-columns:1fr;
+  }
+  .app.view-bovis-overview .bovis-tables-grid .bovis-table{
+    min-width:0;
+    width:100%;
+  }
+  .app.view-bovis-overview .bovis-tables-grid .bovis-warehouses-table{
+    min-width:440px;
+  }
+  .app.view-bovis-overview .bovis-tables-grid .bovis-machines-table{
+    min-width:540px;
+  }
 }
