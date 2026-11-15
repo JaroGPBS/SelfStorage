@@ -2054,8 +2054,8 @@ function drawFrCrewHistory({embed=false,crewOverride=null,visitsOverride=null,qu
       '<small>'+escapeHtml(frPreviewWarehouseName(visit.warehouseKey))+'</small></th>'
   ).join('');
   const subHead=visits.map(()=>
-    '<th class="fr-matrix-subhead" scope="col">Wydanie</th>'+
-    '<th class="fr-matrix-subhead fr-matrix-visit-end" scope="col">Przyjęcie</th>'
+    '<th class="fr-matrix-subhead" scope="col"><span>Ekipa</span> <span>pobrała</span></th>'+
+    '<th class="fr-matrix-subhead fr-matrix-visit-end" scope="col"><span>Ekipa</span> <span>zostawiła</span></th>'
   ).join('');
   const rows=parts.map(part=>'<tr>'+
     '<td class="fr-matrix-index">'+escapeHtml(part.code)+'</td>'+
@@ -2098,8 +2098,8 @@ function drawFrCrewHistory({embed=false,crewOverride=null,visitsOverride=null,qu
     visitHead+
     '<th class="fr-matrix-total-title" scope="colgroup" colspan="2">SUMA</th>'+
     '</tr><tr>'+subHead+
-    '<th class="fr-matrix-total-pickup" scope="col">Wydanie</th>'+
-    '<th class="fr-matrix-total-return" scope="col">Przyjęcie</th>'+
+    '<th class="fr-matrix-total-pickup" scope="col"><span>Ekipa</span> <span>pobrała</span></th>'+
+    '<th class="fr-matrix-total-return" scope="col"><span>Ekipa</span> <span>zostawiła</span></th>'+
     '</tr></thead><tbody>'+
     (rows||'<tr><td class="fr-matrix-empty" colspan="'+(visits.length*2+4)+
       '">Brak pasujących części.</td></tr>')+
