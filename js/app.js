@@ -5,7 +5,8 @@ import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=9';
 
 const APP_VERSION = '0.58';
-const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v1';
+const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v2_box78';
+const BOX_CATALOG_VERSION = 'FR-BOX-78-20261111';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
 const DEVICE_ID = getDeviceId();
 const state = {
@@ -387,7 +388,16 @@ function cleanScannerValue(value) {
 }
 
 function getParts() {
+  // Old local sessions contain the unrestricted global catalogue. Never use it
+  // for a BOX operation even when the app is resumed from a saved session.
+  if (state.startData?.wersjaKataloguBox !== BOX_CATALOG_VERSION) return [];
   return Array.isArray(state.startData?.czesci) ? state.startData.czesci : [];
+}
+function partCodes(part) {
+  return Array.isArray(part?.kody) && part.kody.length ? part.kody : [part.kod];
+}
+function currentBoxName() {
+  return state.visit?.magazyn?.id === 'FR-TOULOUSE' ? 'Box Toulouse' : 'Box Paryż';
 }
 
 function getDraftList(type) {
@@ -1941,7 +1951,7 @@ async function ensurePartData() {
 
   setLoading(true, 'Pobieranie listy części…');
   try {
-    state.startData = await api.getStartData(state.team.id);
+    state.startData = await api.getStartData(state.team.id, true);
     saveCachedStartData(state.team.id, state.startData);
     persist();
     return getParts().length > 0;
@@ -2133,7 +2143,7 @@ async function openCodeScanner(mode) {
           const shortCode = cleanScannerValue(code).slice(0, 42);
           $('scannerNote').textContent = result.ambiguous
             ? 'Kod pasuje do kilku części. Zeskanuj dokładniejszy kod.'
-            : `Nieznany kod: ${shortCode || '—'}. Zeskanuj ponownie.`;
+            : `Ta część nie jest przypisana do magazynu ${currentBoxName()}. Zeskanuj ponownie.`;
           showToast('Nie rozpoznano części. Skaner pozostaje otwarty.', true);
           return false;
         }
@@ -2306,7 +2316,7 @@ function findPart(value) {
   const normalizedCandidates = new Set(chunks.map(normalizeText).filter(Boolean));
 
   const exactCodeMatches = parts.filter(part =>
-    normalizedCandidates.has(normalizeText(part.kod))
+    partCodes(part).some(code => normalizedCandidates.has(normalizeText(code)))
   );
 
   if (exactCodeMatches.length === 1) {
@@ -2316,10 +2326,12 @@ function findPart(value) {
     return { part: null, ambiguous: true };
   }
 
-  const containedCodeMatches = parts.filter(part => {
-    const code = normalizeText(part.kod);
-    return code.length >= 6 && normalizedRaw.includes(code);
-  });
+  const containedCodeMatches = parts.filter(part =>
+    partCodes(part).some(code => {
+      const normalized = normalizeText(code);
+      return normalized.length >= 6 && normalizedRaw.includes(normalized);
+    })
+  );
 
   if (containedCodeMatches.length === 1) {
     return { part: containedCodeMatches[0], ambiguous: false };
@@ -2332,7 +2344,7 @@ function findPart(value) {
   if (exactName) return { part: exactName, ambiguous: false };
 
   const matches = parts.filter(part =>
-    normalizeText(part.kod).includes(normalizedRaw) ||
+    partCodes(part).some(code => normalizeText(code).includes(normalizedRaw)) ||
     normalizeText(part.nazwa).includes(normalizedRaw)
   );
 
@@ -2354,7 +2366,7 @@ function processPartInput(value) {
     showToast(
       result.ambiguous
         ? 'Znaleziono kilka pasujących części. Wpisz dokładniejszy kod lub nazwę.'
-        : 'Nieznana część. Zeskanuj ponownie lub wyszukaj część z listy.',
+        : `Ta część nie jest przypisana do magazynu ${currentBoxName()}.`,
       true
     );
     return false;
