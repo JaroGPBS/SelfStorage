@@ -494,7 +494,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -660,13 +660,38 @@ function greetingName(user){
   if(/^(ekipa|zespół|team|grupa)\s+/i.test(raw))return raw;
   return raw.split(' ')[0];
 }
+// Polish greetings require a vocative form (Łukasz → Łukaszu, Jarosław → Jarosławie).
+// Known first names are declined; unknown names retain their original spelling.
+function greetingVocative(name){
+  const forms={
+    'jarosław':'Jarosławie','łukasz':'Łukaszu','artur':'Arturze',
+    'tomasz':'Tomaszu','paweł':'Pawle','piotr':'Piotrze',
+    'mateusz':'Mateuszu','michał':'Michale','marcin':'Marcinie',
+    'kamil':'Kamilu','andrzej':'Andrzeju','krzysztof':'Krzysztofie',
+    'adam':'Adamie','bartosz':'Bartoszu','jakub':'Jakubie',
+    'maciej':'Macieju','jan':'Janie','marek':'Marku',
+    'grzegorz':'Grzegorzu','dariusz':'Dariuszu','sebastian':'Sebastianie',
+    'rafał':'Rafale','wojciech':'Wojciechu','przemysław':'Przemysławie',
+    'daniel':'Danielu','aleksander':'Aleksandrze','szymon':'Szymonie',
+    'stanisław':'Stanisławie','janusz':'Januszu','radosław':'Radosławie',
+    'robert':'Robercie','arkadiusz':'Arkadiuszu','zbigniew':'Zbigniewie',
+    'damian':'Damianie','filip':'Filipie','patryk':'Patryku',
+    'dominik':'Dominiku','anna':'Anno','natalia':'Natalio',
+    'katarzyna':'Katarzyno','maria':'Mario','agnieszka':'Agnieszko',
+    'aleksandra':'Aleksandro','magdalena':'Magdaleno','joanna':'Joanno',
+    'monika':'Moniko','karolina':'Karolino','marta':'Marto',
+    'ewa':'Ewo','julia':'Julio','zuzanna':'Zuzanno',
+    'maja':'Maju','ola':'Olu','alicja':'Alicjo','agata':'Agato'
+  };
+  return forms[String(name||'').toLocaleLowerCase('pl-PL')]||name;
+}
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
   state.warehouseMenus={PL:false,FR:false};
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
-  $('username').textContent=name?name+'!':'!';
+  $('username').textContent=name?greetingVocative(name)+'!':'!';
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
   showOfficeHome();
@@ -702,7 +727,8 @@ function officeMenuIcon(view){
     wz:'<path d="m4 9 8-5 8 5v10l-8 4-8-4z"/><path d="m4 9 8 5 8-5"/><path d="M12 10V2m-3 3 3-3 3 3"/>',
     inventories:'<rect x="5" y="4" width="14" height="18" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="m9 13 2 2 4-4M9 19h6"/>',
     labels:'<path d="M3 3h7v7H3zM5 5h3v3H5zM14 3h7v7h-7zM16 5h3v3h-3zM3 14h7v7H3zM5 16h3v3H5zM14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/><path d="M12 23h10"/>',
-    vehicles:'<path d="M3 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11"/><path d="M17 9h2l3 4v4h-5M3 17h19"/><path d="M17 10v4h4"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>'
+    vehicles:'<path d="M3 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11"/><path d="M17 9h2l3 4v4h-5M3 17h19"/><path d="M17 10v4h4"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',
+    aggregate:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12M15 9v12M9 15h12"/>'
   };
   if(!paths[view])return '';
   return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" '+
@@ -737,8 +763,9 @@ function renderMenu(){
         escapeHtml(op.label)+'</button>').join('')+'</div></div>';
   };
   const aggregateButton=()=>'<button type="button" class="subnav-btn office-aggregate-link" '+
-    'data-aggregate-market="FR"><span class="office-aggregate-symbol" aria-hidden="true">▦</span>'+
-    'Zestawienie zbiorcze</button>';
+    'data-aggregate-market="FR"><span class="office-aggregate-symbol" aria-hidden="true">'+
+    officeMenuIcon('aggregate')+'</span>'+
+    '<span class="office-aggregate-label">Zestawienie zbiorcze</span></button>';
   const vehicleButton=country=>state.user?.features?.stocks===false?'':(
     '<button type="button" class="subnav-btn office-operation-link office-vehicle-link" '+
     'data-market-vehicles="'+country+'">'+
@@ -991,6 +1018,22 @@ function showFrBoxMovements(key,realId,warehouseName){
   renderMenu();
   render();
 }
+function syncAggregateTabControls(){
+  const active=state.view==='aggregate';
+  const modules=active&&state.aggregateTab==='modules';
+  $('aggregateTabs').classList.toggle('hidden',!active);
+  if(!active)return;
+  $('aggregateTabs').querySelectorAll('[data-aggregate-tab]').forEach(button=>{
+    const selected=button.dataset.aggregateTab===state.aggregateTab;
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-selected',String(selected));
+  });
+  $('search').placeholder=modules?'Szukaj typu modułu...':'Szukaj po SAP lub nazwie części';
+  $('sort').classList.toggle('hidden',modules);
+  $('receiptToolbarInfo').querySelector('span').textContent=modules
+    ?'Typy modułów według magazynu: OK / NOK.'
+    :'Porównanie stanów części pomiędzy magazynami.';
+}
 function setHead(title,kicker,desc){
   $('app').classList.remove('view-home');
   $('officeHome').classList.add('hidden');
@@ -1017,6 +1060,7 @@ function setHead(title,kicker,desc){
   const documentsView=state.view==='pz'||state.view==='wz';
   const vehicleView=state.view==='vehicles';
   const aggregateView=state.view==='aggregate';
+  syncAggregateTabControls();
   const inventoriesView=state.view==='inventories';
   const compactView=documentsView||vehicleView||aggregateView||inventoriesView||
     state.view==='nok'||state.view==='frMovements'||frEmpty;
@@ -1142,7 +1186,9 @@ function selectView(view,warehouse,focusDocument=null){
   if(warehouse||view==='aggregate'||state.preview?.type==='warehouse')state.preview=null;
   $('officePreview').classList.add('hidden');
   $('pageActions').classList.remove('hidden');
-  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
+  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';
+  if(view==='aggregate'){state.aggregateTab='parts';state.frAggregateSets=null;}
+  if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
@@ -1194,13 +1240,49 @@ function drawStocks(parts,warehouseId){
   const sourceInfo=fromSheet
     ?' · Ilości: '+fromD1+' z D1, '+fromSheet+' z arkusza Stock FR GPBS'
     :fromD1?' · Ilości z D1':'';
-  $('tableFooter').textContent=filtered.length+' części'+sourceInfo;
+  // Internal stock-source details are not useful to French Office operators.
+  const inFrenchStock=Boolean(state.preview?.warehouseKey||
+    state.preview?.type==='warehouse')||
+    realWarehouse(warehouseId)?.country_code==='FR';
+  $('tableFooter').textContent=filtered.length+' części'+
+    (inFrenchStock?'':sourceInfo);
   noteSearch(filtered.length,parts.length,'częściach');
 }
 function drawModules(){
-  $('tableArea').innerHTML='<div class="empty">Brak danych modułów. Ewidencja modułów nie jest jeszcze podłączona do D1.</div>';
+  $('tableArea').innerHTML='<div class="empty">Brak danych modułów. Ewidencja modułów nie jest jeszcze dostępna.</div>';
   $('tableFooter').textContent='0 modułów w ewidencji';
   noteSearch(0,0,'modułach');
+}
+function drawAggregateModules(realSets){
+  const all=MODULE_GROUPS.flatMap(group=>group.types.map(type=>({
+    group:group.name,type
+  })));
+  const q=state.search.trim().toLocaleLowerCase('pl');
+  const visible=all.filter(item=>!q||
+    (item.group+' '+item.type).toLocaleLowerCase('pl').includes(q));
+  const empty='<span class="aggregate-module-unknown" title="Brak danych o stanie">—</span>';
+  // One narrow warehouse column: OK / NOK, not two wide columns per warehouse.
+  const cell='<span class="aggregate-module-pair">'+empty+
+    '<span class="aggregate-module-slash">/</span>'+empty+'</span>';
+  const headers=[{label:'Grupa'},{label:'Typ modułu'},
+    ...realSets.map(store=>({label:store.name+' (OK / NOK)',numeric:true})),
+    {label:'SUMA (OK / NOK)',numeric:true}];
+  const rows=visible.map(item=>'<tr><td class="aggregate-module-group">'+
+    escapeHtml(item.group)+'</td><td class="aggregate-module-type">'+
+    escapeHtml(item.type)+'</td>'+
+    realSets.map(()=>'<td class="num">'+cell+'</td>').join('')+
+    '<td class="num aggregate-module-total">'+cell+'</td></tr>').join('');
+  $('tableArea').innerHTML=wrapTable(headers,rows||
+    '<tr><td colspan="'+headers.length+'" class="office-aggregate-empty">'+
+    'Brak pasujących typów modułów.</td></tr>',
+    'aggregate-table aggregate-modules-table');
+  const plural=(n,one,few,many)=>n===1?one:
+    n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?few:many;
+  $('tableFooter').textContent=visible.length+' '+
+    plural(visible.length,'typ modułu','typy modułów','typów modułów')+' · '+
+    realSets.length+' '+plural(realSets.length,'magazyn','magazyny','magazynów')+
+    ' · OK / NOK · kreski oznaczają brak danych o ilościach';
+  noteSearch(visible.length,all.length,'typach modułów');
 }
 function drawAggregate(realSets){
   // Stock rows are D1 reads for *authorized* warehouses only.
@@ -1508,7 +1590,7 @@ function drawFrBoxMovements(){
     '<tbody>'+(rows||'<tr><td class="fr-mov-no-results" colspan="7">Brak pasujących wizyt.</td></tr>')+
     '</tbody></table></div></div>';
   $('tableFooter').textContent=visible.length+' z '+entries.length+
-    ' przykładowych wizyt · bez połączenia z historią D1';
+    ' przykładowych wizyt';
   $('searchNote').classList.toggle('hidden',!query);
   $('searchNote').textContent=query?'Wyszukiwanie w przykładach: '+visible.length+' wyników.':'';
 }
@@ -1708,6 +1790,13 @@ function vehicleViewTabs(tab,hasInventories=true){
       'class="vehicle-setup-tab'+(tab===id?' active':'')+'">'+label+'</button>'
     ).join('')+'</nav>'+
     (tab==='detail'&&hasInventories?'<span class="vehicle-tabs-hint"><span aria-hidden="true">ⓘ</span> Kliknij nagłówek inwentaryzacji, aby otworzyć jej raport</span>':'')+
+    '</div>';
+}
+function frenchFleetTransfersPlaceholder(){
+  return '<div class="vehicle-transfer-empty">'+
+    '<h3>Transfery między ekipami</h3>'+
+    '<p>W przyszłości, jeśli będzie taka potrzeba, pojawi się tutaj historia '+
+    'przekazywania części między ekipami i samochodami.</p>'+
     '</div>';
 }
 function fleetTransfersPlaceholder(){
@@ -2342,7 +2431,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
   const tabs=vehicleViewTabs(state.vehicleTab,false);
   if(state.vehicleTab==='transfers'){
     $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+tabs+
-      fleetTransfersPlaceholder()+'</div>';
+      frenchFleetTransfersPlaceholder()+'</div>';
     $('tableFooter').textContent='Transfery francuskie — brak zapisanych operacji.';
     $('searchNote').classList.add('hidden');
     $('vehicleTopScroll').classList.add('hidden');
@@ -2543,7 +2632,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview fr-weekly-office">'+
     tabs+selection+crewPanes+meta+table+historyMarkup+'</div>';
   $('tableFooter').textContent='Francja · '+entries.length+
-    ' części · '+teams.length+' ekip · rzeczywiste dane z D1.';
+    ' części · '+teams.length+' ekip';
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
   if(summary&&teams.length){
@@ -2751,7 +2840,9 @@ async function render({silent=false}={}){
         preview:!col.source
       })));
       if(ticket!==state.requestId)return;
-      drawAggregate(loaded);
+      state.frAggregateSets=loaded;
+      if(state.aggregateTab==='modules')drawAggregateModules(loaded);
+      else drawAggregate(loaded);
     }else if(state.view==='vehicles'){
       if(ticket!==state.requestId)return;drawVehicles();
     }else if(state.view==='nok'){
@@ -2822,7 +2913,13 @@ function filterCurrent(){
       drawStocks(parts,state.warehouse);
     }
   }
-  else if(state.view==='aggregate'||state.view==='vehicles'){render();}
+  else if(state.view==='aggregate'){
+    if(state.frAggregateSets){
+      if(state.aggregateTab==='modules')drawAggregateModules(state.frAggregateSets);
+      else drawAggregate(state.frAggregateSets);
+    }else render();
+  }
+  else if(state.view==='vehicles'){render();}
   else if(state.view==='pz'||state.view==='wz')drawDocs();
   else if(state.view==='nok')drawNokStock();
   else if(state.view==='inventories')drawInventories();
@@ -3130,6 +3227,21 @@ document.addEventListener('click',e=>{
         if(layout){showOfficePreview('warehouse',layout.key,layout.name);return;}
       }
       renderMenu();
+    }
+    return;
+  }
+  const aggregateTab=e.target.closest('[data-aggregate-tab]');
+  if(aggregateTab&&state.view==='aggregate'){
+    const next=aggregateTab.dataset.aggregateTab;
+    if(!['parts','modules'].includes(next))return;
+    if(state.aggregateTab!==next){
+      state.aggregateTab=next;
+      state.search='';
+      $('search').value='';
+      $('tableArea').scrollLeft=0;
+      $('tableArea').scrollTop=0;
+      syncAggregateTabControls();
+      filterCurrent();
     }
     return;
   }
