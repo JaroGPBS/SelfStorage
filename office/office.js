@@ -13,15 +13,18 @@ const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.i
 // Isolated example quantities for evaluating the French Bovis Paryż module screen.
 // Never saved, never treated as confirmed balances and never merged into Bovis totals.
 const BOVIS_PARIS_MODULE_EXAMPLES=[
-  {group:'outdoor',type:'FM',ok:4,nok:1},
-  {group:'outdoor',type:'LQ',ok:3,nok:1},
-  {group:'outdoor',type:'RQ',ok:3,nok:0},
-  {group:'outdoor',type:'ODL',ok:2,nok:1},
-  {group:'outdoor',type:'ODR',ok:2,nok:0},
-  {group:'indoor',type:'CU',ok:3,nok:0},
-  {group:'indoor',type:'HICU',ok:2,nok:1},
-  {group:'indoor',type:'CU RJ45',ok:2,nok:0},
-  {group:'bq',type:'CU OUT',ok:2,nok:1},
+  // Fictitious S/N quantities are deliberately varied: the OUTDOOR view has
+  // a longer column so the real table height and scrolling can be reviewed.
+  // Overall: 25 OK + 5 NOK = 30 machines, no changes to the displayed totals.
+  {group:'outdoor',type:'FM',ok:10,nok:1},
+  {group:'outdoor',type:'LQ',ok:4,nok:1},
+  {group:'outdoor',type:'RQ',ok:2,nok:0},
+  {group:'outdoor',type:'ODL',ok:1,nok:1},
+  {group:'outdoor',type:'ODR',ok:1,nok:0},
+  {group:'indoor',type:'CU',ok:2,nok:0},
+  {group:'indoor',type:'HICU',ok:1,nok:1},
+  {group:'indoor',type:'CU RJ45',ok:1,nok:0},
+  {group:'bq',type:'CU OUT',ok:1,nok:1},
   {group:'newgen',type:'DUO L',ok:2,nok:0}
 ];
 
@@ -1465,27 +1468,55 @@ function bovisParisExampleSerials(item,status){
   return Array.from({length:count},(_,index)=>
     'TEST-'+category+'-'+slug+'-'+String(index+1).padStart(2,'0'));
 }
-function drawBovisParisSum(items,search){
-  const source=BOVIS_PARIS_MODULE_EXAMPLES;
-  const okAll=source.reduce((sum,item)=>sum+item.ok,0);
-  const nokAll=source.reduce((sum,item)=>sum+item.nok,0);
-  const totalAll=okAll+nokAll;
+// On Bovis Paryż only: keep the full module table on the left and the
+// capacity/status dashboard in the previously unused right-hand area.
+// Figures are derived from the same fictitious S/N counts, never from D1.
+function bovisParisModuleLayout(mainHtml,groupId){
+  const all=BOVIS_PARIS_MODULE_EXAMPLES;
+  const ok=all.reduce((sum,item)=>sum+item.ok,0);
+  const nok=all.reduce((sum,item)=>sum+item.nok,0);
+  const machines=ok+nok;
   const previewArea=BOVIS_OVERVIEW_PREVIEW.warehouses.find(w=>w.key==='bovis-paris');
   const area=Number(previewArea?.area||0);
   const perMachine=Number(BOVIS_OVERVIEW_PREVIEW.squareMetersPerMachine||0);
-  const used=totalAll*perMachine;
-  const free=Math.max(0,area-used);
-  const percent=area>0?Math.round(used/area*100):0;
+  const occupied=machines*perMachine;
+  const free=Math.max(0,area-occupied);
+  const percent=area>0?Math.min(100,Math.round(occupied/area*100)):0;
+  const group=MODULE_GROUPS.find(g=>g.id===groupId);
+  const groupItems=group?all.filter(item=>item.group===group.id):all;
+  const groupOk=groupItems.reduce((sum,item)=>sum+item.ok,0);
+  const groupNok=groupItems.reduce((sum,item)=>sum+item.nok,0);
+  const groupTotal=groupOk+groupNok;
   const metrics=[
-    ['Maszyny',String(totalAll)+' szt.'],
+    ['Maszyny',machines+' szt.'],
     ['Powierzchnia',area+' m²'],
-    ['Zajęta',used+' m²'],
+    ['Zajęta',occupied+' m²'],
     ['Wolna',free+' m²'],
     ['Wykorzystanie',percent+'%']
   ];
-  const metricBar='<div class="fr-paris-module-metrics">'+metrics.map(([name,value])=>
-    '<div class="fr-paris-module-metric"><span>'+escapeHtml(name)+'</span>'+
-    '<strong>'+escapeHtml(value)+'</strong></div>').join('')+'</div>';
+  const title=group?group.name+' — W TEJ GRUPIE':'WSZYSTKIE MODUŁY';
+  const right='<aside class="fr-paris-module-aside" aria-label="Podsumowanie powierzchni magazynu">'+
+    '<div class="fr-paris-module-aside-head"><strong>POWIERZCHNIA MAGAZYNU</strong>'+
+    '<span>Dane przykładowe</span></div>'+
+    '<div class="fr-paris-module-aside-usage"><strong>'+percent+'%</strong>'+
+    '<span>wykorzystania powierzchni</span></div>'+
+    '<div class="fr-paris-module-progress" role="progressbar" aria-valuemin="0" '+
+      'aria-valuemax="100" aria-valuenow="'+percent+'" aria-label="Wykorzystanie powierzchni">'+
+      '<span style="width:'+percent+'%"></span></div>'+
+    '<div class="fr-paris-module-metrics">'+metrics.map(([name,value])=>
+      '<div class="fr-paris-module-metric"><span>'+escapeHtml(name)+'</span>'+
+      '<strong>'+escapeHtml(value)+'</strong></div>').join('')+'</div>'+
+    '<div class="fr-paris-module-aside-group"><strong>'+escapeHtml(title)+'</strong>'+
+    '<div class="fr-paris-module-aside-counts">'+
+      '<span>Razem <b>'+groupTotal+'</b></span>'+
+      '<span>OK <b class="module-count-ok">'+groupOk+'</b></span>'+
+      '<span>NOK <b class="module-count-nok">'+groupNok+'</b></span>'+
+    '</div></div></aside>';
+  return '<div class="fr-paris-module-workspace">'+
+    '<div class="fr-paris-module-content">'+mainHtml+'</div>'+right+'</div>';
+}
+function drawBovisParisSum(items,search){
+  const source=BOVIS_PARIS_MODULE_EXAMPLES;
   const groups=MODULE_GROUPS;
   const rows=groups.map(group=>{
     const entries=items.filter(item=>item.group===group.id);
@@ -1502,8 +1533,7 @@ function drawBovisParisSum(items,search){
   }).join('');
   const ok=items.reduce((sum,item)=>sum+item.ok,0);
   const nok=items.reduce((sum,item)=>sum+item.nok,0);
-  $('tableArea').innerHTML=metricBar+
-    '<table class="table module-summary-table fr-paris-modules-table">'+
+  const table='<table class="table module-summary-table fr-paris-modules-table">'+
       '<thead><tr><th scope="col">Typ modułu</th>'+
         '<th scope="col" class="num">OK</th>'+
         '<th scope="col" class="num">NOK</th>'+
@@ -1514,8 +1544,10 @@ function drawBovisParisSum(items,search){
         '<td class="num">'+ok+'</td><td class="num">'+nok+'</td>'+
         '<td class="num">'+(ok+nok)+'</td></tr>':'')+
       '</tbody></table>';
+  $('tableArea').innerHTML=bovisParisModuleLayout(table,null);
   $('tableFooter').textContent='Bovis Paryż · przykładowe wartości. Powierzchnia na podstawie '+
-    perMachine+' m² na maszynę. Ruchy magazynowe nie są jeszcze podłączone.';
+    BOVIS_OVERVIEW_PREVIEW.squareMetersPerMachine+
+    ' m² na maszynę. Ruchy magazynowe nie są jeszcze podłączone.';
   noteSearch(items.length,source.length,'typach modułów');
 }
 function drawBovisParisSerials(group,search){
@@ -1537,8 +1569,8 @@ function drawBovisParisSerials(group,search){
     '<div class="fr-paris-serial-tabs" role="tablist" aria-label="Status numerów seryjnych">'+
     tab('ok','S/N OK')+tab('nok','S/N NOK')+'</div></div>';
   if(!columns.length){
-    $('tableArea').innerHTML=top+
-      '<div class="empty">Brak pasujących typów lub numerów seryjnych.</div>';
+    $('tableArea').innerHTML=bovisParisModuleLayout(top+
+      '<div class="empty">Brak pasujących typów lub numerów seryjnych.</div>',group.id);
     $('tableFooter').textContent='Bovis Paryż · przykładowe numery seryjne, bez zapisu.';
     noteSearch(0,group.types.length,'typach modułów');
     return;
@@ -1553,10 +1585,10 @@ function drawBovisParisSerials(group,search){
         ?'<span class="fr-paris-serial-number">'+escapeHtml(serial)+'</span>'
         :'<span class="fr-paris-serial-empty">—</span>')+'</td>';
     }).join('')+'</tr>').join('');
-  $('tableArea').innerHTML=top+
+  $('tableArea').innerHTML=bovisParisModuleLayout(top+
     '<div class="fr-paris-serial-scroll"><table class="fr-paris-serial-table">'+
       '<thead><tr>'+headers+'</tr></thead>'+
-      '<tbody>'+rows+'</tbody></table></div>';
+      '<tbody>'+rows+'</tbody></table></div>',group.id);
   const total=columns.reduce((sum,col)=>sum+col.serials.length,0);
   const sampleNoun=total===1?'przykładowy numer':total>=2&&total<=4
     ?'przykładowe numery':'przykładowych numerów';
