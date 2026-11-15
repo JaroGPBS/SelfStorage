@@ -2946,19 +2946,19 @@ function frenchInventoryButton(audit){
 async function loadFrenchVehicleInventories(){
   const data=state.frVehicleData;
   const selected=data?.crews?.find(c=>c.id===state.frVehicleCrew);
-  const vehicleId=selected?.vehicleId;
+  const crewId=selected?.id;
   const seq=++frInventoryLoadSeq;
   if(!data)return;
   data.inventories=[];
   data.inventoryMovements=[];
-  data.inventoryVehicleId=null;
-  if(!vehicleId||selected.carPending)return;
+  data.inventoryUserId=null;
+  if(!crewId)return;
   try{
-    const response=await api('vehicleInventories',{vehicleId});
+    const response=await api('vehicleInventories',{userId:crewId});
     if(seq!==frInventoryLoadSeq||data!==state.frVehicleData)return;
     data.inventories=response.inventories||[];
     data.inventoryMovements=response.movements||[];
-    data.inventoryVehicleId=vehicleId;
+    data.inventoryUserId=crewId;
     if(state.view==='vehicles'&&state.preview?.key==='vehicles')
       drawFrenchVehicleFleet(data.parts,data.crews,data.history);
   }catch(error){
@@ -2969,7 +2969,7 @@ async function loadFrenchVehicleInventories(){
 function openFrenchVehicleInventory(id){
   const data=state.frVehicleData;
   const selected=data?.crews?.find(c=>c.id===state.frVehicleCrew);
-  if(!selected?.vehicleId||data.inventoryVehicleId!==selected.vehicleId)return;
+  if(!selected?.id||data.inventoryUserId!==selected.id)return;
   const audits=data.inventories||[];
   const index=audits.findIndex(x=>x.id===id);
   if(index<0)return;
@@ -2982,7 +2982,7 @@ function openFrenchVehicleInventory(id){
   const lines=new Map((audit.lines||[]).map(l=>[l.partId,l]));
   const moves=(data.inventoryMovements||[]).filter(m=>{
     const at=frenchInventoryDate(m.date);
-    return m.vehicleId===audit.vehicleId&&at&&auditTime&&at<=auditTime&&
+    return m.userId===audit.userId&&at&&auditTime&&at<=auditTime&&
       (!previousTime||at>previousTime);
   });
   const items=(data.parts||[]).map(part=>{
@@ -3073,19 +3073,13 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
     state.frVehicleCrew=teams[0]?.id||null;
   const chosen=teams.find(c=>c.id===state.frVehicleCrew)||null;
   const reading=(team,part)=>{
-    if(!team?.plate||!part.id||(summary&&team.carPending))return '—';
+    if(!team?.id||!part.id||!team.inventory)return '—';
     const q=team.stock?.[part.id];
-    return q!==undefined?String(q):(team.inventory?'0':'—');
+    return q!==undefined?String(q):'0';
   };
   const total=part=>{
-    // Stocks belong to physical cars. Two crews using one plate count once.
-    const uniqueCars=new Map();
-    for(const team of teams){
-      if(!team.vehicleId||team.carPending)continue;
-      const prev=uniqueCars.get(team.vehicleId);
-      if(!prev||(team.inventory&&!prev.inventory))uniqueCars.set(team.vehicleId,team);
-    }
-    const values=[...uniqueCars.values()].map(team=>reading(team,part))
+    // Each active crew contributes once, even when plates are identical.
+    const values=teams.map(team=>reading(team,part))
       .filter(value=>value!=='—'&&Number.isFinite(Number(value)));
     return values.length?String(values.reduce((a,b)=>a+Number(b),0)):'—';
   };
@@ -3126,7 +3120,9 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
           escapeHtml(value)+'</strong></div></div>').join('')+'</div>');
   const crewPanes=!summary&&chosen?frVehicleCrewPaneTabs():'';
   if(!summary&&chosen&&state.frVehicleDetailView==='history'){
-    const visits=frVehicleRealVisits(chosen,entries,history);
+    const fullHistory=state.frVehicleData?.inventoryUserId===chosen.id
+      ?state.frVehicleData.inventoryMovements||[]:history;
+    const visits=frVehicleRealVisits(chosen,entries,fullHistory);
     const records=drawFrCrewHistory({embed:true,crewOverride:chosen.team,
       visitsOverride:visits,queryOverride:state.frVehicleHistorySearch});
     $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview fr-weekly-office fr-vehicle-crew-trial">'+
@@ -3140,7 +3136,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
     return;
   }
   if(!summary&&chosen&&state.frVehicleDetailView==='inventory'){
-    const audits=state.frVehicleData?.inventoryVehicleId===chosen.vehicleId
+    const audits=state.frVehicleData?.inventoryUserId===chosen.id
       ?state.frVehicleData?.inventories||[]:[];
     const rows=audits.map(audit=>'<tr>'+
       '<td>'+escapeHtml(dateText(audit.date))+'</td>'+
@@ -3154,7 +3150,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       '<table class="table"><thead><tr><th>Data inwentaryzacji</th><th>Tydz.</th>'+
       '<th>Pozycji</th><th></th></tr></thead><tbody>'+
       (rows||'<tr><td colspan="4" class="fr-vehicle-audit-empty">Brak zapisanych inwentaryzacji'+
-        (state.frVehicleData?.inventoryVehicleId===chosen.vehicleId?'.':' lub trwa wczytywanie.')+
+        (state.frVehicleData?.inventoryUserId===chosen.id?'.':' lub trwa wczytywanie.')+
         '</td></tr>')+
       '</tbody></table></section></div>';
     $('tableFooter').textContent='';
@@ -3217,7 +3213,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
           'pojawi się tutaj jej kolumna.</span></div>')+
       '</div>';
   }else{
-    const audits=chosen&&state.frVehicleData?.inventoryVehicleId===chosen.vehicleId
+    const audits=chosen&&state.frVehicleData?.inventoryUserId===chosen.id
       ?state.frVehicleData.inventories||[]:[];
     const newest=audits[0]||null,past=audits.slice(1);
     const newestWidth=newest?98:0;
@@ -3269,9 +3265,9 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
     }else{
       pastBlock='<div class="vehicle-split-history vehicle-fr-empty-history">'+
         '<strong>'+(newest?'Brak wcześniejszych inwentaryzacji':
-        chosen?.vehicleId?'Historia inwentaryzacji':'Brak samochodu')+'</strong>'+
+        chosen?.id?'Historia inwentaryzacji':'Brak ekipy')+'</strong>'+
         '<span>'+(newest?'Każda kolejna inwentaryzacja pojawi się tutaj.':
-        chosen?.vehicleId?'Brak zapisanych inwentaryzacji lub trwa wczytywanie.':
+        chosen?.id?'Brak zapisanych inwentaryzacji lub trwa wczytywanie.':
         'Ekipa przypisze samochód po zalogowaniu.')+'</span></div>';
     }
     table='<div class="vehicle-preview-split-table vehicle-fr-split">'+
@@ -3419,7 +3415,7 @@ async function render({silent=false}={}){
           useVehicleCatalogueInDemo(response.parts||[]);
           drawPolishVehiclePreview();
         }else if(french){
-          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],history:teamResponse.history||[],inventories:[],inventoryVehicleId:null};
+          state.frVehicleData={parts:response.parts||[],crews:teamResponse.crews||[],history:teamResponse.history||[],inventories:[],inventoryUserId:null};
           drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
           loadFrenchVehicleInventories();
         }else drawVehicles();
