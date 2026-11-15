@@ -1493,8 +1493,7 @@ function bovisParisModuleLayout(mainHtml,groupId){
     ['Maszyny',machines+' szt.'],
     ['Powierzchnia całkowita',area+' m²'],
     ['Zajęta powierzchnia',occupied+' m²'],
-    ['Wolna powierzchnia',free+' m²'],
-    ['Wykorzystanie',percent+'%']
+    ['Wolna przestrzeń',free+' m²']
   ];
   const groupSummary=group
     ?'<div class="fr-paris-module-aside-group"><strong>'+escapeHtml(group.name)+' — W TEJ GRUPIE</strong>'+
