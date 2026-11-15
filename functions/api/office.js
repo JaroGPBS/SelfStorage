@@ -275,27 +275,38 @@ export async function onRequestGet({request,env}){
     }
   }
   if(view==='vehicleInventories'){
-    // Inventory history belongs to the vehicle, not the currently logged-in crew.
+    // In France, inventory and movement history belongs to the crew, not the plate.
     const privileged=user.role==='ADMIN'&&
       String(user.nickname||'').trim().toUpperCase()==='JJ';
     if(!privileged&&!authorizedWarehouses.some(w=>w.country_code==='FR'))
       return error('Brak dostępu do samochodów francuskich.',403);
-    const vehicleId=String(url.searchParams.get('vehicleId')||'');
-    if(!/^[A-Za-z0-9_-]{8,120}$/.test(vehicleId))
-      return error('Nieprawidłowy samochód.',400);
+    const crewId=String(url.searchParams.get('userId')||'');
+    if(!/^[A-Za-z0-9_-]{8,120}$/.test(crewId))
+      return error('Nieprawidłowa ekipa.',400);
     try{
+      const hasSettings=await tableExists(env.DB,'user_access_settings');
+      const accessClause=(hasSettings
+        ?'EXISTS(SELECT 1 FROM user_access_settings s '+
+          'WHERE s.user_id=u.id AND s.fr_enabled=1) OR ':'')+
+        'EXISTS(SELECT 1 FROM user_warehouse_access a JOIN warehouses w '+
+        "ON w.id=a.warehouse_id WHERE a.user_id=u.id AND w.country_code='FR')";
+      const target=await env.DB.prepare(
+        "SELECT 1 FROM users u WHERE u.id=? AND u.role_code='EKIPA' AND ("+
+        accessClause+') LIMIT 1'
+      ).bind(crewId).first();
+      if(!target)return error('Nie znaleziono ekipy francuskiej.',404);
       if(!await tableExists(env.DB,'fr_vehicle_events')||
          !await tableExists(env.DB,'fr_vehicle_event_lines'))
-        return workerJson({ok:true,inventories:[]});
+        return workerJson({ok:true,inventories:[],movements:[]});
       const rows=(await env.DB.prepare(
         'SELECT e.id,e.user_id AS userId,e.vehicle_id AS vehicleId,'+
         'e.event_at AS date,l.part_id AS partId,'+
         'l.quantity_before AS qtyBefore,l.quantity_after AS qtyAfter '+
         'FROM fr_vehicle_events e '+
         'JOIN fr_vehicle_event_lines l ON l.event_id=e.id '+
-        "WHERE e.vehicle_id=? AND e.type='INWENTARYZACJA' "+
+        "WHERE e.user_id=? AND e.type='INWENTARYZACJA' "+
         'ORDER BY e.event_at DESC,e.id DESC,l.part_id'
-      ).bind(vehicleId).all()).results||[];
+      ).bind(crewId).all()).results||[];
       const map=new Map();
       for(const line of rows){
         if(!map.has(line.id))map.set(line.id,{
@@ -308,7 +319,7 @@ export async function onRequestGet({request,env}){
           counted:Number(line.qtyAfter)
         });
       }
-      // Movements for these reports must be read by vehicle, without the
+      // Movements for these reports must be read by crew, without the
       // global 250-line limit of the simple crew overview.
       let movements=[];
       if(await tableExists(env.DB,'fr_sessions')&&
@@ -320,9 +331,9 @@ export async function onRequestGet({request,env}){
           'l.direction,l.quantity,l.part_id AS partId,p.name AS partName '+
           'FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
           'JOIN warehouses w ON w.id=s.warehouse_id '+
-          'JOIN parts p ON p.id=l.part_id WHERE s.vehicle_id=? '+
+          'JOIN parts p ON p.id=l.part_id WHERE s.user_id=? '+
           'ORDER BY s.saved_at DESC,s.id DESC'
-        ).bind(vehicleId).all()).results||[];
+        ).bind(crewId).all()).results||[];
       }
       return workerJson({ok:true,inventories:[...map.values()],movements});
     }catch(err){
@@ -369,25 +380,31 @@ export async function onRequestGet({request,env}){
           const record=byUser.get(crew.id);
           if(record){crew.plate=record.registration_number;crew.vehicleId=record.vehicle_id;}
         }
-        const balances=(await env.DB.prepare(
-          'SELECT vehicle_id,part_id,quantity FROM vehicle_stock'
-        ).all()).results||[];
+        // Crew stock is independent even if several teams report the same plate.
+        const hasCrewStock=await tableExists(env.DB,'fr_crew_stock');
+        const balances=hasCrewStock?(await env.DB.prepare(
+          'SELECT user_id,part_id,quantity FROM fr_crew_stock'
+        ).all()).results||[]:[];
         const stocks=new Map();
         for(const item of balances){
-          if(!stocks.has(item.vehicle_id))stocks.set(item.vehicle_id,{});
-          stocks.get(item.vehicle_id)[item.part_id]=Number(item.quantity);
+          if(!stocks.has(item.user_id))stocks.set(item.user_id,{});
+          stocks.get(item.user_id)[item.part_id]=Number(item.quantity);
         }
-        for(const crew of crews)if(crew.vehicleId)crew.stock=stocks.get(crew.vehicleId)||{};
+        for(const crew of crews)crew.stock=stocks.get(crew.id)||{};
+        const hasFirst=await tableExists(env.DB,'fr_crew_first_inventory');
+        const firstUsers=hasFirst?(await env.DB.prepare(
+          'SELECT user_id FROM fr_crew_first_inventory'
+        ).all()).results||[]:[];
+        const finished=new Set(firstUsers.map(x=>x.user_id));
+        for(const crew of crews)crew.inventory=finished.has(crew.id);
         if(hasEvents){
           const events=(await env.DB.prepare(
-            "SELECT vehicle_id,user_id,MAX(event_at) AS last_at FROM fr_vehicle_events "+
-            "WHERE type='INWENTARYZACJA' GROUP BY vehicle_id,user_id"
+            "SELECT user_id,MAX(event_at) AS last_at FROM fr_vehicle_events "+
+            "WHERE type='INWENTARYZACJA' GROUP BY user_id"
           ).all()).results||[];
-          const last=new Map(events.map(x=>[x.user_id+'::'+x.vehicle_id,x.last_at]));
-          for(const crew of crews)if(crew.vehicleId){
-            crew.lastInventory=last.get(crew.id+'::'+crew.vehicleId)||null;
-            crew.inventory=Boolean(crew.lastInventory);
-          }
+          const last=new Map(events.map(x=>[x.user_id,x.last_at]));
+          for(const crew of crews)if(crew.inventory)
+            crew.lastInventory=last.get(crew.id)||null;
         }
       }
       // Weekly status belongs to the crew (user_id), not to a registration plate.
