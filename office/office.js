@@ -1051,34 +1051,42 @@ function drawBovisOverview(){
   const fmt=n=>new Intl.NumberFormat('pl-PL',{maximumFractionDigits:1}).format(n);
   const percent=n=>fmt(Math.round(n))+'%';
   const totalUsed=totals.area?totals.occupied/totals.area*100:0;
-  const warehouseRows=warehouses.map(w=>'<tr>'+
-    '<th scope="row">'+escapeHtml(w.name)+'</th>'+
-    '<td class="bovis-number">'+fmt(w.machines)+'</td>'+
-    '<td class="bovis-number">'+fmt(w.area)+'</td>'+
-    '<td class="bovis-number">'+fmt(w.occupied)+'</td>'+
-    '<td class="bovis-number">'+fmt(w.free)+'</td>'+
-    '<td class="bovis-number">'+percent(w.usedPercent)+'</td></tr>').join('');
+  // Warehouse names are columns, and the five measures are the rows.
+  // Percentages are derived from actual group totals, never added together.
+  const warehouseMetrics=[
+    {name:'Maszyny',values:warehouses.map(w=>w.machines),total:totals.machines},
+    {name:'Powierzchnia m²',values:warehouses.map(w=>w.area),total:totals.area},
+    {name:'Zajęte m²',values:warehouses.map(w=>w.occupied),total:totals.occupied},
+    {name:'Wolne m²',values:warehouses.map(w=>w.free),total:totals.free},
+    {name:'Użycie %',values:warehouses.map(w=>w.usedPercent),total:totalUsed,percent:true}
+  ];
+  const warehouseRows=warehouseMetrics.map(metric=>'<tr>'+
+    '<th scope="row">'+escapeHtml(metric.name)+'</th>'+
+    metric.values.map(value=>'<td class="bovis-number">'+
+      (metric.percent?percent(value):fmt(value))+'</td>').join('')+
+    '<td class="bovis-number bovis-sum">'+
+      (metric.percent?percent(metric.total):fmt(metric.total))+'</td></tr>').join('');
   const machineRows=counts.map(item=>'<tr>'+
     '<td class="bovis-type-group">'+escapeHtml(item.group)+'</td>'+
-    '<th scope="row">'+escapeHtml(item.type)+'</th>'+
+    '<th scope="row" title="'+escapeHtml(item.type)+'">'+escapeHtml(item.type)+'</th>'+
     item.counts.map(count=>'<td class="bovis-number'+(count?'':' is-zero')+'">'+fmt(count)+'</td>').join('')+
     '<td class="bovis-number bovis-sum">'+fmt(item.total)+'</td></tr>').join('');
-  const areaBars=warehouses.map(w=>'<div class="bovis-chart-row">'+
-    '<span class="bovis-chart-name">'+escapeHtml(w.name)+'</span>'+
+  const areaBars=warehouses.map(w=>'<div class="bovis-chart-column">'+
+    '<span class="bovis-chart-name" title="'+escapeHtml(w.name)+'">'+escapeHtml(w.name)+'</span>'+
     '<div class="bovis-chart-track" role="img" aria-label="'+
       escapeHtml(w.name+': wykorzystano '+percent(w.usedPercent)+
       ' powierzchni magazynowej')+'">'+
-      '<span class="bovis-chart-used" style="width:'+
+      '<span class="bovis-chart-used" style="height:'+
         Math.min(100,Math.max(0,w.usedPercent))+'%"></span>'+
     '</div><strong class="bovis-chart-value">'+percent(w.usedPercent)+'</strong></div>').join('');
   const frequent=counts.filter(x=>x.total>0).sort((a,b)=>b.total-a.total).slice(0,7);
   const maxMachines=Math.max(1,...frequent.map(item=>item.total));
-  const typeBars=frequent.map(item=>'<div class="bovis-chart-row">'+
-    '<span class="bovis-chart-name" title="'+escapeHtml(item.group)+'">'+
+  const typeBars=frequent.map(item=>'<div class="bovis-chart-column">'+
+    '<span class="bovis-chart-name" title="'+escapeHtml(item.group+' / '+item.type)+'">'+
       escapeHtml(item.type)+'</span>'+
     '<div class="bovis-chart-track bovis-type-track" role="img" aria-label="'+
       escapeHtml(item.type+': '+fmt(item.total)+' maszyn')+'">'+
-      '<span class="bovis-type-bar" style="width:'+
+      '<span class="bovis-type-bar" style="height:'+
         (item.total/maxMachines*100)+'%"></span>'+
     '</div><strong class="bovis-chart-value">'+fmt(item.total)+'</strong></div>').join('');
   $('officeBovisDashboard').innerHTML=
@@ -1086,18 +1094,10 @@ function drawBovisOverview(){
     '<section class="bovis-section" aria-labelledby="bovisWarehouseHead">'+
       '<div class="bovis-section-heading"><h2 id="bovisWarehouseHead">Magazyny Bovis</h2></div>'+
       '<div class="bovis-table-scroll"><table class="bovis-table bovis-warehouses-table">'+
-      '<thead><tr><th scope="col">Magazyn</th><th scope="col" title="Liczba maszyn">Maszyn</th>'+
-      '<th scope="col" title="Powierzchnia magazynu w m²">Pow. m²</th>'+
-      '<th scope="col" title="Powierzchnia zajęta w m²">Zajęte</th>'+
-      '<th scope="col" title="Wolna powierzchnia w m²">Wolne</th>'+
-      '<th scope="col" title="Wykorzystanie powierzchni">Użycie</th></tr></thead>'+
-      '<tbody>'+warehouseRows+
-      '<tr class="bovis-total-row"><th scope="row">ŁĄCZNIE</th>'+
-      '<td class="bovis-number">'+fmt(totals.machines)+'</td>'+
-      '<td class="bovis-number">'+fmt(totals.area)+'</td>'+
-      '<td class="bovis-number">'+fmt(totals.occupied)+'</td>'+
-      '<td class="bovis-number">'+fmt(totals.free)+'</td>'+
-      '<td class="bovis-number">'+percent(totalUsed)+'</td></tr></tbody></table></div></section>'+
+      '<thead><tr><th scope="col">Dane</th>'+
+      warehouses.map(w=>'<th scope="col">'+escapeHtml(w.name)+'</th>').join('')+
+      '<th scope="col">SUMA</th></tr></thead>'+
+      '<tbody>'+warehouseRows+'</tbody></table></div></section>'+
     '<section class="bovis-section" aria-labelledby="bovisTypesHead">'+
       '<div class="bovis-section-heading"><h2 id="bovisTypesHead">Maszyny według typu</h2></div>'+
       '<div class="bovis-machine-scroll"><table class="bovis-table bovis-machines-table">'+
