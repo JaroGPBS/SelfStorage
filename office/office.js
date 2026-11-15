@@ -1240,7 +1240,12 @@ function drawStocks(parts,warehouseId){
   const sourceInfo=fromSheet
     ?' · Ilości: '+fromD1+' z D1, '+fromSheet+' z arkusza Stock FR GPBS'
     :fromD1?' · Ilości z D1':'';
-  $('tableFooter').textContent=filtered.length+' części'+sourceInfo;
+  // Internal stock-source details are not useful to French Office operators.
+  const inFrenchStock=Boolean(state.preview?.warehouseKey||
+    state.preview?.type==='warehouse')||
+    realWarehouse(warehouseId)?.country_code==='FR';
+  $('tableFooter').textContent=filtered.length+' części'+
+    (inFrenchStock?'':sourceInfo);
   noteSearch(filtered.length,parts.length,'częściach');
 }
 function drawModules(){
