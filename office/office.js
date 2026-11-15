@@ -1826,7 +1826,8 @@ function bovisMonthlyHistoryChart(sample){
 }
 
 function drawBovisParisSum(items,search){
-  const source=BOVIS_PARIS_MODULE_EXAMPLES;
+  const sample=isBovisParisStock();
+  const source=sample?BOVIS_PARIS_MODULE_EXAMPLES:[];
   const groups=MODULE_GROUPS;
   const rows=groups.map(group=>{
     const entries=items.filter(item=>item.group===group.id);
@@ -1848,25 +1849,29 @@ function drawBovisParisSum(items,search){
         '<th scope="col" class="num">OK</th>'+
         '<th scope="col" class="num">NOK</th>'+
         '<th scope="col" class="num">SUMA</th></tr></thead>'+
-      '<tbody>'+(rows||'<tr><td colspan="4" class="module-no-results">Brak pasujących modułów.</td></tr>')+
+      '<tbody>'+(rows||'<tr><td colspan="4" class="module-no-results">'+
+        (sample?'Brak pasujących modułów.':'Brak zapisanych modułów.')+'</td></tr>')+
       (items.length?'<tr class="module-grand-total">'+
         '<th scope="row">ŁĄCZNIE</th>'+
         '<td class="num module-count-ok">'+ok+'</td><td class="num module-count-nok">'+nok+'</td>'+
         '<td class="num">'+(ok+nok)+'</td></tr>':'')+
       '</tbody></table>';
   $('tableArea').innerHTML=bovisParisModuleLayout(table,null);
-  $('tableFooter').textContent='Bovis Paryż · przykładowe wartości. Powierzchnia na podstawie '+
-    BOVIS_OVERVIEW_PREVIEW.squareMetersPerMachine+
-    ' m² na maszynę. Ruchy magazynowe nie są jeszcze podłączone.';
+  $('tableFooter').textContent=sample
+    ?'Bovis Paryż · fikcyjne dane służące do prezentacji. '+
+      'Powierzchnia według przykładowego przelicznika 2 m² na maszynę.'
+    :bovisDisplayWarehouse()+' · szablon gotowy, brak danych magazynowych.';
   noteSearch(items.length,source.length,'typach modułów');
 }
 function drawBovisParisSerials(group,search){
+  const sample=isBovisParisStock();
   const status=state.bovisParisSnStatus==='nok'?'nok':'ok';
   const definitions=group.types.map(type=>({
-    type,item:BOVIS_PARIS_MODULE_EXAMPLES.find(e=>e.group===group.id&&e.type===type)
+    type,item:sample?BOVIS_PARIS_MODULE_EXAMPLES.find(e=>
+      e.group===group.id&&e.type===type):null
   })).map(entry=>({
     type:entry.type,
-    serials:bovisParisExampleSerials(entry.item,status)
+    serials:sample?bovisParisExampleSerials(entry.item,status):[]
   }));
   const columns=definitions.filter(entry=>!search||
     (group.name+' '+entry.type+' '+entry.serials.join(' ')).toLocaleLowerCase('pl')
@@ -1876,13 +1881,13 @@ function drawBovisParisSerials(group,search){
     (status===name?' active':'')+'" data-bovis-paris-sn="'+name+
     '" role="tab" aria-selected="'+String(status===name)+'">'+label+'</button>';
   const top='<div class="fr-paris-serial-top"><strong>'+escapeHtml(group.name)+
-    ' · PRZYKŁADOWE NUMERY SERYJNE</strong>'+
+    (sample?' · PRZYKŁADOWE NUMERY SERYJNE':' · NUMERY SERYJNE')+'</strong>'+
     '<div class="fr-paris-serial-tabs" role="tablist" aria-label="Status numerów seryjnych">'+
     tab('ok','S/N OK')+tab('nok','S/N NOK')+'</div></div>';
   if(!columns.length){
     $('tableArea').innerHTML=bovisParisModuleLayout(top+
       '<div class="empty">Brak pasujących typów lub numerów seryjnych.</div>',group.id);
-    $('tableFooter').textContent='Bovis Paryż · przykładowe numery seryjne, bez zapisu.';
+    $('tableFooter').textContent=bovisDisplayWarehouse()+' · brak pasujących typów.';
     noteSearch(0,group.types.length,'typach modułów');
     return;
   }
@@ -1900,29 +1905,29 @@ function drawBovisParisSerials(group,search){
       '<thead><tr>'+headers+'</tr></thead>'+
       '<tbody>'+rows+'</tbody></table></div>',group.id);
   const total=columns.reduce((sum,col)=>sum+col.serials.length,0);
-  const sampleNoun=total===1?'przykładowy numer':total>=2&&total<=4
-    ?'przykładowe numery':'przykładowych numerów';
-  $('tableFooter').textContent='Bovis Paryż · '+group.name+' · S/N '+
-    status.toUpperCase()+' · '+total+' '+sampleNoun+
-    ' (nie są to rzeczywiste numery maszyn).';
+  $('tableFooter').textContent=sample
+    ?'Bovis Paryż · '+group.name+' · S/N '+status.toUpperCase()+
+      ' · '+total+' przykładowych numerów (nie są to rzeczywiste numery maszyn).'
+    :bovisDisplayWarehouse()+' · '+group.name+' · szablon gotowy, brak numerów seryjnych.';
   noteSearch(columns.length,group.types.length,'typach modułów');
 }
 function drawModules(){
-  if(!isBovisParisModuleExample()){
+  if(!isBovisStock()){
     $('tableArea').innerHTML='<div class="empty">Brak danych modułów. Ewidencja modułów nie jest jeszcze dostępna.</div>';
     $('tableFooter').textContent='Brak zapisanych modułów';
     noteSearch(0,0,'modułach');
     return;
   }
+  const sample=isBovisParisStock();
   const search=state.search.trim().toLocaleLowerCase('pl');
   if(state.moduleCategory!=='all'){
     const group=MODULE_GROUPS.find(g=>g.id===state.moduleCategory);
     if(group)drawBovisParisSerials(group,search);
     return;
   }
-  const visible=BOVIS_PARIS_MODULE_EXAMPLES.filter(item=>!search||
+  const visible=sample?BOVIS_PARIS_MODULE_EXAMPLES.filter(item=>!search||
     [item.group,item.type,MODULE_GROUPS.find(g=>g.id===item.group)?.name].some(x=>
-      String(x||'').toLocaleLowerCase('pl').includes(search)));
+      String(x||'').toLocaleLowerCase('pl').includes(search))):[];
   drawBovisParisSum(visible,search);
 }
 function drawAggregateModules(realSets){
@@ -3850,7 +3855,7 @@ document.addEventListener('click',e=>{
   }
   const moduleCategory=e.target.closest('[data-module-category]');if(moduleCategory){setModuleCategory(moduleCategory.dataset.moduleCategory);return;}
   const serialTab=e.target.closest('[data-bovis-paris-sn]');
-  if(serialTab&&isBovisParisModuleExample()&&state.moduleCategory!=='all'){
+  if(serialTab&&isBovisStock()&&state.moduleCategory!=='all'){
     if(['ok','nok'].includes(serialTab.dataset.bovisParisSn)){
       state.bovisParisSnStatus=serialTab.dataset.bovisParisSn;
       drawModules();
