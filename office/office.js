@@ -1843,16 +1843,18 @@ function bovisMonthlyHistoryChart(sample){
         row.okArea+' m² OK, '+row.nokArea+' m² NOK), '+row.percent+'%'
       :row.name+': brak danych';
     const height=available?Math.min(100,Math.max(0,row.percent)):0;
+    // One full-height column: free space above, NOK in the middle,
+    // and OK at the bottom. Segment heights are proportional to used m².
     const occupied=row.occupied||0;
-    const okWidth=occupied>0?row.okArea/occupied*100:0;
-    const nokWidth=occupied>0?row.nokArea/occupied*100:0;
+    const okHeight=occupied>0?row.okArea/occupied*100:0;
+    const nokHeight=occupied>0?row.nokArea/occupied*100:0;
     return '<div class="fr-bovis-month-column'+(available?'':' is-missing')+
       '" title="'+escapeHtml(title)+'" role="group" aria-label="'+escapeHtml(title)+'">'+
       '<span class="fr-bovis-month-name">'+row.short+'</span>'+
       '<div class="fr-bovis-month-track" aria-hidden="true">'+
         (available?'<div class="fr-bovis-month-occupied" style="height:'+height+'%">'+
-          '<span class="fr-bovis-month-ok" style="width:'+okWidth.toFixed(3)+'%"></span>'+
-          '<span class="fr-bovis-month-nok" style="width:'+nokWidth.toFixed(3)+'%"></span>'+
+          '<span class="fr-bovis-month-ok" style="height:'+okHeight.toFixed(3)+'%"></span>'+
+          '<span class="fr-bovis-month-nok" style="height:'+nokHeight.toFixed(3)+'%"></span>'+
           '<span class="fr-bovis-month-machines">'+row.machines+' szt.</span></div>':'')+
       '</div>'+
       '<span class="fr-bovis-month-area">'+(available?row.occupied+' m²':'—')+'</span>'+
