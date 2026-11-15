@@ -6810,16 +6810,16 @@
 
 
 /* Review-only Bovis Paryż stock layout. No other Bovis, boxes or PL changes. */
-.app.view-bovis-paris.view-stocks #modulesTab{order:0}
-.app.view-bovis-paris.view-stocks #partsTab{order:1}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metrics{
+.app.view-bovis-layout.view-stocks #modulesTab{order:0}
+.app.view-bovis-layout.view-stocks #partsTab{order:1}
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metrics{
   display:grid;
   grid-template-columns:repeat(5,minmax(0,1fr));
   gap:7px;
   padding:8px 10px 9px;
   border-bottom:1px solid #e5e9ee;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric{
   display:flex;
   align-items:baseline;
   justify-content:space-between;
@@ -6830,22 +6830,22 @@
   border-radius:5px;
   padding:8px 10px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric span{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric span{
   font-size:10px;
   color:#6c7785;
   white-space:nowrap;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric strong{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric strong{
   font-size:14px;
   font-weight:800;
   color:#314152;
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-modules-table{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-modules-table{
   margin:5px 10px 8px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-top{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-top{
   display:flex;
   justify-content:space-between;
   align-items:center;
@@ -6854,18 +6854,18 @@
   border-bottom:1px solid #e3e8ee;
   background:#f8fafc;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-top>strong{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-top>strong{
   font-size:12px;
   font-weight:850;
   letter-spacing:.06em;
   color:#364657;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-tabs{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-tabs{
   display:inline-flex;
   align-items:center;
   gap:4px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-sn-tab{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-sn-tab{
   min-height:29px;
   border:1px solid #d5dde6;
   border-radius:5px;
@@ -6877,22 +6877,22 @@
   font-weight:800;
   white-space:nowrap;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-sn-tab.active{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-sn-tab.active{
   background:#354657;
   border-color:#354657;
   color:#fff;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-sn-tab:focus-visible{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-sn-tab:focus-visible{
   outline:2px solid #9db5cf;
   outline-offset:1px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-scroll{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-scroll{
   width:100%;
   min-width:0;
   overflow-x:auto;
   scrollbar-width:thin;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-table{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-table{
   width:100%;
   min-width:max-content;
   border-collapse:separate;
@@ -6902,8 +6902,8 @@
   font-size:11px;
   font-variant-numeric:tabular-nums;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-table th,
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-table td{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-table th,
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-table td{
   width:155px;
   min-width:155px;
   max-width:155px;
@@ -6913,19 +6913,19 @@
   padding:7px 10px;
   white-space:nowrap;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-table th{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-table th{
   position:sticky;
   top:0;
   z-index:1;
   background:#edf2f6;
   padding:9px 10px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-type{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-type{
   display:inline-block;
   font-size:11px;
   font-weight:800;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-count{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-count{
   display:inline-block;
   min-width:22px;
   margin-left:5px;
@@ -6936,35 +6936,35 @@
   font-weight:800;
   padding:2px 4px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-table tbody tr:nth-child(even){
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-table tbody tr:nth-child(even){
   background:#fafbfd;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-number{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-number{
   font-size:10px;
   font-weight:650;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-empty{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-empty{
   color:#c1c9d1;
 }
 @media(max-width:1150px){
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metrics{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metrics{
     grid-template-columns:repeat(3,minmax(0,1fr));
   }
 }
 @media(max-width:630px){
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metrics{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metrics{
     grid-template-columns:repeat(2,minmax(0,1fr));
     padding:6px;
     gap:5px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric{
     padding:6px 8px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-top{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-top{
     padding:7px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-table th,
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-serial-table td{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-table th,
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-serial-table td{
     width:140px;min-width:140px;max-width:140px;
     padding:7px 6px;
   }
@@ -6973,7 +6973,7 @@
 
 /* Bovis Paryż MODULES only: keep the module list on the left and make use
    of the otherwise empty area on the right. Fictitious preview, no D1 writes. */
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-workspace{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-workspace{
   display:grid;
   grid-template-columns:minmax(0,670px) minmax(320px,1fr);
   align-items:start;
@@ -6982,18 +6982,18 @@
   min-width:0;
   padding:8px 10px 10px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-content{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-content{
   min-width:0;
   overflow-x:auto;
   scrollbar-width:thin;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-content .fr-paris-modules-table{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-content .fr-paris-modules-table{
   width:100%;
   max-width:none;
   min-width:520px;
   margin:0;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside{
   min-width:0;
   background:#fff;
   border:1px solid #e2e7ed;
@@ -7001,7 +7001,7 @@
   padding:15px;
   color:#344454;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-head{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-head{
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -7010,64 +7010,64 @@
   border-bottom:1px solid #e9edf1;
   padding-bottom:11px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-head strong{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-head strong{
   font-size:12px;
   font-weight:850;
   letter-spacing:.035em;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-head span{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-head span{
   color:#8793a1;
   font-size:10px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-usage{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-usage{
   display:flex;
   align-items:baseline;
   gap:12px;
   padding:15px 2px 12px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-usage strong{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-usage strong{
   font-size:32px;
   line-height:1;
   font-weight:850;
   color:#354e65;
   font-variant-numeric:tabular-nums;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-usage span{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-usage span{
   font-size:12px;
   color:#788696;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-progress{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-progress{
   height:12px;
   overflow:hidden;
   border-radius:10px;
   background:#edf1f5;
   margin:0 0 16px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-progress span{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-progress span{
   display:block;
   height:100%;
   background:#557e9f;
   border-radius:10px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metrics{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metrics{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:8px;
   padding:0;
   border-bottom:0;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric{
   padding:12px;
   min-height:49px;
   align-items:center;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric span{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric span{
   font-size:11px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric strong{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric strong{
   font-size:16px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-group{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-group{
   display:flex;
   flex-direction:column;
   gap:10px;
@@ -7075,17 +7075,17 @@
   padding-top:13px;
   border-top:1px solid #e9edf1;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-group>strong{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-group>strong{
   font-size:11px;
   font-weight:850;
   letter-spacing:.035em;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-counts{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-counts{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:8px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-counts span{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-counts span{
   display:flex;
   justify-content:space-between;
   align-items:center;
@@ -7098,43 +7098,43 @@
   font-size:11px;
   color:#6b7887;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-counts b{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-counts b{
   color:#293d51;
   font-size:15px;
   font-variant-numeric:tabular-nums;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-counts b.module-count-ok{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-counts b.module-count-ok{
   color:#187647;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-counts b.module-count-nok{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-counts b.module-count-nok{
   color:#c13d42;
 }
 @media(max-width:1110px){
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-workspace{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-workspace{
     grid-template-columns:minmax(0,1fr);
     gap:10px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside{
     max-width:none;
   }
 }
 @media(max-width:650px){
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-workspace{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-workspace{
     padding:6px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside{
     padding:11px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-usage strong{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-usage strong{
     font-size:26px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-metric{
     padding:8px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-counts{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-counts{
     gap:5px;
   }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-aside-counts span{
+  .app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-aside-counts span{
     padding:7px;
   }
 }
@@ -7142,7 +7142,7 @@
 
 /* Bovis Paryż preview: compact occupied/free labels around the usage bar,
    and consistent OK/NOK colors even in the SUMA footer row. */
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-usage-labels{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-usage-labels{
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -7152,61 +7152,61 @@
   color:#748392;
   font-variant-numeric:tabular-nums;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-usage-labels span:last-child{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-usage-labels span:last-child{
   text-align:right;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-usage-labels b{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-usage-labels b{
   font-size:15px;
   font-weight:800;
   color:#354e65;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-progress{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-module-progress{
   margin-bottom:15px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-modules-table .module-grand-total td.module-count-ok{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-modules-table .module-grand-total td.module-count-ok{
   color:#277654;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-modules-table .module-grand-total td.module-count-nok{
+.app.view-bovis-layout.view-stocks.view-modules .fr-paris-modules-table .module-grand-total td.module-count-nok{
   color:#c13f49;
 }
 
 
 /* Bovis Paryż: only the serial-number tabs use a wide matrix.
    SUMA keeps its earlier compact summary layout. */
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial{
   grid-template-columns:minmax(0, 72fr) minmax(0, 28fr);
   align-items:start;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-content{
   overflow-x:visible;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-serial-table{
   width:100%;
   min-width:820px;
   table-layout:fixed;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-serial-table th,
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-serial-table td{
   width:auto;
   min-width:0;
   max-width:none;
   padding:8px 7px;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-serial-table td{
   text-align:left;
   padding-left:11px;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-serial-type{
   font-size:12px;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-serial-number{
   display:inline-block;
   font-size:10px;
@@ -7214,25 +7214,25 @@
   letter-spacing:-.15px;
   white-space:nowrap;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-aside{
   padding:11px;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metrics{
   grid-template-columns:1fr;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metric{
   min-height:40px;
   padding:7px 9px;
 }
 @media(max-width:1110px){
-  .app.view-bovis-paris.view-stocks.view-modules
+  .app.view-bovis-layout.view-stocks.view-modules
     .fr-paris-module-workspace--serial{
     grid-template-columns:minmax(0,1fr);
   }
-  .app.view-bovis-paris.view-stocks.view-modules
+  .app.view-bovis-layout.view-stocks.view-modules
     .fr-paris-module-workspace--serial .fr-paris-module-metrics{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
@@ -7241,12 +7241,12 @@
 
 /* Bovis Paryż: small 2x2 tiles only in OUTDOOR / INDOOR / BQ / NEW GEN.
    SUMA keeps its earlier styles, with no changes to its layout. */
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metrics{
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:7px;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metric{
   display:flex;
   flex-direction:column;
@@ -7257,20 +7257,20 @@
   min-height:0;
   padding:7px 9px;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metric span{
   white-space:normal;
   font-size:10px;
   line-height:1.2;
 }
-.app.view-bovis-paris.view-stocks.view-modules
+.app.view-bovis-layout.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metric strong{
   align-self:flex-end;
   font-size:14px;
   line-height:1.15;
 }
 @media(max-width:600px){
-  .app.view-bovis-paris.view-stocks.view-modules
+  .app.view-bovis-layout.view-stocks.view-modules
     .fr-paris-module-workspace--serial .fr-paris-module-metric{
     height:64px;
     padding:7px;
@@ -7279,9 +7279,9 @@
 
 
 /* Bovis Paris review-only PZ/WZ and sample export (all data remain local). */
-.app.view-bovis-paris.view-stocks #bovisParisPzTab{order:2;min-width:58px}
-.app.view-bovis-paris.view-stocks #bovisParisWzTab{order:3;min-width:58px}
-.app.view-bovis-paris.view-stocks .fr-paris-process-preview{
+.app.view-bovis-layout.view-stocks #bovisParisPzTab{order:2;min-width:58px}
+.app.view-bovis-layout.view-stocks #bovisParisWzTab{order:3;min-width:58px}
+.app.view-bovis-layout.view-stocks .fr-paris-process-preview{
   max-width:850px;
   margin:25px auto 36px;
   padding:32px;
@@ -7290,22 +7290,22 @@
   border-radius:9px;
   color:#354457;
 }
-.app.view-bovis-paris.view-stocks .fr-paris-process-preview h2{
+.app.view-bovis-layout.view-stocks .fr-paris-process-preview h2{
   font-size:21px;
   margin:15px 0 12px;
 }
-.app.view-bovis-paris.view-stocks .fr-paris-process-preview p{
+.app.view-bovis-layout.view-stocks .fr-paris-process-preview p{
   font-size:13px;
   line-height:1.7;
   max-width:660px;
 }
-.app.view-bovis-paris.view-stocks .fr-paris-process-preview small{
+.app.view-bovis-layout.view-stocks .fr-paris-process-preview small{
   display:block;
   margin-top:20px;
   color:#8995a2;
   font-size:11px;
 }
-.app.view-bovis-paris.view-stocks .fr-paris-process-tag{
+.app.view-bovis-layout.view-stocks .fr-paris-process-tag{
   display:inline-block;
   background:#e9eef3;
   border-radius:5px;
@@ -7447,174 +7447,141 @@
 @media(max-width:530px){
   .modal-card.bovis-export-dialog{padding:19px 13px}
   .fr-paris-export-filters{grid-template-columns:1fr}
-  .app.view-bovis-paris.view-stocks .fr-paris-process-preview{margin:9px;padding:19px}
-  .app.view-bovis-paris.view-stocks #bovisParisPzTab,
-  .app.view-bovis-paris.view-stocks #bovisParisWzTab{min-width:52px}
+  .app.view-bovis-layout.view-stocks .fr-paris-process-preview{margin:9px;padding:19px}
+  .app.view-bovis-layout.view-stocks #bovisParisPzTab,
+  .app.view-bovis-layout.view-stocks #bovisParisWzTab{min-width:52px}
 }
 
 
-/* Bovis Paris SUMA: compact monthly history charts, preview only.
-   Restrict styles to the SUMA-only section, without changing OUTDOOR etc. */
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-history{
-  margin:8px 10px 17px;
-  padding:13px 14px 11px;
-  border:1px solid #e2e8ed;
-  border-radius:8px;
-  background:#fff;
-  color:#364554;
+
+
+/* Unified Bovis module layout (sample values ONLY for Paris). */
+.app.view-bovis-paris .bovis-paris-demo-notice,
+.bovis-paris-demo-notice{
+  display:inline-block;
+  margin-left:14px;
+  color:#c92a3c;
+  font-size:clamp(12px,1.15vw,17px);
+  font-weight:900;
+  letter-spacing:.025em;
+  line-height:1.22;
+  text-transform:uppercase;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-heading{
+.app .breadcrumbs:has(.bovis-paris-demo-notice:not(.hidden)){
   display:flex;
-  flex-wrap:wrap;
   align-items:center;
-  gap:7px 12px;
+  flex-wrap:wrap;
+  gap:4px 0;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-heading h3{
-  margin:0;
-  font-size:13px;
-  font-weight:850;
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-heading span{
-  padding:3px 6px;
-  border-radius:4px;
-  background:#f0f2f4;
-  color:#788595;
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.06em;
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-history>p{
-  margin:7px 0 12px;
-  color:#8793a0;
-  font-size:10px;
-  line-height:1.45;
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-charts{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:12px;
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-card{
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-panel{
   min-width:0;
-  border:1px solid #e9edf1;
-  border-radius:6px;
-  background:#fafbfd;
-  padding:10px 9px 11px;
+  margin-top:14px;
+  padding:11px 0 2px;
+  border-top:1px solid #e7edf1;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-card-head{
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-header{
   display:flex;
-  gap:6px;
+  align-items:center;
   justify-content:space-between;
-  align-items:baseline;
-  margin:0 4px 12px;
+  gap:8px;
+  margin-bottom:12px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-card-head strong{
-  color:#47586b;
-  font-size:11px;
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-header strong{
+  font-size:12px;
+  color:#334858;
   font-weight:850;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-card-head span{
-  color:#8996a3;
-  font-size:10px;
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-year{
+  padding:4px 9px;
+  color:#324e65;
+  background:#edf2f6;
+  border-radius:5px;
+  font-weight:850;
+  font-variant-numeric:tabular-nums;
+  font-size:13px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-plot{
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-panel{
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-plot{
   display:grid;
   grid-template-columns:repeat(12,minmax(0,1fr));
-  gap:4px;
   min-width:0;
   width:100%;
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-column{
-  display:flex;
-  min-width:0;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-end;
   gap:4px;
+}
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-column{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-width:0;
+  gap:4px;
+  color:#607082;
   font-variant-numeric:tabular-nums;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-value{
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-machines,
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-area,
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-name{
   display:block;
   width:100%;
   text-align:center;
-  font-size:9px;
-  color:#4b5c6d;
   white-space:nowrap;
-  font-weight:750;
+  font-size:9px;
+  line-height:1.2;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-track{
-  width:100%;
-  height:124px;
-  border-radius:3px 3px 0 0;
-  background:#e7edf2;
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-machines{
+  color:#374c60;
+  font-weight:850;
+}
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-area{
+  color:#456680;
+  font-weight:800;
+}
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-name{
+  color:#83909e;
+}
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-track{
   position:relative;
+  height:122px;
+  width:100%;
+  border-radius:4px 4px 0 0;
+  background:#e9eff3;
   overflow:hidden;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-fill{
-  display:block;
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-used{
   position:absolute;
+  bottom:0;
   left:0;
   right:0;
-  bottom:0;
-  border-radius:3px 3px 0 0;
-  background:#66859e;
+  display:block;
+  background:#527d9d;
+  border-radius:4px 4px 0 0;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-fill.is-area{
-  background:#4d7797;
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-month-column.is-missing .fr-bovis-month-track{
+  background:repeating-linear-gradient(135deg,#f5f6f8 0,#f5f6f8 7px,#e6ebef 7px,#e6ebef 9px);
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-column.is-missing .fr-paris-monthly-track{
-  background:repeating-linear-gradient(
-    135deg,#f5f7f9,#f5f7f9 7px,#e9edf1 7px,#e9edf1 8px);
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-label{
-  color:#7d8894;
-  font-size:9px;
-  text-align:center;
-  white-space:nowrap;
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-legend{
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-foot{
   display:flex;
-  justify-content:flex-end;
+  justify-content:space-between;
+  gap:10px;
   flex-wrap:wrap;
-  gap:6px 17px;
-  padding:12px 3px 1px;
-  color:#8492a0;
+  padding-top:10px;
   font-size:10px;
+  color:#788999;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-legend span{
-  display:inline-flex;
-  gap:5px;
-  align-items:center;
+.app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-note{
+  font-size:10px;
+  color:#8a96a3;
+  line-height:1.4;
+  margin:9px 0 0;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-legend i{
-  width:10px;
-  height:10px;
-  display:inline-block;
-  border-radius:2px;
-  background:#4d7797;
-}
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-legend i.is-free{
-  background:#e7edf2;
-  border:1px solid #d8e0e7;
-}
-@media(max-width:1100px){
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-charts{
-    grid-template-columns:1fr;
+@media(max-width:1450px){
+  .app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-plot{
+    min-width:520px;
   }
 }
 @media(max-width:650px){
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-history{
-    margin:8px 6px 12px;
-    padding:9px 7px;
-  }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-plot{
-    gap:2px;
-  }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-track{
-    height:90px;
-  }
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-label,
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-monthly-value{
-    font-size:8px;
-  }
+  .bovis-paris-demo-notice{font-size:12px;margin-left:5px}
+  .app.view-bovis-layout.view-stocks.view-modules .fr-bovis-monthly-track{height:100px}
 }
