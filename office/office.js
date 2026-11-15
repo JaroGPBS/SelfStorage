@@ -5,7 +5,7 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 // Self-contained presentation-only module registry; no connection to D1.
 const MODULE_GROUPS=[
   {id:'outdoor',name:'OUTDOOR',types:['FM','LQ','RQ','XS','ODL','ODR']},
-  {id:'indoor',name:'INDOOR',types:['CU','DUO','HICU','HIDUO','CU RJ 4-5','HICU RJ 4-5']},
+  {id:'indoor',name:'INDOOR',types:['CU','DUO','HICU','HIDUO','CU RJ45','HICU RJ45']},
   {id:'bq',name:'BQ',types:['CU','DUO','CU OUT','DUO OUT']},
   {id:'newgen',name:'NEW GEN',types:['CU IN','DUO L','DUO R']}
 ];
