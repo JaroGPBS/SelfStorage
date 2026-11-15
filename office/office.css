@@ -6464,8 +6464,6 @@
 @media(max-width:650px){
   .app.view-bovis-overview .content{padding:8px 8px 18px}
   .app.view-bovis-overview .bovis-chart-list{padding:11px 9px}
-  .app.view-bovis-overview .bovis-chart-row{gap:6px}
-  .app.view-bovis-overview .bovis-chart-name{flex-basis:63px;font-size:10px}
 }
 
 
