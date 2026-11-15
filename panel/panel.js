@@ -1658,7 +1658,7 @@
     if(!await confirmAction({
       title:'Trwale usunąć ekipę '+user.name+'?',
       description:String(user.name||'').trim().toUpperCase()==='AA'
-        ?'Usuniemy konto AA, PIN i całą historię testową. Jeżeli D1 potwierdzi jedyny testowy zwrot MG-000-022 z 12.11.2026, stan tej części w Box Toulouse wróci do 0. Innych stanów nie zmieniamy.'
+        ?'Usuniemy konto AA, PIN, wizyty, ruchy i inwentaryzacje. Stany magazynowe pozostaną bez zmian, nawet jeśli test je zmienił. Potem porównamy Box Toulouse z arkuszem Stock FR GPBS.'
         :'Konto, PIN i przypisania zostaną usunięte. Jeśli ekipa ma operacje zmieniające stany, usuwanie zostanie zablokowane. Stany magazynowe pozostają bez zmian.',
       confirmLabel:'Usuń',danger:true
     }))return;
