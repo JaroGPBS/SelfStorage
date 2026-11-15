@@ -1018,6 +1018,22 @@ function showFrBoxMovements(key,realId,warehouseName){
   renderMenu();
   render();
 }
+function syncAggregateTabControls(){
+  const active=state.view==='aggregate';
+  const modules=active&&state.aggregateTab==='modules';
+  $('aggregateTabs').classList.toggle('hidden',!active);
+  if(!active)return;
+  $('aggregateTabs').querySelectorAll('[data-aggregate-tab]').forEach(button=>{
+    const selected=button.dataset.aggregateTab===state.aggregateTab;
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-selected',String(selected));
+  });
+  $('search').placeholder=modules?'Szukaj typu modułu...':'Szukaj po SAP lub nazwie części';
+  $('sort').classList.toggle('hidden',modules);
+  $('receiptToolbarInfo').querySelector('span').textContent=modules
+    ?'Typy modułów według magazynu: OK / NOK.'
+    :'Porównanie stanów części pomiędzy magazynami.';
+}
 function setHead(title,kicker,desc){
   $('app').classList.remove('view-home');
   $('officeHome').classList.add('hidden');
@@ -1044,6 +1060,7 @@ function setHead(title,kicker,desc){
   const documentsView=state.view==='pz'||state.view==='wz';
   const vehicleView=state.view==='vehicles';
   const aggregateView=state.view==='aggregate';
+  syncAggregateTabControls();
   const inventoriesView=state.view==='inventories';
   const compactView=documentsView||vehicleView||aggregateView||inventoriesView||
     state.view==='nok'||state.view==='frMovements'||frEmpty;
@@ -1169,7 +1186,9 @@ function selectView(view,warehouse,focusDocument=null){
   if(warehouse||view==='aggregate'||state.preview?.type==='warehouse')state.preview=null;
   $('officePreview').classList.add('hidden');
   $('pageActions').classList.remove('hidden');
-  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
+  state.view=view;state.stockTab='parts';state.moduleCategory='all';state.search='';
+  if(view==='aggregate'){state.aggregateTab='parts';state.frAggregateSets=null;}
+  if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
   const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
@@ -2812,7 +2831,9 @@ async function render({silent=false}={}){
         preview:!col.source
       })));
       if(ticket!==state.requestId)return;
-      drawAggregate(loaded);
+      state.frAggregateSets=loaded;
+      if(state.aggregateTab==='modules')drawAggregateModules(loaded);
+      else drawAggregate(loaded);
     }else if(state.view==='vehicles'){
       if(ticket!==state.requestId)return;drawVehicles();
     }else if(state.view==='nok'){
@@ -2883,7 +2904,13 @@ function filterCurrent(){
       drawStocks(parts,state.warehouse);
     }
   }
-  else if(state.view==='aggregate'||state.view==='vehicles'){render();}
+  else if(state.view==='aggregate'){
+    if(state.frAggregateSets){
+      if(state.aggregateTab==='modules')drawAggregateModules(state.frAggregateSets);
+      else drawAggregate(state.frAggregateSets);
+    }else render();
+  }
+  else if(state.view==='vehicles'){render();}
   else if(state.view==='pz'||state.view==='wz')drawDocs();
   else if(state.view==='nok')drawNokStock();
   else if(state.view==='inventories')drawInventories();
@@ -3191,6 +3218,21 @@ document.addEventListener('click',e=>{
         if(layout){showOfficePreview('warehouse',layout.key,layout.name);return;}
       }
       renderMenu();
+    }
+    return;
+  }
+  const aggregateTab=e.target.closest('[data-aggregate-tab]');
+  if(aggregateTab&&state.view==='aggregate'){
+    const next=aggregateTab.dataset.aggregateTab;
+    if(!['parts','modules'].includes(next))return;
+    if(state.aggregateTab!==next){
+      state.aggregateTab=next;
+      state.search='';
+      $('search').value='';
+      $('tableArea').scrollLeft=0;
+      $('tableArea').scrollTop=0;
+      syncAggregateTabControls();
+      filterCurrent();
     }
     return;
   }
