@@ -1664,11 +1664,11 @@
     const parent=button.parentElement;
     parent?.querySelector('.crew-delete-error')?.remove();
     try {
-      await post({action:'deleteUnusedCrew',userId:user.id});
+      const result=await post({action:'deleteUnusedCrew',userId:user.id});
       state.expandedUserId=null;
       state.records=state.records.filter(item=>item.id!==user.id);
       if(state.view==='users')renderList();
-      message('Ekipa '+user.name+' została trwale usunięta z D1.','info');
+      message(result.message||('Ekipa '+user.name+' została trwale usunięta z D1.'),'info');
     }catch(error){
       const content=error.message||'Nie udało się usunąć ekipy.';
       message(content,'error');
