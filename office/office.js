@@ -771,6 +771,7 @@ function showOfficeHome(){
   // No stock data request on login: only the welcome screen.
   ++state.requestId;
   state.view='home';state.preview=null;state.frExpanded=null;state.bovisParisProcess=null;
+  $('bovisParisDemoNotice').classList.add('hidden');
   state.bovisExpanded=false;state.expanded=null;state.focusDocument=null;
   state.search='';state.vehicleSelectedInventory=0;
   $('sidebar').classList.remove('open');
@@ -1240,7 +1241,9 @@ function setHead(title,kicker,desc){
   $('modulesTab').textContent=polishStocks?'CZĘŚCI NIEKOMPLETNE':'MODUŁY';
   // The visual order is reversed only in Bovis Paryż during layout review.
   $('app').classList.toggle('view-bovis-paris',isBovisParisStock());
-  for(const id of ['bovisParisPzTab','bovisParisWzTab'])$(id).classList.toggle('hidden',!isBovisParisStock());
+  $('app').classList.toggle('view-bovis-layout',isBovisStock());
+  $('bovisParisDemoNotice').classList.toggle('hidden',!isBovisParisStock());
+  for(const id of ['bovisParisPzTab','bovisParisWzTab'])$(id).classList.toggle('hidden',!isBovisStock());
   // Boxes have no machines: show only Części, without an inactive Moduły tab.
   const boxStocks=state.view==='stocks'&&
     frenchStockKind(state.warehouse,state.preview)==='box';
@@ -1335,7 +1338,7 @@ function setHead(title,kicker,desc){
   // French catalogue views can add shared parts, without creating stock.
 }
 function syncStockTabUI(){
-  const process=isBovisParisStock()?state.bovisParisProcess:null;
+  const process=isBovisStock()?state.bovisParisProcess:null;
   const modules=state.view==='stocks'&&state.stockTab==='modules'&&!process;
   const nok=state.view==='stocks'&&state.stockTab==='nok'&&!process;
   const secondary=modules||nok;
@@ -1478,11 +1481,24 @@ function isBovisParisStock(){
   return Boolean(!state.preview&&warehouse?.country_code==='FR'&&paris&&
     matchesFrenchWarehouse(warehouse,paris));
 }
+function isBovisStock(){
+  if(state.view!=='stocks')return false;
+  if(state.preview?.type==='warehouse')
+    return String(state.preview.key||'').startsWith('bovis-');
+  if(state.preview)return false;
+  const warehouse=realWarehouse(state.warehouse);
+  return warehouse?.country_code==='FR'&&isBovisWarehouse(warehouse.name);
+}
+function bovisDisplayWarehouse(){
+  return state.preview?.type==='warehouse'
+    ?state.preview.label
+    :realWarehouse(state.warehouse)?.name||'Bovis';
+}
 function isBovisParisModuleExample(){
   return state.stockTab==='modules'&&isBovisParisStock();
 }
 function setBovisParisProcess(process){
-  if(!isBovisParisStock()||!['pz','wz'].includes(process))return;
+  if(!isBovisStock()||!['pz','wz'].includes(process))return;
   ++state.requestId;
   state.bovisParisProcess=process;
   state.search='';
@@ -1491,33 +1507,37 @@ function setBovisParisProcess(process){
   render();
 }
 function drawBovisParisProcess(){
-  if(!isBovisParisStock()||!['pz','wz'].includes(state.bovisParisProcess))return;
+  if(!isBovisStock()||!['pz','wz'].includes(state.bovisParisProcess))return;
   const incoming=state.bovisParisProcess==='pz';
+  const name=bovisDisplayWarehouse();
   const title=incoming?'PZ — Przyjęcia magazynowe':'WZ — Wydania magazynowe';
   const details=incoming
-    ?'Tutaj będzie można rejestrować dostawy modułów i części do Bovis Paryż. '+
-      'Po poznaniu dokumentów przekazywanych przez InPost oraz rzeczywistego sposobu przyjmowania dostaw '+
-      'ustalimy sposób wpisywania danych i ewentualny import z Excela.'
-    :'Tutaj będzie można rejestrować wydania modułów i części z Bovis Paryż. '+
-      'Szczegóły przygotujemy po poznaniu zasad wydawania i dokumentów używanych w tym procesie.';
+    ?'Tutaj będzie można rejestrować dostawy modułów i części do '+name+'. '+
+      'Po zapoznaniu się z procedurą przekazywania dokumentów i rzeczywistym '+
+      'sposobem przyjmowania oraz zapisywania dostaw ustalimy sposób wpisywania i wyświetlania '+
+      'danych, a także ewentualny import lub wydruk do pliku.'
+    :'Tutaj będzie można rejestrować wydania modułów i części z '+name+'. '+
+      'Po zapoznaniu się z procedurą wydawania i obiegiem dokumentów ustalimy sposób '+
+      'wpisywania, wyświetlania oraz zapisywania danych, a także ewentualny import lub wydruk do pliku.';
   errorBanner('');
   $('tableArea').innerHTML='<section class="fr-paris-process-preview" aria-label="'+escapeHtml(title)+'">'+
     '<span class="fr-paris-process-tag">W OPRACOWANIU</span>'+
     '<h2>'+escapeHtml(title)+'</h2><p>'+escapeHtml(details)+'</p>'+
     '<small>Na tym etapie nie ma formularza, importu ani zapisu danych.</small></section>';
-  $('tableFooter').textContent='Bovis Paryż · funkcja do opracowania po uzyskaniu informacji o procesie.';
+  $('tableFooter').textContent=String(name||'Bovis')+
+    ' · funkcja do opracowania po uzyskaniu informacji o procesie.';
   $('searchNote').classList.add('hidden');
 }
 
 // Bovis Paryż: a read-only export prototype. All S/N, arrival dates and
 // routes below are fictional and come ONLY from local preview constants.
 const BOVIS_PARIS_EXPORT_SAMPLE_DELIVERIES=[
-  {date:'26.10.2026',week:'44',route:'Dostawa InPost – Paryż A',routeNo:'TR-101'},
-  {date:'29.10.2026',week:'44',route:'Dostawa InPost – Paryż B',routeNo:'TR-102'},
-  {date:'02.11.2026',week:'45',route:'Dostawa InPost – Paryż A',routeNo:'TR-103'},
-  {date:'05.11.2026',week:'45',route:'Dostawa InPost – Paryż B',routeNo:'TR-104'},
-  {date:'09.11.2026',week:'46',route:'Dostawa InPost – Paryż A',routeNo:'TR-105'},
-  {date:'12.11.2026',week:'46',route:'Dostawa InPost – Paryż B',routeNo:'TR-106'}
+  {date:'26.10.2026',week:'44',route:'Trasa dostawy — Paryż A',routeNo:'TR-101'},
+  {date:'29.10.2026',week:'44',route:'Trasa dostawy — Paryż B',routeNo:'TR-102'},
+  {date:'02.11.2026',week:'45',route:'Trasa dostawy — Paryż A',routeNo:'TR-103'},
+  {date:'05.11.2026',week:'45',route:'Trasa dostawy — Paryż B',routeNo:'TR-104'},
+  {date:'09.11.2026',week:'46',route:'Trasa dostawy — Paryż A',routeNo:'TR-105'},
+  {date:'12.11.2026',week:'46',route:'Trasa dostawy — Paryż B',routeNo:'TR-106'}
 ];
 const BOVIS_PARIS_EXPORT_FIELDS=[
   {key:'serial',label:'Numer seryjny'},
@@ -1592,7 +1612,7 @@ function openBovisParisExport(){
   body.innerHTML='<div class="fr-paris-export-ui">'+
     '<h2 id="modalTitle">Eksport modułów — Bovis Paryż</h2>'+
     '<p class="fr-paris-export-warning">PRZYKŁADOWY EKRAN: numery seryjne, daty przyjęcia i trasy są fikcyjne. '+
-      'Nie są pobierane z dokumentów InPost ani z rzeczywistych stanów.</p>'+
+      'Nie są pobierane z rzeczywistych dokumentów ani stanów magazynowych.</p>'+
     '<div class="fr-paris-export-filters">'+
       '<label>Grupa modułów<select id="bovisExportGroup">'+
         '<option value="all">Wszystkie grupy</option>'+
@@ -3380,7 +3400,7 @@ function drawFrenchEmptyView(){
 }
 async function render({silent=false}={}){
   if(state.view==='home')return;
-  if(isBovisParisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
+  if(isBovisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
   if(state.view==='bovisOverview'){
     errorBanner('');drawBovisOverview();return;
   }
@@ -3564,7 +3584,7 @@ async function render({silent=false}={}){
 }
 function filterCurrent(){
   if(state.view==='home')return;
-  if(isBovisParisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
+  if(isBovisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
   if(state.view==='frMovements'){drawFrBoxMovements();return;}
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
