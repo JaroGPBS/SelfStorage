@@ -16,9 +16,10 @@ const BOVIS_PARIS_MODULE_EXAMPLES=[
   // Fictitious S/N quantities are deliberately varied: the OUTDOOR view has
   // a longer column so the real table height and scrolling can be reviewed.
   // Overall: 25 OK + 5 NOK = 30 machines, no changes to the displayed totals.
-  {group:'outdoor',type:'FM',ok:10,nok:1},
+  {group:'outdoor',type:'FM',ok:9,nok:1},
   {group:'outdoor',type:'LQ',ok:4,nok:1},
   {group:'outdoor',type:'RQ',ok:2,nok:0},
+  {group:'outdoor',type:'XS',ok:1,nok:0},
   {group:'outdoor',type:'ODL',ok:2,nok:0},
   {group:'outdoor',type:'ODR',ok:1,nok:0},
   {group:'indoor',type:'CU',ok:2,nok:0},
@@ -1515,7 +1516,7 @@ function bovisParisModuleLayout(mainHtml,groupId){
       '<div class="fr-paris-module-metric"><span>'+escapeHtml(name)+'</span>'+
       '<strong>'+escapeHtml(value)+'</strong></div>').join('')+'</div>'+
     groupSummary+'</aside>';
-  return '<div class="fr-paris-module-workspace">'+
+  return '<div class="fr-paris-module-workspace'+(groupId?' fr-paris-module-workspace--serial':'')+'">'+
     '<div class="fr-paris-module-content">'+mainHtml+'</div>'+right+'</div>';
 }
 function drawBovisParisSum(items,search){
@@ -1580,8 +1581,7 @@ function drawBovisParisSerials(group,search){
     return;
   }
   const headers=columns.map(col=>'<th scope="col" title="'+escapeHtml(col.type)+'">'+
-    '<span class="fr-paris-serial-type">'+escapeHtml(col.type)+'</span>'+
-    '<span class="fr-paris-serial-count">'+col.serials.length+'</span></th>').join('');
+    '<span class="fr-paris-serial-type">'+escapeHtml(col.type)+'</span></th>').join('');
   const rows=Array.from({length:rowCount},(_,index)=>'<tr>'+
     columns.map(col=>{
       const serial=col.serials[index];
