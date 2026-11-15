@@ -80,131 +80,15 @@ const FR_LAYOUT_WAREHOUSES=[
   {key:'bovis-marseille',name:'Bovis Marsylia',aliases:['Bovis Marseille']},
   {key:'bovis-toulouse',name:'Bovis Tuluza',aliases:['Bovis Toulouse']}
 ];
-// Docelowy ekran Box FR: na razie tylko jawnie fikcyjna historia do oceny UI.
-// Po akceptacji wyglądu podmienimy źródło na wizyty w D1, bez przebudowy strony.
-// Nie zapisujemy przykładów do D1 ani do pamięci urządzenia.
-const FR_BOX_MOVEMENT_EXAMPLES={
-  toulouse:[
-    {id:'FR-PREVIEW-TL-01',date:'12.11.2026',time:'09:20',team:'TEST-A',plate:'TEST 001',
-      note:'Przykładowa wizyta mieszana. Wydanie i zwrot podczas jednego przyjazdu.',
-      lines:[
-        {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:3,returned:0},
-        {code:'MG-000-021',name:'CEOWNIK DACHU DŁUGI',pickup:2,returned:1},
-        {code:'MG-000-025',name:'CZUJNIK T0',pickup:0,returned:4}
-      ]},
-    {id:'FR-PREVIEW-TL-02',date:'10.11.2026',time:'15:40',team:'TEST-B',plate:'TEST 002',
-      note:'Przykładowe pobranie bez zwrotu.',
-      lines:[
-        {code:'MG-000-030',name:'DASZEK LED',pickup:5,returned:0},
-        {code:'MG-000-027',name:'CZUJNIK T2',pickup:2,returned:0}
-      ]},
-    {id:'FR-PREVIEW-TL-03',date:'08.11.2026',time:'11:15',team:'TEST-C',plate:'TEST 003',
-      note:'Przykładowy zwrot bez pobrania.',
-      lines:[
-        {code:'MG-000-015',name:'ANTENA INDOOR',pickup:0,returned:3},
-        {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:2}
-      ]}
-  ],
-  paris:[
-    {id:'FR-PREVIEW-PA-01',date:'12.11.2026',time:'16:04',team:'TEST-A',plate:'TEST 001',
-      note:'Przykładowe pobranie i zwrot części podczas tej samej wizyty.',
-      lines:[
-        {code:'MG-000-015',name:'ANTENA INDOOR',pickup:10,returned:0},
-        {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:10,returned:0},
-        {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:10}
-      ]},
-    {id:'FR-PREVIEW-PA-02',date:'11.11.2026',time:'13:18',team:'TEST-D',plate:'TEST 004',
-      note:'Przykładowe pobranie z Box Paryż.',
-      lines:[
-        {code:'MG-000-027',name:'CZUJNIK T2',pickup:4,returned:0},
-        {code:'MG-000-030',name:'DASZEK LED',pickup:2,returned:0}
-      ]},
-    {id:'FR-PREVIEW-PA-03',date:'09.11.2026',time:'08:35',team:'TEST-B',plate:'TEST 002',
-      note:'Przykładowy zwrot do magazynu.',
-      lines:[
-        {code:'MG-000-021',name:'CEOWNIK DACHU DŁUGI',pickup:0,returned:2},
-        {code:'MG-000-025',name:'CZUJNIK T0',pickup:0,returned:1}
-      ]}
-  ]
-};
-
-// Ekipa BG: ten sam przykład jest widoczny w obydwu Boxach.
-// Wszystkie daty, numery i ilości są fikcyjne; nie istnieją w D1.
-const FR_BG_EXAMPLE_VISITS=[
-  {id:'FR-PREVIEW-BG-10',warehouseKey:'toulouse',date:'13.11.2026',time:'08:20',
-    team:'BG',plate:'TEST BG 01',note:'Przykładowa wizyta mieszana.',
-    lines:[
-      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:4,returned:1},
-      {code:'MG-000-030',name:'DASZEK LED',pickup:2,returned:0},
-      {code:'MG-000-025',name:'CZUJNIK T0',pickup:0,returned:3}
-    ]},
-  {id:'FR-PREVIEW-BG-09',warehouseKey:'paris',date:'28.10.2026',time:'16:45',
-    team:'BG',plate:'TEST BG 01',note:'Przykładowe pobranie.',
-    lines:[
-      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:5,returned:0},
-      {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:1,returned:0},
-      {code:'MG-000-027',name:'CZUJNIK T2',pickup:3,returned:0}
-    ]},
-  {id:'FR-PREVIEW-BG-08',warehouseKey:'toulouse',date:'09.10.2026',time:'12:05',
-    team:'BG',plate:'TEST BG 01',note:'Przykładowy zwrot.',
-    lines:[
-      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:0,returned:2},
-      {code:'MG-000-030',name:'DASZEK LED',pickup:0,returned:3}
-    ]},
-  {id:'FR-PREVIEW-BG-07',warehouseKey:'paris',date:'23.09.2026',time:'14:30',
-    team:'BG',plate:'TEST BG 01',note:'Przykładowe pobranie i zwrot.',
-    lines:[
-      {code:'MG-000-030',name:'DASZEK LED',pickup:4,returned:1},
-      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:2,returned:0},
-      {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:1}
-    ]},
-  {id:'FR-PREVIEW-BG-06',warehouseKey:'toulouse',date:'04.09.2026',time:'10:10',
-    team:'BG',plate:'TEST BG 01',note:'Przykładowe pobranie.',
-    lines:[
-      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:6,returned:0},
-      {code:'MG-000-025',name:'CZUJNIK T0',pickup:2,returned:0}
-    ]},
-  {id:'FR-PREVIEW-BG-05',warehouseKey:'paris',date:'12.08.2026',time:'17:05',
-    team:'BG',plate:'TEST BG 02',note:'Przykładowa wizyta mieszana.',
-    lines:[
-      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:2,returned:4},
-      {code:'MG-000-027',name:'CZUJNIK T2',pickup:3,returned:0}
-    ]},
-  {id:'FR-PREVIEW-BG-04',warehouseKey:'toulouse',date:'29.07.2026',time:'09:30',
-    team:'BG',plate:'TEST BG 02',note:'Przykładowe pobranie.',
-    lines:[
-      {code:'MG-000-021',name:'CEOWNIK DACHU DŁUGI',pickup:5,returned:0},
-      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:1,returned:0}
-    ]},
-  {id:'FR-PREVIEW-BG-03',warehouseKey:'paris',date:'16.06.2026',time:'15:18',
-    team:'BG',plate:'TEST BG 02',note:'Przykładowy zwrot.',
-    lines:[
-      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:0,returned:1},
-      {code:'MG-000-012',name:'ANTENA OUTDOOR',pickup:0,returned:2}
-    ]},
-  {id:'FR-PREVIEW-BG-02',warehouseKey:'toulouse',date:'03.06.2026',time:'08:50',
-    team:'BG',plate:'TEST BG 02',note:'Przykładowe pobranie i zwrot.',
-    lines:[
-      {code:'MG-000-030',name:'DASZEK LED',pickup:3,returned:2},
-      {code:'MG-000-025',name:'CZUJNIK T0',pickup:1,returned:0},
-      {code:'MG-000-015',name:'ANTENA INDOOR',pickup:0,returned:1}
-    ]},
-  {id:'FR-PREVIEW-BG-01',warehouseKey:'paris',date:'07.05.2026',time:'13:05',
-    team:'BG',plate:'TEST BG 02',note:'Przykładowe pobranie.',
-    lines:[
-      {code:'MG-000-013',name:'ANTENA MEDUZA',pickup:2,returned:0},
-      {code:'MG-000-030',name:'DASZEK LED',pickup:4,returned:0}
-    ]}
-];
+// Real French BOX visit presentation. No bundled fake visits or teams.
+// The existing table, filters and full-visit matrix are kept unchanged.
 function frPreviewVisitSort(a,b){
   const stamp=v=>{
-    const [day,month,year]=v.date.split('.');
-    return year+month+day+'T'+v.time;
+    const [day='',month='',year='']=String(v.date||'').split('.');
+    return year+month+day+'T'+String(v.time||'');
   };
   return stamp(b).localeCompare(stamp(a));
 }
-// ISO week number and ISO week-year from the fictional FR visit's DD.MM.YYYY.
- // Year matters around New Year's, when week 01 can belong to the next year.
 function frBoxWeek(dateTextValue){
   const match=String(dateTextValue||'').match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if(!match)return {week:0,year:0};
@@ -217,31 +101,41 @@ function frBoxWeek(dateTextValue){
   const start=new Date(Date.UTC(isoYear,0,1));
   return {week:Math.ceil((((date-start)/86400000)+1)/7),year:isoYear};
 }
-function frBoxPreviewVisits(key){
-  return [...(FR_BOX_MOVEMENT_EXAMPLES[key]||[]),
-    ...FR_BG_EXAMPLE_VISITS.filter(v=>v.warehouseKey===key)]
-    .sort(frPreviewVisitSort);
-}
-function frCrewPreviewVisits(team){
-  return ['toulouse','paris']
-    .flatMap(frBoxPreviewVisits)
-    .filter(v=>v.team===team).sort(frPreviewVisitSort);
-}
-// Trial vehicle history uses the existing fictional Box visit structures.
- // It never changes crew, warehouse, vehicle or D1 stock records.
-function frVehiclePreviewVisits(team,plate){
-  const original=frCrewPreviewVisits(team);
-  if(original.length>=3)return original;
-  return FR_BG_EXAMPLE_VISITS.map((visit,i)=>({
-    ...visit,id:'FR-VEH-PREVIEW-'+i+'-'+team,team,
-    plate:plate||'AUTO TEST',note:'Fikcyjne dane do oceny układu.'
-  }));
-}
+
 function frPreviewWarehouseName(key){
   return key==='toulouse'?'Box Toulouse':'Box Paryż';
 }
-function frPreviewVisitQty(visit,type){
-  return visit.lines.reduce((total,line)=>total+Number(line[type]||0),0);
+function frBoxRealVisits(key){
+  return (state.frBoxVisits||[]).filter(visit=>visit.warehouseKey===key)
+    .sort(frPreviewVisitSort);
+}
+function frCrewRealVisits(team){
+  return (state.frBoxVisits||[]).filter(visit=>visit.team===team)
+    .sort(frPreviewVisitSort);
+}
+function normalizeFrBoxVisits(records){
+  return (Array.isArray(records)?records:[]).map(record=>{
+    const key=record.warehouseId==='FR-TOULOUSE'?'toulouse':
+      record.warehouseId==='FR-PARIS'?'paris':null;
+    if(!key)return null;
+    const raw=String(record.startedAt||'');
+    const parsed=new Date(raw.includes('T')?raw:raw.replace(' ','T')+'Z');
+    let date='—',time='—';
+    if(!Number.isNaN(parsed.getTime())){
+      const parts=Object.fromEntries(
+        new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',
+          day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',
+          minute:'2-digit',hourCycle:'h23'}).formatToParts(parsed)
+          .filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+      date=parts.day+'.'+parts.month+'.'+parts.year;
+      time=parts.hour+':'+parts.minute;
+    }
+    return {id:record.id,warehouseKey:key,date,time,team:record.team||'—',
+      plate:record.plate||'',note:record.note||'',lines:Array.isArray(record.lines)?
+        record.lines.map(line=>({code:line.code||line.partId||'',
+          name:line.name||'Część',pickup:Number(line.pickup)||0,
+          returned:Number(line.returned)||0})) :[]};
+  }).filter(Boolean).sort(frPreviewVisitSort);
 }
 const BELLEVILLE_SERVICE={key:'service',name:'Serwisy',icon:'⚙'};
 // TEMPORARY POLISH OFFICE PREVIEW ONLY. These two imaginary crews and all
@@ -565,7 +459,7 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -1193,6 +1087,7 @@ function showFrBoxMovements(key,realId,warehouseName){
   state.preview={type:'fr-box-movements',warehouseKey:key,warehouseName:label};
   if(real)state.warehouse=realId;
   state.frExpanded=key;
+  state.frBoxVisits=null;
   state.bovisExpanded=false;
   state.warehouseMenus.FR=true;
   state.search='';
@@ -2119,7 +2014,7 @@ function syncFrCrewToolbar(){
 }
 function drawFrCrewHistory({embed=false,crewOverride=null,visitsOverride=null,queryOverride=null}={}){
   const team=crewOverride||state.frMovementCrew;
-  const all=visitsOverride||frCrewPreviewVisits(team);
+  const all=visitsOverride||frCrewRealVisits(team);
   const chosen=all.filter(visit=>state.frCrewWarehouseFilter==='all'||
     visit.warehouseKey===state.frCrewWarehouseFilter);
   const query=String(queryOverride??state.search).trim().toLocaleLowerCase('pl');
@@ -2247,7 +2142,7 @@ function drawFrBoxMovements(){
   syncFrCrewToolbar();
   if(state.frMovementCrew){drawFrCrewHistory();return;}
   const key=state.preview?.warehouseKey;
-  const entries=frBoxPreviewVisits(key);
+  const entries=frBoxRealVisits(key);
   const query=state.search.trim().toLocaleLowerCase('pl');
   const matches=visit=>{
     if(!query)return true;
@@ -3485,8 +3380,23 @@ async function render({silent=false}={}){
     errorBanner('');drawBovisOverview();return;
   }
   if(state.view==='frMovements'){
-    errorBanner('');
-    drawFrBoxMovements();
+    const ticket=++state.requestId;
+    if(!silent)$('tableArea').innerHTML='<div class="loading">Wczytywanie wizyt ekip z D1…</div>';
+    try{
+      const response=await api('frBoxVisits');
+      if(ticket!==state.requestId||state.view!=='frMovements')return;
+      state.frBoxVisits=normalizeFrBoxVisits(response.visits);
+      errorBanner('');
+      drawFrBoxMovements();
+      markSynced();
+    }catch(ex){
+      if(ticket!==state.requestId)return;
+      state.frBoxVisits=[];
+      errorBanner(ex.message||'Nie udało się pobrać historii wizyt.');
+      $('tableArea').innerHTML='<div class="empty">Historia wizyt jest niedostępna.</div>';
+      $('tableFooter').textContent='';
+      if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
+    }
     return;
   }
   if(state.view==='vehicles'){
@@ -4132,7 +4042,7 @@ document.addEventListener('click',e=>{
   const crew=e.target.closest('[data-fr-movement-crew]');
   if(crew&&state.view==='frMovements'){
     const team=crew.dataset.frMovementCrew;
-    if(!frCrewPreviewVisits(team).length)return;
+    if(!frCrewRealVisits(team).length)return;
     state.frMovementCrew=team;
     state.frCrewWarehouseFilter='all';
     state.frCrewMatrixScroll=0;
