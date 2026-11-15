@@ -17,9 +17,10 @@ async function ready(db){
   const r=await db.prepare(
     "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ("+
     "'fr_warehouse_qr','fr_vehicle_usage','fr_visits','fr_sessions','fr_session_lines',"+
-    "'fr_vehicle_events','fr_vehicle_event_lines','fr_vehicle_event_fingerprints','vehicle_stock','vehicles')"
+    "'fr_vehicle_events','fr_vehicle_event_lines','fr_vehicle_event_fingerprints','vehicle_stock','vehicles',"+
+    "'fr_crew_stock','fr_crew_first_inventory','fr_crew_stock_revisions')"
   ).first();
-  return Number(r?.n)===10;
+  return Number(r?.n)===13;
 }
 // Non-destructive first-use bootstrap. Never updates existing warehouse quantities.
 async function ensureSchema(db){
@@ -81,7 +82,22 @@ async function ensureSchema(db){
       "PRIMARY KEY(event_id,part_id))",
     "CREATE TABLE IF NOT EXISTS fr_vehicle_event_fingerprints ("+
       "event_id TEXT PRIMARY KEY REFERENCES fr_vehicle_events(id),"+
-      "content_hash TEXT NOT NULL)"
+      "content_hash TEXT NOT NULL)",
+    // France only: team stock must NOT be shared by license plate.
+    "CREATE TABLE IF NOT EXISTS fr_crew_stock ("+
+      "user_id TEXT NOT NULL REFERENCES users(id),"+
+      "part_id TEXT NOT NULL REFERENCES parts(id),"+
+      "quantity INTEGER NOT NULL CHECK(quantity>=0),"+
+      "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"+
+      "PRIMARY KEY(user_id,part_id))",
+    "CREATE TABLE IF NOT EXISTS fr_crew_first_inventory ("+
+      "user_id TEXT PRIMARY KEY REFERENCES users(id),"+
+      "event_id TEXT NOT NULL REFERENCES fr_vehicle_events(id),"+
+      "completed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE TABLE IF NOT EXISTS fr_crew_stock_revisions ("+
+      "user_id TEXT PRIMARY KEY REFERENCES users(id),"+
+      "revision INTEGER NOT NULL DEFAULT 0,"+
+      "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
   ];
   for(const sql of ddl)await db.prepare(sql).run();
   await db.prepare(
@@ -98,12 +114,18 @@ async function vehicle(db,userId){
     'JOIN vehicles v ON v.id=a.vehicle_id WHERE a.user_id=? AND v.active=1'
   ).bind(userId).first();
 }
-async function hasCrewVehicleInventory(db,userId,vehicleId){
-  const last=await db.prepare(
-    "SELECT 1 FROM fr_vehicle_events "+
-    "WHERE vehicle_id=? AND user_id=? AND type='INWENTARYZACJA' LIMIT 1"
-  ).bind(vehicleId,userId).first();
-  return Boolean(last);
+async function hasCrewVehicleInventory(db,userId,_vehicleId){
+  // First inventory is per crew, not per vehicle registration.
+  const row=await db.prepare(
+    'SELECT 1 FROM fr_crew_first_inventory WHERE user_id=? LIMIT 1'
+  ).bind(userId).first();
+  return Boolean(row);
+}
+async function crewStockVersion(db,userId){
+  const row=await db.prepare(
+    'SELECT revision FROM fr_crew_stock_revisions WHERE user_id=?'
+  ).bind(userId).first();
+  return Math.max(0,Number(row?.revision||0));
 }
 async function parts(db){
   const staged=!!await db.prepare(
@@ -393,19 +415,22 @@ async function updateVehicleStock(db,user,data){
   const byId=new Map();
   for(const row of changes){
     const id=map.get(entryCode(row.kod));
-    if(!id||!allowed.has(id)||byId.has(id))throw Error('Nieznana część samochodowa lub powtórzona pozycja.');
+    if(!id||!allowed.has(id)||byId.has(id))
+      throw Error('Nieznana część samochodowa lub powtórzona pozycja.');
     const absolute=row.stan!==undefined;
     const value=Number(absolute?row.stan:row.delta);
     if(!Number.isSafeInteger(value)||(absolute&&value<0)||(!absolute&&value===0))
       throw Error('Nieprawidłowa ilość części.');
     byId.set(id,{absolute,value});
   }
-  if(!await hasCrewVehicleInventory(db,user.id,car.id)){
-    if(!inventory)throw Error('Najpierw wykonaj inwentaryzację samochodu.');
+  const firstDone=await hasCrewVehicleInventory(db,user.id,car.id);
+  if(!firstDone){
+    if(!inventory)throw Error('Najpierw wykonaj inwentaryzację części ekipy.');
     if(byId.size!==allowed.size||[...byId.values()].some(x=>!x.absolute))
-      throw Error('Wpisz stan każdej części samochodowej, również 0.');
+      throw Error('Wpisz stan każdej części ekipy, również 0.');
   }
-  const hash=await fingerprint({car:car.id,inventory,
+  // The crew owns the inventory. A plate change never changes the event hash.
+  const hash=await fingerprint({crew:user.id,inventory,
     changes:[...byId.entries()].map(([id,v])=>[id,v.absolute,v.value])
       .sort((a,b)=>a[0].localeCompare(b[0]))});
   const previous=await db.prepare(
@@ -414,7 +439,8 @@ async function updateVehicleStock(db,user,data){
   if(previous){
     if(previous.content_hash!==hash)
       throw Error('Operacja została wcześniej zapisana z inną zawartością.');
-    return {ok:true,duplicate:true,inwentaryzacjaWykonana:inventory?true:undefined};
+    return {ok:true,duplicate:true,inwentaryzacjaWykonana:inventory?true:undefined,
+      wersjaStanuAuta:await crewStockVersion(db,user.id)};
   }
   const statements=[db.prepare(
     'INSERT INTO fr_vehicle_events(id,user_id,vehicle_id,type) VALUES(?,?,?,?)'
@@ -424,21 +450,33 @@ async function updateVehicleStock(db,user,data){
     ).bind(eventId,hash)];
   for(const [id,x] of byId){
     const current=await db.prepare(
-      'SELECT quantity FROM vehicle_stock WHERE vehicle_id=? AND part_id=?'
-    ).bind(car.id,id).first();
+      'SELECT quantity FROM fr_crew_stock WHERE user_id=? AND part_id=?'
+    ).bind(user.id,id).first();
     const before=current?Number(current.quantity):null;
     const after=x.absolute?x.value:Math.max(0,Number(before||0)+x.value);
     statements.push(db.prepare(
       'INSERT INTO fr_vehicle_event_lines(event_id,part_id,quantity_before,quantity_after) VALUES(?,?,?,?)'
     ).bind(eventId,id,before,after));
     statements.push(db.prepare(
-      'INSERT INTO vehicle_stock(vehicle_id,part_id,quantity,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP) '+
-      'ON CONFLICT(vehicle_id,part_id) DO UPDATE SET quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP'
-    ).bind(car.id,id,after));
+      'INSERT INTO fr_crew_stock(user_id,part_id,quantity,updated_at) '+
+      'VALUES(?,?,?,CURRENT_TIMESTAMP) '+
+      'ON CONFLICT(user_id,part_id) DO UPDATE SET '+
+      'quantity=excluded.quantity,updated_at=CURRENT_TIMESTAMP'
+    ).bind(user.id,id,after));
   }
+  if(inventory)statements.push(db.prepare(
+    'INSERT OR IGNORE INTO fr_crew_first_inventory(user_id,event_id) VALUES(?,?)'
+  ).bind(user.id,eventId));
+  statements.push(db.prepare(
+    'INSERT INTO fr_crew_stock_revisions(user_id,revision,updated_at) '+
+    'VALUES(?,1,CURRENT_TIMESTAMP) '+
+    'ON CONFLICT(user_id) DO UPDATE SET '+
+    'revision=fr_crew_stock_revisions.revision+1,updated_at=CURRENT_TIMESTAMP'
+  ).bind(user.id));
   await db.batch(statements);
   return {ok:true,inwentaryzacjaWykonana:inventory?true:undefined,
-    ostatniaInwentaryzacja:inventory?new Date().toISOString():undefined};
+    ostatniaInwentaryzacja:inventory?new Date().toISOString():undefined,
+    wersjaStanuAuta:await crewStockVersion(db,user.id)};
 }
 async function action(db,user,body){
   const type=entryCode(body.action),data=body.payload||{};
