@@ -7239,40 +7239,40 @@
 }
 
 
-/* Bovis Paryż: four nearly square capacity tiles (2 x 2).
-   Applies to SUMA and the individual module groups; no other warehouses. */
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metrics,
+/* Bovis Paryż: small 2x2 tiles only in OUTDOOR / INDOOR / BQ / NEW GEN.
+   SUMA keeps its earlier styles, with no changes to its layout. */
 .app.view-bovis-paris.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metrics{
   grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px;
+  gap:7px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric,
 .app.view-bovis-paris.view-stocks.view-modules
   .fr-paris-module-workspace--serial .fr-paris-module-metric{
   display:flex;
   flex-direction:column;
-  align-items:stretch;
   justify-content:space-between;
-  aspect-ratio:1;
-  min-height:105px;
-  padding:12px;
+  align-items:stretch;
+  aspect-ratio:auto;
+  height:68px;
+  min-height:0;
+  padding:7px 9px;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric span{
+.app.view-bovis-paris.view-stocks.view-modules
+  .fr-paris-module-workspace--serial .fr-paris-module-metric span{
   white-space:normal;
-  font-size:11px;
-  line-height:1.25;
+  font-size:10px;
+  line-height:1.2;
 }
-.app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric strong{
+.app.view-bovis-paris.view-stocks.view-modules
+  .fr-paris-module-workspace--serial .fr-paris-module-metric strong{
   align-self:flex-end;
-  font-size:clamp(16px,1.4vw,20px);
+  font-size:14px;
   line-height:1.15;
 }
 @media(max-width:600px){
-  .app.view-bovis-paris.view-stocks.view-modules .fr-paris-module-metric,
   .app.view-bovis-paris.view-stocks.view-modules
     .fr-paris-module-workspace--serial .fr-paris-module-metric{
-    min-height:100px;
-    padding:9px;
+    height:64px;
+    padding:7px;
   }
 }
