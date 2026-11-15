@@ -1449,8 +1449,7 @@ function drawFrBoxMovements(){
       '<div class="fr-mov-expanded-card">'+
       '<div class="fr-mov-expanded-top"><div><strong>Wizyta '+escapeHtml(visit.team)+'</strong>'+
       '<span>'+escapeHtml(warehouse)+' · '+escapeHtml(visit.date)+' · '+escapeHtml(visit.time)+
-      ' · '+escapeHtml(visit.plate)+'</span></div>'+
-      '<span class="fr-mov-example-id">'+escapeHtml(visit.id)+'</span></div>'+
+      ' · '+escapeHtml(visit.plate)+'</span></div></div>'+
       '<div class="fr-mov-lines-wrap"><table class="fr-mov-lines">'+
       '<thead><tr><th>Indeks</th><th>Nazwa części</th>'+
       '<th>Pobranie</th><th>Zwrot</th></tr></thead>'+
