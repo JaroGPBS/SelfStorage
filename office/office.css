@@ -6173,3 +6173,123 @@
 .app.view-vehicles .vehicle-fr-split .vehicle-split-history-table td:not(:last-child){
   border-right:2px solid #b3bfcd;
 }
+
+
+/* France: one-line, compact sidebar action with an actual comparison-table icon. */
+#sidebar .office-market-list .office-aggregate-link{
+  display:flex;flex-wrap:nowrap;align-items:center;gap:9px;
+  width:calc(100% - 10px);min-height:32px;
+  margin:2px 0 2px 10px;padding:6px 9px;
+  border:0;border-radius:6px;
+  font-size:12px;font-weight:650;line-height:1.25;
+  white-space:nowrap;text-align:left;
+}
+#sidebar .office-aggregate-symbol{
+  display:inline-flex;flex:0 0 18px;
+  align-items:center;justify-content:center;
+  width:18px;height:18px;line-height:1;
+  color:#c4cbd5;
+}
+#sidebar .office-aggregate-symbol svg{display:block;width:17px;height:17px}
+#sidebar .office-aggregate-label{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* French aggregate: single low toolbar, no second large title / description. */
+.app.view-aggregate .breadcrumbs strong{font-size:18px;font-weight:800}
+.app.view-aggregate .table-toolbar{
+  display:flex;flex-wrap:nowrap;align-items:center;
+  gap:9px;padding:7px 11px;min-height:46px;
+}
+.app.view-aggregate .receipt-toolbar-info{display:none!important}
+.app.view-aggregate .aggregate-tabs{
+  display:inline-flex;flex:0 0 auto;
+  border:1px solid #dbe1e7;border-radius:6px;overflow:hidden;
+}
+.app.view-aggregate .aggregate-tab{
+  min-height:30px;padding:5px 12px;
+  background:#fff;border:0;border-right:1px solid #dbe1e7;
+  color:#5e6977;font-size:11px;font-weight:800;
+}
+.app.view-aggregate .aggregate-tab:last-child{border-right:0}
+.app.view-aggregate .aggregate-tab.active{
+  background:#303b47;color:white;
+}
+.app.view-aggregate .search-wrap{
+  flex:1 1 230px;min-width:150px;max-width:320px;
+  width:auto;height:32px;
+}
+.app.view-aggregate .receipt-toolbar-actions{
+  flex:0 0 auto;gap:5px;margin-left:auto;
+}
+.app.view-aggregate .receipt-toolbar-actions .btn{
+  min-height:31px;padding:5px 8px;font-size:11px;
+}
+.app.view-aggregate .tools-right{flex:0 0 auto;gap:4px}
+.app.view-aggregate .tools-right .btn{
+  min-height:31px;padding:5px 8px;font-size:11px;
+}
+.app.view-aggregate #export{display:none}
+.app.view-aggregate .content{padding-top:7px}
+@media(max-width:850px){
+  .app.view-aggregate .table-toolbar{flex-wrap:wrap;row-gap:7px}
+  .app.view-aggregate .search-wrap{
+    flex:1 1 180px;max-width:none;
+  }
+  .app.view-aggregate .receipt-toolbar-actions{margin-left:0}
+}
+@media(max-width:580px){
+  .app.view-aggregate .table-toolbar{gap:6px;padding:6px}
+  .app.view-aggregate .aggregate-tabs{flex:1 0 100%}
+  .app.view-aggregate .aggregate-tab{flex:1}
+  .app.view-aggregate .search-wrap{flex:1 1 100%;max-width:none}
+  .app.view-aggregate .receipt-toolbar-actions{margin-left:auto}
+}
+
+/* Module count layout: one warehouse column shows OK / NOK together. */
+.app.view-aggregate .table.aggregate-modules-table{
+  table-layout:auto;width:max-content;min-width:100%;
+  border-collapse:separate;border-spacing:0;
+  font-size:11px;
+}
+.app.view-aggregate .table.aggregate-modules-table th{
+  padding:9px 8px;line-height:1.35;
+  white-space:normal;
+}
+.app.view-aggregate .table.aggregate-modules-table th:first-child,
+.app.view-aggregate .table.aggregate-modules-table td:first-child{
+  min-width:92px;width:92px;
+}
+.app.view-aggregate .table.aggregate-modules-table th:nth-child(2),
+.app.view-aggregate .table.aggregate-modules-table td:nth-child(2){
+  min-width:105px;width:105px;
+}
+.app.view-aggregate .table.aggregate-modules-table th:nth-child(n+3),
+.app.view-aggregate .table.aggregate-modules-table td:nth-child(n+3){
+  width:100px;min-width:100px;max-width:112px;
+  text-align:center;padding:8px 6px;
+}
+.app.view-aggregate .table.aggregate-modules-table tbody td{
+  padding-top:7px;padding-bottom:7px;
+}
+.app.view-aggregate .aggregate-module-group{
+  font-size:10px;font-weight:700;color:#677382;
+}
+.app.view-aggregate .aggregate-module-type{
+  font-size:11px;font-weight:800;color:#2e3d4b;
+}
+.app.view-aggregate .aggregate-module-pair{
+  display:inline-flex;gap:5px;
+  justify-content:center;align-items:center;
+  font-size:11px;
+}
+.app.view-aggregate .aggregate-module-unknown{
+  color:#a1adba;font-weight:400;
+}
+.app.view-aggregate .aggregate-module-slash{
+  color:#b5bec8;font-weight:400;
+}
+.app.view-aggregate .table.aggregate-modules-table tbody tr:nth-child(even){
+  background:#fafbfd;
+}
