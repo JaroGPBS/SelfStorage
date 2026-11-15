@@ -5,9 +5,9 @@ const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<
 // Self-contained presentation-only module registry; no connection to D1.
 const MODULE_GROUPS=[
   {id:'outdoor',name:'OUTDOOR',types:['FM','LQ','RQ','XS','ODL','ODR']},
-  {id:'indoor',name:'INDOOR',types:['CU','DUO','HICU','HIDUO','CU RJ45','HICU RJ45']},
+  {id:'indoor',name:'INDOOR',types:['CU','DUO','HICU','HIDUO','HIUno','CU RJ45','HICU RJ45']},
   {id:'bq',name:'BQ',types:['CU','DUO','CU OUT','DUO OUT']},
-  {id:'newgen',name:'NEW GEN',types:['CU IN','DUO L','DUO R']}
+  {id:'newgen',name:'NEW GEN',types:['CU','DUO L','DUO R']}
 ];
 const MODULE_CATEGORIES=[{id:'all',name:'SUMA'},...MODULE_GROUPS.map(g=>({id:g.id,name:g.name}))];
 // Isolated example quantities for evaluating the French Bovis Paryż module screen.
@@ -43,7 +43,7 @@ const BOVIS_OVERVIEW_PREVIEW={
     {key:'bovis-nantes',name:'Nantes',area:180,stock:{
       'outdoor:FM':15,'outdoor:LQ':8,'outdoor:RQ':11,'outdoor:ODL':5,
       'outdoor:ODR':4,'indoor:CU':3,'indoor:DUO':2,'bq:CU OUT':1,
-      'newgen:CU IN':1}},
+      'newgen:CU':1}},
     {key:'bovis-nancy',name:'Nancy',area:150,stock:{
       'outdoor:FM':11,'outdoor:LQ':7,'outdoor:RQ':6,'outdoor:ODL':3,
       'outdoor:ODR':3,'indoor:HICU':2,'indoor:CU RJ45':1,
