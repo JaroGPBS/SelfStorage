@@ -3116,6 +3116,48 @@ function frVehicleCrewPaneTabs(){
       '" aria-pressed="'+(key===state.frVehicleDetailView)+'"'+
       (key===state.frVehicleDetailView?' class="active"':'')+'>'+label+'</button>').join('')+'</div>';
 }
+// Convert real D1 movements into the existing Office visit matrix.
+// No preview sessions are ever used in the French crew history tab.
+function frVehicleRealVisits(crew,parts,history){
+  if(!crew?.id)return [];
+  const byPart=new Map((parts||[]).filter(p=>p.id).map(p=>[p.id,p]));
+  const bySession=new Map();
+  for(const move of Array.isArray(history)?history:[]){
+    if(move.userId!==crew.id)continue;
+    const warehouseKey=move.warehouseId==='FR-TOULOUSE'?'toulouse':
+      move.warehouseId==='FR-PARIS'?'paris':null;
+    if(!warehouseKey||!move.sessionId)continue;
+    let visit=bySession.get(move.sessionId);
+    if(!visit){
+      const raw=String(move.date||'');
+      const timestamp=new Date(raw.includes('T')?raw:raw.replace(' ','T')+'Z');
+      let date='—',time='—';
+      if(!Number.isNaN(timestamp.getTime())){
+        const format=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',
+          day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',
+          minute:'2-digit',hourCycle:'h23'});
+        const values=Object.fromEntries(format.formatToParts(timestamp)
+          .filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+        date=values.day+'.'+values.month+'.'+values.year;
+        time=values.hour+':'+values.minute;
+      }
+      visit={id:move.sessionId,warehouseKey,date,time,
+        team:crew.team,plate:crew.plate||'',note:'',lines:[]};
+      bySession.set(move.sessionId,visit);
+    }
+    const part=byPart.get(move.partId);
+    const code=part?.part_number||part?.source_code||move.partId||'';
+    const existing=visit.lines.find(line=>line.id===move.partId);
+    const entry=existing||{id:move.partId,code,name:move.partName||part?.name||'Część',
+      pickup:0,returned:0};
+    const quantity=Number(move.quantity);
+    if(!Number.isFinite(quantity)||quantity<=0)continue;
+    if(move.direction==='POBRANIE')entry.pickup+=quantity;
+    else if(move.direction==='ZWROT')entry.returned+=quantity;
+    if(!existing)visit.lines.push(entry);
+  }
+  return [...bySession.values()];
+}
 function frVehicleHistoryFilters(){
   const filters=[['all','Wszystkie'],['toulouse','Tuluza'],['paris','Paryż']];
   return '<div class="fr-vehicle-history-controls">'+
@@ -3126,7 +3168,7 @@ function frVehicleHistoryFilters(){
     '<label class="fr-vehicle-history-search">Szukaj <input id="frVehicleHistorySearch" '+
     'type="search" autocomplete="off" placeholder="Część, data, Box..." value="'+
     escapeHtml(state.frVehicleHistorySearch)+'"></label>'+
-    '<span class="fr-vehicle-fake-badge">Dane przykładowe</span></div>';
+    '<span class="fr-vehicle-fake-badge">Zapisane operacje D1</span></div>';
 }
 function drawFrenchVehicleFleet(parts,crews,history=[]){
   const entries=Array.isArray(parts)?parts:[];
@@ -3188,13 +3230,13 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
           escapeHtml(value)+'</strong></div></div>').join('')+'</div>');
   const crewPanes=!summary&&chosen?frVehicleCrewPaneTabs():'';
   if(!summary&&chosen&&state.frVehicleDetailView==='history'){
-    const mock=frVehiclePreviewVisits(chosen.team,chosen.plate);
-    const example=drawFrCrewHistory({embed:true,crewOverride:chosen.team,
-      visitsOverride:mock,queryOverride:state.frVehicleHistorySearch});
+    const visits=frVehicleRealVisits(chosen,entries,history);
+    const records=drawFrCrewHistory({embed:true,crewOverride:chosen.team,
+      visitsOverride:visits,queryOverride:state.frVehicleHistorySearch});
     $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview fr-weekly-office fr-vehicle-crew-trial">'+
       tabs+selection+crewPanes+
-      '<section class="fr-vehicle-history-panel" aria-label="Przykładowa historia ruchów ekipy">'+
-      frVehicleHistoryFilters()+example.markup+'</section></div>';
+      '<section class="fr-vehicle-history-panel" aria-label="Historia zapisanych ruchów ekipy">'+
+      frVehicleHistoryFilters()+records.markup+'</section></div>';
     $('tableFooter').textContent='';
     $('searchNote').classList.add('hidden');
     $('vehicleTopScroll').classList.add('hidden');
