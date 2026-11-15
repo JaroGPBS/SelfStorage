@@ -2287,6 +2287,25 @@ function openFrenchVehicleInventory(id){
     by,items,periodStart:previous?dateText(previous.date):'',preview:false
   });
 }
+function frVehicleCrewPaneTabs(){
+  const tabs=[['stock','Stan części'],['inventory','Inwentaryzacje'],['history','Historia ruchów']];
+  return '<div class="fr-vehicle-crew-panes" role="group" aria-label="Szczegóły wybranej ekipy">'+
+    tabs.map(([key,label])=>'<button type="button" data-fr-vehicle-pane="'+key+
+      '" aria-pressed="'+(key===state.frVehicleDetailView)+'"'+
+      (key===state.frVehicleDetailView?' class="active"':'')+'>'+label+'</button>').join('')+'</div>';
+}
+function frVehicleHistoryFilters(){
+  const filters=[['all','Wszystkie'],['toulouse','Tuluza'],['paris','Paryż']];
+  return '<div class="fr-vehicle-history-controls">'+
+    '<div class="fr-crew-warehouse-filter" role="group" aria-label="Pokaż wizyty z magazynu">'+
+    filters.map(([key,label])=>'<button type="button" data-fr-vehicle-history-filter="'+key+'"'+
+      ' aria-pressed="'+(key===state.frCrewWarehouseFilter)+'"'+
+      (key===state.frCrewWarehouseFilter?' class="active"':'')+'>'+label+'</button>').join('')+'</div>'+
+    '<label class="fr-vehicle-history-search">Szukaj <input id="frVehicleHistorySearch" '+
+    'type="search" autocomplete="off" placeholder="Część, data, Box..." value="'+
+    escapeHtml(state.frVehicleHistorySearch)+'"></label>'+
+    '<span class="fr-vehicle-fake-badge">Dane przykładowe</span></div>';
+}
 function drawFrenchVehicleFleet(parts,crews,history=[]){
   const entries=Array.isArray(parts)?parts:[];
   const teams=Array.isArray(crews)?crews:[];
@@ -2311,6 +2330,9 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
     return values.length?String(values.reduce((a,b)=>a+Number(b),0)):'—';
   };
   const summary=state.vehicleTab==='summary';
+  const showTrialHistory=state.vehicleTab==='detail'&&state.frVehicleDetailView==='history'&&Boolean(chosen);
+  $('app').classList.toggle('view-fr-movements',showTrialHistory);
+  $('app').classList.toggle('view-fr-crew-history',showTrialHistory);
   const tabs=vehicleViewTabs(state.vehicleTab,false);
   if(state.vehicleTab==='transfers'){
     $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview">'+tabs+
@@ -2342,6 +2364,44 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
       .map(([label,value])=>'<div><span>'+escapeHtml(label)+'</span>'+
         '<div class="vehicle-preview-meta-value"><strong>'+
           escapeHtml(value)+'</strong></div></div>').join('')+'</div>');
+  const crewPanes=!summary&&chosen?frVehicleCrewPaneTabs():'';
+  if(!summary&&chosen&&state.frVehicleDetailView==='history'){
+    const mock=frVehiclePreviewVisits(chosen.team,chosen.plate);
+    const example=drawFrCrewHistory({embed:true,crewOverride:chosen.team,
+      visitsOverride:mock,queryOverride:state.frVehicleHistorySearch});
+    $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview fr-weekly-office fr-vehicle-crew-trial">'+
+      tabs+selection+crewPanes+
+      '<section class="fr-vehicle-history-panel" aria-label="Przykładowa historia ruchów ekipy">'+
+      frVehicleHistoryFilters()+example.markup+'</section></div>';
+    $('tableFooter').textContent='';
+    $('searchNote').classList.add('hidden');
+    $('vehicleTopScroll').classList.add('hidden');
+    attachFrCrewMatrixScroll();
+    return;
+  }
+  if(!summary&&chosen&&state.frVehicleDetailView==='inventory'){
+    const audits=state.frVehicleData?.inventoryVehicleId===chosen.vehicleId
+      ?state.frVehicleData?.inventories||[]:[];
+    const rows=audits.map(audit=>'<tr>'+
+      '<td>'+escapeHtml(dateText(audit.date))+'</td>'+
+      '<td>'+escapeHtml(isoWeek(audit.date))+'</td>'+
+      '<td class="fr-vehicle-count">'+escapeHtml((audit.lines||[]).length)+'</td>'+
+      '<td><button type="button" class="fr-vehicle-audit-open" '+
+      'data-fr-vehicle-inventory-id="'+escapeHtml(audit.id)+'">Otwórz raport</button></td></tr>').join('');
+    $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview fr-weekly-office">'+
+      tabs+selection+crewPanes+
+      '<section class="fr-vehicle-audit-list" aria-label="Inwentaryzacje ekipy">'+
+      '<table class="table"><thead><tr><th>Data inwentaryzacji</th><th>Tydz.</th>'+
+      '<th>Pozycji</th><th></th></tr></thead><tbody>'+
+      (rows||'<tr><td colspan="4" class="fr-vehicle-audit-empty">Brak zapisanych inwentaryzacji'+
+        (state.frVehicleData?.inventoryVehicleId===chosen.vehicleId?'.':' lub trwa wczytywanie.')+
+        '</td></tr>')+
+      '</tbody></table></section></div>';
+    $('tableFooter').textContent='';
+    $('searchNote').classList.add('hidden');
+    $('vehicleTopScroll').classList.add('hidden');
+    return;
+  }
   const ctx=document.createElement('canvas').getContext('2d');
   if(ctx)ctx.font='11px Inter, "Segoe UI", system-ui, sans-serif';
   const widthText=v=>ctx?ctx.measureText(String(v||'')).width:String(v||'').length*6.5;
@@ -2475,7 +2535,7 @@ function drawFrenchVehicleFleet(parts,crews,history=[]){
     '</details>'
   ):'';
   $('tableArea').innerHTML='<div class="vehicle-setup vehicle-preview fr-weekly-office">'+
-    tabs+selection+meta+table+historyMarkup+'</div>';
+    tabs+selection+crewPanes+meta+table+historyMarkup+'</div>';
   $('tableFooter').textContent='Francja · '+entries.length+
     ' części · '+teams.length+' ekip · rzeczywiste dane z D1.';
   $('searchNote').classList.add('hidden');
@@ -2946,12 +3006,37 @@ document.addEventListener('click',e=>{
     }
     return;
   }
+  const frenchPane=e.target.closest('[data-fr-vehicle-pane]');
+  if(frenchPane&&state.view==='vehicles'&&state.preview?.key==='vehicles'&&state.frVehicleData){
+    const pane=frenchPane.dataset.frVehiclePane;
+    if(!['stock','inventory','history'].includes(pane))return;
+    state.frVehicleDetailView=pane;
+    state.frCrewWarehouseFilter='all';
+    state.frVehicleHistorySearch='';
+    state.frCrewMatrixScroll=0;
+    drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
+    return;
+  }
+  const vehicleHistoryFilter=e.target.closest('[data-fr-vehicle-history-filter]');
+  if(vehicleHistoryFilter&&state.view==='vehicles'&&state.preview?.key==='vehicles'&&
+     state.frVehicleDetailView==='history'&&state.frVehicleData){
+    const value=vehicleHistoryFilter.dataset.frVehicleHistoryFilter;
+    if(!['all','toulouse','paris'].includes(value))return;
+    state.frCrewWarehouseFilter=value;
+    state.frCrewMatrixScroll=0;
+    drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
+    return;
+  }
   const frenchCrew=e.target.closest('[data-fr-vehicle-crew]');
   if(frenchCrew&&state.view==='vehicles'&&
      state.preview?.type==='operation'&&state.preview.key==='vehicles'){
     const id=frenchCrew.dataset.frVehicleCrew;
     if(state.frVehicleData?.crews?.some(c=>c.id===id)){
       state.frVehicleCrew=id;
+      state.frVehicleDetailView='stock';
+      state.frCrewWarehouseFilter='all';
+      state.frVehicleHistorySearch='';
+      state.frCrewMatrixScroll=0;
       drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
       loadFrenchVehicleInventories();
     }
@@ -3173,7 +3258,8 @@ document.addEventListener('click',e=>{
     return;
   }
   const crewScroll=e.target.closest('[data-fr-crew-scroll]');
-  if(crewScroll&&state.view==='frMovements'&&state.frMovementCrew){
+  if(crewScroll&&((state.view==='frMovements'&&state.frMovementCrew)||
+    (state.view==='vehicles'&&state.preview?.key==='vehicles'&&state.frVehicleDetailView==='history'))){
     const area=$('tableArea').querySelector('.fr-crew-matrix-viewport');
     area?.scrollBy({left:Number(crewScroll.dataset.frCrewScroll)*320,behavior:'smooth'});
     return;
@@ -3201,6 +3287,13 @@ $('tableArea').addEventListener('scroll',()=>{
 });
 window.addEventListener('resize',syncVehicleTopScroll);
 $('tableArea').addEventListener('change',e=>{
+  if(e.target.id==='frVehicleHistorySearch'&&state.view==='vehicles'&&
+     state.preview?.key==='vehicles'&&state.frVehicleDetailView==='history'&&state.frVehicleData){
+    state.frVehicleHistorySearch=e.target.value;
+    state.frCrewMatrixScroll=0;
+    drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
+    return;
+  }
   if(e.target.dataset.diff){if(e.target.dataset.diff==='positive')state.positive=e.target.checked;else state.negative=e.target.checked;drawInventories();}
 });
 $('newPart').addEventListener('click',openOfficeNewPart);
