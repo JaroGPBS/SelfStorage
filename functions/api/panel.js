@@ -1165,11 +1165,15 @@ async function permanentlyDeleteUnusedCrew(env,body) {
         'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
     }
   }
-  if(markedTest||aaTrialReversal){
+  if(markedTest||aaTrialReversal||
+     String(user.name||'').trim().toUpperCase()==='AA'){
     // Legacy separated test records are removed, as well as any car-only
     // inventories recorded after restoring the normal mobile workflow.
     // The real tables warehouse_stock, vehicle_stock and fr_* are untouched.
-    const others=markedTest?await db.prepare(
+    const hasTestAccounts=Boolean(await db.prepare(
+      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fr_test_accounts'"
+    ).first());
+    const others=hasTestAccounts?await db.prepare(
       'SELECT 1 FROM fr_test_accounts WHERE user_id<>? LIMIT 1'
     ).bind(id).first():null;
     // Older isolated test modes used slightly different table sets.
