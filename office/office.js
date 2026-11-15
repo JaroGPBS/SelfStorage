@@ -1047,7 +1047,7 @@ function bovisOverviewModel(source=BOVIS_OVERVIEW_PREVIEW){
   return {warehouses,totals,counts,m2};
 }
 function drawBovisOverview(){
-  const {warehouses,totals,counts,m2}=bovisOverviewModel();
+  const {warehouses,totals,counts}=bovisOverviewModel();
   const fmt=n=>new Intl.NumberFormat('pl-PL',{maximumFractionDigits:1}).format(n);
   const percent=n=>fmt(Math.round(n))+'%';
   const value=(n,unit='')=>fmt(n)+(unit?' '+unit:'');
@@ -1089,10 +1089,6 @@ function drawBovisOverview(){
         (item.total/maxMachines*100)+'%"></span>'+
     '</div><strong class="bovis-chart-value">'+fmt(item.total)+'</strong></div>').join('');
   $('officeBovisDashboard').innerHTML=
-    '<div class="bovis-dashboard-heading">'+
-      '<div><h1>Bovis – zestawienie zbiorcze</h1>'+
-        '<p>Wszystkie magazyny · liczba maszyn i wykorzystanie powierzchni</p></div>'+
-      '<span class="bovis-demo-label">Dane przykładowe – podgląd</span></div>'+
     '<div class="bovis-summary-cards">'+cards.map(([label,v])=>
       '<div class="bovis-summary-card"><span>'+escapeHtml(label)+'</span>'+
       '<strong>'+escapeHtml(v)+'</strong></div>').join('')+'</div>'+
@@ -1133,11 +1129,7 @@ function drawBovisOverview(){
         '<div class="bovis-section-heading"><h2 id="bovisTypeChartHead">Najwięcej maszyn</h2>'+
           '<span>Typy – wszystkie magazyny łącznie</span></div>'+
         '<div class="bovis-chart-list">'+typeBars+'</div>'+
-      '</section></div>'+
-    '<p class="bovis-preview-disclaimer">Wszystkie ilości i powierzchnie są fikcyjne. '+
-      'Dla potrzeb podglądu przyjęto '+value(m2,'m²')+
-      ' na każdą maszynę. Właściwe wymiary i powierzchnie magazynów '+
-      'zostaną wprowadzone później w Adminie. Nic nie jest zapisywane w magazynach.</p>';
+      '</section></div>';
 }
 function showBovisOverview(){
   // Click of Bovis opens this layout only. No server requests or state changes.
@@ -1220,6 +1212,7 @@ function setHead(title,kicker,desc){
   $('officeLabelsView').classList.toggle('hidden',!workingLabels);
   $('officeBovisDashboard').classList.toggle('hidden',!isBovisOverview);
   $('officeTableCard').classList.toggle('hidden',workingLabels||isBovisOverview);
+  $('bovisTopDescription').classList.toggle('hidden',!isBovisOverview);
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate'].includes(state.view));
   $('export').classList.toggle('hidden',state.view==='frMovements');
@@ -1249,7 +1242,7 @@ function setHead(title,kicker,desc){
   const fictionalFleet=vehicleView&&!state.preview&&
     realWarehouse(state.warehouse)?.country_code==='PL';
   $('vehicleDemoBanner').classList.toggle('hidden',!fictionalFleet);
-  $('vehicleTopExportHost').classList.toggle('hidden',!vehicleView);
+  $('vehicleTopExportHost').classList.toggle('hidden',!vehicleView&&!isBovisOverview);
   $('officeTableCard').querySelector('.table-toolbar').classList.toggle('hidden',vehicleView);
   if(vehicleView)$('vehicleTopExportHost').append($('export'));
   else $('tableToolbarTools').append($('export'));
@@ -1273,9 +1266,8 @@ function setHead(title,kicker,desc){
       :state.view==='pz'?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
   }
   // Reuse the existing synchronization control in the compact toolbar.
-  if(vehicleView){
-    // The fleet table's toolbar is intentionally hidden; keep sync visible
-    // beside the other compact actions in the top bar.
+  if(vehicleView||isBovisOverview){
+    // Keep manual synchronization beside the compact topbar heading.
     $('vehicleTopExportHost').append($('syncTime'),$('refresh'));
   }else if(compactView){
     $('receiptToolbarActions').append($('syncTime'),$('refresh'));
@@ -1298,7 +1290,9 @@ function setHead(title,kicker,desc){
   $('syncTime').classList.toggle('hidden',state.view==='frMovements'||Boolean(frEmpty)&&!vehicleView);
   if(frEmpty&&!vehicleView)$('syncTime').textContent='';
   $('refresh').disabled=false;
-  $('refresh').title='Pobierz aktualne dane';
+  $('refresh').title=isBovisOverview
+    ?'Odśwież listę magazynów. Ilości na tym ekranie są pokazowe.'
+    :'Pobierz aktualne dane';
   // French catalogue views can add shared parts, without creating stock.
 }
 function syncStockTabUI(){
@@ -3652,7 +3646,7 @@ async function synchronizeOffice(){
     if(button){button.disabled=true;button.setAttribute('aria-busy','true');}
   }
   try{
-    if(state.view==='home'||
+    if(state.view==='home'||state.view==='bovisOverview'||
        state.preview?.type==='module'||
        (state.preview?.type==='operation'&&state.view!=='vehicles')){
       // Welcome and not-yet-connected sections: update warehouse navigation,
@@ -3668,6 +3662,7 @@ async function synchronizeOffice(){
           hour:'2-digit',minute:'2-digit'
         }).format(new Date());
       }else{
+        if(state.view==='bovisOverview')drawBovisOverview();
         markSynced();
         $('syncTime').textContent=$('syncTime').textContent.replace('Aktualizacja:','Menu:');
       }
