@@ -1081,6 +1081,58 @@ async function staffMutation(env,body,actor,edit) {
 }
 
 
+// One-time guarded cleanup of AA's leaked presentation visit (12 Nov 2026).
+// It is NOT a general "undo movements" option. Never rewrite arbitrary stock.
+async function identifyAaPresentationReturn(db,userId){
+  const records=(await db.prepare(
+    'SELECT s.id AS sessionId,s.visit_id AS visitId,'+
+    's.warehouse_id AS warehouseId,s.saved_at AS savedAt,'+
+    "date(s.saved_at,'+1 hour') AS localDate,"+
+    'l.part_id AS partId,l.direction,l.quantity,'+
+    'p.part_number AS partNumber,p.name AS partName,'+
+    'v.user_id AS visitUser,v.warehouse_id AS visitWarehouse '+
+    'FROM fr_sessions s '+
+    'LEFT JOIN fr_session_lines l ON l.session_id=s.id '+
+    'LEFT JOIN parts p ON p.id=l.part_id '+
+    'LEFT JOIN fr_visits v ON v.id=s.visit_id '+
+    'WHERE s.user_id=? ORDER BY s.saved_at,s.id'
+  ).bind(userId).all()).results||[];
+  // Exactly one recorded session, one real row. Any unexpected second part,
+  // visit, date or location blocks the entire cleanup.
+  if(records.length!==1)return {error:
+    'AA ma inną liczbę zapisanych operacji niż ta jedna testowa. Nie zmieniono stanów.'};
+  const row=records[0],qty=Number(row.quantity);
+  if(row.warehouseId!=='FR-TOULOUSE'||row.visitWarehouse!=='FR-TOULOUSE'||
+     row.visitUser!==userId||row.localDate!=='2026-11-12'||
+     row.direction!=='ZWROT'||!Number.isSafeInteger(qty)||qty<=0)
+    return {error:'Wizyta AA nie odpowiada testowemu zwrotowi do Box Toulouse z 12.11.2026. Niczego nie cofnięto.'};
+  const hasIndex=Boolean(await db.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='pl_part_index_migrations'"
+  ).first());
+  const part=await db.prepare(
+    'SELECT p.id,p.part_number'+(hasIndex?',ix.new_index':'')+
+    ' FROM parts p '+(hasIndex?
+      'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
+    'WHERE p.id=?'
+  ).bind(row.partId).first();
+  if(!part||![part.part_number,part.new_index].some(x=>
+    String(x||'').trim().toUpperCase()==='MG-000-022'))
+    return {error:'Zapis AA nie dotyczy dokładnie indeksu MG-000-022. Stany pozostały bez zmian.'};
+  // If this part was touched by any subsequent operation, restoring to 0
+  // could erase a legitimate balance; require manual reconciliation instead.
+  const later=await db.prepare(
+    'SELECT 1 FROM fr_sessions s JOIN fr_session_lines l ON l.session_id=s.id '+
+    'WHERE s.warehouse_id=? AND l.part_id=? AND s.id<>? '+
+    'AND s.saved_at>=? LIMIT 1'
+  ).bind('FR-TOULOUSE',row.partId,row.sessionId,row.savedAt).first();
+  if(later)return {error:'Po teście AA były następne ruchy tej części w Tuluzie. Automatyczne cofnięcie zablokowano.'};
+  const stock=await db.prepare(
+    'SELECT quantity FROM warehouse_stock WHERE warehouse_id=? AND part_id=?'
+  ).bind('FR-TOULOUSE',row.partId).first();
+  if(!stock||Number(stock.quantity)!==qty)return {error:
+    'Stan MG-000-022 w Tuluzie różni się od zapisanego zwrotu AA. Nie zmieniono stanu; wymagana kontrola.'};
+  return {sessionId:row.sessionId,partId:row.partId,quantity:qty};
+}
 // Permanent removal is intentionally restricted to crew accounts without
 // operational history. Never touch warehouse_stock, movements or inventories.
 async function permanentlyDeleteUnusedCrew(env,body) {
