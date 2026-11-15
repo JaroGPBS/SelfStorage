@@ -4,7 +4,12 @@ import {verifyWorkerSession,workerJson} from '../../lib/pl-worker-auth.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrCarClaims,normalPlate} from '../../lib/fr-car-claims.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
+import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
 
+// One authoritative, 78-item list for both self-service BOX warehouses.
+const BOX_CATALOG_VERSION='FR-BOX-78-20261111';
+const BOX_WAREHOUSES=new Map([['FR-TOULOUSE','Box Toulouse'],['FR-PARIS','Box Paryż']]);
+const BOX_PARTS=new Map(BOX_CATALOG_SNAPSHOT.map(x=>[x.part_id,x]));
 const fail=(message,status=400)=>workerJson({ok:false,error:message},status);
 const clean=value=>String(value||'').trim();
 const plate=value=>clean(value).toUpperCase().replace(/\s+/g,'');
@@ -144,15 +149,21 @@ async function parts(db){
   return (await db.prepare(sql).all()).results||[];
 }
 function codeForPart(p){return p.source_code||p.old_index||p.new_index||p.part_number||p.id;}
-async function resolveParts(db,items){
-  const catalogue=await parts(db);
+// Resolve only parts assigned to this BOX. A globally valid part code
+// must never create a new stock row in a box that does not list that part.
+async function resolveParts(db,items,warehouseId){
+  const warehouse=BOX_WAREHOUSES.get(warehouseId);
+  if(!warehouse)throw Error('Nieprawidłowy magazyn BOX.');
+  const catalogue=(await parts(db)).filter(p=>BOX_PARTS.has(p.id));
   const mapping=new Map();
   for(const p of catalogue){
-    for(const code of [p.id,p.part_number,p.sap_number,p.source_code,p.old_index,p.new_index]){
+    const box=BOX_PARTS.get(p.id);
+    for(const code of [p.id,p.part_number,p.sap_number,p.source_code,p.old_index,
+      p.new_index,box.source_code,box.legacy_index,box.sap]){
       if(!code)continue;
       const key=entryCode(code);
-      if(mapping.has(key)&&mapping.get(key).id!==p.id)
-        mapping.set(key,null); // Refuse ambiguous codes.
+      if(mapping.has(key)&&mapping.get(key)?.id!==p.id)
+        mapping.set(key,null); // Reject ambiguous aliases.
       else if(!mapping.has(key))mapping.set(key,p);
     }
   }
@@ -162,7 +173,7 @@ async function resolveParts(db,items){
     const qty=Number(item?.ilosc??item?.qty);
     if(!code||!positive(qty))throw Error('Sprawdź kod części i ilość.');
     const p=mapping.get(code);
-    if(!p)throw Error('Nieznana lub niejednoznaczna część: '+code);
+    if(!p)throw Error('Ta część nie jest przypisana do magazynu '+warehouse+'.');
     result.set(p.id,{part:p,qty:(result.get(p.id)?.qty||0)+qty});
   }
   return result;
@@ -288,8 +299,8 @@ async function saveSession(db,user,data){
   if(visit.warehouse_id!==clean(data.idMagazynu))throw Error('Nieprawidłowy magazyn.');
   const activeCar=await vehicle(db,user.id);
   if(!activeCar||activeCar.id!==visit.vehicle_id)throw Error('Samochód zmienił się w trakcie wizyty. Sprawdź przypisanie.');
-  const pob=await resolveParts(db,data.pobranie||[]);
-  const zwr=await resolveParts(db,data.zwrot||[]);
+  const pob=await resolveParts(db,data.pobranie||[],visit.warehouse_id);
+  const zwr=await resolveParts(db,data.zwrot||[],visit.warehouse_id);
   if(!pob.size&&!zwr.size)throw Error('Brak części do zapisania.');
   const serial=m=>[...m.entries()].map(([id,x])=>[id,x.qty]).sort((a,b)=>a[0].localeCompare(b[0]));
   const hash=await fingerprint({visitId,pob:serial(pob),zwr:serial(zwr),comment:clean(data.komentarz)});
@@ -497,10 +508,23 @@ async function action(db,user,body){
   }
   if(type==='POBIERZ_DANE_STARTOWE'){
     const catalog=await parts(db);
+    const byId=new Map(catalog.map(p=>[p.id,p]));
+    // Never send the global 198-part catalogue into the BOX scanner.
+    const boxList=BOX_CATALOG_SNAPSHOT.map(box=>{
+      const p=byId.get(box.part_id);
+      if(!p)return null;
+      const kody=[p.id,p.part_number,p.sap_number,p.source_code,p.old_index,
+        p.new_index,box.source_code,box.legacy_index,box.sap]
+        .filter(Boolean).map(entryCode);
+      return {kod:codeForPart(p),nazwa:p.name,kody:[...new Set(kody)]};
+    });
+    if(boxList.some(x=>!x)||boxList.length!==78)
+      throw Error('Lista części BOX jest niekompletna. Skontaktuj się z administratorem.');
     const car=await vehicle(db,user.id);
     return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
       samochod:car?.registration_number||'',
-      czesci:catalog.map(p=>({kod:codeForPart(p),nazwa:p.name})),
+      wersjaKataloguBox:BOX_CATALOG_VERSION,
+      czesci:boxList,
       magazyny:(await db.prepare(
         "SELECT w.id,w.name,q.code FROM fr_warehouse_qr q JOIN warehouses w ON w.id=q.warehouse_id "+
         "WHERE w.country_code='FR' AND w.active=1"
