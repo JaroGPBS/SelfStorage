@@ -171,6 +171,16 @@ function frCrewPreviewVisits(team){
     .flatMap(frBoxPreviewVisits)
     .filter(v=>v.team===team).sort(frPreviewVisitSort);
 }
+// Trial vehicle history uses the existing fictional Box visit structures.
+ // It never changes crew, warehouse, vehicle or D1 stock records.
+function frVehiclePreviewVisits(team,plate){
+  const original=frCrewPreviewVisits(team);
+  if(original.length>=3)return original;
+  return FR_BG_EXAMPLE_VISITS.map((visit,i)=>({
+    ...visit,id:'FR-VEH-PREVIEW-'+i+'-'+team,team,
+    plate:plate||'AUTO TEST',note:'Fikcyjne dane do oceny układu.'
+  }));
+}
 function frPreviewWarehouseName(key){
   return key==='toulouse'?'Box Toulouse':'Box Paryż';
 }
@@ -484,7 +494,7 @@ const matchesFrenchWarehouse=(warehouse,location)=>{
 };
 const isBovisWarehouse=name=>normalizeWarehouseName(name).replace(/^magazyn/,'').startsWith('bovis');
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -937,7 +947,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
   ++state.requestId;
   state.view=type==='operation'?key:'preview';
   state.preview={type,key,label,...(warehouseContext||{})};
-  if(key==='vehicles'){state.vehicleTab='detail';state.frVehicleCrew=null;state.frVehicleData=null;}
+  if(key==='vehicles'){state.vehicleTab='detail';state.frVehicleCrew=null;state.frVehicleData=null;state.frVehicleDetailView='stock';state.frCrewWarehouseFilter='all';state.frVehicleHistorySearch='';}
   state.stockTab='parts';state.moduleCategory='all';state.search='';
   state.focusDocument=null;state.expanded=null;
   $('sidebar').classList.remove('open');
@@ -1298,12 +1308,12 @@ function syncFrCrewToolbar(){
       label+'</button>').join('')+'</div>'+
     '<span class="fr-crew-sample-indicator">Przykład</span>';
 }
-function drawFrCrewHistory(){
-  const team=state.frMovementCrew;
-  const all=frCrewPreviewVisits(team);
+function drawFrCrewHistory({embed=false,crewOverride=null,visitsOverride=null,queryOverride=null}={}){
+  const team=crewOverride||state.frMovementCrew;
+  const all=visitsOverride||frCrewPreviewVisits(team);
   const chosen=all.filter(visit=>state.frCrewWarehouseFilter==='all'||
     visit.warehouseKey===state.frCrewWarehouseFilter);
-  const query=state.search.trim().toLocaleLowerCase('pl');
+  const query=String(queryOverride??state.search).trim().toLocaleLowerCase('pl');
   // Search the visit header or the part name. Looking up one part keeps
   // every visit column visible, so its movements can be compared over time.
   const visitMatches=visit=>[visit.date,visit.time,visit.team,visit.plate,
@@ -1384,6 +1394,8 @@ function drawFrCrewHistory(){
     (rows||'<tr><td class="fr-matrix-empty" colspan="'+(visits.length*2+4)+
       '">Brak pasujących części.</td></tr>')+
     '</tbody></table></div>';
+  if(embed)return {markup:'<div class="fr-crew-history">'+matrix+'</div>',
+    visits:visits.length,totalVisits:all.length,parts:parts.length};
   syncFrCrewToolbar();
   $('tableArea').innerHTML='<div class="fr-crew-history">'+matrix+'</div>';
   $('tableFooter').textContent=visits.length+' z '+all.length+
@@ -1391,7 +1403,11 @@ function drawFrCrewHistory(){
   $('searchNote').classList.toggle('hidden',!query);
   $('searchNote').textContent=query?
     'Znaleziono: '+parts.length+' części · '+visits.length+' wizyt.':'';
+  attachFrCrewMatrixScroll();
+}
+function attachFrCrewMatrixScroll(){
   const scroll=$('tableArea').querySelector('.fr-crew-matrix-viewport');
+  if(!scroll)return;
   const track=$('tableArea').querySelector('.fr-crew-matrix-track');
   // Keep the top scrollbar's scroll range equal to the table's range,
   // despite the always-visible arrow buttons on either side.
