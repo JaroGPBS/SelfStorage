@@ -150,7 +150,7 @@ function frPreviewVisitSort(a,b){
 // ISO week number and ISO week-year from the fictional FR visit's DD.MM.YYYY.
  // Year matters around New Year's, when week 01 can belong to the next year.
 function frBoxWeek(dateTextValue){
-  const match=String(dateTextValue||'').match(/^(\\d{2})\\.(\\d{2})\\.(\\d{4})$/);
+  const match=String(dateTextValue||'').match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if(!match)return {week:0,year:0};
   const day=Number(match[1]),month=Number(match[2]),year=Number(match[3]);
   const date=new Date(Date.UTC(year,month-1,day));
