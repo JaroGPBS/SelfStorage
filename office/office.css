@@ -6654,3 +6654,99 @@
   .app.view-bovis-overview .bovis-chart-column{flex-basis:58px}
   .app.view-bovis-overview .bovis-chart-track{height:110px}
 }
+
+
+/* Bovis final two-column layout: capacity table + its chart on the left,
+   the complete (unclipped) machine-type list on the right. */
+.app.view-bovis-overview .bovis-capacity-column{
+  display:flex;flex-direction:column;gap:9px;
+  min-width:0;
+}
+.app.view-bovis-overview .bovis-capacity-column > .bovis-section{
+  width:100%;min-width:0;
+}
+.app.view-bovis-overview .bovis-tables-grid > .bovis-section{
+  min-width:0;align-self:start;
+}
+.app.view-bovis-overview .bovis-machine-scroll{
+  max-height:none;
+  height:auto;
+  overflow-x:auto;
+  overflow-y:visible;
+}
+.app.view-bovis-overview .bovis-tables-grid .bovis-machines-table th,
+.app.view-bovis-overview .bovis-tables-grid .bovis-machines-table td{
+  padding:4px 3px;
+  line-height:1.2;
+}
+.app.view-bovis-overview .bovis-percent-cell{
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:-.025em;
+}
+.app.view-bovis-overview .bovis-used-pct{
+  color:#355e7f;
+}
+.app.view-bovis-overview .bovis-free-pct{
+  color:#778d9e;
+}
+.app.view-bovis-overview .bovis-pct-divider{
+  color:#adb8c1;
+  font-weight:400;
+}
+.app.view-bovis-overview .bovis-capacity-chart .bovis-chart-list{
+  gap:5px;
+  padding:11px 8px 8px;
+}
+.app.view-bovis-overview .bovis-capacity-chart .bovis-chart-column{
+  flex:1 1 0;
+  min-width:62px;
+  max-width:none;
+  gap:4px;
+}
+.app.view-bovis-overview .bovis-capacity-chart .bovis-chart-name{
+  font-size:10px;
+  font-weight:750;
+  height:16px;
+  line-height:16px;
+}
+.app.view-bovis-overview .bovis-capacity-chart .bovis-chart-area{
+  color:#788696;
+  font-size:9px;
+  font-weight:600;
+  line-height:1.1;
+}
+.app.view-bovis-overview .bovis-capacity-chart .bovis-chart-track{
+  height:126px;
+  width:52%;
+  max-width:42px;
+  min-width:25px;
+}
+.app.view-bovis-overview .bovis-capacity-chart .bovis-chart-percentages{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  white-space:nowrap;
+  font-size:9px;
+  font-weight:750;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-bovis-overview .bovis-capacity-chart .bovis-chart-legend{
+  padding:2px 12px 9px;
+  justify-content:center;
+}
+@media(max-width:1150px){
+  .app.view-bovis-overview .bovis-capacity-chart .bovis-chart-column{
+    min-width:62px;
+  }
+}
+@media(max-width:650px){
+  .app.view-bovis-overview .bovis-capacity-chart .bovis-chart-list{
+    justify-content:flex-start;
+    overflow-x:auto;
+  }
+  .app.view-bovis-overview .bovis-capacity-chart .bovis-chart-track{
+    height:108px;
+  }
+}
