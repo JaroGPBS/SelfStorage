@@ -1739,9 +1739,11 @@ function bovisParisModuleLayout(mainHtml,groupId){
     ?'<div class="fr-paris-module-aside-group"><strong>'+escapeHtml(group.name)+' — W TEJ GRUPIE</strong>'+
       '<div class="fr-paris-module-aside-counts">'+
         '<span>Razem <b>'+(sample?groupOk+groupNok:'—')+'</b></span>'+
-        '<span>OK <b class="module-count-ok">'+(sample?groupOk:'—')+'</b>'+
+        '<span class="fr-bovis-group-ok">Moduły OK <b class="module-count-ok">'+
+          (sample?groupOk:'—')+'</b>'+
           '<small>'+(sample?showArea(groupOkArea):'—')+'</small></span>'+
-        '<span>NOK <b class="module-count-nok">'+(sample?groupNok:'—')+'</b>'+
+        '<span class="fr-bovis-group-nok">Moduły NOK <b class="module-count-nok">'+
+          (sample?groupNok:'—')+'</b>'+
           '<small>'+(sample?showArea(groupNokArea):'—')+'</small></span>'+
       '</div></div>'
     :'';
