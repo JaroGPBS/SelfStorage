@@ -116,6 +116,37 @@ async function activatePolishWorkspace() {
   workspace.hidden = false;
 }
 
+function chooseOwnerMarket() {
+  return new Promise(resolve => {
+    const backdrop = document.createElement('div');
+    backdrop.id = 'gpbsOwnerMarketChoice';
+    backdrop.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(12,23,38,.7);display:flex;align-items:center;justify-content:center;padding:18px';
+    const card = document.createElement('div');
+    card.style.cssText = 'width:min(360px,100%);padding:24px;background:#fff;color:#182434;border-radius:16px;box-shadow:0 16px 50px #0005;text-align:center';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Wybierz rynek';
+    heading.style.margin = '0 0 8px';
+    const hint = document.createElement('p');
+    hint.textContent = 'ADMIN · JJ';
+    hint.style.margin = '0 0 20px';
+    const buttons = document.createElement('div');
+    buttons.style.cssText = 'display:flex;gap:10px';
+    for (const [label, value] of [['Polska', 'PL'], ['Francja', 'FR']]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.style.cssText = 'flex:1;padding:13px 10px;border-radius:9px;border:1px solid #b7c4d0;background:' +
+        (value === 'FR' ? '#185ec4;color:white' : '#fff;color:#182434') + ';font:inherit;font-weight:600;cursor:pointer';
+      button.addEventListener('click', () => { backdrop.remove(); resolve(value); }, {once:true});
+      buttons.append(button);
+    }
+    card.append(heading, hint, buttons);
+    backdrop.append(card);
+    document.body.append(backdrop);
+    buttons.querySelector('button')?.focus();
+  });
+}
+
 export async function tryPolishLogin(pin) {
   const { response, body } = await workerRequest('POST', pin);
   if (response.status === 401) throw new Error('Nieprawidłowy PIN lub brak dostępu.');
@@ -126,8 +157,16 @@ export async function tryPolishLogin(pin) {
   if (!body.user?.apps?.mobile) {
     throw new Error('Brak dostępu do aplikacji mobilnej. Skorzystaj z panelu Office.');
   }
-  // FR-only crews share the D1 PIN session but use the French mobile UI.
-  if (body.user?.markets?.FR && !body.user?.markets?.PL) {
+  // Only the protected JJ owner chooses the market. All other accounts
+  // retain their existing login and warehouse restrictions.
+  if (String(body.user?.nickname || '').trim().toUpperCase() === 'JJ') {
+    const choice = await chooseOwnerMarket();
+    if (choice === 'FR') {
+      setMarket(null);
+      return false;
+    }
+  } else if (body.user?.markets?.FR && !body.user?.markets?.PL) {
+    // FR-only crews share the D1 PIN session but use the French mobile UI.
     setMarket(null);
     return false;
   }
