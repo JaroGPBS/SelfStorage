@@ -1063,3 +1063,56 @@ tr:hover td{background:#ffffff04}
 .warehouse-creation .box-warehouse-form{padding:15px 21px 8px}
 .warehouse-creation .hint{padding:0 21px 17px;margin:0;color:var(--mute);font-size:12px}
 #showBoxWarehouseFormBtn{min-height:34px;padding:6px 12px}
+
+
+/* Compact Admin dashboard tiles — only the four top summary cards. */
+#dashboardView .stat-grid{
+  width:100%;
+  max-width:1160px;
+  margin:0 auto 18px;
+  gap:12px;
+}
+#dashboardView .stat-card{
+  display:grid;
+  grid-template-columns:minmax(55px,.75fr) minmax(0,1.25fr);
+  grid-template-rows:auto 1fr;
+  align-items:center;
+  column-gap:12px;
+  min-height:98px;
+  padding:13px 16px;
+}
+#dashboardView .stat-label{
+  grid-column:1/-1;
+  font-size:10px;
+  line-height:1.35;
+  align-self:start;
+}
+#dashboardView .stat-value{
+  grid-column:1;
+  margin:0;
+  font-size:26px;
+  line-height:1.1;
+}
+#dashboardView .stat-detail{
+  grid-column:2;
+  margin:0;
+  padding:0 0 0 12px;
+  border-top:0;
+  border-left:1px solid var(--edge);
+  gap:5px;
+}
+#dashboardView .stat-detail-row{
+  font-size:10px;
+  gap:6px;
+}
+#dashboardView .stat-detail-row strong{font-size:11px}
+@media(max-width:960px){
+  #dashboardView .stat-grid{max-width:600px}
+}
+@media(max-width:550px){
+  #dashboardView .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  #dashboardView .stat-card{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;gap:6px;min-height:110px;padding:11px}
+  #dashboardView .stat-label,#dashboardView .stat-value,#dashboardView .stat-detail{grid-column:1}
+  #dashboardView .stat-detail{padding:5px 0 0;border-left:0;border-top:1px solid var(--edge);gap:3px}
+  #dashboardView .stat-value{font-size:23px}
+}
