@@ -946,7 +946,11 @@ function normalizeStaff(body) {
   const role=String(body?.role||'').trim().toUpperCase();
   const warehouses=body?.warehouses;
   const active=body?.active===undefined?1:body.active;
-  if(nickname.length<2||nickname.length>100||
+  // Only French crews may use a single-letter symbol (e.g. O).
+  // All other users, including the frozen Polish market, keep the old minimum.
+  const frenchCrew=role==='EKIPA'&&String(body?.crewMarket||'').toUpperCase()==='FR';
+  if(nickname.length<(frenchCrew?1:2)||nickname.length>100||
+      (nickname.length===1&&!/^[\p{L}]$/u.test(nickname))||
      first.length>60||last.length>80||
      phone.length>28||(phone&&!/^[+0-9() .-]+$/.test(phone))||
      (phone&&(phone.match(/[0-9]/g)||[]).length<6)||
@@ -966,7 +970,7 @@ function symbolFromNickname(nickname) {
   const value=words.length>1
     ? words.map(w=>w[0]).join('')
     : words[0];
-  return value.slice(0,10).padEnd(2,'X');
+  return value.slice(0,10);
 }
 
 async function chooseStaffCode(db,staff,userId='',previous=null) {
