@@ -2,9 +2,9 @@ import { api } from './api.js?v=3';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
-import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=9';
+import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=10';
 
-const APP_VERSION = '0.58';
+const APP_VERSION = '0.59';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v2_box78';
 const BOX_CATALOG_VERSION = 'FR-BOX-78-20261111';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
