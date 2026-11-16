@@ -264,7 +264,7 @@ async function startVisit(db,user,data){
   if(!warehouse)throw Error('Nieznany lub nieaktywny kod magazynu.');
   const car=await vehicle(db,user.id);
   if(!car)throw Error('Najpierw wpisz numer rejestracyjny samochodu.');
-  if(!await hasCrewVehicleInventory(db,user.id,car.id))
+  if(user.role!=='ADMIN'&&!await hasCrewVehicleInventory(db,user.id,car.id))
     throw Error('Najpierw wykonaj inwentaryzację samochodu.');
   const found=await db.prepare('SELECT * FROM fr_visits WHERE id=?').bind(id).first();
   if(found){
@@ -309,7 +309,7 @@ async function saveSession(db,user,data){
     if(old.content_hash!==hash)throw Error('Sesja była zapisana z inną zawartością.');
     return {ok:true,duplicate:true,idSesji:sessionId,status:'ZAPISANA'};
   }
-  if(!await hasCrewVehicleInventory(db,user.id,activeCar.id))
+  if(user.role!=='ADMIN'&&!await hasCrewVehicleInventory(db,user.id,activeCar.id))
     throw Error('Najpierw wykonaj inwentaryzację samochodu.');
   const deltas=new Map();
   for(const [id,x] of pob)deltas.set(id,(deltas.get(id)||0)-x.qty);
@@ -564,7 +564,7 @@ export async function onRequestPost({request,env}){
   }catch{return fail('Błędne dane JSON.',400);}
   try{
     const user=await verifyWorkerSession(request,env);
-    if(!user||!user.apps?.mobile||!user.markets?.FR||user.role!=='EKIPA')
+    if(!user||!user.apps?.mobile||!user.markets?.FR||!['EKIPA','ADMIN'].includes(user.role))
       return fail('Brak dostępu do francuskiego magazynu. Zaloguj się ponownie.',401);
     await ensureSchema(env.DB);
     if(['POBIERZ_DANE_STARTOWE','SKAN_MAGAZYNU'].includes(entryCode(body.action)))
