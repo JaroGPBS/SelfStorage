@@ -1551,9 +1551,13 @@
       }
       if(existing)roleInput.value=existing.role_code;
       const toggleCrewMarket=()=>{
-        $('userCrewMarketField').hidden=roleInput.value!=='EKIPA';
+        const isCrew=roleInput.value==='EKIPA';
+        $('userCrewMarketField').hidden=!isCrew;
+        // Single-letter identifiers are allowed only for French crews.
+        $('userName').minLength=isCrew&&$('userCrewMarket').value==='FR'?1:2;
       };
       roleInput.onchange=toggleCrewMarket;
+      $('userCrewMarket').onchange=toggleCrewMarket;
       $('userCrewMarket').value=existing?.market_fr?'FR':
         existing?.market_pl?'PL':'FR';
       toggleCrewMarket();
