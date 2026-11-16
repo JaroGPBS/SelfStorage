@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=10';
 
-const APP_VERSION = '0.59';
+const APP_VERSION = '0.60';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v2_box78';
 const BOX_CATALOG_VERSION = 'FR-BOX-78-20261111';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
@@ -2085,7 +2085,7 @@ async function startVisit(code) {
   setLoading(true, 'Rozpoczynanie wizyty…');
 
   try {
-    if(!String(state.team.samochod||'').trim()){
+    if(!isAdminTeam()&&!String(state.team.samochod||'').trim()){
       showMissingVehiclePlate(true);
       showToast('Najpierw wpisz numer rejestracyjny samochodu.',true);
       return;
