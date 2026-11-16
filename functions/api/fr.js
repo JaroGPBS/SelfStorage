@@ -119,6 +119,29 @@ async function vehicle(db,userId){
     'JOIN vehicles v ON v.id=a.vehicle_id WHERE a.user_id=? AND v.active=1'
   ).bind(userId).first();
 }
+// JJ is the protected owner. Operational FR visits require an internal vehicle
+// reference in the existing schema, but the owner must not enter a real plate.
+// Create a dedicated administrative reference only when JJ actually needs it.
+function isOwnerAdmin(user){
+  return user?.role==='ADMIN' && String(user?.nickname||'').trim().toUpperCase()==='JJ';
+}
+async function operationalVehicle(db,user){
+  const assigned=await vehicle(db,user.id);
+  if(assigned || !isOwnerAdmin(user))return assigned;
+  const internalId='GPBS-V-ADMIN-JJ';
+  const internalCode='GPBS-ADMIN-JJ';
+  await db.prepare(
+    'INSERT OR IGNORE INTO vehicles(id,registration_number,active) VALUES(?,?,1)'
+  ).bind(internalId,internalCode).run();
+  const record=await db.prepare(
+    'SELECT id,registration_number FROM vehicles WHERE id=? AND active=1'
+  ).bind(internalId).first();
+  if(!record)throw Error('Administracyjny dostęp do magazynu jest niedostępny.');
+  await db.prepare(
+    'INSERT OR IGNORE INTO fr_vehicle_usage(user_id,vehicle_id,assigned_at) VALUES(?,?,CURRENT_TIMESTAMP)'
+  ).bind(user.id,record.id).run();
+  return vehicle(db,user.id);
+}
 async function hasCrewVehicleInventory(db,userId,_vehicleId){
   // First inventory is per crew, not per vehicle registration.
   const row=await db.prepare(
@@ -262,7 +285,7 @@ async function startVisit(db,user,data){
     }
   }
   if(!warehouse)throw Error('Nieznany lub nieaktywny kod magazynu.');
-  const car=await vehicle(db,user.id);
+  const car=await operationalVehicle(db,user);
   if(!car)throw Error('Najpierw wpisz numer rejestracyjny samochodu.');
   if(user.role!=='ADMIN'&&!await hasCrewVehicleInventory(db,user.id,car.id))
     throw Error('Najpierw wykonaj inwentaryzację samochodu.');
@@ -297,7 +320,7 @@ async function saveSession(db,user,data){
   if(!visit||visit.user_id!==user.id||visit.status!=='ACTIVE')
     throw Error('Wizyta nie jest aktywna.');
   if(visit.warehouse_id!==clean(data.idMagazynu))throw Error('Nieprawidłowy magazyn.');
-  const activeCar=await vehicle(db,user.id);
+  const activeCar=await operationalVehicle(db,user);
   if(!activeCar||activeCar.id!==visit.vehicle_id)throw Error('Samochód zmienił się w trakcie wizyty. Sprawdź przypisanie.');
   const pob=await resolveParts(db,data.pobranie||[],visit.warehouse_id);
   const zwr=await resolveParts(db,data.zwrot||[],visit.warehouse_id);
@@ -392,7 +415,7 @@ async function saveSession(db,user,data){
     discrepancies:shortages.map(x=>({partId:x.partId,missingQty:Number(x.missingQty)}))};
 }
 async function vehicleStock(db,user){
-  const car=await vehicle(db,user.id);
+  const car=await operationalVehicle(db,user);
   if(!car)throw Error('Najpierw przypisz samochód.');
   const catalogue=await getVehicleCatalogue(db);
   const balances=(await db.prepare(
@@ -419,7 +442,7 @@ async function vehicleStock(db,user){
     }))};
 }
 async function updateVehicleStock(db,user,data){
-  const car=await vehicle(db,user.id);
+  const car=await operationalVehicle(db,user);
   if(!car)throw Error('Najpierw przypisz samochód.');
   const eventId=clean(data.idZmiany);
   if(!validId(eventId))throw Error('Brak identyfikatora zmiany.');
