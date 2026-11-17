@@ -1337,13 +1337,8 @@
   function showView(view) {
     if(!defs[view]||(view==='superAdmin'&&!state.isSuperAdmin))return;
     state.view=view;
-    $('pageHeading').classList.toggle('hidden',view==='summary'||view==='warehouses'||view==='parts');
-    $('pageTitle').textContent=defs[view][0];
-    $('pageSubtitle').textContent=defs[view][1];
-    $('adminPageEyebrow').textContent=view==='parts'
-      ?'GPBS STORAGE / WSPÓLNY KATALOG'
-      :view==='boxParts'?'GPBS STORAGE / KATALOG BOXY'
-      :view==='vehicleParts'?'GPBS STORAGE / KATALOG SAMOCHODY':'GPBS STORAGE';
+    // The top breadcrumb identifies the section; the duplicate large
+    // heading was removed from every Admin tab.
     $('breadcrumbCurrent').textContent=defs[view][0];
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
@@ -1354,6 +1349,7 @@
     $('securityView').classList.toggle('hidden',view!=='security');
     $('settingsView').classList.toggle('hidden',view!=='settings');
     $('superAdminView').classList.toggle('hidden',view!=='superAdmin');
+    document.querySelector('.admin-user-toolbar').classList.toggle('hidden',view!=='users');
     $('addUserBtn').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('showArchivedUsers').classList.toggle('hidden',view!=='users');
     $('showArchivedUsers').textContent=state.showArchives?'Wróć do użytkowników':'Pokaż archiwum';
