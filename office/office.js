@@ -690,7 +690,6 @@ function showOfficeHome(){
 }
 function showFranceHome(){
   ++state.requestId;
-  const ticket=state.requestId;
   state.view='frMarketHome';
   state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
   state.warehouseMenus.FR=true;state.warehouseMenus.PL=false;
@@ -711,30 +710,18 @@ function showFranceHome(){
   $('bovisParisDemoNotice').classList.add('hidden');
   $('bovisTopDescription').classList.add('hidden');
   $('warehouseCrumb').classList.add('hidden');
-  $('crumb').textContent='Rynek Francja';
+  $('crumb').textContent='Francja';
   $('franceHomeDate').textContent=new Intl.DateTimeFormat('pl-PL',{
     timeZone:'Europe/Paris',day:'2-digit',month:'long',year:'numeric',
     hour:'2-digit',minute:'2-digit'
   }).format(new Date());
-  for(const id of ['franceHomeWarehouses','franceHomeModules','franceHomeParts'])
-    $(id).textContent='—';
+  // Magazyny: wszystkie 10 lokalizacji widocznych w Office, także te
+  // bez bieżących zapisów D1. Nie wykonujemy odczytu bazy dla tej statystyki.
+  const locations=$('officeFranceHome').querySelectorAll('[data-fr-home-warehouse]').length;
+  $('franceHomeWarehouses').textContent=new Intl.NumberFormat('pl-PL').format(locations);
+  $('franceHomeModules').textContent='—';
   $('franceHomeModulesNote').textContent='Brak danych';
-  $('franceHomeStatus').textContent='Pobieranie podsumowania…';
-  renderMenu();
-  // Only one read when opening this screen, no automatic refreshing.
-  api('frMarketOverview').then(data=>{
-    if(ticket!==state.requestId||state.view!=='frMarketHome')return;
-    const display=value=>Number.isFinite(value)&&value>=0
-      ?new Intl.NumberFormat('pl-PL').format(value):'—';
-    $('franceHomeWarehouses').textContent=display(data.warehouses);
-    $('franceHomeParts').textContent=data.parts==null?'—':display(data.parts);
-    $('franceHomeModules').textContent=data.modules==null?'—':display(data.modules);
-    $('franceHomeModulesNote').textContent=data.modules==null?'Brak danych':'Zapisane w bazie';
-    $('franceHomeStatus').textContent='';
-  }).catch(()=>{
-    if(ticket!==state.requestId||state.view!=='frMarketHome')return;
-    $('franceHomeStatus').textContent='Nie udało się pobrać podsumowania. Magazyny możesz otwierać normalnie.';
-  });
+  $('franceHomeStatus').textContent='';
 }
 function openFranceHomeWarehouse(key){
   const layout=FR_LAYOUT_WAREHOUSES.find(item=>item.key===key)||
