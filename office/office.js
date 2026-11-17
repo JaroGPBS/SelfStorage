@@ -671,6 +671,7 @@ function showOfficeHome(){
   $('sidebar').classList.remove('open');
   $('officePageHead').classList.add('hidden');
   $('officeHome').classList.remove('hidden');
+  $('officeFranceHome').classList.add('hidden');
   $('app').classList.add('view-home');
   $('officeTableCard').classList.add('hidden');
   $('officeBovisDashboard').classList.add('hidden');
@@ -686,6 +687,67 @@ function showOfficeHome(){
     'view-aggregate','view-labels','view-fr-empty','view-modules','view-fr-movements','view-fr-crew-history','view-bovis-overview');
   $('officeTableCard').querySelector('.fr-crew-toolbar')?.remove();
   renderMenu();
+}
+function showFranceHome(){
+  ++state.requestId;
+  const ticket=state.requestId;
+  state.view='frMarketHome';
+  state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
+  state.warehouseMenus.FR=true;state.warehouseMenus.PL=false;
+  $('sidebar').classList.remove('open');
+  $('app').classList.remove('view-home','view-stocks','view-bovis-overview',
+    'view-aggregate','view-vehicles','view-fr-empty');
+  $('officeHome').classList.add('hidden');
+  $('officePageHead').classList.add('hidden');
+  $('officeFranceHome').classList.remove('hidden');
+  $('officeTableCard').classList.add('hidden');
+  $('officeBovisDashboard').classList.add('hidden');
+  $('officePreview').classList.add('hidden');
+  $('officeLabelsView').classList.add('hidden');
+  $('errorBanner').classList.add('hidden');
+  $('officeNewPartNotice').classList.add('hidden');
+  $('vehicleTopContext').classList.add('hidden');
+  $('vehicleTopExportHost').classList.add('hidden');
+  $('bovisParisDemoNotice').classList.add('hidden');
+  $('bovisTopDescription').classList.add('hidden');
+  $('warehouseCrumb').classList.add('hidden');
+  $('crumb').textContent='Rynek Francja';
+  $('franceHomeDate').textContent=new Intl.DateTimeFormat('pl-PL',{
+    timeZone:'Europe/Paris',day:'2-digit',month:'long',year:'numeric',
+    hour:'2-digit',minute:'2-digit'
+  }).format(new Date());
+  for(const id of ['franceHomeWarehouses','franceHomeModules','franceHomeParts'])
+    $(id).textContent='—';
+  $('franceHomeModulesNote').textContent='Brak danych';
+  $('franceHomeStatus').textContent='Pobieranie podsumowania…';
+  renderMenu();
+  // Only one read when opening this screen, no automatic refreshing.
+  api('frMarketOverview').then(data=>{
+    if(ticket!==state.requestId||state.view!=='frMarketHome')return;
+    const display=value=>Number.isFinite(value)&&value>=0
+      ?new Intl.NumberFormat('pl-PL').format(value):'—';
+    $('franceHomeWarehouses').textContent=display(data.warehouses);
+    $('franceHomeParts').textContent=data.parts==null?'—':display(data.parts);
+    $('franceHomeModules').textContent=data.modules==null?'—':display(data.modules);
+    $('franceHomeModulesNote').textContent=data.modules==null?'Brak danych':'Zapisane w bazie';
+    $('franceHomeStatus').textContent='';
+  }).catch(()=>{
+    if(ticket!==state.requestId||state.view!=='frMarketHome')return;
+    $('franceHomeStatus').textContent='Nie udało się pobrać podsumowania. Magazyny możesz otwierać normalnie.';
+  });
+}
+function openFranceHomeWarehouse(key){
+  const layout=FR_LAYOUT_WAREHOUSES.find(item=>item.key===key)||
+    (key==='bovis-lyon'?{key,name:'Bovis Lyon'}:null);
+  if(!layout)return;
+  const accessible=state.warehouses.filter(w=>w.country_code==='FR');
+  const matching=accessible.find(w=>matchesFrenchWarehouse(w,layout));
+  state.warehouseMenus.FR=true;
+  state.frExpanded=null;
+  state.bovisExpanded=false;
+  if(matching)selectView('stocks',matching.id);
+  else if(state.user?.role==='ADMIN'&&String(state.user?.nickname||'').trim().toUpperCase()==='JJ')
+    showOfficePreview('warehouse',layout.key,layout.name);
 }
 function officeMenuIcon(view){
   const paths={
@@ -1126,6 +1188,7 @@ function syncAggregateTabControls(){
 function setHead(title,kicker,desc){
   $('app').classList.remove('view-home');
   $('officeHome').classList.add('hidden');
+  $('officeFranceHome').classList.add('hidden');
   $('officePageHead').classList.remove('hidden');
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
@@ -3897,6 +3960,17 @@ document.addEventListener('click',e=>{
     }
     return;
   }
+  const homeWarehouse=e.target.closest('[data-fr-home-warehouse]');
+  if(homeWarehouse&&state.view==='frMarketHome'){
+    openFranceHomeWarehouse(homeWarehouse.dataset.frHomeWarehouse);
+    return;
+  }
+  const homeVehicles=e.target.closest('[data-fr-home-vehicles]');
+  if(homeVehicles&&state.view==='frMarketHome'){
+    state.warehouseMenus.FR=true;
+    showOfficePreview('operation','vehicles',OFFICE_OPERATION_PREVIEWS.vehicles);
+    return;
+  }
   const w=e.target.closest('[data-warehouse]');
   if(w){
     state.frExpanded=null;
@@ -3917,6 +3991,10 @@ document.addEventListener('click',e=>{
           state.warehouses.find(x=>x.country_code==='PL');
         if(w){selectView('stocks',w.id);return;}
       }else{
+        if(state.user?.role==='ADMIN'&&
+           String(state.user?.nickname||'').trim().toUpperCase()==='JJ'){
+          showFranceHome();return;
+        }
         const w=state.warehouses.find(x=>x.country_code==='FR');
         if(w){selectView('stocks',w.id);return;}
         const layout=FR_LAYOUT_WAREHOUSES.find(x=>x.key==='belleville')||
