@@ -663,7 +663,7 @@
     const header=table.createTHead().insertRow();
     const titles=newOnly
       ?['MAGAZYN','DODANO / PRACOWNIK','NAZWA CZĘŚCI','INDEKS GPBS','SAP','ZDJĘCIE','WERYFIKACJA','']
-      :['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ZDJĘCIE','WERYFIKACJA',''];
+      :['INDEKS GPBS / MAG.','NAZWA CZĘŚCI','SAP','ZDJĘCIE','WERYFIKACJA',''];
     for(const label of titles) {
       const cell=document.createElement('th');
       cell.textContent=label;
@@ -680,13 +680,17 @@
       }
       const partName=td(part.name||'—');
       partName.className='part-name-cell';
+      if(!newOnly)row.append(td(part.part_number||'—'));
       row.append(partName);
-      row.append(td(part.part_number||'—'));
+      if(newOnly)row.append(td(part.part_number||'—'));
       row.append(td(part.sap_number||'—'));
       if(newOnly)row.append(td(Number(part.has_photo)?'Jest zdjęcie':'Brak zdjęcia'));
       else {
-        const photo=td(Number(part.has_photo)?'✓ Jest zdjęcie':'—');
-        photo.title=Number(part.has_photo)?'Część posiada zdjęcie':'Brak zdjęcia';
+        const count=Math.max(0,Math.floor(Number(part.photo_count??part.has_photo??0)||0));
+        const summary=count?('✓ '+count+' '+(count===1?'zdjęcie':count>=2&&count<=4?'zdjęcia':'zdjęć')):'—';
+        const photo=td(summary);
+        photo.className='part-photo-count-cell';
+        photo.title=count?'Liczba zapisanych zdjęć: '+count:'Brak zdjęcia';
         row.append(photo);
       }
       const status=td('');
@@ -1302,7 +1306,7 @@
   function showView(view) {
     if(!defs[view]||(view==='superAdmin'&&!state.isSuperAdmin))return;
     state.view=view;
-    $('pageHeading').classList.toggle('hidden',view==='summary'||view==='warehouses');
+    $('pageHeading').classList.toggle('hidden',view==='summary'||view==='warehouses'||view==='parts');
     $('pageTitle').textContent=defs[view][0];
     $('pageSubtitle').textContent=defs[view][1];
     $('adminPageEyebrow').textContent=view==='parts'
