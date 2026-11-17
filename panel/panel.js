@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false,showWarehouseArchives:false,warehouseEditing:null, boxPartsSource:null,vehiclePartChoice:null};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false,showWarehouseArchives:false,warehouseEditing:null, boxPartsSource:null,vehiclePartChoice:null,partChoiceScope:'vehicleParts'};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Magazyny Polski i Francji. Kody QR Boxów pozostają bez zmian.'],
@@ -710,8 +710,7 @@
     table.className='parts-review-table vehicle-catalogue-table';
     const header=table.createTHead().insertRow();
     for(const title of [
-      'NAZWA CZĘŚCI','INDEKS GPBS','STARY MAC','SAP Z ARKUSZA',
-      'SAP W KATALOGU','WYMAGANE / AUTO','STATUS',''
+      'NAZWA CZĘŚCI','INDEKS GPBS','SAP','WYMAGANA ILOŚĆ','STATUS',''
     ]){
       const th=document.createElement('th');th.textContent=title;header.append(th);
     }
@@ -721,8 +720,6 @@
       if(!part.part_found||!part.index_assigned)tr.classList.add('part-pending-verification');
       tr.append(td(part.name||'—','part-name-cell'));
       tr.append(td(part.part_number||'—'));
-      tr.append(td(part.source_code||'—'));
-      tr.append(td(part.source_sap&&part.source_sap!=='-'?part.source_sap:'—'));
       tr.append(td(part.sap_number||'—'));
       const required=td('');
       required.className='vehicle-requirement-cell';
@@ -758,7 +755,7 @@
       required.append(field,save);tr.append(required);
       const status=td('');
       status.append(pill(!part.part_found?'DO DOPASOWANIA'
-        :!part.index_assigned?'BRAK NOWEGO MG':'POŁĄCZONA',
+        :!part.index_assigned?'BRAK NOWEGO MG':'POŁĄCZONO',
         part.part_found&&part.index_assigned?'green':'red'));
       tr.append(status);
       const actions=td('');actions.className='part-row-actions';
@@ -777,7 +774,7 @@
       }
       const remove=document.createElement('button');
       remove.type='button';remove.className='btn mini archive-danger';
-      remove.textContent='Usuń z samochodów';
+      remove.textContent='Usuń';
       remove.title='Usuń tylko z tej kategorii, nie z katalogu głównego';
       remove.addEventListener('click',()=>removeVehicleCategoryPart(part));
       actions.append(remove);
@@ -786,6 +783,15 @@
     return table;
   }
 
+  async function refreshBoxCatalogue(){
+    if(state.view!=='boxParts')return;
+    const response=await api('boxParts');
+    state.boxPartsSource=response;
+    state.records=response.parts||[];
+    $('tableDescription').textContent='Aktywne pozycje katalogu BOX: '+state.records.length+
+      '. Dodawanie i usuwanie nie zmienia głównego katalogu ani historii.';
+    renderList();
+  }
   async function refreshVehicleCatalogue(){
     if(state.view!=='vehicleParts')return;
     const response=await api('vehicleParts');
@@ -796,14 +802,22 @@
       '. Zmiany tej listy nie usuwają części z katalogu głównego.';
     renderList();
   }
-  async function openVehiclePartChoice(part=null){
+  async function openVehiclePartChoice(part=null,scope='vehicleParts'){
+    const boxMode=scope==='boxParts';
+    state.partChoiceScope=scope;
     const dialog=$('vehiclePartSelectDialog');
     const form=$('vehiclePartSelect');
     const err=$('vehiclePartSelectError');
     err.classList.add('hidden');err.textContent='';
     state.vehiclePartChoice=part?.source_row??null;
-    $('vehiclePartSelectTitle').textContent=part
-      ?'Dopasuj: '+part.name:'Dodaj część do samochodów';
+    $('vehiclePartSelectTitle').textContent=boxMode?'Dodaj część do BOX-ów':
+      part?'Dopasuj: '+part.name:'Dodaj część do samochodów';
+    dialog.querySelector('.modal-heading .eyebrow').textContent=
+      boxMode?'KATALOG BOX':'KATALOG SAMOCHODÓW';
+    dialog.querySelector('.modal-heading p').textContent=boxMode
+      ?'Wybór dodaje istniejącą część do katalogu wszystkich BOX-ów, bez zmiany stanów.'
+      :'Wybór łączy pozycję ze wspólnym katalogiem, nie tworzy drugiej części.';
+    $('vehiclePartSelectSave').textContent=boxMode?'Dodaj do BOX-ów':'Zapisz powiązanie';
     form.replaceChildren();
     const first=document.createElement('option');
     first.value='';first.textContent='Wybierz część z głównego katalogu';
@@ -811,7 +825,7 @@
     try{
       const response=await api('parts');
       const linked=new Set((state.records||[]).filter(p=>p.id&&
-        p.source_row!==part?.source_row).map(p=>p.id));
+        (boxMode||p.source_row!==part?.source_row)).map(p=>p.id));
       for(const row of response.parts||[]){
         if(linked.has(row.id))continue;
         const option=document.createElement('option');
@@ -832,12 +846,19 @@
     button.disabled=true;
     try{
       const sourceRow=state.vehiclePartChoice;
-      await post(sourceRow===null
-        ?{action:'addVehiclePart',partId}
-        :{action:'linkVehiclePart',partId,sourceRow});
-      $('vehiclePartSelectDialog').close();
-      await refreshVehicleCatalogue();
-      message('Zapisano przypisanie do katalogu samochodowego.','success');
+      if(state.partChoiceScope==='boxParts'){
+        await post({action:'addBoxPart',partId});
+        $('vehiclePartSelectDialog').close();
+        await refreshBoxCatalogue();
+        message('Dodano część do katalogu BOX. Stany i historia bez zmian.','success');
+      }else{
+        await post(sourceRow===null
+          ?{action:'addVehiclePart',partId}
+          :{action:'linkVehiclePart',partId,sourceRow});
+        $('vehiclePartSelectDialog').close();
+        await refreshVehicleCatalogue();
+        message('Zapisano przypisanie do katalogu samochodowego.','success');
+      }
     }catch(error){
       const target=$('vehiclePartSelectError');
       target.textContent=error.message;target.classList.remove('hidden');
@@ -1358,6 +1379,7 @@
     $('warehouseFilter').classList.add('hidden');
     $('addPartBtn').classList.toggle('hidden',view!=='parts');
     $('vehicleAddPartBtn').classList.toggle('hidden',view!=='vehicleParts');
+    $('boxAddPartBtn').classList.toggle('hidden',view!=='boxParts');
     $('showBoxWarehouseFormBtn').classList.toggle('hidden',
       view!=='warehouses'||!state.isSuperAdmin||state.showWarehouseArchives);
     $('showArchivedWarehousesBtn').classList.toggle('hidden',
@@ -2130,6 +2152,7 @@
     $('logoutBtn').addEventListener('click',performLogout);
     $('newPartsAlert').addEventListener('click',()=>navigate('newParts'));
     $('vehicleAddPartBtn').addEventListener('click',()=>openVehiclePartChoice());
+    $('boxAddPartBtn').addEventListener('click',()=>openVehiclePartChoice(null,'boxParts'));
     $('vehiclePartSelectCancel').addEventListener('click',()=>$('vehiclePartSelectDialog').close());
     $('vehiclePartSelectDialog').querySelector('form')
       .addEventListener('submit',saveVehiclePartChoice);
