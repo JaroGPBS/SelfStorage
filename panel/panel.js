@@ -226,9 +226,7 @@
       row.id||'—',
       row.qr_code||'—',
       row.not_configured?pill('Do konfiguracji','red'):
-        row.active?pill('Aktywny','green'):pill('Nieaktywny','red'),
-      row.not_configured?'—':Number(row.positions)===0?'Nieustalony':formatNum(row.positions),
-      row.not_configured?'—':Number(row.positions)===0?'Nieustalony':formatNum(row.units)+' szt.'
+        row.active?pill('Aktywny','green'):pill('Nieaktywny','red')
     ]);
   }
 
@@ -397,7 +395,7 @@
 
   function colsFor(view,items) {
     if(view==='warehouses')return [
-      ['MAGAZYN','RYNEK','ID MAGAZYNU','KOD QR','STATUS','POZYCJE','ŁĄCZNY STAN'],
+      ['MAGAZYN','RYNEK','ID MAGAZYNU','KOD QR','STATUS'],
       warehouseRows(items)
     ];
     if(view==='newParts')return [[],[]];
@@ -1283,7 +1281,7 @@
   function showView(view) {
     if(!defs[view]||(view==='superAdmin'&&!state.isSuperAdmin))return;
     state.view=view;
-    $('pageHeading').classList.toggle('hidden',view==='summary');
+    $('pageHeading').classList.toggle('hidden',view==='summary'||view==='warehouses');
     $('pageTitle').textContent=defs[view][0];
     $('pageSubtitle').textContent=defs[view][1];
     $('adminPageEyebrow').textContent=view==='parts'
