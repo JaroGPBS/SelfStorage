@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=126">
+  <link rel="stylesheet" href="./office.css?v=127">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -122,7 +122,7 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=153"></script>
+  <script defer src="./office.js?v=154"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -234,14 +234,13 @@
         <section id="officeFranceHome" class="office-france-home hidden" aria-labelledby="franceHomeTitle">
           <header class="office-france-heading">
             <div><p class="office-france-kicker">GPBS STORAGE · OFFICE</p>
-              <h1 id="franceHomeTitle"><span aria-hidden="true">🇫🇷</span> Rynek Francja</h1>
+              <h1 id="franceHomeTitle"><span aria-hidden="true">🇫🇷</span> Francja</h1>
               <p>Wybierz magazyn lub samochody, aby przejść do istniejącego widoku.</p></div>
             <time id="franceHomeDate" class="office-france-date"></time>
           </header>
-          <div class="office-france-stats" aria-label="Rzeczywiste stany rynku Francja">
-            <article class="office-france-stat"><span>Magazyny</span><strong id="franceHomeWarehouses">—</strong><small>Aktywne w bazie</small></article>
+          <div class="office-france-stats" aria-label="Podsumowanie magazynów Francja">
+            <article class="office-france-stat"><span>Magazyny</span><strong id="franceHomeWarehouses">10</strong><small>Wszystkie lokalizacje</small></article>
             <article class="office-france-stat"><span>Moduły</span><strong id="franceHomeModules">—</strong><small id="franceHomeModulesNote">Brak danych</small></article>
-            <article class="office-france-stat"><span>Części</span><strong id="franceHomeParts">—</strong><small>Łączna liczba sztuk w bazie</small></article>
           </div>
           <p id="franceHomeStatus" class="office-france-status" role="status" aria-live="polite"></p>
           <section class="office-france-section" aria-labelledby="franceGpbsTitle">
