@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=36">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=70" defer></script>
+  <script src="./panel.js?v=71" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -409,6 +409,7 @@
       </div>
       <div class="dialog-actions">
         <button id="warehouseArchiveOpen" class="btn archive-danger" type="button">Archiwizuj</button>
+        <button id="warehouseDeleteOpen" class="btn archive-danger" type="button">Usuń magazyn</button>
         <button id="warehouseEditCancel" class="btn ghost" type="button">Anuluj</button>
         <button id="warehouseEditSave" class="btn primary" type="submit">Zapisz</button>
       </div>
@@ -432,6 +433,28 @@
       <div class="dialog-actions">
         <button id="warehouseArchiveCancel" class="btn ghost" type="button">Anuluj</button>
         <button id="warehouseArchiveConfirm" class="btn archive-danger" type="submit">Potwierdź archiwizację</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="warehouseDeleteDialog" class="modal" aria-labelledby="warehouseDeleteTitle">
+    <form id="warehouseDeleteForm" class="modal-inner" autocomplete="off">
+      <div class="modal-heading">
+        <div><div class="eyebrow">POTWIERDZENIE PIN-EM</div>
+          <h2 id="warehouseDeleteTitle">Usuń pusty magazyn</h2>
+          <p id="warehouseDeleteDescription"></p></div>
+        <button id="warehouseDeleteClose" class="icon-button" type="button" aria-label="Zamknij">×</button>
+      </div>
+      <div class="warehouse-edit-body">
+        <p class="hint">Usunięcie jest nieodwracalne. System pozwoli usunąć tylko magazyn bez stanów, ruchów, inwentaryzacji i innych danych operacyjnych. Gdy magazyn ma historię, skorzystaj z archiwum.</p>
+        <label for="warehouseDeletePin">Aktualny PIN administratora</label>
+        <input id="warehouseDeletePin" type="password" inputmode="numeric"
+          pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off"
+          placeholder="••••" required>
+        <p id="warehouseDeleteError" class="hint" role="alert" hidden></p>
+      </div>
+      <div class="dialog-actions">
+        <button id="warehouseDeleteCancel" class="btn ghost" type="button">Anuluj</button>
+        <button id="warehouseDeleteConfirm" class="btn archive-danger" type="submit">Trwale usuń</button>
       </div>
     </form>
   </dialog>
