@@ -454,7 +454,7 @@ function frenchStockKind(warehouseId,preview=null){
   const warehouse=realWarehouse(warehouseId);
   if(warehouse?.country_code!=='FR')return 'other';
   if(isBovisWarehouse(warehouse.name))return 'bovis';
-  if(['FR-TOULOUSE','FR-PARIS'].includes(warehouse.id))return 'box';
+  if(['FR-TOULOUSE','FR-PARIS'].includes(warehouse.id)||warehouse.id.startsWith('FR-BOX-'))return 'box';
   const location=FR_LAYOUT_WAREHOUSES.find(item=>matchesFrenchWarehouse(warehouse,item));
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
@@ -820,7 +820,7 @@ function renderMenu(){
         'Stany magazynowe</button>');
     // Box Toulouse and Box Paryż need only stock, movements and inventories.
     // Label printing remains available elsewhere (including the PL menus).
-    const isBox=key==='toulouse'||key==='paris';
+    const isBox=key==='toulouse'||key==='paris'||String(realId).startsWith('FR-BOX-');
     const warehouseOperations=permittedOperations('FR').filter(op=>
       !(isBox&&['pz','wz','labels'].includes(op.view))&&
       !(['belleville','toulouse','paris'].includes(key)&&op.view==='nok')
