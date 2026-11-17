@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=123">
+  <link rel="stylesheet" href="./office.css?v=124">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -230,6 +230,46 @@
               </div>
             </div>
           </div>
+        </section>
+        <section id="officeFranceHome" class="office-france-home hidden" aria-labelledby="franceHomeTitle">
+          <header class="office-france-heading">
+            <div><p class="office-france-kicker">GPBS STORAGE · OFFICE</p>
+              <h1 id="franceHomeTitle"><span aria-hidden="true">🇫🇷</span> Rynek Francja</h1>
+              <p>Wybierz magazyn lub samochody, aby przejść do istniejącego widoku.</p></div>
+            <time id="franceHomeDate" class="office-france-date"></time>
+          </header>
+          <div class="office-france-stats" aria-label="Rzeczywiste stany rynku Francja">
+            <article class="office-france-stat"><span>Magazyny</span><strong id="franceHomeWarehouses">—</strong><small>Aktywne w bazie</small></article>
+            <article class="office-france-stat"><span>Moduły</span><strong id="franceHomeModules">—</strong><small id="franceHomeModulesNote">Brak danych</small></article>
+            <article class="office-france-stat"><span>Części</span><strong id="franceHomeParts">—</strong><small>Łączna liczba sztuk w bazie</small></article>
+          </div>
+          <p id="franceHomeStatus" class="office-france-status" role="status" aria-live="polite"></p>
+          <section class="office-france-section" aria-labelledby="franceGpbsTitle">
+            <h2 id="franceGpbsTitle">GPBS</h2>
+            <div class="office-france-links">
+              <button type="button" data-fr-home-warehouse="belleville"><span class="office-france-link-icon" aria-hidden="true">▣</span>Belleville</button>
+              <button type="button" data-fr-home-warehouse="toulouse"><span class="office-france-link-icon" aria-hidden="true">▣</span>Box Toulouse</button>
+              <button type="button" data-fr-home-warehouse="paris"><span class="office-france-link-icon" aria-hidden="true">▣</span>Box Paryż</button>
+            </div>
+          </section>
+          <section class="office-france-section" aria-labelledby="franceBovisTitle">
+            <h2 id="franceBovisTitle">Bovis</h2>
+            <div class="office-france-links">
+              <button type="button" data-fr-home-warehouse="bovis-paris"><span class="office-france-link-icon" aria-hidden="true">▣</span>Paryż</button>
+              <button type="button" data-fr-home-warehouse="bovis-lyon"><span class="office-france-link-icon" aria-hidden="true">▣</span>Lyon</button>
+              <button type="button" data-fr-home-warehouse="bovis-marseille"><span class="office-france-link-icon" aria-hidden="true">▣</span>Marsylia</button>
+              <button type="button" data-fr-home-warehouse="bovis-toulouse"><span class="office-france-link-icon" aria-hidden="true">▣</span>Tuluza</button>
+              <button type="button" data-fr-home-warehouse="bovis-nantes"><span class="office-france-link-icon" aria-hidden="true">▣</span>Nantes</button>
+              <button type="button" data-fr-home-warehouse="bovis-nancy"><span class="office-france-link-icon" aria-hidden="true">▣</span>Nancy</button>
+              <button type="button" data-fr-home-warehouse="bovis-lille"><span class="office-france-link-icon" aria-hidden="true">▣</span>Lille</button>
+            </div>
+          </section>
+          <section class="office-france-section" aria-labelledby="franceVehiclesTitle">
+            <h2 id="franceVehiclesTitle">Samochody</h2>
+            <div class="office-france-links">
+              <button type="button" data-fr-home-vehicles="1"><span class="office-france-link-icon" aria-hidden="true">▰</span>Samochody <span class="office-france-link-arrow" aria-hidden="true">›</span></button>
+            </div>
+          </section>
         </section>
         <div id="errorBanner" class="error-banner hidden" role="alert"></div>
         <p id="officeNewPartNotice" class="office-new-part-notice hidden" role="status" aria-live="polite"></p>
