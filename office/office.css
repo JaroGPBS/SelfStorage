@@ -7973,3 +7973,38 @@
   .office-france-links button{transition:none}
   .office-france-links button:hover{transform:none}
 }
+
+/* Outline icons shared by French dashboard stats and location buttons. */
+.office-france-icon-sprite{
+  position:absolute;
+  width:0;
+  height:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.office-france-stat-label{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.office-france-stat-label svg{
+  flex:none;
+  display:block;
+  width:17px;
+  height:17px;
+  color:#54779b;
+}
+.office-france-link-icon svg{
+  display:block;
+  width:20px;
+  height:20px;
+}
+.office-france-links button:hover .office-france-link-icon{
+  background:#e1effc;
+  color:#265a91;
+}
+@media(max-width:490px){
+  .office-france-link-icon svg{width:17px;height:17px}
+  .office-france-stat-label{gap:5px}
+  .office-france-stat-label svg{width:15px;height:15px}
+}
