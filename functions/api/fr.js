@@ -175,9 +175,23 @@ function codeForPart(p){return p.source_code||p.old_index||p.new_index||p.part_n
 // Resolve only parts assigned to this BOX. A globally valid part code
 // must never create a new stock row in a box that does not list that part.
 async function resolveParts(db,items,warehouseId){
-  const warehouse=BOX_WAREHOUSES.get(warehouseId);
-  if(!warehouse)throw Error('Nieprawidłowy magazyn BOX.');
-  const catalogue=(await parts(db)).filter(p=>BOX_PARTS.has(p.id));
+  const newBox=warehouseId.startsWith('FR-BOX-');
+  let warehouse=BOX_WAREHOUSES.get(warehouseId);
+  let assigned=null;
+  if(newBox){
+    const active=await db.prepare(
+      "SELECT w.name FROM warehouses w JOIN fr_warehouse_qr q ON q.warehouse_id=w.id "+
+      "WHERE w.id=? AND w.country_code='FR' AND w.active=1"
+    ).bind(warehouseId).first();
+    warehouse=active?.name;
+    const rows=(await db.prepare(
+      'SELECT part_id FROM warehouse_stock WHERE warehouse_id=?'
+    ).bind(warehouseId).all()).results||[];
+    assigned=new Set(rows.map(x=>x.part_id));
+  }
+  if(!warehouse)throw Error('Nieprawidłowy lub nieaktywny magazyn BOX.');
+  const catalogue=(await parts(db)).filter(p=>BOX_PARTS.has(p.id)&&
+    (!newBox||assigned.has(p.id)));
   const mapping=new Map();
   for(const p of catalogue){
     const box=BOX_PARTS.get(p.id);
@@ -320,6 +334,11 @@ async function saveSession(db,user,data){
   if(!visit||visit.user_id!==user.id||visit.status!=='ACTIVE')
     throw Error('Wizyta nie jest aktywna.');
   if(visit.warehouse_id!==clean(data.idMagazynu))throw Error('Nieprawidłowy magazyn.');
+  // An already open visit cannot write to a deactivated or archived warehouse.
+  const enabled=await db.prepare('SELECT active FROM warehouses WHERE id=?')
+    .bind(visit.warehouse_id).first();
+  if(!enabled||Number(enabled.active)!==1)
+    throw Error('Magazyn jest nieaktywny lub zarchiwizowany. Nie można zapisać operacji.');
   const activeCar=await operationalVehicle(db,user);
   if(!activeCar||activeCar.id!==visit.vehicle_id)throw Error('Samochód zmienił się w trakcie wizyty. Sprawdź przypisanie.');
   const pob=await resolveParts(db,data.pobranie||[],visit.warehouse_id);
