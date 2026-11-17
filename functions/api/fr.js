@@ -5,6 +5,7 @@ import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrCarClaims,normalPlate} from '../../lib/fr-car-claims.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
 import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
+import {excludedBoxPartIds} from '../../lib/fr-box-office-stock.js';
 
 // One authoritative, 78-item list for both self-service BOX warehouses.
 const BOX_CATALOG_VERSION='FR-BOX-78-20261111';
@@ -190,8 +191,9 @@ async function resolveParts(db,items,warehouseId){
     assigned=new Set(rows.map(x=>x.part_id));
   }
   if(!warehouse)throw Error('Nieprawidłowy lub nieaktywny magazyn BOX.');
+  const excluded=await excludedBoxPartIds(db);
   const catalogue=(await parts(db)).filter(p=>BOX_PARTS.has(p.id)&&
-    (!newBox||assigned.has(p.id)));
+    !excluded.has(p.id)&&(!newBox||assigned.has(p.id)));
   const mapping=new Map();
   for(const p of catalogue){
     const box=BOX_PARTS.get(p.id);
@@ -551,8 +553,10 @@ async function action(db,user,body){
   if(type==='POBIERZ_DANE_STARTOWE'){
     const catalog=await parts(db);
     const byId=new Map(catalog.map(p=>[p.id,p]));
-    // Never send the global 198-part catalogue into the BOX scanner.
-    const boxList=BOX_CATALOG_SNAPSHOT.map(box=>{
+    const excluded=await excludedBoxPartIds(db);
+    // Never send removed BOX items or the global catalogue into the scanner.
+    const activeBoxItems=BOX_CATALOG_SNAPSHOT.filter(box=>!excluded.has(box.part_id));
+    const boxList=activeBoxItems.map(box=>{
       const p=byId.get(box.part_id);
       if(!p)return null;
       const kody=[p.id,p.part_number,p.sap_number,p.source_code,p.old_index,
@@ -560,12 +564,12 @@ async function action(db,user,body){
         .filter(Boolean).map(entryCode);
       return {kod:codeForPart(p),nazwa:p.name,kody:[...new Set(kody)]};
     });
-    if(boxList.some(x=>!x)||boxList.length!==78)
+    if(boxList.some(x=>!x)||boxList.length!==activeBoxItems.length)
       throw Error('Lista części BOX jest niekompletna. Skontaktuj się z administratorem.');
     const car=await vehicle(db,user.id);
     return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
       samochod:car?.registration_number||'',
-      wersjaKataloguBox:BOX_CATALOG_VERSION,
+      wersjaKataloguBox:BOX_CATALOG_VERSION+'-'+[...excluded].sort().join('-'),
       czesci:boxList,
       magazyny:(await db.prepare(
         "SELECT w.id,w.name,q.code FROM fr_warehouse_qr q JOIN warehouses w ON w.id=q.warehouse_id "+
