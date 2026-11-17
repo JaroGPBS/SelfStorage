@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false, boxPartsSource:null,vehiclePartChoice:null};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false,showWarehouseArchives:false,warehouseEditing:null, boxPartsSource:null,vehiclePartChoice:null};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Magazyny Polski i Francji. Kody QR Boxów pozostają bez zmian.'],
@@ -68,7 +68,7 @@
 
   async function api(view) {
     const url='/api/panel?view='+encodeURIComponent(view)+
-      (view==='users'&&state.showArchives?'&archived=1':'');
+      ((view==='users'&&state.showArchives||view==='warehouses'&&state.showWarehouseArchives)?'&archived=1':'');
     const res=await fetch(url,{cache:'no-store',credentials:'same-origin'});
     let json=null;
     try{json=await res.json();}catch{}
@@ -226,6 +226,7 @@
       row.id||'—',
       row.qr_code||'—',
       row.not_configured?pill('Do konfiguracji','red'):
+        row.archived_at?pill('Archiwum','red'):
         row.active?pill('Aktywny','green'):pill('Nieaktywny','red')
     ]);
   }
@@ -1220,23 +1221,32 @@
 
   function renderWarehousesTable(items) {
     const [columns,rows]=colsFor('warehouses',items);
-    columns.push('KOD QR / DRUK');
+    columns.push('KOD QR / DRUK','ZARZĄDZANIE');
     for(let i=0;i<items.length;i++){
       const warehouse=items[i],code=String(warehouse.qr_code||'').trim();
       if(!code||warehouse.not_configured){
-        rows[i].push(warehouse.not_configured&&code?'Brak wpisu D1':'—');
-        continue;
+        rows[i].push('—');
+      }else{
+        const button=document.createElement('button');
+        button.type='button';button.className='btn mini warehouse-show-qr';
+        button.textContent='Pokaż QR';
+        button.title='Wyświetl istniejący kod QR — bez zmiany numeru';
+        button.setAttribute('aria-label','Pokaż kod QR magazynu '+warehouse.name);
+        button.addEventListener('click',()=>showBoxQr({
+          id:warehouse.id,name:warehouse.name,code
+        }));
+        rows[i].push(button);
       }
-      const button=document.createElement('button');
-      button.type='button';
-      button.className='btn mini warehouse-show-qr';
-      button.textContent='Pokaż QR';
-      button.title='Wyświetl istniejący kod QR — bez zmiany numeru';
-      button.setAttribute('aria-label','Pokaż kod QR magazynu '+warehouse.name);
-      button.addEventListener('click',()=>showBoxQr({
-        id:warehouse.id,name:warehouse.name,code
-      }));
-      rows[i].push(button);
+      if(!state.isSuperAdmin||warehouse.not_configured){
+        rows[i].push('—');
+      }else{
+        const action=document.createElement('button');
+        action.type='button';action.className='btn mini warehouse-manage-button';
+        action.textContent=warehouse.archived_at?'Przywróć':'Edytuj';
+        action.addEventListener('click',()=>warehouse.archived_at
+          ?restoreManagedWarehouse(warehouse):openWarehouseEditor(warehouse));
+        rows[i].push(action);
+      }
     }
     const table=buildTable(columns,rows);
     table.classList.add('warehouses-unified-table');
@@ -1307,12 +1317,18 @@
     $('addPartBtn').classList.toggle('hidden',view!=='parts');
     $('vehicleAddPartBtn').classList.toggle('hidden',view!=='vehicleParts');
     $('showBoxWarehouseFormBtn').classList.toggle('hidden',
+      view!=='warehouses'||!state.isSuperAdmin||state.showWarehouseArchives);
+    $('showArchivedWarehousesBtn').classList.toggle('hidden',
       view!=='warehouses'||!state.isSuperAdmin);
+    $('showArchivedWarehousesBtn').textContent=state.showWarehouseArchives
+      ?'Wróć do magazynów':'Archiwum';
     $('warehouseCreation').classList.add('hidden');
     $('showBoxWarehouseFormBtn').setAttribute('aria-expanded','false');
     $('tableSearch').value='';
     $('tableTitle').textContent=defs[view][0];
-    $('tableDescription').textContent=defs[view][1];
+    $('tableDescription').textContent=view==='warehouses'&&state.showWarehouseArchives
+      ?'Zarchiwizowane magazyny. Wszystkie zapisane dane pozostają w bazie.'
+      :defs[view][1];
     message();
   }
 
@@ -1391,28 +1407,118 @@
     } catch(error){message(error.message,'error');}
   }
 
+  function syncWarehouseTemplate(){
+    const market=$('warehouseMarket').value;
+    const type=$('warehouseKind');
+    for(const opt of type.options)opt.disabled=market==='PL'&&opt.value!=='GPBS';
+    if(market==='PL')type.value='GPBS';
+    const kind=type.value;
+    const template=market==='PL'?'Tychy':kind==='BOX'?'Box Toulouse':
+      kind==='BOVIS'?'Bovis Paryż':'Belleville';
+    $('warehouseTemplateHint').textContent=template;
+    $('boxWarehouseName').placeholder=market==='PL'?'Np. Kraków':
+      kind==='BOX'?'Np. Lyon':kind==='BOVIS'?'Np. Bordeaux':'Np. Lyon';
+  }
   async function createBoxQrWarehouse(event) {
     event.preventDefault();
     const button=$('boxWarehouseAdd');
     const name=$('boxWarehouseName').value.trim();
-    if(!name)return;
+    const market=$('warehouseMarket').value,kind=$('warehouseKind').value;
+    if(!name||!market||!kind)return;
+    const template=$('warehouseTemplateHint').textContent;
     if(!await confirmAction({
-      title:'Dodać nowy magazyn BOX: '+name+'?',
-      description:'Powstanie aktywny magazyn samoobsługowy bez stanów i bez historii. System wygeneruje mu osobny kod QR.',
+      title:'Dodać nowy magazyn '+name+'?',
+      description:'Rynek: '+(market==='PL'?'Polska':'Francja')+
+        ' · Typ: '+kind+' · Układ: '+template+'. Bez kopiowania stanów i historii.',
       confirmLabel:'Dodaj magazyn'
     }))return;
     busy(button,true);
     try{
-      const result=await post({action:'boxCreate',name});
+      const result=await post({action:'warehouseCreate',market,kind,name});
       state.records=await api('warehouses');
       if(state.view==='warehouses')renderList();
-      $('boxWarehouseForm').reset();
+      $('boxWarehouseForm').reset();syncWarehouseTemplate();
       $('warehouseCreation').classList.add('hidden');
       $('showBoxWarehouseFormBtn').setAttribute('aria-expanded','false');
-      message('Dodano BOX '+result.warehouse.name+' i zapisano jego kod QR w D1.','info');
-      showBoxQr(result.warehouse);
-    }catch(error){message(error.message||'Nie udało się dodać magazynu BOX.','error');}
+      message('Dodano magazyn '+result.warehouse.name+
+        ' z układem '+template+'.'+(result.warehouse.code?' Wygenerowano kod QR.':''),'info');
+      if(result.warehouse.code)showBoxQr(result.warehouse);
+    }catch(error){message(error.message||'Nie udało się dodać magazynu.','error');}
     finally{busy(button,false);}
+  }
+  function openWarehouseEditor(warehouse){
+    state.warehouseEditing=warehouse;
+    $('warehouseEditDescription').textContent=warehouse.name+' · '+
+      (warehouse.country_code==='PL'?'Polska':'Francja')+' · '+(warehouse.kind||'GPBS');
+    $('warehouseEditStatus').value=warehouse.active?'1':'0';
+    $('warehouseEditDialog').showModal();
+  }
+  async function saveWarehouseEditor(event){
+    event.preventDefault();
+    const warehouse=state.warehouseEditing;
+    if(!warehouse)return;
+    const active=$('warehouseEditStatus').value==='1';
+    if(active===Boolean(warehouse.active)){$('warehouseEditDialog').close();return;}
+    if(!await confirmAction({
+      title:active?'Aktywować magazyn?':'Dezaktywować magazyn?',
+      description:warehouse.name+(active?' będzie ponownie dostępny do pracy.':
+        ' nie będzie przyjmować nowych operacji. Historia zostaje zachowana.'),
+      confirmLabel:active?'Aktywuj':'Dezaktywuj'
+    }))return;
+    const button=$('warehouseEditSave');busy(button,true);
+    try{
+      await post({action:'warehouseStatus',warehouseId:warehouse.id,active});
+      $('warehouseEditDialog').close();
+      await refreshManagedWarehouses();
+      message('Zapisano status magazynu '+warehouse.name+'.','info');
+    }catch(error){message(error.message,'error');}
+    finally{busy(button,false);}
+  }
+  function openWarehouseArchiveDialog(){
+    const warehouse=state.warehouseEditing;if(!warehouse)return;
+    $('warehouseEditDialog').close();
+    $('warehouseArchiveForm').reset();
+    $('warehouseArchiveError').hidden=true;
+    $('warehouseArchiveError').textContent='';
+    $('warehouseArchiveDescription').textContent='Magazyn '+warehouse.name+
+      ' zostanie przeniesiony do archiwum. Dane i historia pozostaną zachowane.';
+    $('warehouseArchiveDialog').showModal();
+    $('warehouseArchivePin').focus();
+  }
+  async function archiveManagedWarehouse(event){
+    event.preventDefault();
+    const warehouse=state.warehouseEditing;if(!warehouse)return;
+    const button=$('warehouseArchiveConfirm');busy(button,true);
+    try{
+      await post({action:'warehouseArchive',warehouseId:warehouse.id,
+        pin:$('warehouseArchivePin').value});
+      $('warehouseArchiveDialog').close();
+      $('warehouseArchiveForm').reset();
+      state.warehouseEditing=null;
+      await refreshManagedWarehouses();
+      message('Przeniesiono magazyn '+warehouse.name+' do archiwum.','info');
+    }catch(error){
+      $('warehouseArchivePin').value='';
+      $('warehouseArchiveError').textContent=error.message;
+      $('warehouseArchiveError').hidden=false;
+    }finally{busy(button,false);}
+  }
+  async function restoreManagedWarehouse(warehouse){
+    if(!await confirmAction({
+      title:'Przywrócić magazyn '+warehouse.name+'?',
+      description:'Magazyn wróci na listę jako nieaktywny. Jego historia pozostanie zachowana.',
+      confirmLabel:'Przywróć'
+    }))return;
+    try{
+      await post({action:'warehouseRestore',warehouseId:warehouse.id});
+      await refreshManagedWarehouses();
+      message('Przywrócono magazyn '+warehouse.name+' jako nieaktywny.','info');
+    }catch(error){message(error.message,'error');}
+  }
+  async function refreshManagedWarehouses(){
+    const response=await api('warehouses');
+    if(state.view!=='warehouses')return;
+    state.records=response;renderList();
   }
 
   function showBoxQr(warehouse) {
@@ -1968,6 +2074,24 @@
     });
     $('sideOverlay').addEventListener('click',closeSide);
     $('boxWarehouseForm').addEventListener('submit',createBoxQrWarehouse);
+    $('warehouseMarket').addEventListener('change',syncWarehouseTemplate);
+    $('warehouseKind').addEventListener('change',syncWarehouseTemplate);
+    $('warehouseCreateCancel').addEventListener('click',()=>{
+      $('warehouseCreation').classList.add('hidden');
+      $('showBoxWarehouseFormBtn').setAttribute('aria-expanded','false');
+    });
+    $('showArchivedWarehousesBtn').addEventListener('click',async()=>{
+      state.showWarehouseArchives=!state.showWarehouseArchives;
+      await navigate('warehouses');
+    });
+    $('warehouseEditForm').addEventListener('submit',saveWarehouseEditor);
+    $('warehouseEditClose').addEventListener('click',()=>$('warehouseEditDialog').close());
+    $('warehouseEditCancel').addEventListener('click',()=>$('warehouseEditDialog').close());
+    $('warehouseArchiveOpen').addEventListener('click',openWarehouseArchiveDialog);
+    $('warehouseArchiveForm').addEventListener('submit',archiveManagedWarehouse);
+    $('warehouseArchiveClose').addEventListener('click',()=>$('warehouseArchiveDialog').close());
+    $('warehouseArchiveCancel').addEventListener('click',()=>$('warehouseArchiveDialog').close());
+    syncWarehouseTemplate();
     $('showBoxWarehouseFormBtn').addEventListener('click',()=>{
       if(!state.isSuperAdmin||state.view!=='warehouses')return;
       const field=$('warehouseCreation');
