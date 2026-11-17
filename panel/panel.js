@@ -1245,7 +1245,18 @@
         action.textContent=warehouse.archived_at?'Przywróć':'Edytuj';
         action.addEventListener('click',()=>warehouse.archived_at
           ?restoreManagedWarehouse(warehouse):openWarehouseEditor(warehouse));
-        rows[i].push(action);
+        if(warehouse.archived_at&&!warehouseDeletionProtected(warehouse)){
+          const actions=document.createElement('div');
+          actions.className='warehouse-row-actions';
+          actions.append(action);
+          const remove=document.createElement('button');
+          remove.type='button';remove.className='btn mini archive-danger';
+          remove.textContent='Usuń';
+          remove.setAttribute('aria-label','Usuń pusty magazyn '+warehouse.name);
+          remove.addEventListener('click',()=>openWarehouseDeleteDialog(warehouse));
+          actions.append(remove);
+          rows[i].push(actions);
+        }else rows[i].push(action);
       }
     }
     const table=buildTable(columns,rows);
@@ -1446,11 +1457,16 @@
     }catch(error){message(error.message||'Nie udało się dodać magazynu.','error');}
     finally{busy(button,false);}
   }
+  function warehouseDeletionProtected(warehouse){
+    return ['PL-TYCHY','FR-TOULOUSE','FR-PARIS','FR-BELLEVILLE']
+      .includes(String(warehouse?.id||''));
+  }
   function openWarehouseEditor(warehouse){
     state.warehouseEditing=warehouse;
     $('warehouseEditDescription').textContent=warehouse.name+' · '+
       (warehouse.country_code==='PL'?'Polska':'Francja')+' · '+(warehouse.kind||'GPBS');
     $('warehouseEditStatus').value=warehouse.active?'1':'0';
+    $('warehouseDeleteOpen').classList.toggle('hidden',warehouseDeletionProtected(warehouse));
     $('warehouseEditDialog').showModal();
   }
   async function saveWarehouseEditor(event){
@@ -1501,6 +1517,38 @@
       $('warehouseArchivePin').value='';
       $('warehouseArchiveError').textContent=error.message;
       $('warehouseArchiveError').hidden=false;
+    }finally{busy(button,false);}
+  }
+  function openWarehouseDeleteDialog(warehouse){
+    if(!warehouse||warehouse.not_configured||warehouseDeletionProtected(warehouse))return;
+    state.warehouseEditing=warehouse;
+    if($('warehouseEditDialog').open)$('warehouseEditDialog').close();
+    $('warehouseDeleteForm').reset();
+    $('warehouseDeleteError').hidden=true;
+    $('warehouseDeleteError').textContent='';
+    $('warehouseDeleteDescription').textContent='Magazyn '+warehouse.name+
+      ' · '+(warehouse.country_code==='PL'?'Polska':'Francja')+
+      '. Ta operacja usunie jego pustą kartę i kod QR, jeśli istnieje.';
+    $('warehouseDeleteDialog').showModal();
+    $('warehouseDeletePin').focus();
+  }
+  async function deleteManagedWarehouse(event){
+    event.preventDefault();
+    const warehouse=state.warehouseEditing;
+    if(!warehouse||warehouseDeletionProtected(warehouse))return;
+    const button=$('warehouseDeleteConfirm');busy(button,true);
+    try{
+      const result=await post({
+        action:'warehouseDelete',warehouseId:warehouse.id,pin:$('warehouseDeletePin').value
+      });
+      $('warehouseDeleteDialog').close();
+      state.warehouseEditing=null;
+      await refreshManagedWarehouses();
+      message('Usunięto pusty magazyn '+(result.name||warehouse.name)+'.','info');
+    }catch(error){
+      $('warehouseDeletePin').value='';
+      $('warehouseDeleteError').textContent=error.message||'Nie można usunąć magazynu.';
+      $('warehouseDeleteError').hidden=false;
     }finally{busy(button,false);}
   }
   async function restoreManagedWarehouse(warehouse){
@@ -2087,6 +2135,17 @@
     $('warehouseEditForm').addEventListener('submit',saveWarehouseEditor);
     $('warehouseEditClose').addEventListener('click',()=>$('warehouseEditDialog').close());
     $('warehouseEditCancel').addEventListener('click',()=>$('warehouseEditDialog').close());
+    $('warehouseDeleteOpen').addEventListener('click',()=>{
+      openWarehouseDeleteDialog(state.warehouseEditing);
+    });
+    $('warehouseDeleteForm').addEventListener('submit',deleteManagedWarehouse);
+    $('warehouseDeleteClose').addEventListener('click',()=>$('warehouseDeleteDialog').close());
+    $('warehouseDeleteCancel').addEventListener('click',()=>$('warehouseDeleteDialog').close());
+    $('warehouseDeleteDialog').addEventListener('close',()=>{
+      $('warehouseDeleteForm').reset();
+      $('warehouseDeleteError').hidden=true;
+      $('warehouseDeleteError').textContent='';
+    });
     $('warehouseArchiveOpen').addEventListener('click',openWarehouseArchiveDialog);
     $('warehouseArchiveForm').addEventListener('submit',archiveManagedWarehouse);
     $('warehouseArchiveDialog').addEventListener('close',()=>{
