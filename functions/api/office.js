@@ -191,6 +191,14 @@ export async function onRequestGet({request,env}){
         "ON w.id=a.warehouse_id WHERE a.archived_at IS NOT NULL AND w.country_code='FR'");
       archivedFrenchWarehouses=rows.map(row=>({id:row.id,name:row.name}));
     }
+    if(user.role==='ADMIN'&&String(user.nickname||'').trim().toUpperCase()==='JJ'&&
+       await tableExists(env.DB,'warehouse_layout_hides')){
+      const hidden=await selectRows(env.DB,
+        'SELECT label FROM warehouse_layout_hides');
+      archivedFrenchWarehouses.push(...hidden.map(row=>({
+        id:'HIDDEN_LAYOUT',name:row.label
+      })));
+    }
     return workerJson({ok:true,user:{...user,firstName},
       warehouses:authorizedWarehouses,archivedFrenchWarehouses});
   }
