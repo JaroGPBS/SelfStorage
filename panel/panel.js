@@ -687,7 +687,7 @@
       if(newOnly)row.append(td(Number(part.has_photo)?'Jest zdjęcie':'Brak zdjęcia'));
       else {
         const count=Math.max(0,Math.floor(Number(part.photo_count??part.has_photo??0)||0));
-        const summary=count?('✓ '+count+' '+(count===1?'zdjęcie':count>=2&&count<=4?'zdjęcia':'zdjęć')):'—';
+        const summary=count?(count+' '+(count===1?'zdjęcie':count>=2&&count<=4?'zdjęcia':'zdjęć')):'—';
         const photo=td(summary);
         photo.className='part-photo-count-cell';
         photo.title=count?'Liczba zapisanych zdjęć: '+count:'Brak zdjęcia';
