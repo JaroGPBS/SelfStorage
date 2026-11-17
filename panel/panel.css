@@ -1178,3 +1178,18 @@ tr:hover td{background:#ffffff04}
   .warehouse-create-footnote{padding:0 16px 14px}
   .warehouse-create-preview{align-items:flex-start;flex-direction:column;gap:4px}
 }
+
+
+/* Deleting an empty warehouse — keep the two irreversible actions distinct. */
+.warehouse-row-actions{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.warehouse-row-actions .archive-danger{margin-right:0}
+#warehouseEditDialog .dialog-actions{flex-wrap:wrap}
+#warehouseEditDialog #warehouseArchiveOpen{margin-right:0}
+#warehouseEditDialog #warehouseDeleteOpen{margin-right:auto}
+#warehouseDeleteDialog .dialog-actions .archive-danger{margin-right:0}
+#warehouseDeleteError{color:#d74750;font-weight:750}
+@media(max-width:610px){
+  #warehouseEditDialog .dialog-actions{gap:8px}
+  #warehouseEditDialog #warehouseDeleteOpen{margin-right:0}
+  #warehouseEditDialog .dialog-actions .btn{flex:1 1 auto}
+}
