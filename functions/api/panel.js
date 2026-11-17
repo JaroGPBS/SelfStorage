@@ -3,6 +3,7 @@ import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {readFrBoxSharedCatalog} from '../../lib/fr-box-office-stock.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
+import {listAdminWarehouses,createManagedWarehouse,updateManagedWarehouse} from '../../lib/warehouse-admin.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
@@ -607,61 +608,8 @@ async function queryPanel(env,view,url) {
     };
   }
   if(view==='warehouses') {
-    // Repair only missing/inactive FR BOX records and missing stock rows.
-    // Never overwrite current quantities already stored in D1.
-    try{await ensureFrenchBoxSetup(env.DB);}
-    catch(error){
-      console.error('French BOX initialization failed',error?.name||'Error');
-      throw Error('Nie udało się przygotować Box Toulouse i Box Paryż w D1.');
-    }
-    // Show only actual warehouse records. French BOX QR values are read from
-    // the existing registry; printed codes are NEVER rotated by this view.
-    const qrTable=await env.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='fr_warehouse_qr'"
-    ).first();
-    const qrJoin=qrTable?'LEFT JOIN fr_warehouse_qr q ON q.warehouse_id=w.id ':'';
-    const qrExpr=qrTable?'MAX(q.code)':'NULL';
-    const rows=await env.DB.prepare(
-      "SELECT w.id,w.name,w.country_code,w.active,COUNT(s.part_id) AS positions,"+
-      "COALESCE(SUM(s.quantity),0) AS units,"+
-      "COALESCE("+qrExpr+",CASE w.id WHEN 'FR-TOULOUSE' THEN 'MAG-TL7A2Q' "+
-      "WHEN 'FR-PARIS' THEN 'MAG-PA5A4B' ELSE NULL END) AS qr_code "+
-      "FROM warehouses w LEFT JOIN warehouse_stock s ON s.warehouse_id=w.id "+
-      qrJoin+
-      "WHERE w.country_code='PL' OR (w.country_code='FR' AND ("+
-      "w.id IN ('FR-TOULOUSE','FR-PARIS','FR-BELLEVILLE') OR "+
-      "w.id LIKE 'FR-BOX-%' OR LOWER(w.name) LIKE '%belleville%')) "+
-      "GROUP BY w.id,w.name,w.country_code,w.active "+
-      "ORDER BY CASE w.id WHEN 'FR-TOULOUSE' THEN 1 "+
-      "WHEN 'FR-PARIS' THEN 2 ELSE CASE WHEN w.country_code='PL' THEN 0 ELSE 3 END END,"+
-      "w.name COLLATE NOCASE"
-    ).all();
-    const result=(rows.results||[]).map(w=>({
-      ...w,name:w.id==='FR-TOULOUSE'?'Box Toulouse':
-        w.id==='FR-PARIS'?'Box Paryż':w.name
-    }));
-    // Always list the expected locations; a missing D1 warehouse must be
-    // visibly flagged, never mistaken for a working warehouse with zero stock.
-    for(const expected of [
-      {id:'FR-TOULOUSE',name:'Box Toulouse',code:'MAG-TL7A2Q'},
-      {id:'FR-PARIS',name:'Box Paryż',code:'MAG-PA5A4B'},
-      {id:'FR-BELLEVILLE',name:'Belleville',code:null}
-    ]){
-      const exists=expected.id==='FR-BELLEVILLE'
-        ?result.some(w=>w.country_code==='FR'&&/belleville/i.test(w.id+' '+w.name))
-        :result.some(w=>w.id===expected.id);
-      if(!exists)result.push({
-        id:expected.id,name:expected.name,country_code:'FR',
-        active:0,positions:null,units:null,qr_code:expected.code,
-        not_configured:true
-      });
-    }
-    return result.sort((a,b)=>{
-      const rank=w=>w.country_code==='PL'?0:
-        w.id==='FR-TOULOUSE'?1:w.id==='FR-PARIS'?2:
-        /belleville/i.test(w.id+' '+w.name)?3:4;
-      return rank(a)-rank(b)||a.name.localeCompare(b.name,'pl');
-    });
+    await ensureFrenchBoxSetup(env.DB);
+    return await listAdminWarehouses(env.DB,url.searchParams.get('archived')==='1');
   }
   if(view==='warehouseOptions') {
     const rows=await env.DB.prepare(
@@ -1806,6 +1754,33 @@ async function route(request,env) {
     } catch(error) {
       console.error('GPBS PIN provisioning error:',error?.name||'Error');
       return fail('Nie udało się wygenerować PIN-u. Sprawdź konfigurację i spróbuj ponownie.',500);
+    }
+  }
+  if(['warehouseCreate','warehouseStatus','warehouseArchive','warehouseRestore'].includes(body?.action)){
+    if(!session.superAdmin)return fail('Tylko Super Admin może zarządzać magazynami.',403);
+    try{
+      if(body.action==='warehouseCreate'){
+        const ctx=await ownerContext(env);
+        const warehouse=await createManagedWarehouse(env,body,session.id,ctx?.owner?.id||null);
+        return respond({ok:true,warehouse});
+      }
+      if(body.action==='warehouseArchive'){
+        const ctx=await ownerContext(env);
+        if(!ctx)return fail('Nie można zweryfikować głównego administratora.',503);
+        const key='warehouse-archive-owner-pin';
+        const locked=await reserveLoginAttempt(env.DB,key,5,30*60);
+        if(locked>0)return blocked(locked);
+        const valid=await ownerPinMatches(env,body.pin,ctx,pin=>verifyLegacyAdmin(pin,env));
+        if(!valid)return fail('Nieprawidłowy PIN administratora.',403);
+        await clearLoginAttempts(env.DB,[key]);
+      }
+      const outcome=await updateManagedWarehouse(env,body,session.id,body.action);
+      return respond({ok:true,...outcome});
+    }catch(error){
+      console.error('Warehouse management failed',error?.name||'Error');
+      return fail(error?.status?error.message:
+        'Nie udało się zapisać magazynu. Dane i historia pozostały bez zmian.',
+        error?.status||503);
     }
   }
   if(body?.action==='boxCreate'||body?.action==='boxQrRotate'){
