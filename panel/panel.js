@@ -2089,6 +2089,11 @@
     $('warehouseEditCancel').addEventListener('click',()=>$('warehouseEditDialog').close());
     $('warehouseArchiveOpen').addEventListener('click',openWarehouseArchiveDialog);
     $('warehouseArchiveForm').addEventListener('submit',archiveManagedWarehouse);
+    $('warehouseArchiveDialog').addEventListener('close',()=>{
+      $('warehouseArchiveForm').reset();
+      $('warehouseArchiveError').hidden=true;
+      $('warehouseArchiveError').textContent='';
+    });
     $('warehouseArchiveClose').addEventListener('click',()=>$('warehouseArchiveDialog').close());
     $('warehouseArchiveCancel').addEventListener('click',()=>$('warehouseArchiveDialog').close());
     syncWarehouseTemplate();
@@ -2098,7 +2103,7 @@
       const willOpen=field.classList.contains('hidden');
       field.classList.toggle('hidden',!willOpen);
       $('showBoxWarehouseFormBtn').setAttribute('aria-expanded',String(willOpen));
-      if(willOpen)$('boxWarehouseName').focus();
+      if(willOpen){syncWarehouseTemplate();$('warehouseMarket').focus();}
     });
     $('boxQrClose').addEventListener('click',()=>$('boxQrDialog').close());
     $('boxQrDownload').addEventListener('click',downloadBoxQr);
