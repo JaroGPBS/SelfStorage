@@ -651,6 +651,8 @@ export async function onRequestGet({request,env}){
         return workerJson({ok:true,warehouseId,
           ...await readFrBoxOfficeParts(env.DB,warehouseId)});
       }
+      const isNewFrBox=authorizedWarehouse.country_code==='FR'&&
+        warehouseId.startsWith('FR-BOX-');
       const hasIndices=await tableExists(env.DB,'pl_part_index_migrations');
       const parts=await selectRows(env.DB,
         'SELECT p.id,'+
@@ -658,7 +660,9 @@ export async function onRequestGet({request,env}){
         ' AS part_number,p.name,p.sap_number,s.quantity '+
         'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
         (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
-        'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE,p.id LIMIT 3000',
+        (isNewFrBox?'WHERE p.active=1 AND s.part_id IS NOT NULL ':
+          'WHERE p.active=1 ')+
+        'ORDER BY p.name COLLATE NOCASE,p.id LIMIT 3000',
         [warehouseId]);
       return workerJson({ok:true,warehouseId,parts});
     }
