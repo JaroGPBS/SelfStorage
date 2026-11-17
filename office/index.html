@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=127">
+  <link rel="stylesheet" href="./office.css?v=128">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -232,6 +232,27 @@
           </div>
         </section>
         <section id="officeFranceHome" class="office-france-home hidden" aria-labelledby="franceHomeTitle">
+          <svg class="office-france-icon-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+            <symbol id="france-icon-warehouse" viewBox="0 0 24 24">
+              <path d="m3 9 9-6 9 6v12H3V9Z"/>
+              <path d="M3 10h18M9 21v-9h6v9"/>
+            </symbol>
+            <symbol id="france-icon-box" viewBox="0 0 24 24">
+              <path d="m12 3 9 5-9 5-9-5 9-5Z"/>
+              <path d="M3 8v9l9 5 9-5V8M12 13v9"/>
+            </symbol>
+            <symbol id="france-icon-modules" viewBox="0 0 24 24">
+              <rect x="4" y="4" width="7" height="7" rx="1"/>
+              <rect x="13" y="4" width="7" height="7" rx="1"/>
+              <rect x="4" y="13" width="7" height="7" rx="1"/>
+              <rect x="13" y="13" width="7" height="7" rx="1"/>
+            </symbol>
+            <symbol id="france-icon-truck" viewBox="0 0 24 24">
+              <path d="M3 6h12v12H3zM15 10h4l3 4v4h-7"/>
+              <circle cx="7.5" cy="18" r="2"/>
+              <circle cx="18.5" cy="18" r="2"/>
+            </symbol>
+          </svg>
           <header class="office-france-heading">
             <div><p class="office-france-kicker">GPBS STORAGE · OFFICE</p>
               <h1 id="franceHomeTitle"><span aria-hidden="true">🇫🇷</span> Francja</h1>
@@ -239,34 +260,34 @@
             <time id="franceHomeDate" class="office-france-date"></time>
           </header>
           <div class="office-france-stats" aria-label="Podsumowanie magazynów Francja">
-            <article class="office-france-stat"><span>Magazyny</span><strong id="franceHomeWarehouses">10</strong><small>Wszystkie lokalizacje</small></article>
-            <article class="office-france-stat"><span>Moduły</span><strong id="franceHomeModules">—</strong><small id="franceHomeModulesNote">Brak danych</small></article>
+            <article class="office-france-stat"><span class="office-france-stat-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg>Magazyny</span><strong id="franceHomeWarehouses">10</strong><small>Wszystkie lokalizacje</small></article>
+            <article class="office-france-stat"><span class="office-france-stat-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-modules"></use></svg>Moduły</span><strong id="franceHomeModules">—</strong><small id="franceHomeModulesNote">Brak danych</small></article>
           </div>
           <p id="franceHomeStatus" class="office-france-status" role="status" aria-live="polite"></p>
           <section class="office-france-section" aria-labelledby="franceGpbsTitle">
             <h2 id="franceGpbsTitle">GPBS</h2>
             <div class="office-france-links">
-              <button type="button" data-fr-home-warehouse="belleville"><span class="office-france-link-icon" aria-hidden="true">▣</span>Belleville</button>
-              <button type="button" data-fr-home-warehouse="toulouse"><span class="office-france-link-icon" aria-hidden="true">▣</span>Box Toulouse</button>
-              <button type="button" data-fr-home-warehouse="paris"><span class="office-france-link-icon" aria-hidden="true">▣</span>Box Paryż</button>
+              <button type="button" data-fr-home-warehouse="belleville"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Belleville</button>
+              <button type="button" data-fr-home-warehouse="toulouse"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-box"></use></svg></span>Box Toulouse</button>
+              <button type="button" data-fr-home-warehouse="paris"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-box"></use></svg></span>Box Paryż</button>
             </div>
           </section>
           <section class="office-france-section" aria-labelledby="franceBovisTitle">
             <h2 id="franceBovisTitle">Bovis</h2>
             <div class="office-france-links">
-              <button type="button" data-fr-home-warehouse="bovis-paris"><span class="office-france-link-icon" aria-hidden="true">▣</span>Paryż</button>
-              <button type="button" data-fr-home-warehouse="bovis-lyon"><span class="office-france-link-icon" aria-hidden="true">▣</span>Lyon</button>
-              <button type="button" data-fr-home-warehouse="bovis-marseille"><span class="office-france-link-icon" aria-hidden="true">▣</span>Marsylia</button>
-              <button type="button" data-fr-home-warehouse="bovis-toulouse"><span class="office-france-link-icon" aria-hidden="true">▣</span>Tuluza</button>
-              <button type="button" data-fr-home-warehouse="bovis-nantes"><span class="office-france-link-icon" aria-hidden="true">▣</span>Nantes</button>
-              <button type="button" data-fr-home-warehouse="bovis-nancy"><span class="office-france-link-icon" aria-hidden="true">▣</span>Nancy</button>
-              <button type="button" data-fr-home-warehouse="bovis-lille"><span class="office-france-link-icon" aria-hidden="true">▣</span>Lille</button>
+              <button type="button" data-fr-home-warehouse="bovis-paris"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Paryż</button>
+              <button type="button" data-fr-home-warehouse="bovis-lyon"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Lyon</button>
+              <button type="button" data-fr-home-warehouse="bovis-marseille"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Marsylia</button>
+              <button type="button" data-fr-home-warehouse="bovis-toulouse"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Tuluza</button>
+              <button type="button" data-fr-home-warehouse="bovis-nantes"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Nantes</button>
+              <button type="button" data-fr-home-warehouse="bovis-nancy"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Nancy</button>
+              <button type="button" data-fr-home-warehouse="bovis-lille"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-warehouse"></use></svg></span>Lille</button>
             </div>
           </section>
           <section class="office-france-section" aria-labelledby="franceVehiclesTitle">
             <h2 id="franceVehiclesTitle">Samochody</h2>
             <div class="office-france-links">
-              <button type="button" data-fr-home-vehicles="1"><span class="office-france-link-icon" aria-hidden="true">▰</span>Samochody <span class="office-france-link-arrow" aria-hidden="true">›</span></button>
+              <button type="button" data-fr-home-vehicles="1"><span class="office-france-link-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#france-icon-truck"></use></svg></span>Samochody <span class="office-france-link-arrow" aria-hidden="true">›</span></button>
             </div>
           </section>
         </section>
