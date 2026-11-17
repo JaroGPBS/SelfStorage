@@ -5,7 +5,7 @@ import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrCarClaims,normalPlate} from '../../lib/fr-car-claims.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
 import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
-import {excludedBoxPartIds} from '../../lib/fr-box-office-stock.js';
+import {activeBoxCatalogItems} from '../../lib/fr-box-office-stock.js';
 
 // One authoritative, 78-item list for both self-service BOX warehouses.
 const BOX_CATALOG_VERSION='FR-BOX-78-20261111';
@@ -178,25 +178,20 @@ function codeForPart(p){return p.source_code||p.old_index||p.new_index||p.part_n
 async function resolveParts(db,items,warehouseId){
   const newBox=warehouseId.startsWith('FR-BOX-');
   let warehouse=BOX_WAREHOUSES.get(warehouseId);
-  let assigned=null;
   if(newBox){
     const active=await db.prepare(
       "SELECT w.name FROM warehouses w JOIN fr_warehouse_qr q ON q.warehouse_id=w.id "+
       "WHERE w.id=? AND w.country_code='FR' AND w.active=1"
     ).bind(warehouseId).first();
     warehouse=active?.name;
-    const rows=(await db.prepare(
-      'SELECT part_id FROM warehouse_stock WHERE warehouse_id=?'
-    ).bind(warehouseId).all()).results||[];
-    assigned=new Set(rows.map(x=>x.part_id));
   }
   if(!warehouse)throw Error('Nieprawidłowy lub nieaktywny magazyn BOX.');
-  const excluded=await excludedBoxPartIds(db);
-  const catalogue=(await parts(db)).filter(p=>BOX_PARTS.has(p.id)&&
-    !excluded.has(p.id)&&(!newBox||assigned.has(p.id)));
+  const activeItems=await activeBoxCatalogItems(db);
+  const allowed=new Map(activeItems.map(item=>[item.part_id,item]));
+  const catalogue=(await parts(db)).filter(p=>allowed.has(p.id));
   const mapping=new Map();
   for(const p of catalogue){
-    const box=BOX_PARTS.get(p.id);
+    const box=allowed.get(p.id);
     for(const code of [p.id,p.part_number,p.sap_number,p.source_code,p.old_index,
       p.new_index,box.source_code,box.legacy_index,box.sap]){
       if(!code)continue;
@@ -553,9 +548,8 @@ async function action(db,user,body){
   if(type==='POBIERZ_DANE_STARTOWE'){
     const catalog=await parts(db);
     const byId=new Map(catalog.map(p=>[p.id,p]));
-    const excluded=await excludedBoxPartIds(db);
-    // Never send removed BOX items or the global catalogue into the scanner.
-    const activeBoxItems=BOX_CATALOG_SNAPSHOT.filter(box=>!excluded.has(box.part_id));
+    // Additions from Admin are available to every BOX and to the scanner.
+    const activeBoxItems=await activeBoxCatalogItems(db);
     const boxList=activeBoxItems.map(box=>{
       const p=byId.get(box.part_id);
       if(!p)return null;
@@ -569,7 +563,15 @@ async function action(db,user,body){
     const car=await vehicle(db,user.id);
     return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
       samochod:car?.registration_number||'',
-      wersjaKataloguBox:BOX_CATALOG_VERSION+'-'+[...excluded].sort().join('-'),
+      wersjaKataloguBox:BOX_CATALOG_VERSION+'-'+(()=>{
+        let hash=2166136261;
+        const ids=activeBoxItems.map(x=>x.part_id).sort().join('|');
+        for(let i=0;i<ids.length;i++){
+          hash^=ids.charCodeAt(i);
+          hash=Math.imul(hash,16777619)>>>0;
+        }
+        return hash.toString(16);
+      })(),
       czesci:boxList,
       magazyny:(await db.prepare(
         "SELECT w.id,w.name,q.code FROM fr_warehouse_qr q JOIN warehouses w ON w.id=q.warehouse_id "+
