@@ -74,28 +74,6 @@
         </div>
       </header>
       <main class="workspace">
-        <div class="heading" id="pageHeading">
-          <div>
-            <div class="eyebrow" id="adminPageEyebrow">GPBS STORAGE</div>
-            <h1 id="pageTitle">Pulpit</h1>
-            <p id="pageSubtitle">Przegląd operacji i magazynów.</p>
-          </div>
-          <div class="heading-actions">
-            <select id="warehouseFilter" class="select hidden" aria-label="Wybierz magazyn"></select>
-            
-            <select id="pinRoleFilter" class="select hidden" aria-label="Rola dla zbiorczego generatora PIN-ów">
-              <option value="">Wszystkie role</option>
-              <option value="ADMIN">Admin</option>
-              <option value="KIEROWNIK">Kierownik</option>
-              <option value="KOORDYNATOR">Koordynator</option>
-              <option value="MAGAZYNIER">Magazynier</option>
-              <option value="EKIPA">Ekipa</option>
-            </select>
-            <button id="generateMissingPins" class="btn ghost hidden" type="button">Generuj brakujące PIN-y</button>
-            <button id="showArchivedUsers" class="btn ghost hidden" type="button">Pokaż archiwum</button>
-            <button id="addUserBtn" class="btn primary hidden" type="button">+ Dodaj użytkownika</button>
-          </div>
-        </div>
         <div id="message" class="message hidden" role="status" aria-live="polite"></div>
         <section id="dashboardView" class="view hidden">
           <div id="overissueAlert" class="overissue-alert" role="status" aria-live="polite" hidden></div>
@@ -344,6 +322,21 @@
           <div class="table-panel">
             <div class="table-title">
               <div><h2 id="tableTitle"></h2><p id="tableDescription"></p></div>
+          <div class="heading-actions admin-user-toolbar">
+            <select id="warehouseFilter" class="select hidden" aria-label="Wybierz magazyn"></select>
+            
+            <select id="pinRoleFilter" class="select hidden" aria-label="Rola dla zbiorczego generatora PIN-ów">
+              <option value="">Wszystkie role</option>
+              <option value="ADMIN">Admin</option>
+              <option value="KIEROWNIK">Kierownik</option>
+              <option value="KOORDYNATOR">Koordynator</option>
+              <option value="MAGAZYNIER">Magazynier</option>
+              <option value="EKIPA">Ekipa</option>
+            </select>
+            <button id="generateMissingPins" class="btn ghost hidden" type="button">Generuj brakujące PIN-y</button>
+            <button id="showArchivedUsers" class="btn ghost hidden" type="button">Pokaż archiwum</button>
+            <button id="addUserBtn" class="btn primary hidden" type="button">+ Dodaj użytkownika</button>
+          </div>
               <button id="vehicleAddPartBtn" class="btn mini hidden" type="button">+ Dodaj część do samochodów</button>
               <button id="showArchivedWarehousesBtn" class="btn mini hidden" type="button">Archiwum</button>
               <button id="showBoxWarehouseFormBtn" class="btn mini hidden" type="button" aria-expanded="false" aria-controls="warehouseCreation">+ Dodaj magazyn</button>
