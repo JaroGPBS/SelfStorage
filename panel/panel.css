@@ -1204,7 +1204,8 @@ tr:hover td{background:#ffffff04}
 }
 .part-catalogue-table th:nth-child(2),
 .part-catalogue-table td:nth-child(2){
-  min-width:240px;
+  width:29%;
+  min-width:220px;
 }
 .part-catalogue-table .part-photo-count-cell{
   white-space:nowrap;
