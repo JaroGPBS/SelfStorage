@@ -7,7 +7,7 @@ import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {readFrWeeklySettings,weeklyInventoryStatus} from '../../lib/fr-weekly-schedule.js';
 import {frenchBoxDocuments,frenchBoxDocumentLines} from '../../lib/fr-office-movements.js';
-import {readFrBoxOfficeParts} from '../../lib/fr-box-office-stock.js';
+import {readFrBoxOfficeParts,excludedBoxPartIds} from '../../lib/fr-box-office-stock.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
@@ -683,7 +683,9 @@ export async function onRequestGet({request,env}){
           'WHERE p.active=1 ')+
         'ORDER BY p.name COLLATE NOCASE,p.id LIMIT 3000',
         [warehouseId]);
-      return workerJson({ok:true,warehouseId,parts});
+      const excluded=isNewFrBox?await excludedBoxPartIds(env.DB):new Set();
+      return workerJson({ok:true,warehouseId,
+        parts:isNewFrBox?parts.filter(part=>!excluded.has(part.id)):parts});
     }
     if(view==='nokStock'){
       if(!await tableExists(env.DB,'pl_nok_stock'))
