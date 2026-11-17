@@ -8,7 +8,7 @@
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Magazyny Polski i Francji. Kody QR Boxów pozostają bez zmian.'],
     parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
-    boxParts:['Katalog części Boxy','Wyłącznie części dla Box Toulouse i Box Paris. Stany obu magazynów są rozdzielone.'],
+    boxParts:['Katalog części Boxy','Części dostępne w BOX-ach. Wycofanie pozycji nie usuwa jej z głównego katalogu ani historii.'],
     vehicleParts:['Katalog części Samochody','Wyposażenie aut: te same części co w głównym katalogu, z osobną wymaganą ilością na samochód.'],
     newParts:['Nowe części','Nowe części zgłoszone przez magazynierów — do weryfikacji.'],
     indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
@@ -400,21 +400,10 @@
       warehouseRows(items)
     ];
     if(view==='newParts')return [[],[]];
-    if(view==='boxParts'){
-      const fromD1=state.boxPartsSource?.fromD1||{};
-      const counts=state.boxPartsSource?.d1Positions||{};
-      const columnName=place=>(place==='toulouse'?'TULUZA':'PARYŻ')+
-        (fromD1[place]?' (D1)':Number(counts[place]||0)>0?' (D1 + ARKUSZ)':' (ARKUSZ)');
-      return [
-        ['NAZWA CZĘŚCI','INDEKS GPBS','INDEKS ŹRÓDŁOWY','INDEKS FR','SAP',
-          columnName('toulouse'),columnName('paris')],
-        items.map(p=>[
-          p.name||'—',p.part_number||'—',p.legacy_index||'—',
-          p.source_code||'—',p.sap_number||'—',
-          formatNum(p.toulouse)+' szt.',formatNum(p.paris)+' szt.'
-        ])
-      ];
-    }
+    if(view==='boxParts')return [
+      ['NAZWA CZĘŚCI','INDEKS GPBS','SAP',''],
+      items.map(p=>[p.name||'—',p.part_number||'—',p.sap_number||'—',''])
+    ];
     if(view==='parts')return [
       ['NAZWA CZĘŚCI','INDEKS GPBS / MAG.','SAP','ILOŚĆ'],
       items.map(p=>[p.name,p.part_number||'—',p.sap_number||'—',
@@ -1268,6 +1257,47 @@
     return table;
   }
 
+  function renderBoxPartsTable(items){
+    const [columns,rows]=colsFor('boxParts',items);
+    for(let i=0;i<items.length;i++){
+      const part=items[i];
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='btn mini archive-danger box-part-remove';
+      button.textContent='Usuń';
+      button.setAttribute('aria-label','Wycofaj '+part.name+' tylko z katalogu BOX');
+      button.addEventListener('click',()=>removeBoxCataloguePart(part,button));
+      rows[i][3]=button;
+    }
+    const table=buildTable(columns,rows);
+    table.classList.add('box-catalogue-table');
+    return table;
+  }
+  async function removeBoxCataloguePart(part,button){
+    const yes=await confirmAction({
+      title:'Usunąć tylko z katalogu części BOX?',
+      description:'„'+part.name+'” przestanie być widoczna i dostępna do skanowania '+
+        'we wszystkich BOX-ach. Pozostanie w katalogu głównym, innych magazynach '+
+        'i zapisanej historii. Wycofać można tylko część, której stany w BOX-ach wynoszą zero.',
+      confirmLabel:'Usuń z BOX-ów',
+      danger:true
+    });
+    if(!yes)return;
+    busy(button,true);
+    try{
+      await post({action:'removeBoxPart',partId:part.id});
+      if(state.view==='boxParts'){
+        state.records=state.records.filter(item=>item.id!==part.id);
+        $('tableDescription').textContent=
+          'Aktywne pozycje katalogu BOX: '+state.records.length+
+          '. Usunięcie nie zmienia głównego katalogu ani historii.';
+        renderList();
+      }
+      message('Wycofano pozycję tylko z katalogu BOX.','success');
+    }catch(error){message(error.message||'Nie udało się wycofać pozycji z BOX-ów.','error');}
+    finally{busy(button,false);}
+  }
+
   function renderList() {
     const q=$('tableSearch').value.toLocaleLowerCase('pl').trim();
     const matching=state.records.filter(row=>
@@ -1281,6 +1311,7 @@
       $('tableResults').append(empty);
     }else $('tableResults').append(state.view==='users'?renderUsersTable(matching)
       :state.view==='warehouses'?renderWarehousesTable(matching)
+      :state.view==='boxParts'?renderBoxPartsTable(matching)
       :state.view==='parts'||state.view==='newParts'
         ?renderPartsTable(matching,state.view==='newParts')
         :state.view==='vehicleParts'?renderVehiclePartsTable(matching)
@@ -1405,15 +1436,9 @@
           if(view==='boxParts'){
             state.boxPartsSource=response;
             if(state.view===view){
-              const d1=response.fromD1||{};
-              const counts=response.d1Positions||{};
-              const source=place=>d1[place]?'stany z D1':
-                Number(counts[place]||0)>0?'D1 + brakujące stany z arkusza':'stany z arkusza';
               $('tableDescription').textContent=
-                'Tuluza: '+source('toulouse')+
-                ' · Paryż: '+source('paris')+
-                ' · Źródło: Stock FR GPBS, 11.11.2026 · '+
-                response.parts.length+' pozycji.';
+                'Aktywne pozycje katalogu BOX: '+response.parts.length+
+                '. Usunięcie nie zmienia głównego katalogu ani historii.';
             }
           }
         }
