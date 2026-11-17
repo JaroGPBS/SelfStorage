@@ -1490,3 +1490,22 @@ tr:hover td{background:#ffffff04}
   .part-editor-dialog .part-editor-wide{grid-column:1}
   .part-editor-dialog #partEditDelete{flex-basis:100%;margin-right:0}
 }
+
+
+/* BOX-only catalogue: concise metadata and a scoped remove action. */
+.box-catalogue-table{min-width:650px}
+.box-catalogue-table th:first-child,
+.box-catalogue-table td:first-child{width:40%;min-width:210px;white-space:normal}
+.box-catalogue-table th:nth-child(2),
+.box-catalogue-table td:nth-child(2){min-width:145px}
+.box-catalogue-table th:nth-child(3),
+.box-catalogue-table td:nth-child(3){min-width:120px}
+.box-catalogue-table th:last-child,
+.box-catalogue-table td:last-child{text-align:right;width:105px}
+.box-catalogue-table .box-part-remove{
+  min-height:32px;
+  padding:6px 12px;
+  margin:0;
+  font-size:11px;
+  white-space:nowrap;
+}
