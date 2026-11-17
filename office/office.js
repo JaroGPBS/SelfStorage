@@ -3981,6 +3981,12 @@ document.addEventListener('click',e=>{
   if(toggle){
     const market=toggle.dataset.marketToggle;
     if(market==='PL'||market==='FR'){
+      // JJ always returns to the French landing page, even when the menu
+      // was already expanded. Other users keep their original menu behavior.
+      if(market==='FR'&&state.user?.role==='ADMIN'&&
+         String(state.user?.nickname||'').trim().toUpperCase()==='JJ'){
+        showFranceHome();return;
+      }
       const opening=!state.warehouseMenus[market];
       state.warehouseMenus[market]=opening;
       if(opening)state.warehouseMenus[market==='PL'?'FR':'PL']=false;
@@ -3991,10 +3997,6 @@ document.addEventListener('click',e=>{
           state.warehouses.find(x=>x.country_code==='PL');
         if(w){selectView('stocks',w.id);return;}
       }else{
-        if(state.user?.role==='ADMIN'&&
-           String(state.user?.nickname||'').trim().toUpperCase()==='JJ'){
-          showFranceHome();return;
-        }
         const w=state.warehouses.find(x=>x.country_code==='FR');
         if(w){selectView('stocks',w.id);return;}
         const layout=FR_LAYOUT_WAREHOUSES.find(x=>x.key==='belleville')||
