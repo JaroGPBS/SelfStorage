@@ -157,7 +157,7 @@ export async function onRequestGet({request,env}){
   const permissions=user.features||{};
   const needed={
     stocks:'stocks',part:'stocks',partPhoto:'stocks',nokStock:'stocks',
-    frCatalog:'stocks',frBoxCatalog:'stocks',frCatalogPhoto:'stocks',frBoxVisits:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',vehicleInventories:'stocks',frStockDiscrepancies:'stocks',
+    frMarketOverview:'stocks',frCatalog:'stocks',frBoxCatalog:'stocks',frCatalogPhoto:'stocks',frBoxVisits:'stocks',vehicleCatalog:'stocks',vehicleCrews:'stocks',vehicleInventories:'stocks',frStockDiscrepancies:'stocks',
     inventories:'inventory',inventoryLines:'inventory'
   }[view];
   if(needed&&permissions[needed]===false)return error('Brak uprawnień do tej funkcji.',403);
@@ -182,6 +182,24 @@ export async function onRequestGet({request,env}){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
+  }
+  if(view==='frMarketOverview'){
+    if(!user.markets?.FR)return error('Brak dostępu do rynku Francja.',403);
+    // Counts are based on real active D1 warehouses; never include layout-only
+    // Bovis demonstration machines or guessed module balances.
+    const allFr=await env.DB.prepare(
+      "SELECT COUNT(*) AS amount FROM warehouses WHERE country_code='FR' AND active=1"
+    ).first();
+    let parts=null;
+    if(await tableExists(env.DB,'warehouse_stock')){
+      const stocked=await env.DB.prepare(
+        "SELECT COALESCE(SUM(s.quantity),0) AS amount FROM warehouse_stock s "+
+        "JOIN warehouses w ON w.id=s.warehouse_id "+
+        "WHERE w.country_code='FR' AND w.active=1"
+      ).first();
+      parts=Number(stocked?.amount||0);
+    }
+    return workerJson({ok:true,warehouses:Number(allFr?.amount||0),parts,modules:null});
   }
   if(view==='frStockDiscrepancies'){
     // Show FR shortages only for warehouses this Office user can access.
