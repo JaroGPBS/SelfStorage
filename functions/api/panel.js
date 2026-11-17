@@ -1,7 +1,7 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
-import {readFrBoxSharedCatalog,removeBoxCataloguePart} from '../../lib/fr-box-office-stock.js';
+import {readFrBoxSharedCatalog,removeBoxCataloguePart,addBoxCataloguePart} from '../../lib/fr-box-office-stock.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
 import {listAdminWarehouses,createManagedWarehouse,updateManagedWarehouse,deleteEmptyWarehouse} from '../../lib/warehouse-admin.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
@@ -1789,18 +1789,20 @@ async function route(request,env) {
         error?.status||503);
     }
   }
-  if(body?.action==='removeBoxPart'){
+  if(body?.action==='removeBoxPart'||body?.action==='addBoxPart'){
     if(session.role!=='ADMIN')return fail('Brak uprawnień do zmiany katalogu BOX.',403);
     const partId=String(body.partId||'');
     if(!/^[A-Za-z0-9_-]{1,100}$/.test(partId))
       return fail('Nieprawidłowa część.',400);
     try{
-      const result=await removeBoxCataloguePart(env.DB,partId,session.id);
+      const result=body.action==='addBoxPart'
+        ?await addBoxCataloguePart(env.DB,partId,session.id)
+        :await removeBoxCataloguePart(env.DB,partId,session.id);
       return respond({ok:true,...result});
     }catch(error){
-      console.error('BOX catalogue item exclusion failed',error?.name||'Error');
+      console.error('BOX catalogue membership update failed',error?.name||'Error');
       return fail(error?.status?error.message:
-        'Nie udało się wycofać pozycji z katalogu BOX. Żadne stany nie zostały zmienione.',
+        'Nie udało się zmienić katalogu BOX. Stany magazynowe nie zostały zmienione.',
         error?.status||503);
     }
   }
