@@ -7,7 +7,7 @@ import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {readFrWeeklySettings,weeklyInventoryStatus} from '../../lib/fr-weekly-schedule.js';
 import {frenchBoxDocuments,frenchBoxDocumentLines} from '../../lib/fr-office-movements.js';
-import {readFrBoxOfficeParts,excludedBoxPartIds} from '../../lib/fr-box-office-stock.js';
+import {readFrBoxOfficeParts,activeBoxCatalogItems} from '../../lib/fr-box-office-stock.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
 const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
@@ -679,13 +679,14 @@ export async function onRequestGet({request,env}){
         ' AS part_number,p.name,p.sap_number,s.quantity '+
         'FROM parts p LEFT JOIN warehouse_stock s ON s.part_id=p.id AND s.warehouse_id=? '+
         (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
-        (isNewFrBox?'WHERE p.active=1 AND s.part_id IS NOT NULL ':
-          'WHERE p.active=1 ')+
+        'WHERE p.active=1 '+
         'ORDER BY p.name COLLATE NOCASE,p.id LIMIT 3000',
         [warehouseId]);
-      const excluded=isNewFrBox?await excludedBoxPartIds(env.DB):new Set();
+      const allowed=isNewFrBox
+        ?new Set((await activeBoxCatalogItems(env.DB)).map(item=>item.part_id)):null;
       return workerJson({ok:true,warehouseId,
-        parts:isNewFrBox?parts.filter(part=>!excluded.has(part.id)):parts});
+        parts:isNewFrBox?parts.filter(part=>allowed.has(part.id))
+          .map(part=>({...part,quantity:Number(part.quantity??0)})):parts});
     }
     if(view==='nokStock'){
       if(!await tableExists(env.DB,'pl_nok_stock'))
