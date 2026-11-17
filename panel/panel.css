@@ -1492,20 +1492,56 @@ tr:hover td{background:#ffffff04}
 }
 
 
-/* BOX-only catalogue: concise metadata and a scoped remove action. */
-.box-catalogue-table{min-width:650px}
+/* BOX-only catalogue: keep name, GPBS, SAP and action side by side on
+   the LEFT instead of stretching each column across the full screen. */
+.box-catalogue-table{
+  width:760px;
+  min-width:760px;
+  max-width:none;
+  table-layout:fixed;
+}
 .box-catalogue-table th:first-child,
-.box-catalogue-table td:first-child{width:40%;min-width:210px;white-space:normal}
+.box-catalogue-table td:first-child{
+  width:300px;
+  min-width:0;
+  white-space:normal;
+  overflow-wrap:break-word;
+}
 .box-catalogue-table th:nth-child(2),
-.box-catalogue-table td:nth-child(2){min-width:145px}
+.box-catalogue-table td:nth-child(2){width:185px;min-width:0}
 .box-catalogue-table th:nth-child(3),
-.box-catalogue-table td:nth-child(3){min-width:120px}
+.box-catalogue-table td:nth-child(3){width:145px;min-width:0}
 .box-catalogue-table th:last-child,
-.box-catalogue-table td:last-child{text-align:right;width:105px}
+.box-catalogue-table td:last-child{width:130px;min-width:0;text-align:left}
 .box-catalogue-table .box-part-remove{
   min-height:32px;
   padding:6px 12px;
   margin:0;
   font-size:11px;
   white-space:nowrap;
+}
+
+
+/* Admin: one heading per section; user actions were moved beside the table
+   title, not deleted with the duplicate page banner. */
+#tableView .table-title{flex-wrap:wrap;column-gap:14px;row-gap:12px}
+#tableView .table-title>div:first-child{min-width:180px}
+#tableView .table-title .admin-user-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex:1 1 auto;
+  flex-wrap:wrap;
+  gap:8px;
+  min-width:0;
+}
+#tableView .table-title .admin-user-toolbar.hidden{display:none!important}
+#tableView .table-title .admin-user-toolbar .select{width:145px}
+#tableView .table-title .search-input{margin-left:auto}
+@media(max-width:760px){
+  #tableView .table-title .admin-user-toolbar{
+    justify-content:flex-start;
+    flex-basis:100%;
+  }
+  #tableView .table-title .search-input{margin-left:0;flex:1 1 200px}
 }
