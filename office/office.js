@@ -459,7 +459,7 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -654,6 +654,7 @@ function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
   state.warehouseMenus={PL:false,FR:false};
+  state.archivedFrenchWarehouses=Array.isArray(payload.archivedFrenchWarehouses)?payload.archivedFrenchWarehouses:[];
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
   $('username').textContent=name?greetingVocative(name)+'!':'!';
@@ -715,8 +716,15 @@ function showFranceHome(expandMenu=true){
     timeZone:'Europe/Paris',day:'2-digit',month:'long',year:'numeric',
     hour:'2-digit',minute:'2-digit'
   }).format(new Date());
-  // The ten established locations remain visible even before D1 integration.
-  // Additional active warehouses created in Admin appear without hardcoded cities.
+  // Hide archived locations from the operational homepage while retaining
+  // all historic records in Admin. Unconfigured locations remain visible.
+  for(const button of $('officeFranceHome').querySelectorAll('[data-fr-home-warehouse]')){
+    const key=button.dataset.frHomeWarehouse;
+    const layout=FR_LAYOUT_WAREHOUSES.find(x=>x.key===key)||
+      (key==='bovis-lyon'?{key,name:'Bovis Lyon'}:null);
+    const archived=layout&&state.archivedFrenchWarehouses.some(w=>matchesFrenchWarehouse(w,layout));
+    button.classList.toggle('hidden',Boolean(archived));
+  }
   $('officeFranceHome').querySelectorAll('[data-fr-home-real]').forEach(el=>el.remove());
   for(const warehouse of state.warehouses.filter(w=>w.country_code==='FR')){
     const existing=FR_LAYOUT_WAREHOUSES.some(layout=>matchesFrenchWarehouse(warehouse,layout))||
@@ -734,8 +742,8 @@ function showFranceHome(expandMenu=true){
     button.append(icon,name);
     $(bovis?'franceHomeBovisLinks':'franceHomeGpbsLinks').append(button);
   }
-  const locations=$('officeFranceHome').querySelectorAll(
-    '[data-fr-home-warehouse],[data-fr-home-real]').length;
+  const locations=[...$('officeFranceHome').querySelectorAll(
+    '[data-fr-home-warehouse],[data-fr-home-real]')].filter(el=>!el.classList.contains('hidden')).length;
   $('franceHomeWarehouses').textContent=new Intl.NumberFormat('pl-PL').format(locations);
   $('franceHomeModules').textContent='—';
   $('franceHomeModulesNote').textContent='Brak danych';
@@ -921,6 +929,8 @@ function renderMenu(){
   if(canPreviewFrance){
     const used=new Set();
     for(const location of FR_LAYOUT_WAREHOUSES){
+      const archived=state.archivedFrenchWarehouses.some(w=>matchesFrenchWarehouse(w,location));
+      if(archived)continue;
       const real=fr.find(w=>matchesFrenchWarehouse(w,location));
       if(real)used.add(real.id);
       pushFrench(location.name,location.key,real?.id||'');
