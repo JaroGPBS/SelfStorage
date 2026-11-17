@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./panel.css?v=37">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=71" defer></script>
+  <script src="./panel.js?v=72" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -82,7 +82,7 @@
           </div>
           <div class="heading-actions">
             <select id="warehouseFilter" class="select hidden" aria-label="Wybierz magazyn"></select>
-            <button id="addPartBtn" class="btn primary hidden" type="button">+ Dodaj część</button>
+            
             <select id="pinRoleFilter" class="select hidden" aria-label="Rola dla zbiorczego generatora PIN-ów">
               <option value="">Wszystkie role</option>
               <option value="ADMIN">Admin</option>
@@ -347,6 +347,7 @@
               <button id="vehicleAddPartBtn" class="btn mini hidden" type="button">+ Dodaj część do samochodów</button>
               <button id="showArchivedWarehousesBtn" class="btn mini hidden" type="button">Archiwum</button>
               <button id="showBoxWarehouseFormBtn" class="btn mini hidden" type="button" aria-expanded="false" aria-controls="warehouseCreation">+ Dodaj magazyn</button>
+              <button id="addPartBtn" class="btn primary hidden" type="button">+ Dodaj część</button>
               <input id="tableSearch" class="search-input" type="search" autocomplete="off" placeholder="Szukaj w tabeli…">
             </div>
             <div id="tableResults" class="table-scroll"></div>
