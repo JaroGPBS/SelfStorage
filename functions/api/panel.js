@@ -646,8 +646,8 @@ async function queryPanel(env,view,url) {
         :'p.part_number,NULL AS old_index,')+
       'p.name,p.sap_number '+
       (verification?' ,v.status AS verification_status ':' ,NULL AS verification_status ')+
-      (photoFlags?' ,('+photoFlags+') AS has_photo ':
-        ' ,0 AS has_photo ')+
+      (photoFlags?' ,('+photoFlags+') AS has_photo, CASE WHEN ('+photoFlags+') THEN 1 ELSE 0 END AS photo_count ':
+        ' ,0 AS has_photo,0 AS photo_count ')+
       'FROM parts p '+
       (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
       (verification?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
