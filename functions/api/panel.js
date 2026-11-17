@@ -3,7 +3,7 @@ import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {readFrBoxSharedCatalog} from '../../lib/fr-box-office-stock.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
-import {listAdminWarehouses,createManagedWarehouse,updateManagedWarehouse} from '../../lib/warehouse-admin.js';
+import {listAdminWarehouses,createManagedWarehouse,updateManagedWarehouse,deleteEmptyWarehouse} from '../../lib/warehouse-admin.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
@@ -1756,7 +1756,7 @@ async function route(request,env) {
       return fail('Nie udało się wygenerować PIN-u. Sprawdź konfigurację i spróbuj ponownie.',500);
     }
   }
-  if(['warehouseCreate','warehouseStatus','warehouseArchive','warehouseRestore'].includes(body?.action)){
+  if(['warehouseCreate','warehouseStatus','warehouseArchive','warehouseRestore','warehouseDelete'].includes(body?.action)){
     if(!session.superAdmin)return fail('Tylko Super Admin może zarządzać magazynami.',403);
     try{
       if(body.action==='warehouseCreate'){
@@ -1764,15 +1764,21 @@ async function route(request,env) {
         const warehouse=await createManagedWarehouse(env,body,session.id,ctx?.owner?.id||null);
         return respond({ok:true,warehouse});
       }
-      if(body.action==='warehouseArchive'){
-        const ctx=await ownerContext(env);
-        if(!ctx)return fail('Nie można zweryfikować głównego administratora.',503);
-        const key='warehouse-archive-owner-pin';
+      let owner=null;
+      if(['warehouseArchive','warehouseDelete'].includes(body.action)){
+        owner=await ownerContext(env);
+        if(!owner)return fail('Nie można zweryfikować głównego administratora.',503);
+        const key=body.action==='warehouseDelete'
+          ?'warehouse-delete-owner-pin':'warehouse-archive-owner-pin';
         const locked=await reserveLoginAttempt(env.DB,key,5,30*60);
         if(locked>0)return blocked(locked);
-        const valid=await ownerPinMatches(env,body.pin,ctx,pin=>verifyLegacyAdmin(pin,env));
+        const valid=await ownerPinMatches(env,body.pin,owner,pin=>verifyLegacyAdmin(pin,env));
         if(!valid)return fail('Nieprawidłowy PIN administratora.',403);
         await clearLoginAttempts(env.DB,[key]);
+      }
+      if(body.action==='warehouseDelete'){
+        const deleted=await deleteEmptyWarehouse(env,body,session.id,owner.owner.id);
+        return respond({ok:true,...deleted});
       }
       const outcome=await updateManagedWarehouse(env,body,session.id,body.action);
       return respond({ok:true,...outcome});
