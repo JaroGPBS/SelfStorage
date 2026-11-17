@@ -181,7 +181,18 @@ export async function onRequestGet({request,env}){
     }catch(err){
       console.error('Office greeting name unavailable',err?.name||'Error');
     }
-    return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
+    // Hide deliberately archived locations from the owner's operational menu.
+    // The archive remains available through Admin; no historical records are deleted.
+    let archivedFrenchWarehouses=[];
+    if(user.role==='ADMIN'&&String(user.nickname||'').trim().toUpperCase()==='JJ'&&
+       await tableExists(env.DB,'warehouse_admin_state')){
+      const rows=await selectRows(env.DB,
+        'SELECT w.id,w.name FROM warehouse_admin_state a JOIN warehouses w '+
+        "ON w.id=a.warehouse_id WHERE a.archived_at IS NOT NULL AND w.country_code='FR'");
+      archivedFrenchWarehouses=rows.map(row=>({id:row.id,name:row.name}));
+    }
+    return workerJson({ok:true,user:{...user,firstName},
+      warehouses:authorizedWarehouses,archivedFrenchWarehouses});
   }
   if(view==='frMarketOverview'){
     // This whole-market summary is reserved for the protected JJ owner;
