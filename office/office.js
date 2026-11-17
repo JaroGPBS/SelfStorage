@@ -688,11 +688,11 @@ function showOfficeHome(){
   $('officeTableCard').querySelector('.fr-crew-toolbar')?.remove();
   renderMenu();
 }
-function showFranceHome(){
+function showFranceHome(expandMenu=true){
   ++state.requestId;
   state.view='frMarketHome';
   state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
-  state.warehouseMenus.FR=true;state.warehouseMenus.PL=false;
+  state.warehouseMenus.FR=expandMenu;state.warehouseMenus.PL=false;
   $('sidebar').classList.remove('open');
   $('app').classList.remove('view-home','view-stocks','view-bovis-overview',
     'view-aggregate','view-vehicles','view-fr-empty');
@@ -722,6 +722,7 @@ function showFranceHome(){
   $('franceHomeModules').textContent='—';
   $('franceHomeModulesNote').textContent='Brak danych';
   $('franceHomeStatus').textContent='';
+  renderMenu();
 }
 function openFranceHomeWarehouse(key){
   const layout=FR_LAYOUT_WAREHOUSES.find(item=>item.key===key)||
@@ -3968,11 +3969,11 @@ document.addEventListener('click',e=>{
   if(toggle){
     const market=toggle.dataset.marketToggle;
     if(market==='PL'||market==='FR'){
-      // JJ always returns to the French landing page, even when the menu
-      // was already expanded. Other users keep their original menu behavior.
+      // France: every click returns JJ to the welcome page and toggles
+      // the submenu, preserving the original expand/collapse behavior.
       if(market==='FR'&&state.user?.role==='ADMIN'&&
          String(state.user?.nickname||'').trim().toUpperCase()==='JJ'){
-        showFranceHome();return;
+        showFranceHome(!state.warehouseMenus.FR);return;
       }
       const opening=!state.warehouseMenus[market];
       state.warehouseMenus[market]=opening;
