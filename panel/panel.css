@@ -1545,3 +1545,45 @@ tr:hover td{background:#ffffff04}
   }
   #tableView .table-title .search-input{margin-left:0;flex:1 1 200px}
 }
+
+
+/* Vehicle equipment catalogue: one compact, left-aligned group of columns.
+   The source-system columns are intentionally not shown. */
+.main-layout .vehicle-catalogue-table{
+  width:1020px;
+  min-width:1020px;
+  max-width:none;
+  table-layout:fixed;
+}
+.main-layout .vehicle-catalogue-table th,
+.main-layout .vehicle-catalogue-table td{
+  padding:9px 10px;
+  vertical-align:middle;
+  overflow-wrap:break-word;
+}
+.main-layout .vehicle-catalogue-table th:nth-child(1),
+.main-layout .vehicle-catalogue-table td:nth-child(1){width:253px;min-width:0}
+.main-layout .vehicle-catalogue-table th:nth-child(2),
+.main-layout .vehicle-catalogue-table td:nth-child(2){width:160px;min-width:0}
+.main-layout .vehicle-catalogue-table th:nth-child(3),
+.main-layout .vehicle-catalogue-table td:nth-child(3){width:150px;min-width:0}
+.main-layout .vehicle-catalogue-table th:nth-child(4),
+.main-layout .vehicle-catalogue-table td:nth-child(4){width:175px;min-width:0}
+.main-layout .vehicle-catalogue-table th:nth-child(5),
+.main-layout .vehicle-catalogue-table td:nth-child(5){width:140px;min-width:0}
+.main-layout .vehicle-catalogue-table th:nth-child(6),
+.main-layout .vehicle-catalogue-table td:nth-child(6){width:142px;min-width:0}
+.main-layout .vehicle-catalogue-table .part-name-cell{min-width:0}
+.main-layout .vehicle-catalogue-table .vehicle-requirement-cell{min-width:0}
+.main-layout .vehicle-catalogue-table .part-row-actions{white-space:nowrap}
+.main-layout .vehicle-catalogue-table .part-row-actions .btn{
+  min-height:32px;
+  padding:6px 8px;
+  margin:0 5px 0 0;
+  font-size:11px;
+}
+#tableView .table-title #vehicleAddPartBtn,
+#tableView .table-title #boxAddPartBtn{
+  white-space:nowrap;
+  min-height:36px;
+}
