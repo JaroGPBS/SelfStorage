@@ -659,7 +659,7 @@
   // has verified the name, index and optional SAP.
   function renderPartsTable(items,newOnly=false) {
     const table=document.createElement('table');
-    table.className='parts-review-table';
+    table.className='parts-review-table'+(newOnly?'':' part-catalogue-table');
     const header=table.createTHead().insertRow();
     const titles=newOnly
       ?['MAGAZYN','DODANO / PRACOWNIK','NAZWA CZĘŚCI','INDEKS GPBS','SAP','ZDJĘCIE','WERYFIKACJA','']
