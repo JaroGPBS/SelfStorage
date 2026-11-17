@@ -7826,7 +7826,7 @@
 .office-france-section{margin:0 0 23px}
 .office-france-section h2{font-size:15px;font-weight:800;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--edge,#34404e)}
 .office-france-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.office-france-links button{min-height:70px;padding:14px;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--edge,#34404e);border-radius:11px;color:inherit;background:var(--surface,#1b222b);font:700 13px inherit;cursor:pointer;transition:background .15s,border-color .15s}
+.office-france-links button{min-height:70px;padding:14px;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--edge,#34404e);border-radius:11px;color:inherit;background:var(--surface,#1b222b);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
 .office-france-links button:hover,.office-france-links button:focus-visible{background:var(--surface2,#283340);border-color:#637992;outline-offset:2px}
 .office-france-link-icon{height:30px;width:30px;display:grid;place-items:center;flex:none;border-radius:8px;background:rgba(130,157,184,.11);font-size:17px;color:#a4bbd4}
 .office-france-link-arrow{margin-left:auto;font-size:22px;color:#90a5ba}
