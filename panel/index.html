@@ -8,9 +8,9 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=34">
+  <link rel="stylesheet" href="./panel.css?v=35">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=67" defer></script>
+  <script src="./panel.js?v=68" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -345,19 +345,45 @@
             <div class="table-title">
               <div><h2 id="tableTitle"></h2><p id="tableDescription"></p></div>
               <button id="vehicleAddPartBtn" class="btn mini hidden" type="button">+ Dodaj część do samochodów</button>
-              <button id="showBoxWarehouseFormBtn" class="btn mini hidden" type="button" aria-expanded="false" aria-controls="warehouseCreation">+ Dodaj BOX</button>
+              <button id="showArchivedWarehousesBtn" class="btn mini hidden" type="button">Archiwum</button>
+              <button id="showBoxWarehouseFormBtn" class="btn mini hidden" type="button" aria-expanded="false" aria-controls="warehouseCreation">+ Dodaj magazyn</button>
               <input id="tableSearch" class="search-input" type="search" autocomplete="off" placeholder="Szukaj w tabeli…">
             </div>
             <div id="tableResults" class="table-scroll"></div>
             <div id="tableFooter" class="table-footer"></div>
             <div id="warehouseCreation" class="warehouse-creation hidden">
-              <form id="boxWarehouseForm" class="box-warehouse-form" autocomplete="off">
-                <label for="boxWarehouseName">Nowy magazyn BOX</label>
-                <input type="text" id="boxWarehouseName" maxlength="70" minlength="3"
-                       placeholder="Np. Lyon" aria-label="Nazwa nowego magazynu BOX" required>
-                <button type="submit" id="boxWarehouseAdd" class="btn primary">Dodaj i wygeneruj QR</button>
+              <form id="boxWarehouseForm" class="warehouse-create-form" autocomplete="off">
+                <div class="warehouse-create-field">
+                  <label for="warehouseMarket">1. Rynek</label>
+                  <select id="warehouseMarket" class="select" required>
+                    <option value="PL">🇵🇱 Polska</option>
+                    <option value="FR" selected>🇫🇷 Francja</option>
+                  </select>
+                </div>
+                <div class="warehouse-create-field">
+                  <label for="warehouseKind">2. Typ magazynu</label>
+                  <select id="warehouseKind" class="select" required>
+                    <option value="GPBS">GPBS</option>
+                    <option value="BOX">BOX</option>
+                    <option value="BOVIS">Bovis</option>
+                  </select>
+                </div>
+                <div class="warehouse-create-field warehouse-create-name">
+                  <label for="boxWarehouseName">3. Nazwa magazynu</label>
+                  <input type="text" id="boxWarehouseName" maxlength="70" minlength="3"
+                    placeholder="Np. GPBS Lyon" aria-label="Nazwa nowego magazynu" required>
+                </div>
+                <div class="warehouse-create-preview" role="status">
+                  <small>Układ nowego magazynu</small>
+                  <strong id="warehouseTemplateHint">Belleville</strong>
+                  <span>Nowy magazyn otrzyma własny identyfikator i pustą historię.</span>
+                </div>
+                <div class="warehouse-create-actions">
+                  <button type="button" id="warehouseCreateCancel" class="btn ghost">Anuluj</button>
+                  <button type="submit" id="boxWarehouseAdd" class="btn primary">Dodaj magazyn</button>
+                </div>
               </form>
-              <p class="hint">Nowy BOX zaczyna bez stanów i historii. Istniejące kody QR innych magazynów pozostają bez zmian.</p>
+              <p class="hint warehouse-create-footnote">Kopiowany jest układ okien, nie stany ani historia. Nowy BOX otrzyma własny kod QR i 78 pozycji katalogu z ilością 0.</p>
             </div>
           </div>
         </section>
@@ -366,6 +392,48 @@
     </div>
   </div>
 
+  <dialog id="warehouseEditDialog" class="modal" aria-labelledby="warehouseEditTitle">
+    <form id="warehouseEditForm" class="modal-inner" autocomplete="off">
+      <div class="modal-heading">
+        <div><div class="eyebrow">ADMIN / MAGAZYNY</div><h2 id="warehouseEditTitle">Edytuj magazyn</h2>
+          <p id="warehouseEditDescription"></p></div>
+        <button id="warehouseEditClose" class="icon-button" type="button" aria-label="Zamknij">×</button>
+      </div>
+      <div class="warehouse-edit-body">
+        <label for="warehouseEditStatus">Status magazynu</label>
+        <select id="warehouseEditStatus" class="select">
+          <option value="1">Aktywny</option>
+          <option value="0">Nieaktywny</option>
+        </select>
+        <p class="hint">Nieaktywny magazyn zachowuje historię, ale nie przyjmuje nowych operacji.</p>
+      </div>
+      <div class="dialog-actions">
+        <button id="warehouseArchiveOpen" class="btn archive-danger" type="button">Archiwizuj</button>
+        <button id="warehouseEditCancel" class="btn ghost" type="button">Anuluj</button>
+        <button id="warehouseEditSave" class="btn primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="warehouseArchiveDialog" class="modal" aria-labelledby="warehouseArchiveTitle">
+    <form id="warehouseArchiveForm" class="modal-inner" autocomplete="off">
+      <div class="modal-heading">
+        <div><div class="eyebrow">POTWIERDZENIE PIN-EM</div><h2 id="warehouseArchiveTitle">Archiwizuj magazyn</h2>
+          <p id="warehouseArchiveDescription"></p></div>
+        <button id="warehouseArchiveClose" class="icon-button" type="button" aria-label="Zamknij">×</button>
+      </div>
+      <div class="warehouse-edit-body">
+        <label for="warehouseArchivePin">Aktualny PIN administratora</label>
+        <input id="warehouseArchivePin" type="password" inputmode="numeric"
+          pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required
+          placeholder="••••">
+        <p class="hint">Archiwizacja blokuje nowe operacje. Nie usuwa stanów ani historii. Magazyn można później przywrócić jako nieaktywny.</p>
+      </div>
+      <div class="dialog-actions">
+        <button id="warehouseArchiveCancel" class="btn ghost" type="button">Anuluj</button>
+        <button id="warehouseArchiveConfirm" class="btn archive-danger" type="submit">Potwierdź archiwizację</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="boxQrDialog" class="modal box-qr-dialog" aria-labelledby="boxQrDialogTitle">
     <div class="modal-inner">
       <div class="modal-heading"><div>
