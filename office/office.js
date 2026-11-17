@@ -715,9 +715,27 @@ function showFranceHome(expandMenu=true){
     timeZone:'Europe/Paris',day:'2-digit',month:'long',year:'numeric',
     hour:'2-digit',minute:'2-digit'
   }).format(new Date());
-  // Magazyny: wszystkie 10 lokalizacji widocznych w Office, także te
-  // bez bieżących zapisów D1. Nie wykonujemy odczytu bazy dla tej statystyki.
-  const locations=$('officeFranceHome').querySelectorAll('[data-fr-home-warehouse]').length;
+  // The ten established locations remain visible even before D1 integration.
+  // Additional active warehouses created in Admin appear without hardcoded cities.
+  $('officeFranceHome').querySelectorAll('[data-fr-home-real]').forEach(el=>el.remove());
+  for(const warehouse of state.warehouses.filter(w=>w.country_code==='FR')){
+    const existing=FR_LAYOUT_WAREHOUSES.some(layout=>matchesFrenchWarehouse(warehouse,layout))||
+      normalizeWarehouseName(warehouse.name)===normalizeWarehouseName('Bovis Lyon');
+    if(existing)continue;
+    const bovis=isBovisWarehouse(warehouse.name);
+    const button=document.createElement('button');button.type='button';
+    button.dataset.frHomeReal=warehouse.id;
+    const icon=document.createElement('span');icon.className='office-france-link-icon';
+    icon.setAttribute('aria-hidden','true');
+    icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '+
+      'aria-hidden="true"><use href="#france-icon-warehouse"></use></svg>';
+    const name=document.createTextNode(bovis?warehouse.name.replace(/^bovis\s+/i,''):warehouse.name);
+    button.append(icon,name);
+    $(bovis?'franceHomeBovisLinks':'franceHomeGpbsLinks').append(button);
+  }
+  const locations=$('officeFranceHome').querySelectorAll(
+    '[data-fr-home-warehouse],[data-fr-home-real]').length;
   $('franceHomeWarehouses').textContent=new Intl.NumberFormat('pl-PL').format(locations);
   $('franceHomeModules').textContent='—';
   $('franceHomeModulesNote').textContent='Brak danych';
@@ -3945,6 +3963,15 @@ document.addEventListener('click',e=>{
       const realId=frWarehouse.dataset.frRealId;
       if(realId)selectView('stocks',realId);
       else showOfficePreview('warehouse',key,frWarehouse.dataset.frWarehouseName);
+    }
+    return;
+  }
+  const homeReal=e.target.closest('[data-fr-home-real]');
+  if(homeReal&&state.view==='frMarketHome'){
+    const selected=realWarehouse(homeReal.dataset.frHomeReal);
+    if(selected?.country_code==='FR'){
+      state.warehouseMenus.FR=true;state.frExpanded=null;state.bovisExpanded=false;
+      selectView('stocks',selected.id);
     }
     return;
   }
