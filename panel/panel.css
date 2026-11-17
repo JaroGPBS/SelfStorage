@@ -1117,3 +1117,64 @@ tr:hover td{background:#ffffff04}
   #dashboardView .stat-detail{padding:5px 0 0;border-left:0;border-top:1px solid var(--edge);gap:3px}
   #dashboardView .stat-value{font-size:23px}
 }
+
+
+/* Admin Magazyny — compact market/type creator and status/archive controls. */
+#showArchivedWarehousesBtn,#showBoxWarehouseFormBtn{white-space:nowrap}
+.warehouse-create-form{
+  display:grid;grid-template-columns:minmax(160px,1fr) minmax(170px,1fr) minmax(200px,1.3fr);
+  gap:14px;padding:20px 23px 8px;align-items:end;
+}
+.warehouse-create-field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.warehouse-create-field label,.warehouse-edit-body label{
+  font-size:12px;font-weight:800;color:var(--white);
+}
+.warehouse-create-field input,.warehouse-create-field .select{
+  width:100%;max-width:none;min-height:42px;padding:10px 12px;
+  border:1px solid var(--edge);border-radius:9px;background:var(--surface2);
+  color:var(--white);font-size:13px;
+}
+.warehouse-create-preview{
+  grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:12px 15px;border:1px solid var(--edge);border-radius:10px;
+  background:var(--surface2);
+}
+.warehouse-create-preview small{color:var(--mute);font-size:11px}
+.warehouse-create-preview strong{font-size:13px;color:var(--white)}
+.warehouse-create-preview span{color:var(--mute);font-size:11px}
+.warehouse-create-actions{
+  grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;padding:5px 0 9px;
+}
+.warehouse-create-footnote{padding:0 23px 14px;margin:0;color:var(--mute)}
+.warehouse-manage-button{min-width:76px}
+.warehouse-edit-body{display:flex;flex-direction:column;gap:9px;margin:22px 0}
+.warehouse-edit-body .select,.warehouse-edit-body input{
+  width:100%;min-height:42px;padding:10px 12px;border:1px solid var(--edge);
+  border-radius:9px;background:var(--surface2);color:var(--white);
+}
+.warehouse-edit-body .hint{margin:4px 0 0;font-size:12px}
+#warehouseArchiveError{color:#ff7e86;font-weight:700}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-field label,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-preview strong,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-field input,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-field .select,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-preview{
+  color:var(--admin-theme-ink);
+}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-field input,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-field .select,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) .main-layout .warehouse-create-preview{
+  background:var(--admin-theme-alt);border-color:var(--admin-theme-line);
+}
+@media(max-width:1000px){
+  .warehouse-create-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .warehouse-create-name{grid-column:1/-1}
+}
+@media(max-width:600px){
+  .warehouse-create-form{grid-template-columns:1fr;padding:16px;gap:13px}
+  .warehouse-create-name{grid-column:1}
+  .warehouse-create-preview{grid-column:1}
+  .warehouse-create-actions{grid-column:1}
+  .warehouse-create-footnote{padding:0 16px 14px}
+  .warehouse-create-preview{align-items:flex-start;flex-direction:column;gap:4px}
+}
