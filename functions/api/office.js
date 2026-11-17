@@ -184,7 +184,11 @@ export async function onRequestGet({request,env}){
     return workerJson({ok:true,user:{...user,firstName},warehouses:authorizedWarehouses});
   }
   if(view==='frMarketOverview'){
-    if(!user.markets?.FR)return error('Brak dostępu do rynku Francja.',403);
+    // This whole-market summary is reserved for the protected JJ owner;
+    // regular Office accounts stay scoped to their existing warehouses.
+    if(!user.markets?.FR||user.role!=='ADMIN'||
+       String(user.nickname||'').trim().toUpperCase()!=='JJ')
+      return error('Brak dostępu do podsumowania rynku Francja.',403);
     // Counts are based on real active D1 warehouses; never include layout-only
     // Bovis demonstration machines or guessed module balances.
     const allFr=await env.DB.prepare(
