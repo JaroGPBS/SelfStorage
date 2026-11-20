@@ -8018,3 +8018,14 @@
 .office-pl-routes-view{background:#fff;border:1px solid #e3e8ed;border-radius:12px;padding:28px 30px;min-height:190px}
 .office-pl-routes-view h2{font-size:18px;font-weight:750;color:#27313c;margin:0 0 10px}
 .office-pl-routes-view p{max-width:690px;color:#64717d;font-size:14px;line-height:1.65;margin:0}
+
+/* PL menu: warehouse identity icon and stronger route heading. */
+.office-market-list .office-pl-warehouse-caption{
+  display:inline-flex;align-items:center;gap:9px;min-width:0;
+}
+.office-market-list .office-pl-warehouse-caption .office-operation-icon{
+  color:#c4cbd5;flex:0 0 20px;
+}
+.office-market-list .office-routes-link{
+  padding-left:12px;font-weight:800;color:#f1f4f7;
+}
