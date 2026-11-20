@@ -459,7 +459,7 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -653,7 +653,7 @@ function greetingVocative(name){
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
-  state.warehouseMenus={PL:false,FR:false};
+  state.warehouseMenus={PL:false,FR:false};state.plExpanded=null;
   state.archivedFrenchWarehouses=Array.isArray(payload.archivedFrenchWarehouses)?payload.archivedFrenchWarehouses:[];
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
@@ -677,6 +677,7 @@ function showOfficeHome(){
   $('officeTableCard').classList.add('hidden');
   $('officeBovisDashboard').classList.add('hidden');
   $('officeLabelsView').classList.add('hidden');
+  $('officePlRoutesView').classList.add('hidden');
   $('officePreview').classList.add('hidden');
   $('errorBanner').classList.add('hidden');
   $('officeNewPartNotice').classList.add('hidden');
@@ -704,6 +705,7 @@ function showFranceHome(expandMenu=true){
   $('officeBovisDashboard').classList.add('hidden');
   $('officePreview').classList.add('hidden');
   $('officeLabelsView').classList.add('hidden');
+  $('officePlRoutesView').classList.add('hidden');
   $('errorBanner').classList.add('hidden');
   $('officeNewPartNotice').classList.add('hidden');
   $('vehicleTopContext').classList.add('hidden');
@@ -771,7 +773,8 @@ function officeMenuIcon(view){
     inventories:'<rect x="5" y="4" width="14" height="18" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="m9 13 2 2 4-4M9 19h6"/>',
     labels:'<path d="M3 3h7v7H3zM5 5h3v3H5zM14 3h7v7h-7zM16 5h3v3h-3zM3 14h7v7H3zM5 16h3v3H5zM14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/><path d="M12 23h10"/>',
     vehicles:'<path d="M3 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11"/><path d="M17 9h2l3 4v4h-5M3 17h19"/><path d="M17 10v4h4"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',
-    aggregate:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12M15 9v12M9 15h12"/>'
+    aggregate:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12M15 9v12M9 15h12"/>',
+    plRoutes:'<path d="M3 6h5l4 4 4-4h5v13H3z"/><path d="M8 6v7m8-7v7m-8 4h8"/>'
   };
   if(!paths[view])return '';
   return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" '+
@@ -789,17 +792,24 @@ function renderMenu(){
     escapeHtml(w.name)+'</button>';
   const renderPolishWarehouse=w=>{
     const title=String(w.name||'').replace(/^magazyn\s+/i,'').trim()||'Tychy';
+    const open=state.plExpanded===w.id;
     const ops=[
       {view:'stocks',label:'Stany magazynowe',right:'stocks'},
       {view:'pz',label:'Przyjęcia',right:'pz'},
       {view:'wz',label:'Wydania',right:'wz'},
-      {view:'inventories',label:'Inwentaryzacja',right:'inventory'},
-      {view:'labels',label:'Drukowanie etykiet',right:'labels'}
+      {view:'inventories',label:'Inwentaryzacje',right:'inventory'},
+      {view:'labels',label:'Druk etykiet',right:'labels'}
     ].filter(op=>state.user?.features?.[op.right]!==false);
     return '<div class="office-pl-warehouse-group">'+
-      '<button type="button" class="subnav-btn office-pl-warehouse" '+
-      'data-warehouse="'+escapeHtml(w.id)+'">'+escapeHtml(title)+'</button>'+
-      '<div class="office-pl-operations">'+ops.map(op=>
+      '<button type="button" class="subnav-btn office-pl-warehouse office-pl-warehouse-toggle" '+
+      'data-pl-warehouse-toggle="'+escapeHtml(w.id)+'" '+
+      'aria-expanded="'+String(open)+'" aria-controls="pl-ops-'+escapeHtml(w.id)+'">'+
+      '<span>'+escapeHtml(title)+'</span>'+
+      '<svg class="office-fr-warehouse-chevron" width="16" height="16" viewBox="0 0 24 24" '+
+        'fill="none" stroke="currentColor" stroke-width="2.25" '+
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+        '<path d="m6 9 6 6 6-6"/></svg></button>'+
+      '<div id="pl-ops-'+escapeHtml(w.id)+'" class="office-pl-operations'+(open?'':' hidden')+'">'+ops.map(op=>
         '<button type="button" class="subnav-btn office-operation-link office-pl-operation" '+
         'data-pl-warehouse="'+escapeHtml(w.id)+'" data-view="'+op.view+'">'+
         '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon(op.view)+'</span>'+
@@ -814,6 +824,8 @@ function renderMenu(){
     'data-market-vehicles="'+country+'">'+
     '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('vehicles')+'</span>'+
     'Stany samochodowe</button>');
+  const routesButton=()=>'<button type="button" class="subnav-btn office-operation-link office-routes-link" data-pl-routes="1">'+
+    '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('plRoutes')+'</span>Trasy</button>';
   const permittedOperations=country=>OFFICE_MARKET_OPERATIONS.filter(op=>{
     // In Poland, NOK is already a stock tab rather than a sidebar operation.
     if(country==='PL'&&op.view==='nok')return false;
@@ -909,7 +921,7 @@ function renderMenu(){
       items+
       (showAggregate?aggregateButton()+vehicleButton('FR'):'')+
       (showOperations?marketOperations(country):'')+
-      (country==='PL'?'<div class="office-pl-country-actions">'+vehicleButton('PL')+'</div>':'')+'</div></div>';
+      (country==='PL'?'<div class="office-pl-country-actions">'+vehicleButton('PL')+routesButton()+'</div>':'')+'</div></div>';
   };
   // Do not reveal the Poland section to FR-only users. The server already
   // filtered state.warehouses by live per-user market settings.
@@ -949,7 +961,7 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle],#sidebar [data-pl-warehouse-toggle],#sidebar [data-pl-routes]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
@@ -992,7 +1004,8 @@ function renderMenu(){
       :el.dataset.marketVehicles==='PL'
         ?!state.preview&&state.view==='vehicles'&&
           realWarehouse(state.warehouse)?.country_code==='PL':false;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isBovis));
+    const isPlRoutes=el.hasAttribute('data-pl-routes')&&state.view==='plRoutes';
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isBovis||isPlRoutes));
     if(el.dataset.frWarehouseToggle)el.classList.toggle('is-expanded',isFrWarehouseExpanded);
   }
 }
@@ -1226,9 +1239,12 @@ function setHead(title,kicker,desc){
   const frEmpty=state.preview?.type==='operation'||state.preview?.type==='module';
   const workingLabels=state.view==='labels'&&!frEmpty;
   const isBovisOverview=state.view==='bovisOverview';
+  const isPlRoutes=state.view==='plRoutes';
+  $('officePlRoutesView').classList.toggle('hidden',!isPlRoutes);
+  $('pageActions').classList.toggle('hidden',isPlRoutes);
   $('officeLabelsView').classList.toggle('hidden',!workingLabels);
   $('officeBovisDashboard').classList.toggle('hidden',!isBovisOverview);
-  $('officeTableCard').classList.toggle('hidden',workingLabels||isBovisOverview);
+  $('officeTableCard').classList.toggle('hidden',workingLabels||isBovisOverview||isPlRoutes);
   $('bovisTopDescription').classList.toggle('hidden',!isBovisOverview);
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate'].includes(state.view));
@@ -1369,6 +1385,7 @@ function setModuleCategory(category){
 }
 function selectView(view,warehouse,focusDocument=null){
   const targetWarehouse=warehouse||state.warehouse;
+  if(view==='plRoutes')++state.requestId;
   // Reopening a BOX should show current balances, not an old local cache.
   if(view==='stocks'&&['FR-TOULOUSE','FR-PARIS'].includes(targetWarehouse))
     state.partsCache.delete(targetWarehouse);
@@ -1391,8 +1408,8 @@ function selectView(view,warehouse,focusDocument=null){
   if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
   if(warehouse)state.warehouse=warehouse;
   $('sidebar').classList.remove('open');renderMenu();
-  const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet'};
-  const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.'};
+  const titles={stocks:'Stany magazynowe',aggregate:'Zestawienie zbiorcze',pz:'Przyjęcia',wz:'Wydania',nok:'Części niekompletne',inventories:'Inwentaryzacje',vehicles:'Stany samochodowe',labels:'Drukowanie etykiet',plRoutes:'Trasy'};
+  const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.',plRoutes:'Rozliczenia tras montażowych – Polska.'};
   const market=view==='aggregate'?'FR':realWarehouse(state.warehouse)?.country_code;
   const marketName=market==='FR'?'FRANCJA':'POLSKA';
   const title=view==='aggregate'?'Zestawienie zbiorcze — '+(market==='FR'?'FR':'PL'):(titles[view]||'Stany magazynowe');
@@ -3450,7 +3467,7 @@ function drawFrenchEmptyView(){
   $('vehicleTopScroll').classList.add('hidden');
 }
 async function render({silent=false}={}){
-  if(state.view==='home')return;
+  if(state.view==='home'||state.view==='plRoutes')return;
   if(isBovisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
   if(state.view==='bovisOverview'){
     errorBanner('');drawBovisOverview();return;
@@ -3996,6 +4013,12 @@ document.addEventListener('click',e=>{
     showOfficePreview('operation','vehicles',OFFICE_OPERATION_PREVIEWS.vehicles);
     return;
   }
+  const plWarehouseToggle=e.target.closest('[data-pl-warehouse-toggle]');
+  if(plWarehouseToggle){
+    const id=plWarehouseToggle.dataset.plWarehouseToggle;
+    state.plExpanded=state.plExpanded===id?null:id;
+    renderMenu();return;
+  }
   const w=e.target.closest('[data-warehouse]');
   if(w){
     state.frExpanded=null;
@@ -4111,11 +4134,18 @@ document.addEventListener('click',e=>{
     });
     return;
   }
+  const plRoutes=e.target.closest('[data-pl-routes]');
+  if(plRoutes){
+    const warehouse=state.warehouses.find(w=>w.country_code==='PL'&&w.id===state.warehouse)||
+      state.warehouses.find(w=>w.country_code==='PL');
+    if(warehouse){state.warehouseMenus.PL=true;selectView('plRoutes',warehouse.id);}
+    return;
+  }
   const plScoped=e.target.closest('[data-pl-warehouse][data-view]');
   if(plScoped){
     const warehouse=realWarehouse(plScoped.dataset.plWarehouse);
     if(warehouse?.country_code==='PL'){
-      state.warehouseMenus.PL=true;
+      state.warehouseMenus.PL=true;state.plExpanded=warehouse.id;
       selectView(plScoped.dataset.view,warehouse.id);
     }
     return;
