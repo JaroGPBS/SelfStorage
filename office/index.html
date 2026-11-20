@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=130">
+  <link rel="stylesheet" href="./office.css?v=131">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -122,7 +122,7 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=159"></script>
+  <script defer src="./office.js?v=160"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -183,7 +183,7 @@
     <div class="main">
       <header class="topbar">
         <button class="icon-btn mobile-menu" id="mobileMenu" aria-label="Pokaż menu">☰</button>
-        <div class="breadcrumbs">GPBS Storage <span>/</span> <strong id="crumb">Stany magazynowe</strong><span id="warehouseCrumb" class="warehouse-crumb hidden">TYCHY</span><span id="bovisParisDemoNotice" class="bovis-paris-demo-notice hidden">FIKCYJNE DANE SŁUŻĄCE DO PREZENTACJI</span></div>
+        <div class="breadcrumbs">GPBS Storage <span>/</span> <strong id="crumb">Stany magazynowe</strong><span id="plRoutesTopDescription" class="pl-routes-top-description hidden">Rozliczenie części z tras montażowych – Polska</span><span id="warehouseCrumb" class="warehouse-crumb hidden">TYCHY</span><span id="bovisParisDemoNotice" class="bovis-paris-demo-notice hidden">FIKCYJNE DANE SŁUŻĄCE DO PREZENTACJI</span></div>
         <span id="bovisTopDescription" class="bovis-top-description hidden" title="Ilości i powierzchnie są na razie pokazowe, nie są pobierane ze stanów magazynowych.">Wszystkie magazyny · maszyny i powierzchnia</span>
         <div id="vehicleTopContext" class="vehicle-top-context hidden">
           <span class="vehicle-top-description">Ewidencja części na samochodach serwisowych</span>
@@ -331,8 +331,7 @@
           </div>
         </section>
         <section id="officePlRoutesView" class="office-pl-routes-view hidden" aria-label="Trasy – Polska">
-          <h2>Lista tras</h2>
-          <p>Tutaj przygotujemy dodawanie tras, przypisywanie części ekipom oraz podgląd rozliczeń. Na razie moduł nie zapisuje danych.</p>
+          <p>Tutaj przygotujemy listę tras i dodawanie części na trasy.</p>
         </section>
         <section id="officePreview" class="office-placeholder hidden" aria-live="polite" aria-label="Projekt układu Office">
           <div class="office-placeholder-icon" aria-hidden="true">▣</div>
