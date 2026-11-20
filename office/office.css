@@ -8008,3 +8008,13 @@
   .office-france-stat-label{gap:5px}
   .office-france-stat-label svg{width:15px;height:15px}
 }
+
+/* Polska: Tychy rozwijane niezależnie od tras i stanów samochodowych. */
+.office-market-list .office-pl-warehouse-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.office-pl-warehouse-toggle .office-fr-warehouse-chevron{transition:transform .18s ease}
+.office-pl-warehouse-toggle[aria-expanded="true"] .office-fr-warehouse-chevron{transform:rotate(180deg)}
+.office-market-list .office-pl-warehouse-toggle[aria-expanded="true"]{color:#fff}
+.office-market-list .office-pl-country-actions .office-routes-link{padding-left:12px}
+.office-pl-routes-view{background:#fff;border:1px solid #e3e8ed;border-radius:12px;padding:28px 30px;min-height:190px}
+.office-pl-routes-view h2{font-size:18px;font-weight:750;color:#27313c;margin:0 0 10px}
+.office-pl-routes-view p{max-width:690px;color:#64717d;font-size:14px;line-height:1.65;margin:0}
