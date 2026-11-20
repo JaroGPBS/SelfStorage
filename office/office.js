@@ -792,6 +792,7 @@ function renderMenu(){
     escapeHtml(w.name)+'</button>';
   const renderPolishWarehouse=w=>{
     const title=String(w.name||'').replace(/^magazyn\s+/i,'').trim()||'Tychy';
+    const displayTitle=/^tychy$/i.test(title)?'Tychy magazyn':title;
     const open=state.plExpanded===w.id;
     const ops=[
       {view:'stocks',label:'Stany magazynowe',right:'stocks'},
@@ -804,7 +805,7 @@ function renderMenu(){
       '<button type="button" class="subnav-btn office-pl-warehouse office-pl-warehouse-toggle" '+
       'data-pl-warehouse-toggle="'+escapeHtml(w.id)+'" '+
       'aria-expanded="'+String(open)+'" aria-controls="pl-ops-'+escapeHtml(w.id)+'">'+
-      '<span>'+escapeHtml(title)+'</span>'+
+      '<span>'+escapeHtml(displayTitle)+'</span>'+
       '<svg class="office-fr-warehouse-chevron" width="16" height="16" viewBox="0 0 24 24" '+
         'fill="none" stroke="currentColor" stroke-width="2.25" '+
         'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
@@ -918,10 +919,11 @@ function renderMenu(){
       'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '+
       'stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>'+
       '<div id="officeMarket'+country+'" class="office-market-list'+(expanded?'':' hidden')+'">'+
+      (country==='PL'?routesButton():'')+
       items+
       (showAggregate?aggregateButton()+vehicleButton('FR'):'')+
       (showOperations?marketOperations(country):'')+
-      (country==='PL'?'<div class="office-pl-country-actions">'+vehicleButton('PL')+routesButton()+'</div>':'')+'</div></div>';
+      (country==='PL'?'<div class="office-pl-country-actions">'+vehicleButton('PL')+'</div>':'')+'</div></div>';
   };
   // Do not reveal the Poland section to FR-only users. The server already
   // filtered state.warehouses by live per-user market settings.
