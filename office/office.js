@@ -678,6 +678,8 @@ function showOfficeHome(){
   $('officeBovisDashboard').classList.add('hidden');
   $('officeLabelsView').classList.add('hidden');
   $('officePlRoutesView').classList.add('hidden');
+  $('plRoutesTopDescription').classList.add('hidden');
+  $('app').classList.remove('view-pl-routes');
   $('officePreview').classList.add('hidden');
   $('errorBanner').classList.add('hidden');
   $('officeNewPartNotice').classList.add('hidden');
@@ -697,7 +699,7 @@ function showFranceHome(expandMenu=true){
   state.warehouseMenus.FR=expandMenu;state.warehouseMenus.PL=false;
   $('sidebar').classList.remove('open');
   $('app').classList.remove('view-home','view-stocks','view-bovis-overview',
-    'view-aggregate','view-vehicles','view-fr-empty');
+    'view-aggregate','view-vehicles','view-fr-empty','view-pl-routes');
   $('officeHome').classList.add('hidden');
   $('officePageHead').classList.add('hidden');
   $('officeFranceHome').classList.remove('hidden');
@@ -706,6 +708,7 @@ function showFranceHome(expandMenu=true){
   $('officePreview').classList.add('hidden');
   $('officeLabelsView').classList.add('hidden');
   $('officePlRoutesView').classList.add('hidden');
+  $('plRoutesTopDescription').classList.add('hidden');
   $('errorBanner').classList.add('hidden');
   $('officeNewPartNotice').classList.add('hidden');
   $('vehicleTopContext').classList.add('hidden');
@@ -1223,7 +1226,7 @@ function setHead(title,kicker,desc){
   $('app').classList.remove('view-home');
   $('officeHome').classList.add('hidden');
   $('officeFranceHome').classList.add('hidden');
-  $('officePageHead').classList.remove('hidden');
+  $('officePageHead').classList.toggle('hidden',state.view==='plRoutes');
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
   $('newPart').classList.toggle('hidden',!partCreationTarget());
@@ -1245,6 +1248,8 @@ function setHead(title,kicker,desc){
   const workingLabels=state.view==='labels'&&!frEmpty;
   const isBovisOverview=state.view==='bovisOverview';
   const isPlRoutes=state.view==='plRoutes';
+  $('app').classList.toggle('view-pl-routes',isPlRoutes);
+  $('plRoutesTopDescription').classList.toggle('hidden',!isPlRoutes);
   $('officePlRoutesView').classList.toggle('hidden',!isPlRoutes);
   $('pageActions').classList.toggle('hidden',isPlRoutes);
   $('officeLabelsView').classList.toggle('hidden',!workingLabels);
