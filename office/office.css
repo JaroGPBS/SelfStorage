@@ -8029,3 +8029,18 @@
 .office-market-list .office-routes-link{
   padding-left:12px;font-weight:800;color:#f1f4f7;
 }
+
+/* Trasy PL: one heading in the upper breadcrumb, no repeated page title. */
+.app.view-pl-routes .topbar{min-height:66px;height:auto;padding:10px 22px}
+.app.view-pl-routes .breadcrumbs{display:flex;align-items:baseline;flex-wrap:wrap;row-gap:3px;min-width:0;font-size:13px}
+.app.view-pl-routes .breadcrumbs strong{font-size:25px;font-weight:850;line-height:1.2;color:#28313b}
+.app.view-pl-routes .breadcrumbs .pl-routes-top-description{
+  margin-left:14px;margin-right:0;color:#687480;font-size:13px;font-weight:500;
+}
+.app.view-pl-routes .content{padding:18px 22px 38px}
+@media(max-width:690px){
+  .app.view-pl-routes .topbar{min-height:62px;padding:10px 12px}
+  .app.view-pl-routes .breadcrumbs strong{font-size:19px}
+  .app.view-pl-routes .breadcrumbs .pl-routes-top-description{margin-left:10px;font-size:11px}
+  .app.view-pl-routes .content{padding:12px 12px 30px}
+}
