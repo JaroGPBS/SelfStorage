@@ -459,7 +459,7 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
@@ -654,6 +654,7 @@ function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
   state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
   state.warehouseMenus={PL:false,FR:false};state.plExpanded=null;
+  state.plRoutesExpanded=false;state.plRoutesTab='list';
   state.archivedFrenchWarehouses=Array.isArray(payload.archivedFrenchWarehouses)?payload.archivedFrenchWarehouses:[];
   if(!state.warehouses.some(w=>w.id===state.warehouse))state.warehouse=state.warehouses.find(w=>w.id==='PL-TYCHY')?.id||state.warehouses[0]?.id||'';
   const name=greetingName(state.user);
@@ -831,8 +832,30 @@ function renderMenu(){
     'data-market-vehicles="'+country+'">'+
     '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('vehicles')+'</span>'+
     'Stany samochodowe</button>');
-  const routesButton=()=>'<button type="button" class="subnav-btn office-operation-link office-routes-link" data-pl-routes="1">'+
-    '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('plRoutes')+'</span>Trasy</button>';
+  const routesButton=()=>{
+    const open=state.plRoutesExpanded;
+    const tabs=[
+      {id:'list',label:'Lista tras'},
+      {id:'balance',label:'Bilans części'},
+      {id:'remnants',label:'Pozostałości tras'},
+      {id:'history',label:'Historia'}
+    ];
+    return '<div class="office-pl-routes-group">'+
+      '<button type="button" class="subnav-btn office-operation-link office-routes-link office-pl-routes-toggle" '+
+        'data-pl-routes-toggle="1" aria-expanded="'+String(open)+'" aria-controls="officePlRoutesEntries">'+
+        '<span class="office-pl-routes-caption">'+
+          '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('plRoutes')+'</span>'+
+          '<span>Trasy</span></span>'+
+        '<svg class="office-fr-warehouse-chevron" width="16" height="16" viewBox="0 0 24 24" '+
+          'fill="none" stroke="currentColor" stroke-width="2.25" '+
+          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+          '<path d="m6 9 6 6 6-6"/></svg></button>'+
+      '<div id="officePlRoutesEntries" class="office-pl-routes-entries'+(open?'':' hidden')+'">'+
+      tabs.map(tab=>
+        '<button type="button" class="subnav-btn office-pl-routes-tab" '+
+          'data-pl-routes-tab="'+tab.id+'">'+escapeHtml(tab.label)+'</button>'
+      ).join('')+'</div></div>';
+  };
   const permittedOperations=country=>OFFICE_MARKET_OPERATIONS.filter(op=>{
     // In Poland, NOK is already a stock tab rather than a sidebar operation.
     if(country==='PL'&&op.view==='nok')return false;
@@ -969,7 +992,7 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle],#sidebar [data-pl-warehouse-toggle],#sidebar [data-pl-routes]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle],#sidebar [data-pl-warehouse-toggle],#sidebar [data-pl-routes-toggle],#sidebar [data-pl-routes-tab]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
@@ -1012,8 +1035,10 @@ function renderMenu(){
       :el.dataset.marketVehicles==='PL'
         ?!state.preview&&state.view==='vehicles'&&
           realWarehouse(state.warehouse)?.country_code==='PL':false;
-    const isPlRoutes=el.hasAttribute('data-pl-routes')&&state.view==='plRoutes';
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isBovis||isPlRoutes));
+    const isPlRoutes=el.hasAttribute('data-pl-routes-toggle')&&state.view==='plRoutes';
+    const isPlRoutesTab=el.hasAttribute('data-pl-routes-tab')&&
+      state.view==='plRoutes'&&el.dataset.plRoutesTab===state.plRoutesTab;
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isBovis||isPlRoutes||isPlRoutesTab));
     if(el.dataset.frWarehouseToggle)el.classList.toggle('is-expanded',isFrWarehouseExpanded);
   }
 }
@@ -1251,6 +1276,15 @@ function setHead(title,kicker,desc){
   $('app').classList.toggle('view-pl-routes',isPlRoutes);
   $('plRoutesTopDescription').classList.toggle('hidden',!isPlRoutes);
   $('officePlRoutesView').classList.toggle('hidden',!isPlRoutes);
+  if(isPlRoutes){
+    const detail={
+      list:'Tutaj pojawi się lista tras, wprowadzanych przez koordynatorów.',
+      balance:'Tutaj pojawi się zbiorczy bilans części: wydane, odebrane, zużyte, zwrócone i pozostałe.',
+      remnants:'Tutaj pojawią się pozostałości części zgłoszone po zakończeniu tras.',
+      history:'Tutaj pojawi się historia tras i rozliczeń części.'
+    };
+    $('officePlRoutesMessage').textContent=detail[state.plRoutesTab]||detail.list;
+  }
   $('pageActions').classList.toggle('hidden',isPlRoutes);
   $('officeLabelsView').classList.toggle('hidden',!workingLabels);
   $('officeBovisDashboard').classList.toggle('hidden',!isBovisOverview);
@@ -1422,7 +1456,10 @@ function selectView(view,warehouse,focusDocument=null){
   const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.',plRoutes:'Rozliczenia tras montażowych – Polska.'};
   const market=view==='aggregate'?'FR':realWarehouse(state.warehouse)?.country_code;
   const marketName=market==='FR'?'FRANCJA':'POLSKA';
-  const title=view==='aggregate'?'Zestawienie zbiorcze — '+(market==='FR'?'FR':'PL'):(titles[view]||'Stany magazynowe');
+  const routeTitles={list:'Lista tras',balance:'Bilans części',remnants:'Pozostałości tras',history:'Historia'};
+  const title=view==='plRoutes'?(routeTitles[state.plRoutesTab]||'Lista tras'):
+    view==='aggregate'?'Zestawienie zbiorcze — '+(market==='FR'?'FR':'PL'):
+    (titles[view]||'Stany magazynowe');
   setHead(title,'GPBS STORAGE / '+marketName,descriptions[view]||'');
   render();
 }
@@ -4144,11 +4181,24 @@ document.addEventListener('click',e=>{
     });
     return;
   }
-  const plRoutes=e.target.closest('[data-pl-routes]');
-  if(plRoutes){
+  const plRoutesToggle=e.target.closest('[data-pl-routes-toggle]');
+  if(plRoutesToggle){
+    state.plRoutesExpanded=!state.plRoutesExpanded;
+    renderMenu();
+    return;
+  }
+  const plRoutesTab=e.target.closest('[data-pl-routes-tab]');
+  if(plRoutesTab){
+    const selected=plRoutesTab.dataset.plRoutesTab;
+    if(!['list','balance','remnants','history'].includes(selected))return;
     const warehouse=state.warehouses.find(w=>w.country_code==='PL'&&w.id===state.warehouse)||
       state.warehouses.find(w=>w.country_code==='PL');
-    if(warehouse){state.warehouseMenus.PL=true;selectView('plRoutes',warehouse.id);}
+    if(warehouse){
+      state.plRoutesExpanded=true;
+      state.plRoutesTab=selected;
+      state.warehouseMenus.PL=true;
+      selectView('plRoutes',warehouse.id);
+    }
     return;
   }
   const plScoped=e.target.closest('[data-pl-warehouse][data-view]');
