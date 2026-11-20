@@ -8044,3 +8044,14 @@
   .app.view-pl-routes .breadcrumbs .pl-routes-top-description{margin-left:10px;font-size:11px}
   .app.view-pl-routes .content{padding:12px 12px 30px}
 }
+
+/* Polska / Trasy: compact accordion; pages retain a single topbar heading. */
+.office-market-list .office-pl-routes-group{display:grid;gap:1px;margin:3px 0 7px}
+.office-market-list .office-pl-routes-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;padding:7px 9px 7px 12px;font-size:13px;font-weight:850;color:#f1f4f7}
+.office-market-list .office-pl-routes-caption{display:inline-flex;align-items:center;gap:9px;min-width:0}
+.office-pl-routes-toggle .office-fr-warehouse-chevron{transition:transform .18s ease}
+.office-pl-routes-toggle[aria-expanded="true"] .office-fr-warehouse-chevron{transform:rotate(180deg)}
+.office-market-list .office-pl-routes-entries{display:grid;gap:1px;margin:1px 0 0 13px;padding:0 0 0 7px;border-left:1px solid rgba(205,218,236,.14)}
+.office-market-list .office-pl-routes-entries .office-pl-routes-tab{min-height:32px;padding:7px 10px;font-size:12px;font-weight:550}
+.office-market-list .office-pl-routes-entries .office-pl-routes-tab.active{color:#fff;background:rgba(230,63,68,.13);box-shadow:inset 3px 0 #e63f44;font-weight:750}
+.office-market-list .office-pl-routes-toggle.active{color:#fff}
