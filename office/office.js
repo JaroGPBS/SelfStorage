@@ -774,7 +774,8 @@ function officeMenuIcon(view){
     labels:'<path d="M3 3h7v7H3zM5 5h3v3H5zM14 3h7v7h-7zM16 5h3v3h-3zM3 14h7v7H3zM5 16h3v3H5zM14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/><path d="M12 23h10"/>',
     vehicles:'<path d="M3 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11"/><path d="M17 9h2l3 4v4h-5M3 17h19"/><path d="M17 10v4h4"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',
     aggregate:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12M15 9v12M9 15h12"/>',
-    plRoutes:'<path d="M3 6h5l4 4 4-4h5v13H3z"/><path d="M8 6v7m8-7v7m-8 4h8"/>'
+    plRoutes:'<path d="M3 6h5l4 4 4-4h5v13H3z"/><path d="M8 6v7m8-7v7m-8 4h8"/>',
+    plWarehouse:'<path d="M3 9 12 3l9 6v12H3z"/><path d="M7 21v-9h10v9M7 16h10"/>'
   };
   if(!paths[view])return '';
   return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" '+
@@ -805,7 +806,9 @@ function renderMenu(){
       '<button type="button" class="subnav-btn office-pl-warehouse office-pl-warehouse-toggle" '+
       'data-pl-warehouse-toggle="'+escapeHtml(w.id)+'" '+
       'aria-expanded="'+String(open)+'" aria-controls="pl-ops-'+escapeHtml(w.id)+'">'+
-      '<span>'+escapeHtml(displayTitle)+'</span>'+
+      '<span class="office-pl-warehouse-caption">'+
+        '<span class="office-operation-icon" aria-hidden="true">'+officeMenuIcon('plWarehouse')+'</span>'+
+        '<span>'+escapeHtml(displayTitle)+'</span></span>'+
       '<svg class="office-fr-warehouse-chevron" width="16" height="16" viewBox="0 0 24 24" '+
         'fill="none" stroke="currentColor" stroke-width="2.25" '+
         'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
