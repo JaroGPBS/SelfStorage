@@ -935,6 +935,8 @@
       });
       recordedStages.add(note.stage);
     }
+    crewActivity.sort((a,b)=>(a.action==='PICKUP'?0:1)-(b.action==='PICKUP'?0:1)||
+      String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
     const crewCards=crewActivity.map(event=>{
       const pickup=event.action==='PICKUP';
       const note=crewNotesByStage.get(event.action);
