@@ -669,6 +669,8 @@ function setLoggedIn(payload){
   state.lastSync=null;
   $('syncTime').textContent='--:--';
   $('syncDate').textContent='Brak aktualizacji';
+  lastManualSyncAt=0;
+  updateSyncButtonAvailability();
   showOfficeHome();
 }
 function showOfficeHome(){
@@ -4438,15 +4440,35 @@ $('search').addEventListener('input',e=>{
   }else filterCurrent();
 });
 $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';filterCurrent();});
-// Synchronize ONLY after the user clicks a button. No background refresh.
+// Manual synchronization is allowed at most once per minute in this Office session.
+// Ordinary navigation and data-saving actions are never throttled.
+const OFFICE_SYNC_INTERVAL_MS=60_000;
 let syncBusy=false;
+let lastManualSyncAt=0;
+let syncUnlockTimer=null;
+function updateSyncButtonAvailability(){
+  const button=$('refresh');
+  if(!button)return;
+  if(syncUnlockTimer!==null){clearTimeout(syncUnlockTimer);syncUnlockTimer=null;}
+  const remaining=Math.max(0,lastManualSyncAt+OFFICE_SYNC_INTERVAL_MS-Date.now());
+  button.disabled=syncBusy||remaining>0;
+  if(!syncBusy&&remaining>0){
+    syncUnlockTimer=setTimeout(()=>{
+      syncUnlockTimer=null;
+      updateSyncButtonAvailability();
+    },Math.ceil(remaining)+20);
+  }
+}
 async function synchronizeOffice(){
-  if(!state.user||syncBusy||!navigator.onLine)return;
+  if(!state.user||syncBusy||!navigator.onLine||
+     Date.now()-lastManualSyncAt<OFFICE_SYNC_INTERVAL_MS)return;
   syncBusy=true;
+  lastManualSyncAt=Date.now();
+  updateSyncButtonAvailability();
   const user=state.user;
   for(const id of ['refresh','homeRefresh']){
     const button=$(id);
-    if(button){button.disabled=true;button.setAttribute('aria-busy','true');}
+    if(button){button.setAttribute('aria-busy','true');}
   }
   try{
     if(state.view==='home'||state.view==='bovisOverview'||
@@ -4487,6 +4509,8 @@ async function synchronizeOffice(){
       }
     }
   }catch(ex){
+    // A failed manual refresh may be retried immediately.
+    lastManualSyncAt=0;
     if(user!==state.user)return;
     if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
     else if(state.view==='home'){
@@ -4499,8 +4523,9 @@ async function synchronizeOffice(){
     syncBusy=false;
     for(const id of ['refresh','homeRefresh']){
       const button=$(id);
-      if(button){button.disabled=false;button.removeAttribute('aria-busy');}
+      if(button){button.removeAttribute('aria-busy');}
     }
+    updateSyncButtonAvailability();
   }
 }
 $('refresh').addEventListener('click',()=>synchronizeOffice());
