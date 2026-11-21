@@ -244,7 +244,7 @@
       return '<div class="pl-routes-empty">Brak zapisanych tras. Kliknij „Dodaj trasę”, aby wprowadzić pierwszą.</div>';
     const header='<table><thead><tr>'+
       '<th>Numer tygodnia</th><th>Numer trasy</th><th>Symbol ekipy</th><th>Data</th>'+
-      '<th>Pozycje</th><th>Status</th><th></th>'+
+      '<th>Pozycje</th><th>Status</th><th>Wprowadził</th><th></th>'+
       '</tr></thead><tbody>';
     const rows=routes.map(item=>
       '<tr><td><strong>'+html(routeWeekNumber(item.routeDate))+'</strong></td>'+ 
@@ -255,7 +255,8 @@
       '<td>'+html(item.crewSymbol)+'</td>'+
       '<td>'+html(item.routeDate)+'</td>'+
       '<td>'+html(item.positions)+'</td>'+
-      '<td><span class="pl-route-status-badge">Oczekuje na potwierdzenie</span></td>'+
+      '<td><span class="pl-route-status-badge">Oczekuje na potwierdzenie</span></td>'+ 
+      '<td>'+html(item.enteredBy||'—')+'</td>'+
       '<td><button type="button" class="pl-route-details-button" data-pl-route-details="'+
        html(item.id)+'">Szczegóły</button></td></tr>'
     ).join('');
@@ -307,7 +308,7 @@
     }
     const detail=document.createElement('tr');
     detail.className='pl-route-expanded';
-    detail.innerHTML='<td colspan="7">Pobieranie pozycji…</td>';
+    detail.innerHTML='<td colspan="8">Pobieranie pozycji…</td>';
     row.after(detail);
     button.textContent='Zwiń';
     try{
@@ -317,7 +318,7 @@
         }
       ));
       if(!detail.isConnected)return;
-      detail.innerHTML='<td colspan="7"><div class="pl-route-detail-lines">'+
+      detail.innerHTML='<td colspan="8"><div class="pl-route-detail-lines">'+
         '<strong>Lista części dla trasy '+html(result.route.routeNumber)+
           (Number(result.route.isPresentation)===1?' *':'')+'</strong>'+
         '<table><thead><tr><th>#</th><th>Indeks</th><th>Nazwa</th><th>Ilość</th></tr></thead><tbody>'+
