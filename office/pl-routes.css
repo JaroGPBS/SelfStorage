@@ -381,6 +381,37 @@
   border-top:1px solid #e4eaf0
 }
 .pl-route-audit-content{font-size:12px}
+.pl-route-audit-table-wrap{width:100%;overflow-x:auto}
+.pl-route-audit-quantity-table{
+  width:100%;min-width:545px;border-collapse:collapse;
+  table-layout:fixed;font-size:11px;line-height:1.35
+}
+.pl-route-audit-quantity-table th{
+  padding:9px 6px;background:#edf2f6;color:#52687d;
+  border-bottom:1px solid #dbe4ed;text-align:center;
+  font-size:10px;font-weight:750;vertical-align:middle
+}
+.pl-route-audit-quantity-table th:first-child{width:26%;text-align:left}
+.pl-route-audit-quantity-table th:last-child{width:18%}
+.pl-route-audit-quantity-table td{
+  padding:9px 6px;border-bottom:1px solid #e5ebf1;
+  text-align:center;color:#34485c;vertical-align:middle
+}
+.pl-route-audit-quantity-table td:first-child{text-align:left;font-weight:650}
+.pl-route-audit-quantity-table tr.pl-route-audit-corrected td{
+  background:#f2f8f3;color:#315f44
+}
+.pl-route-audit-change{
+  display:inline-block;padding:3px 6px;border:1px solid #d9e1e9;
+  border-radius:5px;background:#f4f6f8;color:#64778b;
+  font-size:10px;font-weight:700;white-space:nowrap
+}
+.pl-route-audit-change.is-corrected{
+  background:#e2f0e6;border-color:#c4ddcb;color:#326748
+}
+.pl-route-audit-help{margin:10px 0 0;color:#7b8d9d;
+  font-size:10px;line-height:1.45}
+
 .pl-route-audit-meta{margin:0 0 10px;color:#657990}
 .pl-route-audit-comment{white-space:pre-wrap;overflow-wrap:anywhere;
   padding:11px;background:#f5f7f9;border-radius:8px;line-height:1.5}
