@@ -8544,3 +8544,31 @@
 @media(prefers-reduced-motion:reduce){
   #sidebar .office-market-list .subnav-btn.active-parent{transition:none}
 }
+
+/* Polska: gently indented, tightly spaced main submenu groups. */
+#officeMarketPL > .office-pl-routes-group,
+#officeMarketPL > .office-pl-warehouse-group{
+  margin:0 2px 1px 7px;
+  gap:1px;
+}
+#officeMarketPL > .office-pl-warehouse-group > .office-pl-warehouse-toggle{
+  margin:0;
+  min-height:34px;
+  padding-top:6px;
+  padding-bottom:6px;
+}
+#officeMarketPL > .office-pl-routes-group > .office-pl-routes-toggle{
+  min-height:34px;
+  padding-top:6px;
+  padding-bottom:6px;
+}
+#officeMarketPL > .office-pl-country-actions{
+  margin:0 2px 0 7px;
+  padding-top:0;
+  border-top:0;
+}
+#officeMarketPL > .office-pl-country-actions > .office-vehicle-link{
+  min-height:34px;
+  padding-top:6px;
+  padding-bottom:6px;
+}
