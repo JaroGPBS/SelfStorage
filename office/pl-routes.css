@@ -305,6 +305,23 @@
 .pl-route-parts-head p{font-size:12px;color:#728196;margin:0}
 .pl-route-parts{display:flex;flex-direction:column;gap:10px}
 .pl-route-part-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(170px,1.6fr) minmax(78px,.44fr) 32px;align-items:end;gap:10px}
+/* Shared route catalogue matches under the part name field. */
+.pl-route-part-name-wrap{position:relative;min-width:0}
+.pl-route-part-name-wrap .pl-route-part-name{width:100%}
+.pl-route-part-suggestions{
+  position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:30;
+  max-height:235px;overflow:auto;padding:4px;
+  border:1px solid #c6d3df;border-radius:8px;background:#fff;
+  box-shadow:0 8px 20px rgba(32,49,67,.14)
+}
+.pl-route-part-suggestions.hidden{display:none}
+.pl-route-part-suggestion{
+  display:block;width:100%;padding:8px 10px;border:0;border-radius:5px;
+  background:transparent;color:#293d50;text-align:left;font-size:12px;
+  cursor:pointer
+}
+.pl-route-part-suggestion:hover,
+.pl-route-part-suggestion:focus{background:#e9eff5;outline:none}
 .pl-route-part-row .pl-route-remove-part{width:32px;height:40px;border:1px solid #dfE4ea;border-radius:8px;background:#fff;color:#a53847;font-size:20px;cursor:pointer}
 .pl-route-part-row .pl-route-remove-part:hover{background:#fff1f1}
 .pl-route-error{margin:0 26px 12px;padding:10px 12px;border-radius:8px;background:#fff2f2;color:#b52233;font-size:12px}
