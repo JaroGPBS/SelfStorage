@@ -1321,6 +1321,7 @@ function setHead(title,kicker,desc){
       history:'Tutaj pojawi się historia tras i rozliczeń części.'
     };
     $('officePlRoutesMessage').textContent=detail[state.plRoutesTab]||detail.list;
+    if(typeof window.renderPlRoutesList==='function')window.renderPlRoutesList();
   }
   $('pageActions').classList.toggle('hidden',isPlRoutes);
   $('officeLabelsView').classList.toggle('hidden',!workingLabels);
