@@ -347,10 +347,11 @@
 .pl-route-part-name-wrap{position:relative;min-width:0}
 .pl-route-part-name-wrap .pl-route-part-name{width:100%}
 .pl-route-part-suggestions{
-  position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:30;
-  max-height:235px;overflow:auto;padding:4px;
+  /* Fixed positioning escapes the scrollable form body's clipping. */
+  position:fixed;z-index:200;box-sizing:border-box;
+  max-height:245px;overflow-y:auto;overscroll-behavior:contain;padding:4px;
   border:1px solid #c6d3df;border-radius:8px;background:#fff;
-  box-shadow:0 8px 20px rgba(32,49,67,.14)
+  box-shadow:0 14px 32px rgba(32,49,67,.25)
 }
 .pl-route-part-suggestions.hidden{display:none}
 .pl-route-part-suggestion{
