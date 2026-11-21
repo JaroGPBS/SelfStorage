@@ -193,7 +193,7 @@ function demo45Settlement(number,lines){
   if(!Array.isArray(lines)||!lines.length)
     return {error:'Brakuje pozycji trasy '+number+'.'};
   const norm=value=>String(value||'').normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    .replace(/[\u0300-\u036f]/g,'').replace(/[łŁ]/g,'l').toLowerCase();
   let pole=null,anchor=null;
   if(number==='02HP'){
     const poles=lines.filter(x=>/\bslup(?:ek|k)/.test(norm(x.partName)));
