@@ -77,3 +77,20 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#263440;font-size:11p
   .report-table{font-size:9px}
   .report-table td,.report-table th{padding:5px 3px}
 }
+
+/* Parts balance uses the existing print/export workflow, but with seven columns. */
+.balance-route-sheet .balance-report-table{font-size:9px;table-layout:fixed}
+.balance-route-sheet .balance-report-table th,
+.balance-route-sheet .balance-report-table td{padding:6px 5px;overflow-wrap:anywhere}
+.balance-route-sheet .balance-report-table th:nth-child(2),
+.balance-route-sheet .balance-report-table td:nth-child(2){width:27%;text-align:left}
+.balance-route-sheet .balance-report-table th:last-child,
+.balance-route-sheet .balance-report-table td:last-child{
+  border-left:2px solid #8fa4b8;background:#eef3f7
+}
+@media print{
+  .balance-route-sheet .balance-report-table th:last-child,
+  .balance-route-sheet .balance-report-table td:last-child{
+    background:#eef3f7;print-color-adjust:exact;-webkit-print-color-adjust:exact
+  }
+}
