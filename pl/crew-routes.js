@@ -213,7 +213,7 @@
       const row=el('div','crew-report-line');
       const head=el('div','crew-report-part');
       head.append(el('strong','',partName),
-        el('small','','Odebrano: '+actual+' szt.'));
+        el('small','crew-report-received','Odebrano: '+actual+' szt.'));
       const code=String(line.partCode||'').trim();
       if(code&&code!==partName)head.append(el('small','crew-report-part-code',code));
 
@@ -254,7 +254,13 @@
       }
       returned.addEventListener('input',recalculate);
       recalculate();
-      row.append(head,used,returned,placeLabel);
+      const quantities=el('div','crew-report-quantities');
+      const usedGroup=el('div','crew-report-quantity');
+      usedGroup.append(el('span','crew-report-quantity-label','Wykorzystano'),used);
+      const returnedGroup=el('label','crew-report-quantity');
+      returnedGroup.append(el('span','crew-report-quantity-label','Zwrócono'),returned);
+      quantities.append(usedGroup,returnedGroup);
+      row.append(head,quantities,placeLabel);
       reportLines.append(row);
     }
     reportForm.hidden=false;
