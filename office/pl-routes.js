@@ -134,6 +134,19 @@
     drawRouteCalendar();
   }
 
+  function lockSavedRouteFields(locked){
+    // After the D1 record exists, retrying a failed photo upload must not
+    // imply that edits to the visible form would update the stored route.
+    for(const id of ['plRouteNumber','plRouteCrewSymbol']){
+      byId(id).readOnly=locked;
+    }
+    byId('plRouteDate').disabled=locked;
+    byId('plRouteCalendarToggle').disabled=locked;
+    byId('plRouteAddPart').disabled=locked;
+    byId('plRouteParts').querySelectorAll('input,button').forEach(field=>{
+      field.disabled=locked;
+    });
+  }
   function openForm(){
     if(busy)return;
     const allowed=['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(routeContext()?.role);
@@ -141,6 +154,7 @@
     const dialog=byId('plRouteDialog');
     byId('plRouteForm').reset();
     savedRouteId=null;
+    lockSavedRouteFields(false);
     errorMessage();
     clearPhoto();
     byId('plRouteParts').replaceChildren();
@@ -285,6 +299,7 @@
           body:JSON.stringify(payload)
         }));
         savedRouteId=result.id;
+        lockSavedRouteFields(true);
       }
       const file=byId('plRoutePhoto').files?.[0];
       if(file)await archiveRouteDocument(savedRouteId,file);
