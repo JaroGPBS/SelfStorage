@@ -565,14 +565,17 @@
       ?'Rozliczenie zakończonej trasy ':'Wydane i potwierdzone części dla trasy ';
     const editable=!history&&route.canEdit===true&&
       ['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(routeContext()?.role);
-    const photoButtons=(result.documents||[]).map((doc,index)=>
-      '<button type="button" class="pl-route-document-button" '+
-        'data-pl-route-document="'+html(doc.id)+'" '+
-        'data-pl-route-document-route="'+html(route.id)+'" '+
-        'title="Otwórz zapisane zdjęcie dokumentu trasy">'+
-        (result.documents.length===1?'Zdjęcie':'Zdjęcie '+(index+1))+
-      '</button>'
-    ).join('');
+    const photoButtons=(result.documents||[]).length
+      ?result.documents.map((doc,index)=>
+        '<button type="button" class="pl-route-document-button" '+
+          'data-pl-route-document="'+html(doc.id)+'" '+
+          'data-pl-route-document-route="'+html(route.id)+'" '+
+          'title="Otwórz zapisane zdjęcie dokumentu trasy">'+
+          (result.documents.length===1?'Zdjęcie':'Zdjęcie '+(index+1))+
+        '</button>'
+      ).join('')
+      :'<button type="button" class="pl-route-document-button" disabled '+
+        'title="Do tej trasy nie dołączono zdjęcia dokumentu">Zdjęcie</button>';
     const editButton=editable
       ?'<button type="button" class="pl-route-edit-button" '+
         'data-pl-route-edit="'+html(route.id)+'">Edytuj</button>'
