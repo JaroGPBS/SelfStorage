@@ -67,7 +67,7 @@
 .pl-routes-table .pl-route-details-button:hover{background:#f0f4f8}
 .pl-routes-table .pl-route-expanded > td{padding:10px 13px;background:#f8fafc;text-align:left}
 .pl-route-detail-layout{display:block;width:100%}
-.pl-route-detail-head{display:flex;align-items:center;min-height:25px;margin-bottom:8px}
+.pl-route-detail-head{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:25px;margin-bottom:8px}
 .pl-route-detail-head > strong{font-size:12px;text-align:left}
 .pl-route-detail-content{
   display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;width:100%
@@ -467,3 +467,18 @@
   width:145px;box-sizing:border-box;border:1px solid #b8c9d8;border-radius:6px;
   padding:10px 12px;font-family:inherit;font-size:13px;letter-spacing:.1em
 }
+
+/* A single export action in the opened route header, no extra toolbar tiles. */
+.pl-route-export-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:98px;min-height:28px;padding:5px 12px;flex:none;
+  border:1px solid #bdcbd8;border-radius:4px;
+  background:#fff;color:#344b61;font:inherit;font-size:11px;
+  font-weight:750;cursor:pointer
+}
+.pl-route-export-button:hover{background:#edf2f7;border-color:#9fb2c4}
+.pl-route-export-dialog{width:min(92vw,420px);max-width:420px}
+.pl-route-export-description{
+  margin:0;font-size:12px;line-height:1.55;color:#54677b
+}
+.pl-route-export-dialog .pl-route-small-actions{gap:9px}
