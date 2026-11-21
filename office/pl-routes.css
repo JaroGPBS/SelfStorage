@@ -1,0 +1,77 @@
+/* GPBS Storage — Poland routes. Scoped to the Office route list/form only. */
+.office-pl-routes-view{padding:20px 22px;min-height:230px}
+.office-pl-routes-view #officePlRoutesMessage{font-size:13px;color:#657585;max-width:none}
+.pl-routes-list-panel{width:100%}
+.pl-routes-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.pl-routes-toolbar>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.pl-routes-toolbar strong{font-size:17px;font-weight:800;color:#25313d}
+.pl-routes-toolbar small{font-size:12px;color:#728092}
+.pl-routes-toolbar button{white-space:nowrap}
+.pl-routes-status{font-size:12px!important;color:#627386!important;max-width:none!important;margin-bottom:10px!important}
+.pl-routes-status:empty{display:none}
+.pl-routes-status.is-error{color:#b52135!important}
+.pl-routes-table{width:100%;overflow-x:auto}
+.pl-routes-table table{width:100%;border-collapse:collapse;font-size:12.5px}
+.pl-routes-table th{padding:11px 12px;text-align:left;background:#f2f5f8;color:#627488;font-weight:800;white-space:nowrap;border-bottom:1px solid #dce4ed}
+.pl-routes-table td{padding:13px 12px;border-bottom:1px solid #e5ebf0;color:#2a3a4c;vertical-align:middle}
+.pl-routes-table .pl-route-status-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:750;padding:5px 9px;border-radius:16px;background:#f0e9d7;color:#7f601a;white-space:nowrap}
+.pl-routes-table .pl-route-details-button{border:1px solid #cfd9e3;border-radius:7px;background:#fff;padding:6px 10px;font-size:12px;cursor:pointer;color:#344a61}
+.pl-routes-table .pl-route-details-button:hover{background:#f0f4f8}
+.pl-routes-table .pl-route-expanded td{padding:14px 16px;background:#f8fafc}
+.pl-route-detail-lines{width:100%;max-width:780px}
+.pl-route-detail-lines strong{display:block;margin-bottom:10px;font-size:12px}
+.pl-routes-empty{padding:32px 16px;text-align:center;border:1px dashed #dce3eb;border-radius:10px;color:#728092;font-size:13px}
+.pl-route-dialog{box-sizing:border-box;width:min(96vw,920px);max-width:920px;max-height:min(92dvh,950px);margin:auto;padding:0;border:1px solid #d9e1ea;border-radius:15px;background:#fff;color:#233043;box-shadow:0 32px 90px rgba(0,0,0,.35);overflow:hidden}
+.pl-route-dialog::backdrop{background:rgba(6,13,22,.72)}
+.pl-route-form{display:flex;flex-direction:column;max-height:min(92dvh,950px);min-width:0}
+.pl-route-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex:0 0 auto;padding:21px 26px 15px;border-bottom:1px solid #e2e8ef}
+.pl-route-eyebrow{font-size:10px;letter-spacing:.14em;color:#8a99ab;font-weight:800;margin:0 0 5px}
+.pl-route-dialog-head h2{font-size:24px;line-height:1.18;font-weight:850;color:#223246;margin:0}
+.pl-route-close{font-size:27px;line-height:1;border:0;background:transparent;color:#64748b;cursor:pointer;padding:2px 8px}
+.pl-route-form-body{padding:22px 26px 18px;overflow-y:auto;min-height:0}
+.pl-route-photo{display:grid;grid-template-columns:1fr auto;gap:9px 16px;align-items:center;background:#f5f7fa;border:1px dashed #bfcdda;border-radius:11px;padding:17px 18px;margin-bottom:21px}
+.pl-route-photo strong{font-size:14px;color:#23354b}
+.pl-route-photo p{font-size:12px;line-height:1.55;color:#5f7185;margin:6px 0 0}
+.pl-route-photo small{grid-column:1/-1;font-size:11px;line-height:1.5;color:#7e8fa1}
+.pl-route-photo-file{grid-column:1/-1;font-size:12px;color:#526780;overflow-wrap:anywhere}
+#plRoutePhoto{display:none}
+.pl-route-photo-preview{grid-column:1/-1;display:block;width:auto;max-width:100%;max-height:180px;object-fit:contain;border-radius:6px;background:#e6ebef}
+.pl-route-photo-preview[hidden]{display:none}
+.pl-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 20px;margin-bottom:26px}
+.pl-route-form label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:800;color:#43566c;min-width:0}
+.pl-route-form label span{color:#be2635}
+.pl-route-form input:not([type=file]){width:100%;min-height:41px;padding:9px 11px;font-size:13px;font-weight:500;color:#24354b;background:#fff;border:1px solid #cbd7e1;border-radius:8px;outline:none}
+.pl-route-form input:focus{border-color:#527fab;box-shadow:0 0 0 3px #4a86ba21}
+.pl-route-parts-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:13px}
+.pl-route-parts-head h3{font-size:15px;color:#27384d;font-weight:800;margin:0 0 3px}
+.pl-route-parts-head p{font-size:12px;color:#728196;margin:0}
+.pl-route-parts{display:flex;flex-direction:column;gap:10px}
+.pl-route-part-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(170px,1.6fr) minmax(78px,.44fr) 32px;align-items:end;gap:10px}
+.pl-route-part-row .pl-route-remove-part{width:32px;height:40px;border:1px solid #dfE4ea;border-radius:8px;background:#fff;color:#a53847;font-size:20px;cursor:pointer}
+.pl-route-part-row .pl-route-remove-part:hover{background:#fff1f1}
+.pl-route-error{margin:0 26px 12px;padding:10px 12px;border-radius:8px;background:#fff2f2;color:#b52233;font-size:12px}
+.pl-route-error[hidden]{display:none}
+.pl-route-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex:0 0 auto;padding:15px 26px;background:#fafbfd;border-top:1px solid #e2e8ef}
+.pl-route-actions button:disabled{opacity:.55;cursor:wait}
+@media(max-width:690px){
+  .office-pl-routes-view{padding:14px 12px}
+  .pl-routes-toolbar{align-items:flex-start}
+  .pl-routes-toolbar strong{font-size:15px}
+  .pl-routes-toolbar small{font-size:11px}
+  .pl-routes-toolbar button{font-size:11px;padding:8px 10px}
+  .pl-route-dialog{width:96vw;max-height:95dvh}
+  .pl-route-form{max-height:95dvh}
+  .pl-route-dialog-head{padding:17px 16px 12px}
+  .pl-route-form-body{padding:16px}
+  .pl-route-photo{grid-template-columns:1fr;padding:13px}
+  .pl-route-photo button{justify-self:start}
+  .pl-route-grid{grid-template-columns:1fr;gap:12px;margin-bottom:20px}
+  .pl-route-part-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px}
+  .pl-route-part-row .pl-route-part-name{grid-column:1/3}
+  .pl-route-part-row .pl-route-part-code{grid-column:1}
+  .pl-route-part-row .pl-route-part-quantity{grid-column:2}
+  .pl-route-part-row .pl-route-remove-part{grid-column:3;grid-row:2}
+  .pl-route-parts-head{align-items:flex-start}
+  .pl-route-parts-head button{font-size:11px}
+  .pl-route-actions{padding:12px 16px}
+}
