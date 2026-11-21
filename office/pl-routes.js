@@ -1254,54 +1254,89 @@
       byId('plRouteDocumentDialog').close();
   });
   let routeExportBusy=false;
+  let routePreviewReady=false;
+  const routeExportDialog=byId('plRouteExportDialog');
+  const routePreview=byId('plRouteExportPreview');
+  function setRoutePreviewReady(ready){
+    routePreviewReady=ready;
+    byId('plRouteExportLoading').hidden=ready;
+    for(const id of ['plRouteExportPdf','plRouteExportExcel','plRouteExportPrint'])
+      byId(id).disabled=!ready||routeExportBusy;
+  }
   function openRouteExport(button){
-    if(routeExportBusy)return;
+    if(routeExportBusy||routeExportDialog.open)return;
     const id=String(button.dataset.plRouteExport||'');
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))return;
-    const dialog=byId('plRouteExportDialog');
-    dialog.dataset.routeId=id;
-    byId('plRouteExportTitle').textContent='Eksportuj – '+
+    routeExportDialog.dataset.routeId=id;
+    byId('plRouteExportTitle').textContent='Karta trasy – '+
       (button.dataset.plRouteExportNumber||'trasa');
-    byId('plRouteExportError').hidden=true;
-    dialog.showModal();
+    const error=byId('plRouteExportError');
+    error.hidden=true;
+    error.textContent='';
+    setRoutePreviewReady(false);
+    routeExportDialog.showModal();
+    routePreview.src='/office/pl-routes-print.html?id='+
+      encodeURIComponent(id)+'&embed=1';
   }
   function closeRouteExport(){
-    if(!routeExportBusy)byId('plRouteExportDialog').close();
+    if(routeExportBusy)return;
+    routeExportDialog.close();
+    routePreview.src='about:blank';
+    setRoutePreviewReady(false);
   }
   byId('plRouteExportClose').addEventListener('click',closeRouteExport);
-  byId('plRouteExportDialog').addEventListener('cancel',event=>{
+  routeExportDialog.addEventListener('cancel',event=>{
     if(routeExportBusy)event.preventDefault();
   });
-  byId('plRouteExportPdf').addEventListener('click',()=>{
-    const id=byId('plRouteExportDialog').dataset.routeId;
-    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))return;
-    // The print-ready A4 document is generated from the live authenticated API.
-    // Browser print dialog lets the user choose printer or "Save as PDF".
-    window.open('/office/pl-routes-print.html?id='+encodeURIComponent(id),
-      '_blank','noopener');
-    closeRouteExport();
+  routeExportDialog.addEventListener('close',()=>{
+    routePreview.src='about:blank';
+    routePreviewReady=false;
   });
+  window.addEventListener('message',event=>{
+    if(event.origin!==window.location.origin||
+       event.source!==routePreview.contentWindow||
+       !routeExportDialog.open||
+       !event.data||event.data.routeId!==routeExportDialog.dataset.routeId)
+      return;
+    if(event.data.type==='gpbs-route-export-preview-ready'){
+      setRoutePreviewReady(true);
+    }else if(event.data.type==='gpbs-route-export-preview-error'){
+      byId('plRouteExportLoading').hidden=true;
+      const error=byId('plRouteExportError');
+      error.textContent='Nie udało się przygotować podglądu tej trasy.';
+      error.hidden=false;
+    }
+  });
+  function printRoutePreview(){
+    if(!routePreviewReady||!routeExportDialog.open)return;
+    // Same A4 document for Print and PDF. In the print dialog the user
+    // selects the printer or the "Save as PDF" destination.
+    const frame=routePreview.contentWindow;
+    if(!frame)return;
+    frame.focus();
+    frame.print();
+  }
+  byId('plRouteExportPdf').addEventListener('click',printRoutePreview);
+  byId('plRouteExportPrint').addEventListener('click',printRoutePreview);
   byId('plRouteExportExcel').addEventListener('click',async()=>{
-    if(routeExportBusy)return;
-    const id=byId('plRouteExportDialog').dataset.routeId;
+    if(routeExportBusy||!routePreviewReady)return;
+    const id=routeExportDialog.dataset.routeId;
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))return;
     const error=byId('plRouteExportError');
-    const button=byId('plRouteExportExcel');
     routeExportBusy=true;
-    button.disabled=true;
+    setRoutePreviewReady(true);
     error.hidden=true;
     try{
       if(!window.PlRouteExport)throw Error('Moduł Excel nie został załadowany.');
       const data=await window.PlRouteExport.getRoute(id);
       window.PlRouteExport.saveXlsx([data],'GPBS-Trasa-'+
         (data.route.routeNumber||'Raport'));
-      byId('plRouteExportDialog').close();
     }catch(ex){
       error.textContent=ex.message||'Nie udało się zapisać pliku Excel.';
       error.hidden=false;
     }finally{
       routeExportBusy=false;
-      button.disabled=false;
+      setRoutePreviewReady(routePreviewReady);
     }
   });
   byId('plRoutesTable').addEventListener('click',e=>{
