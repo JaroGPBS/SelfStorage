@@ -3,6 +3,7 @@ import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worke
 import {verifyRememberSession} from '../../lib/pl-office-remember.js';
 import {routeEditablePredicate,canEditRoute,ROUTE_SETTLEMENT_COLUMNS} from '../../lib/pl-route-editability.js';
 import {ensureRouteAuditSchema,auditEntry} from '../../lib/pl-route-audit.js';
+import {resolveRouteParts,routePartsLineColumnExists} from '../../lib/pl-route-parts.js';
 
 const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
 // TEMPORARY: true during initial presentation-data entry.
@@ -263,7 +264,9 @@ function parseRoute(body){
     const quantity=Number(item.quantity);
     if((!partCode&&!partName)||partCode.length>100||partName.length>180||
        !Number.isSafeInteger(quantity)||quantity<1||quantity>999999)return null;
-    lines.push({partCode,partName,quantity});
+    const catalogPartId=String(item.catalogPartId||'').trim();
+    if(catalogPartId&&!/^PL-RPART-[a-f0-9-]{36}$/.test(catalogPartId))return null;
+    lines.push({partCode,partName,quantity,catalogPartId});
   }
   return {routeNumber,routeDate,crewSymbol,lines,
     isPresentation:ROUTE_PRESENTATION_MODE};
@@ -301,7 +304,9 @@ export async function onRequestGet({request,env}){
         columns.has('return_location')
           ?'return_location AS returnLocation':'NULL AS returnLocation',
         columns.has('verified_quantity')
-          ?'verified_quantity AS verifiedQuantity':'NULL AS verifiedQuantity'
+          ?'verified_quantity AS verifiedQuantity':'NULL AS verifiedQuantity',
+        await routePartsLineColumnExists(env.DB)
+          ?'catalog_part_id AS catalogPartId':'NULL AS catalogPartId'
       ].join(',');
       const lines=(await env.DB.prepare(
         'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
@@ -1009,10 +1014,11 @@ export async function onRequestPost({request,env}){
         return send('Trasa została już potwierdzona lub zakończona. Edycja jest zablokowana.',409);
       if(Number(current.revision)!==revision)
         return send('Trasa została zmieniona w innym oknie. Otwórz edycję ponownie.',409);
+      const catalogLines=await resolveRouteParts(env.DB,updated.lines);
       const operationToken=crypto.randomUUID();
       const before=(await env.DB.prepare(
-        'SELECT position,part_code AS partCode,part_name AS partName,quantity '+
-        'FROM pl_route_lines WHERE route_id=? ORDER BY position'
+        'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
+        'catalog_part_id AS catalogPartId FROM pl_route_lines WHERE route_id=? ORDER BY position'
       ).bind(id).all()).results||[];
       const predicate=await routeEditablePredicate(env.DB,'pl_routes');
       const guard='EXISTS (SELECT 1 FROM pl_routes WHERE id=? AND edit_revision=? AND edit_token=? AND '+predicate+')';
@@ -1026,11 +1032,12 @@ export async function onRequestPost({request,env}){
           'DELETE FROM pl_route_lines WHERE route_id=? AND '+guard
         ).bind(id,id,revision+1,operationToken)
       ];
-      updated.lines.forEach((line,index)=>{
+      catalogLines.forEach((line,index)=>{
         statements.push(env.DB.prepare(
-          'INSERT INTO pl_route_lines (route_id,position,part_code,part_name,quantity) '+
-          'SELECT ?,?,?,?,? WHERE '+guard
-        ).bind(id,index+1,line.partCode,line.partName,line.quantity,id,revision+1,operationToken));
+          'INSERT INTO pl_route_lines (route_id,position,part_code,part_name,quantity,catalog_part_id) '+
+          'SELECT ?,?,?,?,?,? WHERE '+guard
+        ).bind(id,index+1,line.partCode,line.partName,line.quantity,
+          line.catalogPartId,id,revision+1,operationToken));
       });
       statements.push(auditEntry(env.DB,{
         id:crypto.randomUUID(),routeId:id,action:'EDIT',
@@ -1039,7 +1046,7 @@ export async function onRequestPost({request,env}){
           before:{routeNumber:current.routeNumber,routeDate:current.routeDate,
             crewSymbol:current.crewSymbol,lines:before},
           after:{routeNumber:updated.routeNumber,routeDate:updated.routeDate,
-            crewSymbol:updated.crewSymbol,lines:updated.lines}
+            crewSymbol:updated.crewSymbol,lines:catalogLines}
         }
       }));
       const result=await env.DB.batch(statements);
@@ -1152,6 +1159,7 @@ export async function onRequestPost({request,env}){
       'SELECT id FROM pl_routes WHERE route_number=? AND route_date=? LIMIT 1'
     ).bind(route.routeNumber,route.routeDate).first();
     if(duplicate)return send('Trasa z tym numerem i datą jest już zapisana.',409);
+    const catalogLines=await resolveRouteParts(env.DB,route.lines);
     const id='PL-ROUTE-'+crypto.randomUUID();
     const steps=[
       env.DB.prepare(
@@ -1160,10 +1168,11 @@ export async function onRequestPost({request,env}){
       ).bind(id,route.routeNumber,route.routeDate,'',route.crewSymbol,
         'AWAITING_CONFIRMATION',auth.user.id,route.isPresentation?1:0)
     ];
-    route.lines.forEach((line,i)=>{
+    catalogLines.forEach((line,i)=>{
       steps.push(env.DB.prepare(
-        'INSERT INTO pl_route_lines (route_id,position,part_code,part_name,quantity) VALUES (?,?,?,?,?)'
-      ).bind(id,i+1,line.partCode,line.partName,line.quantity));
+        'INSERT INTO pl_route_lines (route_id,position,part_code,part_name,quantity,catalog_part_id) '+
+        'VALUES (?,?,?,?,?,?)'
+      ).bind(id,i+1,line.partCode,line.partName,line.quantity,line.catalogPartId));
     });
     await env.DB.batch(steps); // D1 batch is atomic: no partly-created route.
     return workerJson({ok:true,id},201);
