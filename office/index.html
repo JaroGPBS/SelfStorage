@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=135">
-  <link rel="stylesheet" href="./pl-routes.css?v=1">
+  <link rel="stylesheet" href="./pl-routes.css?v=2">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=165"></script>
-  <script defer src="./pl-routes.js?v=3"></script>
+  <script defer src="./pl-routes.js?v=4"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -343,9 +343,9 @@
             <div class="pl-routes-toolbar">
               <div>
                 <strong>Trasy montażowe</strong>
-                <small>Lista tras wprowadzonych przez biuro.</small>
+                <small>Lista wprowadzonych tras.</small>
               </div>
-              <button type="button" id="plRouteAdd" class="btn dark">+ Dodaj trasę</button>
+              <button type="button" id="plRouteAdd" class="btn pl-route-add-primary">+ Dodaj trasę</button>
             </div>
             <p id="plRoutesListStatus" class="pl-routes-status" role="status" aria-live="polite"></p>
             <div id="plRoutesTable" class="pl-routes-table"></div>
@@ -431,14 +431,11 @@
           <label>Numer trasy <span>*</span>
             <input id="plRouteNumber" type="text" required maxlength="80" autocomplete="off" placeholder="Wpisz numer trasy">
           </label>
-          <label>Data trasy <span>*</span>
-            <input id="plRouteDate" type="date" required>
-          </label>
-          <label>Numer ekipy <span>*</span>
-            <input id="plRouteCrewNumber" type="text" required maxlength="60" autocomplete="off" placeholder="Wpisz numer ekipy">
-          </label>
           <label>Symbol ekipy <span>*</span>
             <input id="plRouteCrewSymbol" type="text" required maxlength="20" autocomplete="off" autocapitalize="characters" placeholder="Np. GW">
+          </label>
+          <label>Data trasy <span>*</span>
+            <input id="plRouteDate" type="date" required>
           </label>
         </div>
         <div class="pl-route-parts-head">
