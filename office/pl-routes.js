@@ -680,8 +680,8 @@
         }
       ));
       const wrong=(result.lines||[]).filter(line=>
-        line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
-        Number(line.confirmedQuantity)!==Number(line.verifiedQuantity??line.quantity));
+        line.confirmedQuantity!=null&&line.verifiedQuantity==null&&
+        Number(line.confirmedQuantity)!==Number(line.quantity));
       if(!wrong.length||result.route?.status==='COMPLETED')
         throw Error('Ta trasa nie wymaga już wyjaśnienia niezgodności.');
       const dialog=byId('plRouteExplainDialog');
@@ -689,31 +689,23 @@
       byId('plRouteExplainError').hidden=true;
       byId('plRouteExplainLines').innerHTML=
         '<div class="pl-route-explain-head"><span>Część</span>'+
-          '<span>Magazyn wpisał</span><span>Ekipa potwierdziła</span>'+
-          '<span>Decyzja</span></div>'+
+          '<span>Magazyn wpisał</span><span>Ekipa zgłosiła</span>'+
+          '<span>Po weryfikacji</span></div>'+
         wrong.map(line=>
           '<div class="pl-route-explain-line" data-pl-route-explain-row="'+html(line.position)+'">'+
             '<strong>'+html(line.partName||line.partCode||'Poz. '+line.position)+'</strong>'+
             '<span>'+html(line.quantity)+'</span>'+
             '<span>'+html(line.confirmedQuantity)+'</span>'+
-            '<select required data-pl-route-explain-decision '+
-              'aria-label="Decyzja dla części '+html(line.partName||line.partCode||line.position)+'">'+
-              '<option value="" disabled selected>Wybierz decyzję…</option>'+
-              '<option value="MATCH_CREW">Skoryguj do '+html(line.confirmedQuantity)+' szt.</option>'+
-              '<option value="LEAVE_OPEN">Nie koryguj – nadal niezgodne</option>'+
-            '</select>'+
-            '<label class="pl-route-explain-item-note">Wyjaśnienie dla tej części — wymagane'+
-              '<textarea required minlength="12" maxlength="1000" rows="2" '+
-                'data-pl-route-explain-note '+
-                'placeholder="Np. Magazyn potwierdził, że faktycznie wydano o 1 szt. mniej."></textarea>'+
-            '</label>'+
+            '<input type="number" min="0" max="999999" step="1" required '+
+              'data-pl-route-explain-quantity '+
+              'aria-label="Ilość po weryfikacji: '+html(line.partName||line.partCode||line.position)+'" '+
+              'value="'+html(line.confirmedQuantity)+'">'+
           '</div>'
         ).join('');
       dialog.dataset.routeId=id;
       dialog.dataset.revision=String(result.route.editRevision||0);
       dialog.showModal();
-      const first=byId('plRouteExplainLines').querySelector('[data-pl-route-explain-note]');
-      first?.focus();
+      byId('plRouteExplainComment').focus();
     }catch(error){
       const status=byId('plRoutesListStatus');
       status.classList.add('is-error');
@@ -729,28 +721,35 @@
     if(!form.reportValidity())return;
     const comment=byId('plRouteExplainComment').value.trim();
     const error=byId('plRouteExplainError');
+    if(comment.length<15){
+      error.hidden=false;
+      error.textContent='Opisz wyjaśnienie niezgodności (minimum 15 znaków).';
+      byId('plRouteExplainComment').focus();
+      return;
+    }
     const corrections=[...byId('plRouteExplainLines').querySelectorAll(
       '[data-pl-route-explain-row]'
-    )].map(row=>({
-      position:Number(row.dataset.plRouteExplainRow),
-      decision:row.querySelector('[data-pl-route-explain-decision]').value,
-      note:row.querySelector('[data-pl-route-explain-note]').value.trim()
-    }));
+    )].map(row=>{
+      const field=row.querySelector('[data-pl-route-explain-quantity]');
+      return {
+        position:Number(row.dataset.plRouteExplainRow),
+        quantity:field.value.trim()===''?NaN:Number(field.value)
+      };
+    });
     if(!corrections.length||corrections.some(row=>
       !Number.isSafeInteger(row.position)||row.position<1||
-      !['MATCH_CREW','LEAVE_OPEN'].includes(row.decision)||
-      row.note.length<12||row.note.length>1000)){
+      !Number.isSafeInteger(row.quantity)||row.quantity<0||row.quantity>999999)){
       error.hidden=false;
-      error.textContent='Każda niezgodna część wymaga decyzji i komentarza (min. 12 znaków).';
+      error.textContent='Wpisz prawidłową ilość po weryfikacji dla każdej części.';
       return;
     }
     if(!await confirmRouteAction(
-      'Zatwierdzić weryfikację i zapisać osobne wyjaśnienie dla każdej części?'))return;
+      'Zatwierdzić ilości po weryfikacji i zapisać komentarz?'))return;
     explainSaving=true;
     byId('plRouteExplainSave').disabled=true;
     error.hidden=true;
     try{
-      const result=await jsonResponse(await fetch(endpoint,{
+      await jsonResponse(await fetch(endpoint,{
         method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
@@ -764,13 +763,10 @@
       await window.renderPlRoutesList();
       const status=byId('plRoutesListStatus');
       status.classList.remove('is-error');
-      status.textContent=Number(result.unresolvedCount)>0
-        ?'Zapisano wyjaśnienia. '+Number(result.unresolvedCount)+
-          ' pozycje nadal wymagają weryfikacji.'
-        :'Weryfikacja zapisana. Ilości uzgodniono z ekipą, szczegóły są w historii trasy.';
+      status.textContent='Weryfikacja i komentarz zapisane w historii trasy.';
     }catch(ex){
       error.hidden=false;
-      error.textContent=ex.message||'Nie udało się zatwierdzić wyjaśnienia.';
+      error.textContent=ex.message||'Nie udało się zatwierdzić weryfikacji.';
     }finally{
       explainSaving=false;
       byId('plRouteExplainSave').disabled=false;
