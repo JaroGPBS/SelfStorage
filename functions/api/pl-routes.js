@@ -25,7 +25,10 @@ const DEMO_WEEK48=[
     parts:[['Słupek',4],['Dach uniwersalny',2],['Osłona przyłącza',2],['Separator',5]]},
   {no:'48PL-06',date:'2026-11-28',crew:'DL',status:'AWAITING_CONFIRMATION',
     parts:[['Rynna + uszczelka',6],['Dzielenie dołem',4],['Słupek',6],['Kotwa trójkątna',12],
-      ['Separator',8]]}
+      ['Separator',8]]},
+  {no:'48PL-07',date:'2026-11-28',crew:'RS',status:'REVIEW_REQUIRED',
+    parts:[['Separator',9,7],['Dach uniwersalny',3,2],['Słupek',5],
+      ['Rynna + uszczelka',4],['Kotwa trójkątna',12]]}
 ];
 const demoWeek48Id=i=>'PL-ROUTE-48de0000-0000-4000-8000-'+
   String(i+1).padStart(12,'0');
