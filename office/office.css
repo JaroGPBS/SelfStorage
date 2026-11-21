@@ -8291,22 +8291,22 @@
 }
 #sidebar .office-side-sync-heading{
   gap:5px;
-  font-size:11px;
+  font-size:12px;
   font-weight:700;
-  line-height:1.25;
+  line-height:1.1;
   color:#d9e0e8;
 }
 #sidebar .office-side-sync-heading > span{font-size:14px}
 #sidebar .office-side-sync-button strong{
   font-size:14px;
-  line-height:1.25;
+  line-height:1.1;
   font-weight:450;
   letter-spacing:0;
   color:#e7edf4;
 }
 #sidebar .office-side-sync-button small{
-  font-size:10px;
-  line-height:1.2;
+  font-size:11px;
+  line-height:1.1;
   font-weight:450;
   color:#aebbc9;
 }
