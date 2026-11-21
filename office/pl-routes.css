@@ -44,9 +44,46 @@
 .pl-routes-table .pl-route-status-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:750;padding:5px 9px;border-radius:16px;background:#f0e9d7;color:#7f601a;white-space:nowrap}
 .pl-routes-table .pl-route-details-button{border:1px solid #cfd9e3;border-radius:7px;background:#fff;padding:6px 10px;font-size:12px;cursor:pointer;color:#344a61}
 .pl-routes-table .pl-route-details-button:hover{background:#f0f4f8}
-.pl-routes-table .pl-route-expanded td{padding:14px 16px;background:#f8fafc}
-.pl-route-detail-lines{width:100%;max-width:780px}
-.pl-route-detail-lines strong{display:block;margin-bottom:10px;font-size:12px}
+.pl-routes-table .pl-route-expanded > td{padding:10px 13px;background:#f8fafc;text-align:left}
+.pl-route-detail-lines{width:100%;max-width:none;overflow-x:auto}
+.pl-route-detail-lines strong{display:block;margin-bottom:8px;font-size:12px;text-align:left}
+.pl-routes-table .pl-route-expanded .pl-route-detail-lines table{
+  width:100%;min-width:590px;table-layout:auto;border-collapse:collapse;font-size:11.5px;line-height:1.25
+}
+.pl-routes-table .pl-route-expanded .pl-route-detail-lines table th{
+  padding:7px 8px;text-align:center;white-space:nowrap;
+  background:#edf2f7;color:#536981;border-bottom:1px solid #dbe4ec;font-size:11px
+}
+.pl-routes-table .pl-route-expanded .pl-route-detail-lines table td{
+  padding:6px 8px;text-align:center;border-bottom:1px solid #e2e9f0;
+  color:#34475b;background:transparent;line-height:1.25;vertical-align:middle
+}
+.pl-routes-table .pl-route-expanded .pl-route-detail-lines table th:nth-child(3),
+.pl-routes-table .pl-route-expanded .pl-route-detail-lines table td:nth-child(3){
+  text-align:left;min-width:150px
+}
+.pl-routes-table .pl-route-expanded .pl-route-detail-lines table tr.pl-route-detail-mismatch td{
+  color:#a42636;background:#fff1f0
+}
+.pl-route-detail-warning{
+  font-size:11px;color:#a42636;margin:0 0 8px;
+}
+.pl-route-detail-note{font-size:10.5px;color:#78889a;margin:8px 0 0}
+.pl-routes-table .pl-route-status-badge.is-discrepancy{background:#fde8e7;color:#ac2937}
+.pl-routes-table .pl-route-status-badge.is-confirmed{background:#e8f1e8;color:#376746}
+.pl-routes-table .pl-route-status-badge.is-completed{background:#e9edf2;color:#44586f}
+.pl-route-history-group{margin:0 0 10px;border:1px solid #dce4ec;border-radius:9px;overflow:hidden}
+.pl-route-history-toggle{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+  padding:11px 16px;border:0;background:#f5f7fa;color:#34485e;
+  font-size:12.5px;font-weight:800;cursor:pointer;text-align:left
+}
+.pl-route-history-toggle:hover{background:#edf2f6}
+.pl-route-history-toggle span:nth-child(2){margin-left:auto;font-weight:600;color:#6b7f93}
+.pl-route-history-toggle span:last-child{font-size:17px;transition:transform .15s}
+.pl-route-history-toggle[aria-expanded=true] span:last-child{transform:rotate(180deg)}
+.pl-route-history-content{padding:0;overflow-x:auto}
+.pl-route-history-content > table{min-width:910px}
 .pl-routes-empty{padding:32px 16px;text-align:center;border:1px dashed #dce3eb;border-radius:10px;color:#728092;font-size:13px}
 .pl-route-dialog{box-sizing:border-box;width:min(96vw,840px);max-width:840px;max-height:min(92dvh,950px);margin:auto;padding:0;border:1px solid #d9e1ea;border-radius:15px;background:#fff;color:#233043;box-shadow:0 32px 90px rgba(0,0,0,.35);overflow:hidden}
 .pl-route-dialog::backdrop{background:rgba(6,13,22,.72)}
