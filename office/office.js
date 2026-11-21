@@ -734,7 +734,7 @@ function setLoggedIn(payload){
   // including after a full-page refresh; never leave "--:--" in logged-in Office.
   invalidateOfficeReadCache();
   markSynced();
-  lastManualSyncAt=0;
+  lastManualSyncAt=readManualSyncStamp(state.user);
   updateSyncButtonAvailability();
   showOfficeHome();
 }
@@ -4522,9 +4522,28 @@ $('sort').addEventListener('click',()=>{state.sortReverse=!state.sortReverse;$('
 // Manual synchronization is allowed at most once per minute in this Office session.
 // Ordinary navigation and data-saving actions are never throttled.
 const OFFICE_SYNC_INTERVAL_MS=60_000;
+const OFFICE_MANUAL_SYNC_STAMP_KEY='gpbs-office-manual-sync';
 let syncBusy=false;
 let lastManualSyncAt=0;
 let syncUnlockTimer=null;
+function readManualSyncStamp(user){
+  if(!user?.id)return 0;
+  try{
+    const record=JSON.parse(sessionStorage.getItem(OFFICE_MANUAL_SYNC_STAMP_KEY)||'null');
+    if(record?.userId===user.id&&Number.isFinite(record.at)&&
+       record.at<=Date.now()&&record.at>Date.now()-OFFICE_SYNC_INTERVAL_MS)
+      return record.at;
+  }catch{}
+  return 0;
+}
+function saveManualSyncStamp(user,at){
+  if(!user?.id)return;
+  try{
+    if(at>0)sessionStorage.setItem(OFFICE_MANUAL_SYNC_STAMP_KEY,
+      JSON.stringify({userId:user.id,at}));
+    else sessionStorage.removeItem(OFFICE_MANUAL_SYNC_STAMP_KEY);
+  }catch{}
+}
 function updateSyncButtonAvailability(){
   const button=$('refresh');
   if(!button)return;
@@ -4543,6 +4562,7 @@ async function synchronizeOffice(){
      Date.now()-lastManualSyncAt<OFFICE_SYNC_INTERVAL_MS)return;
   syncBusy=true;
   lastManualSyncAt=Date.now();
+  saveManualSyncStamp(state.user,lastManualSyncAt);
   updateSyncButtonAvailability();
   const user=state.user;
   for(const id of ['refresh','homeRefresh']){
@@ -4589,6 +4609,7 @@ async function synchronizeOffice(){
   }catch(ex){
     // A failed manual refresh may be retried immediately.
     lastManualSyncAt=0;
+    saveManualSyncStamp(user,0);
     if(user!==state.user)return;
     if(ex.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
     else if(state.view==='home'){
