@@ -890,7 +890,10 @@ function officeMenuIcon(view){
     labels:'<path d="M3 3h7v7H3zM5 5h3v3H5zM14 3h7v7h-7zM16 5h3v3h-3zM3 14h7v7H3zM5 16h3v3H5zM14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/><path d="M12 23h10"/>',
     vehicles:'<path d="M3 17V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11"/><path d="M17 9h2l3 4v4h-5M3 17h19"/><path d="M17 10v4h4"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',
     aggregate:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12M15 9v12M9 15h12"/>',
-    plRoutes:'<path d="M3 6h5l4 4 4-4h5v13H3z"/><path d="M8 6v7m8-7v7m-8 4h8"/>',
+    plRoutes:'<circle cx="6" cy="19" r="2"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="2"/>',
+    plRoutesList:'<path d="M2 7h12v11H2zM14 10h4l4 4v4h-8"/><path d="M18 10v4h4"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',
+    plRoutesBalance:'<path d="M12 3v18M5 7h14"/><path d="m7 7-4 7h8L7 7Zm10 0-4 7h8l-4-7ZM8 21h8"/>',
+    plRoutesHistory:'<path d="M3 12a9 9 0 1 0 2.5-6.2L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
     plWarehouse:'<path d="M3 9 12 3l9 6v12H3z"/><path d="M7 21v-9h10v9M7 16h10"/>'
   };
   if(!paths[view])return '';
@@ -947,9 +950,9 @@ function renderMenu(){
   const routesButton=()=>{
     const open=state.plRoutesExpanded;
     const tabs=[
-      {id:'list',label:'Aktualne trasy'},
-      {id:'balance',label:'Bilans części'},
-      {id:'history',label:'Historia tras'}
+      {id:'list',label:'Aktualne trasy',icon:'plRoutesList'},
+      {id:'balance',label:'Bilans części',icon:'plRoutesBalance'},
+      {id:'history',label:'Historia tras',icon:'plRoutesHistory'}
     ];
     return '<div class="office-pl-routes-group">'+
       '<button type="button" class="subnav-btn office-operation-link office-routes-link office-pl-routes-toggle" '+
@@ -964,7 +967,9 @@ function renderMenu(){
       '<div id="officePlRoutesEntries" class="office-pl-routes-entries'+(open?'':' hidden')+'">'+
       tabs.map(tab=>
         '<button type="button" class="subnav-btn office-pl-routes-tab" '+
-          'data-pl-routes-tab="'+tab.id+'">'+escapeHtml(tab.label)+'</button>'
+          'data-pl-routes-tab="'+tab.id+'">'+
+          '<span class="office-pl-routes-tab-icon" aria-hidden="true">'+officeMenuIcon(tab.icon)+'</span>'+
+          '<span>'+escapeHtml(tab.label)+'</span></button>'
       ).join('')+'</div></div>';
   };
   const permittedOperations=country=>OFFICE_MARKET_OPERATIONS.filter(op=>{
