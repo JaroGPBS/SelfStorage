@@ -37,15 +37,15 @@
 .pl-routes-status:empty{display:none}
 .pl-routes-status.is-error{color:#b52135!important}
 .pl-routes-table{width:100%;overflow-x:auto}
-.pl-routes-table table.pl-route-list-table{width:100%;min-width:910px;table-layout:fixed;border-collapse:collapse;font-size:12.5px}
-.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(1){width:10%}
-.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(2){width:16%}
-.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(3){width:12%}
+.pl-routes-table table.pl-route-list-table{width:100%;min-width:1050px;table-layout:fixed;border-collapse:collapse;font-size:12.5px}
+.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(1){width:8%}
+.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(2){width:15%}
+.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(3){width:9%}
 .pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(4){width:13%}
-.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(5){width:9%}
-.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(6){width:19%}
-.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(7){width:13%}
-.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(8){width:8%}
+.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(5){width:8%}
+.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(6){width:25%}
+.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(7){width:12%}
+.pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(8){width:10%}
 .pl-routes-table table.pl-route-list-table > thead > tr > th{text-align:center}
 .pl-routes-table table.pl-route-list-table > tbody > tr:not(.pl-route-expanded) > td{text-align:center}
 /* A clear but restrained divider whenever the displayed ISO week changes. */
@@ -55,15 +55,13 @@
 }
  .pl-routes-table th{padding:11px 12px;text-align:center;background:#f2f5f8;color:#627488;font-weight:800;white-space:nowrap;border-bottom:1px solid #dce4ed}
  .pl-routes-table td{padding:8px 12px;text-align:center;border-bottom:1px solid #e5ebf0;color:#2a3a4c;vertical-align:middle}
-.pl-routes-table .pl-route-status-group{
-  display:inline-flex;align-items:center;justify-content:center;gap:5px;
-  flex-wrap:nowrap;white-space:nowrap
-}
 .pl-routes-table .pl-route-status-badge{
-  display:inline-flex;align-items:center;white-space:nowrap;
-  font-size:10.5px;font-weight:700;padding:3px 7px;
-  border:1px solid #e4dbc4;border-radius:3px;
-  background:#f4f0e6;color:#765f2f
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+  width:218px;max-width:100%;min-height:25px;
+  text-align:center;white-space:nowrap;
+  font-size:10.5px;font-weight:700;padding:3px 6px;
+  border:1px solid #e1cec6;border-radius:3px;
+  background:#f7ede9;color:#875043
 }
 .pl-routes-table .pl-route-details-button{border:1px solid #cfd9e3;border-radius:7px;background:#fff;padding:4px 10px;font-size:12px;cursor:pointer;color:#344a61}
 .pl-routes-table .pl-route-details-button:hover{background:#f0f4f8}
@@ -206,10 +204,7 @@
 .pl-routes-table .pl-route-status-badge.is-confirmed{background:#ebf3eb;color:#376746;border-color:#cddfce}
 .pl-routes-table .pl-route-status-badge.is-explained{background:#eceff3;color:#54677a;border-color:#d4dde5}
 .pl-routes-table .pl-route-status-badge.is-completed{background:#e9edf2;color:#44586f;border-color:#d3dce6}
-.pl-routes-table .pl-route-status-badge.is-history-flag{
-  background:#f4f0e7;color:#756242;border-color:#ddd0b9;
-  font-size:10px;font-weight:650
-}
+.pl-routes-table .pl-route-status-badge.is-pending{background:#f7ede9;color:#875043;border-color:#e1cec6}
 .pl-route-history-group{margin:0 0 10px;border:1px solid #dce4ec;border-radius:9px;overflow:hidden}
 .pl-route-history-toggle{
   display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
