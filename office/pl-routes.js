@@ -416,6 +416,8 @@
     return Number.isNaN(date.getTime())?'—':isoWeekNumber(date);
   }
   function statusInfo(route){
+    if(route.status==='COMPLETED'&&Number(route.pendingReturnApprovals)>0)
+      return {label:'Zwrot do zatwierdzenia',className:'is-pending'};
     const discrepancy=Number(route.discrepancyCount)>0||
       ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
     if(discrepancy)
