@@ -519,6 +519,7 @@
     byId('plRoutesClearPresentation').classList.toggle('hidden',true);
     byId('plRoutesSeedDemo48').classList.add('hidden');
     byId('plRoutesDeleteDemo48').classList.add('hidden');
+    byId('plRoutesCompleteDemo45').classList.add('hidden');
     const seq=++loadSeq;
     const status=byId('plRoutesListStatus');
     const table=byId('plRoutesTable');
@@ -537,6 +538,15 @@
       const demoCount=Number(result.demoWeek48Count||0);
       byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount>=8);
       byId('plRoutesDeleteDemo48').classList.toggle('hidden',!showDemo||demoCount===0);
+      const demo45=(result.routes||[]).filter(route=>
+        Number(route.isPresentation)===1&&
+        ['02HH','02HP'].includes(route.routeNumber)&&
+        route.routeDate>='2026-11-02'&&route.routeDate<='2026-11-08'
+      );
+      const demo45Ready=history&&role==='ADMIN'&&
+        demo45.length===2&&
+        demo45.some(route=>route.status!=='COMPLETED');
+      byId('plRoutesCompleteDemo45').classList.toggle('hidden',!demo45Ready);
       routeAuditCache.clear();
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
       status.textContent='';
@@ -599,7 +609,9 @@
       }else{
         row+='<td>—</td>';
       }
-      if(history)row+='<td>'+html(line.returnLocation||'—')+'</td>';
+      if(history)row+='<td>'+
+        (Number(line.returnedQuantity)===0?'':html(line.returnLocation||'—'))+
+        '</td>';
       return row+'</tr>';
     }).join('');
     const warning=mismatches.length
@@ -850,6 +862,14 @@
       for(const [name,key] of [
         ['Numer trasy','routeNumber'],['Data','routeDate'],['Symbol ekipy','crewSymbol']
       ])addChange(name,prev[key],next[key]);
+      if(prev.status!==undefined&&next.status!==undefined){
+        const friendlyStatus=status=>({
+          COMPLETED:'Trasa zakończona',CONFIRMED:'Potwierdzona',
+          AWAITING_CONFIRMATION:'Oczekuje na potwierdzenie',
+          REVIEW_REQUIRED:'Do weryfikacji – niezgodność'
+        }[status]||status);
+        addChange('Status trasy',friendlyStatus(prev.status),friendlyStatus(next.status));
+      }
       const beforeLines=prev.lines||[],afterLines=next.lines||[];
       for(let index=0;index<Math.max(beforeLines.length,afterLines.length);index++){
         const original=beforeLines[index],updated=afterLines[index];
@@ -870,6 +890,14 @@
         addChange('Nazwa części (poz. '+position+')',original.partName,updated.partName);
         addChange('Indeks – '+partLabel,original.partCode,updated.partCode);
         addChange(partLabel,original.quantity,updated.quantity);
+        if(original.confirmedQuantity!==undefined||updated.confirmedQuantity!==undefined)
+          addChange('Potwierdzenie ekipy – '+partLabel,
+            original.confirmedQuantity,updated.confirmedQuantity);
+        if(original.returnedQuantity!==undefined||updated.returnedQuantity!==undefined)
+          addChange('Zwrot – '+partLabel,original.returnedQuantity,updated.returnedQuantity);
+        if(original.returnLocation!==undefined||updated.returnLocation!==undefined)
+          addChange('Miejsce zwrotu – '+partLabel,
+            original.returnLocation||'—',updated.returnLocation||'—');
       }
       content+='<h3>Zmienione dane</h3>';
       if(changed.length){
@@ -1132,6 +1160,44 @@
   byId('plRouteDeleteDemo03Dialog').addEventListener('cancel',event=>{
     if(deletingDemo03)event.preventDefault();
   });
+  async function completeDemoWeek45(){
+    if(busy||routeContext()?.role!=='ADMIN'||routeContext()?.tab!=='history')return;
+    if(!window.confirm(
+      'Rozliczyć TYLKO trasy pokazowe 02HH i 02HP z tygodnia 45? '+
+      '02HH: bez zwrotów. 02HP: 5 słupków → InPost, 2 kotwy → Magazyn Tychy. '+
+      'Stany magazynowe nie zostaną zmienione.'
+    ))return;
+    const pin=window.prompt('Wpisz 4-cyfrowy PIN administratora:');
+    if(pin===null)return;
+    const status=byId('plRoutesListStatus');
+    if(!/^\d{4}$/.test(pin)){
+      status.classList.add('is-error');
+      status.textContent='Wpisz poprawny PIN administratora.';
+      return;
+    }
+    const button=byId('plRoutesCompleteDemo45');
+    button.disabled=true;
+    try{
+      const result=await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'completeDemoWeek45',
+          confirm:'ROZLICZ DEMO 45',pin})
+      }));
+      await window.renderPlRoutesList();
+      status.classList.remove('is-error');
+      status.textContent=Number(result.updated)>0
+        ?'Rozliczono '+Number(result.updated)+' trasy pokazowe tygodnia 45. '+
+          'Zwroty zapisano według lokalizacji (InPost / Magazyn Tychy).'
+        :'Obie trasy pokazowe są już rozliczone.';
+    }catch(error){
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie udało się rozliczyć tras demo.';
+    }finally{
+      button.disabled=false;
+    }
+  }
+  byId('plRoutesCompleteDemo45').addEventListener('click',completeDemoWeek45);
   byId('plRoutesSeedDemo48').addEventListener('click',seedDemoWeek48);
   byId('plRoutesDeleteDemo48').addEventListener('click',deleteDemoWeek48);
 
