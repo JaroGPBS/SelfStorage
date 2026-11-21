@@ -274,9 +274,9 @@
                 <textarea id="plCrewReportComment" maxlength="1000" rows="2"
                   placeholder="Komentarz do rozliczenia trasy"></textarea>
               </div>
-            </div>
-            <div class="crew-report-submit-bar">
-              <button id="plCrewSubmitReport" class="btn btn-primary" type="submit">Zdaj raport z wykorzystanych części</button>
+              <div class="crew-report-submit-bar">
+                <button id="plCrewSubmitReport" class="btn btn-primary" type="submit">Zdaj raport z wykorzystanych części</button>
+              </div>
             </div>
           </form>
           <section id="plCrewRouteReadOnly" hidden>
