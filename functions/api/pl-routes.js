@@ -3,7 +3,7 @@ import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worke
 import {verifyRememberSession} from '../../lib/pl-office-remember.js';
 import {routeEditablePredicate,canEditRoute,ROUTE_SETTLEMENT_COLUMNS} from '../../lib/pl-route-editability.js';
 import {ensureRouteAuditSchema,auditEntry} from '../../lib/pl-route-audit.js';
-import {resolveRouteParts,routePartsLineColumnExists} from '../../lib/pl-route-parts.js';
+import {resolveRouteParts,routePartsLineColumnExists,routePartsTableExists} from '../../lib/pl-route-parts.js';
 
 const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
 // TEMPORARY: true during initial presentation-data entry.
@@ -296,6 +296,8 @@ export async function onRequestGet({request,env}){
       route.enteredBy=shortCreatorName(route.creatorFullName);
       delete route.creatorFullName;
       const columns=await routeLineColumns(env.DB);
+      const canonicalPartNames=await routePartsLineColumnExists(env.DB)&&
+        await routePartsTableExists(env.DB);
       const optional=[
         columns.has('confirmed_quantity')
           ?'confirmed_quantity AS confirmedQuantity':'NULL AS confirmedQuantity',
@@ -309,8 +311,12 @@ export async function onRequestGet({request,env}){
           ?'catalog_part_id AS catalogPartId':'NULL AS catalogPartId'
       ].join(',');
       const lines=(await env.DB.prepare(
-        'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
-        optional+' FROM pl_route_lines WHERE route_id=? ORDER BY position'
+        'SELECT position,'+
+        (canonicalPartNames
+          ?'COALESCE((SELECT p.part_code FROM pl_route_part_catalog p WHERE p.id=pl_route_lines.catalog_part_id),part_code) AS partCode,'+
+            'COALESCE((SELECT p.part_name FROM pl_route_part_catalog p WHERE p.id=pl_route_lines.catalog_part_id),part_name) AS partName,'
+          :'part_code AS partCode,part_name AS partName,')+
+        'quantity,'+optional+' FROM pl_route_lines WHERE route_id=? ORDER BY position'
       ).bind(id).all()).results||[];
       // Metadata only. The JPEG bytes are read from a separate authenticated R2 endpoint.
       const documents=await exists(env.DB,'pl_route_documents')
