@@ -252,6 +252,20 @@
         place.required=valid&&count>0;
         if(valid&&count===0)place.value='';
       }
+      // Tapping the default zero starts a fresh entry instead of producing 10/01.
+      // A blank abandoned field returns to the original zero (no unintended edits).
+      returned.addEventListener('focus',()=>{
+        if(returned.value==='0'){
+          returned.value='';
+          recalculate();
+        }
+      });
+      returned.addEventListener('blur',()=>{
+        if(returned.value.trim()===''){
+          returned.value='0';
+          recalculate();
+        }
+      });
       returned.addEventListener('input',recalculate);
       recalculate();
       const usedGroup=el('div','crew-report-quantity');
