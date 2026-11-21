@@ -196,6 +196,10 @@
         credentials:'same-origin',cache:'no-store'
       }));
       if(seq!==loadSeq)return;
+      // The one server-side presentation switch also controls the temporary
+      // cleanup button; the normal route form/list remain unchanged.
+      byId('plRoutesClearPresentation').classList.toggle('hidden',
+        role!=='ADMIN'||result.presentationMode!==true);
       table.innerHTML=listTable(result.routes||[]);
       status.textContent='';
     }catch(e){
