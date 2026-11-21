@@ -617,6 +617,8 @@
     const role=context?.role;
     byId('plRouteAdd').classList.toggle('hidden',balance||history||
       !['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role));
+    byId('plRouteBalanceExport').classList.toggle('hidden',!balance);
+    byId('plRouteBalanceExport').disabled=true;
     byId('plRoutesClearPresentation').classList.toggle('hidden',true);
     byId('plRoutesSeedDemo48').classList.add('hidden');
     byId('plRoutesDeleteDemo48').classList.add('hidden');
@@ -637,6 +639,7 @@
         routeAuditCache.clear();
         const period=result.period||{};
         table.innerHTML=balanceTable(result.parts||[],period);
+        byId('plRouteBalanceExport').disabled=!(result.parts||[]).length;
         status.textContent='Bilans '+balanceDate(period.firstDocumentDate)+
           ' – '+balanceDate(period.closedThrough)+
           '. Bieżący tydzień: pobrano '+balanceAmount(period.currentWeekIssued)+
@@ -1585,6 +1588,8 @@
     routeExportDialog.dataset.routeId=id;
     byId('plRouteExportTitle').textContent='Karta trasy – '+
       (button.dataset.plRouteExportNumber||'trasa');
+    byId('plRouteExportHint').textContent=
+      'PDF: w oknie drukowania wybierz „Zapisz jako PDF”. Zdjęcia nie są dołączane.';
     const error=byId('plRouteExportError');
     error.hidden=true;
     error.textContent='';
@@ -1593,6 +1598,21 @@
     routePreview.src='/office/pl-routes-print.html?id='+
       encodeURIComponent(id)+'&embed=1';
   }
+  function openBalanceExport(){
+    if(routeExportBusy||routeExportDialog.open||
+       routeContext()?.tab!=='balance')return;
+    routeExportDialog.dataset.routeId='BALANCE';
+    byId('plRouteExportTitle').textContent='Bilans części – Trasy PL';
+    byId('plRouteExportHint').textContent=
+      'PDF: w oknie drukowania wybierz „Zapisz jako PDF”. Bieżący tydzień pokazano osobno.';
+    const error=byId('plRouteExportError');
+    error.hidden=true;
+    error.textContent='';
+    setRoutePreviewReady(false);
+    routeExportDialog.showModal();
+    routePreview.src='/office/pl-routes-print.html?balance=1&embed=1';
+  }
+  byId('plRouteBalanceExport').addEventListener('click',openBalanceExport);
   function closeRouteExport(){
     if(routeExportBusy)return;
     routeExportDialog.close();
@@ -1618,7 +1638,7 @@
     }else if(event.data.type==='gpbs-route-export-preview-error'){
       byId('plRouteExportLoading').hidden=true;
       const error=byId('plRouteExportError');
-      error.textContent='Nie udało się przygotować podglądu tej trasy.';
+      error.textContent='Nie udało się przygotować podglądu eksportu.';
       error.hidden=false;
     }
   });
@@ -1636,16 +1656,21 @@
   byId('plRouteExportExcel').addEventListener('click',async()=>{
     if(routeExportBusy||!routePreviewReady)return;
     const id=routeExportDialog.dataset.routeId;
-    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))return;
+    if(id!=='BALANCE'&&!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))return;
     const error=byId('plRouteExportError');
     routeExportBusy=true;
     setRoutePreviewReady(true);
     error.hidden=true;
     try{
       if(!window.PlRouteExport)throw Error('Moduł Excel nie został załadowany.');
-      const data=await window.PlRouteExport.getRoute(id);
-      window.PlRouteExport.saveXlsx([data],'GPBS-Trasa-'+
-        (data.route.routeNumber||'Raport'));
+      if(id==='BALANCE'){
+        const data=await window.PlRouteExport.getBalance();
+        window.PlRouteExport.saveBalanceXlsx(data);
+      }else{
+        const data=await window.PlRouteExport.getRoute(id);
+        window.PlRouteExport.saveXlsx([data],'GPBS-Trasa-'+
+          (data.route.routeNumber||'Raport'));
+      }
     }catch(ex){
       error.textContent=ex.message||'Nie udało się zapisać pliku Excel.';
       error.hidden=false;
