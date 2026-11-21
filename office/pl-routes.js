@@ -182,9 +182,9 @@
         }
       ));
       if(!result.route?.canEdit){
+        await window.renderPlRoutesList();
         status.classList.add('is-error');
         status.textContent='Edycja jest zablokowana: trasa została potwierdzona przez ekipę.';
-        await window.renderPlRoutesList();
         return;
       }
       openForm();
@@ -563,24 +563,31 @@
         ' pozycjach: ilość potwierdzona przez ekipę różni się od wydanej.</p>':'';
     const caption=history
       ?'Rozliczenie zakończonej trasy ':'Wydane i potwierdzone części dla trasy ';
+    const editable=!history&&route.canEdit===true&&
+      ['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(routeContext()?.role);
+    const photoButtons=(result.documents||[]).map((doc,index)=>
+      '<button type="button" class="pl-route-document-button" '+
+        'data-pl-route-document="'+html(doc.id)+'" '+
+        'data-pl-route-document-route="'+html(route.id)+'" '+
+        'title="Otwórz zapisane zdjęcie dokumentu trasy">'+
+        (result.documents.length===1?'Zdjęcie':'Zdjęcie '+(index+1))+
+      '</button>'
+    ).join('');
+    const editButton=editable
+      ?'<button type="button" class="pl-route-edit-button" '+
+        'data-pl-route-edit="'+html(route.id)+'">Edytuj</button>'
+      :'';
     return '<div class="pl-route-detail-lines">'+
-      '<strong>'+caption+html(route.routeNumber)+
-        (Number(route.isPresentation)===1?' *':'')+'</strong>'+
+      '<div class="pl-route-detail-head">'+
+        '<strong>'+caption+html(route.routeNumber)+
+          (Number(route.isPresentation)===1?' *':'')+'</strong>'+
+        '<div class="pl-route-detail-actions">'+photoButtons+editButton+'</div>'+
+      '</div>'+
       warning+
       '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
         rows+'</tbody></table>'+
       (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
-      '<div class="pl-route-document-links">'+
-        (result.documents?.length
-          ?result.documents.map((doc,index)=>
-            '<button type="button" class="pl-route-document-button" '+
-              'data-pl-route-document="'+html(doc.id)+'" '+
-              'data-pl-route-document-route="'+html(route.id)+'">'+
-              (result.documents.length===1?'Zdjęcie dokumentu':'Zdjęcie dokumentu '+(index+1))+
-            '</button>'
-          ).join('')
-          :'<span>Nie dołączono zdjęcia dokumentu.</span>')+
-      '</div></div>';
+      '</div>';
   }
   let viewedDocumentUrl=null;
   let photoLoadId=0;
@@ -810,6 +817,11 @@
       byId('plRouteDocumentDialog').close();
   });
   byId('plRoutesTable').addEventListener('click',e=>{
+    const editButton=e.target.closest('[data-pl-route-edit]');
+    if(editButton){
+      editRoute(editButton);
+      return;
+    }
     const photoButton=e.target.closest('[data-pl-route-document]');
     if(photoButton){
       showRouteDocument(photoButton);
