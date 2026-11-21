@@ -500,6 +500,8 @@
     byId('plRouteAdd').classList.toggle('hidden',history||
       !['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role));
     byId('plRoutesClearPresentation').classList.toggle('hidden',true);
+    byId('plRoutesSeedDemo48').classList.add('hidden');
+    byId('plRoutesDeleteDemo48').classList.add('hidden');
     const seq=++loadSeq;
     const status=byId('plRoutesListStatus');
     const table=byId('plRoutesTable');
@@ -514,6 +516,10 @@
       if(seq!==loadSeq)return;
       byId('plRoutesClearPresentation').classList.toggle('hidden',
         history||role!=='ADMIN'||result.presentationMode!==true);
+      const showDemo=!history&&role==='ADMIN'&&result.presentationMode===true;
+      const demoCount=Number(result.demoWeek48Count||0);
+      byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount===6);
+      byId('plRoutesDeleteDemo48').classList.toggle('hidden',!showDemo||demoCount===0);
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
       status.textContent='';
     }catch(error){
@@ -721,6 +727,70 @@
     }
   }
   byId('plRoutesClearPresentation').addEventListener('click',clearPresentationRoutes);
+  async function seedDemoWeek48(){
+    if(busy||routeContext()?.role!=='ADMIN')return;
+    if(!window.confirm(
+      'Dodać sześć fikcyjnych tras na tydzień 48 (23–28.11.2026)? '+
+      'Będą oznaczone gwiazdką (*) i nie zmienią żadnych stanów magazynowych.'
+    ))return;
+    const button=byId('plRoutesSeedDemo48');
+    const status=byId('plRoutesListStatus');
+    button.disabled=true;
+    try{
+      const result=await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'seedDemoWeek48',confirm:'DODAJ DEMO 48'})
+      }));
+      await window.renderPlRoutesList();
+      status.classList.remove('is-error');
+      status.textContent='Wstawiono '+Number(result.added||0)+
+        ' tras demo (tydzień 48). '+
+        (Number(result.alreadyPresent||0)
+          ?'Wcześniej istniało '+Number(result.alreadyPresent)+' — nie powielono ich.':'');
+    }catch(error){
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie udało się załadować tras demo.';
+    }finally{
+      button.disabled=false;
+    }
+  }
+  async function deleteDemoWeek48(){
+    if(busy||routeContext()?.role!=='ADMIN')return;
+    if(!window.confirm(
+      'Usunąć TYLKO sześć tras demo tygodnia 48 i ich przykładowe ilości? '+
+      'Pozostałe trasy (w tym wcześniejsze prezentacyjne) pozostaną bez zmian.'
+    ))return;
+    const pin=window.prompt('Potwierdź usunięcie PIN-em administratora:');
+    if(pin===null)return;
+    const status=byId('plRoutesListStatus');
+    if(!/^\\d{4}$/.test(pin)){
+      status.classList.add('is-error');
+      status.textContent='Wpisz 4-cyfrowy PIN administratora.';
+      return;
+    }
+    const button=byId('plRoutesDeleteDemo48');
+    button.disabled=true;
+    try{
+      const result=await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'deleteDemoWeek48',confirm:'USUŃ DEMO 48',pin})
+      }));
+      await window.renderPlRoutesList();
+      status.classList.remove('is-error');
+      status.textContent='Usunięto '+Number(result.deleted||0)+
+        ' tras demo z tygodnia 48. Pozostałe trasy zachowano.';
+    }catch(error){
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie udało się usunąć tras demo 48.';
+    }finally{
+      button.disabled=false;
+    }
+  }
+  byId('plRoutesSeedDemo48').addEventListener('click',seedDemoWeek48);
+  byId('plRoutesDeleteDemo48').addEventListener('click',deleteDemoWeek48);
+
 
   byId('plRouteCalendarToggle').addEventListener('click',()=>{
     setRouteCalendarOpen(byId('plRouteCalendar').classList.contains('hidden'));
