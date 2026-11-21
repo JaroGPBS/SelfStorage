@@ -12,6 +12,7 @@
   let editingRouteRevision=0;
   const routeAuditCache=new Map();
   const crewCommentsCache=new Map();
+  const returnApprovalsCache=new Map();
   let busy=false;
   let loadSeq=0;
   let demo47Routes=[];
@@ -720,7 +721,7 @@
           }))
         );
         if(seq!==loadSeq)return;
-        routeAuditCache.clear(); crewCommentsCache.clear();
+        routeAuditCache.clear(); crewCommentsCache.clear(); returnApprovalsCache.clear();
         const period=result.period||{};
         table.innerHTML=balanceTable(result.parts||[],period);
         byId('plRouteBalanceExport').disabled=!(result.parts||[]).length;
@@ -770,7 +771,7 @@
         demo45.length===2&&
         demo45.some(route=>route.status!=='COMPLETED');
       byId('plRoutesCompleteDemo45').classList.toggle('hidden',!demo45Ready);
-      routeAuditCache.clear(); crewCommentsCache.clear();
+      routeAuditCache.clear(); crewCommentsCache.clear(); returnApprovalsCache.clear();
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
       status.textContent='';
     }catch(error){
@@ -886,26 +887,6 @@
       ?'<button type="button" class="pl-route-return-approve-button" '+
         'data-pl-route-approve-returns="'+html(route.id)+'">Zatwierdź zwroty</button>'
       :'';
-    const returnApprovalDetails=completed&&returnedLines.length
-      ?'<div class="pl-route-return-approvals">'+
-        '<strong>Potwierdzenie zwrotów</strong>'+
-        returnedLines.map(line=>{
-          const approval=approvalsByPosition.get(Number(line.position));
-          const approved=approval&&
-            Number(approval.quantity)===Number(line.returnedQuantity)&&
-            String(approval.location)===String(line.returnLocation||'').trim();
-          return '<div class="pl-route-return-approval-item">'+
-            '<span>'+html(line.partName||line.partCode||'Poz. '+line.position)+
-              ': '+html(line.returnedQuantity)+' szt. · '+
-              html(line.returnLocation||'—')+'</span>'+
-            '<small>'+(
-              approved
-                ?'Zatwierdził: '+html(approval.approvedBy||'—')+
-                  ' · '+html(auditTime(approval.approvedAt))
-                :'Oczekuje na zatwierdzenie koordynatora'
-            )+'</small></div>';
-        }).join('')+'</div>'
-      :'';
     const showDemoDelete=role==='ADMIN'&&
       Number(route.isPresentation)===1&&
       route.id==='PL-ROUTE-48de0000-0000-4000-8000-000000000003'&&
@@ -935,16 +916,37 @@
           ' – '+html(auditTime(event.createdAt))+'</span>'+
       '</button>';
     }).join('');
-    const approvalCards=(result.returnApprovals||[]).slice()
-      .sort((a,b)=>String(b.approvedAt||'').localeCompare(String(a.approvedAt||'')))
-      .map(event=>
-        '<div class="pl-route-audit-event pl-route-audit-static">'+
-          '<span>Zwrot zatwierdzony – poz. '+html(event.position)+
-          ', '+html(event.quantity)+' szt. – '+
-          html(event.approvedBy||'Użytkownik')+' – '+
-          html(auditTime(event.approvedAt))+'</span>'+
-        '</div>'
-      ).join('');
+    // One event card per approval operation, with all returned items in its details.
+    const approvalGroups=[];
+    const groupsByKey=new Map();
+    const partByPosition=new Map(lines.map(part=>[Number(part.position),part]));
+    for(const event of (result.returnApprovals||[]).slice()
+      .sort((a,b)=>String(b.approvedAt||'').localeCompare(String(a.approvedAt||'')))){
+      const key=String(event.approvedById||event.approvedBy||'')+'|'+String(event.approvedAt||'');
+      let group=groupsByKey.get(key);
+      if(!group){
+        group={actor:event.approvedBy||'Użytkownik',approvedAt:event.approvedAt,items:[]};
+        groupsByKey.set(key,group);
+        approvalGroups.push(group);
+      }
+      const part=partByPosition.get(Number(event.position));
+      group.items.push({
+        position:Number(event.position),
+        name:part?.partName||part?.partCode||'Poz. '+event.position,
+        quantity:event.quantity,
+        location:event.location
+      });
+    }
+    returnApprovalsCache.set(route.id,approvalGroups);
+    const approvalCards=approvalGroups.map((group,index)=>
+      '<button type="button" class="pl-route-audit-event pl-route-return-approved-card" '+
+        'data-pl-route-return-approval="'+html(route.id)+'" '+
+        'data-pl-route-return-group="'+index+'" '+
+        'title="Otwórz szczegóły zatwierdzonego zwrotu">'+
+        '<span>Zwrot zatwierdzony – '+html(group.actor)+
+          ' – '+html(auditTime(group.approvedAt))+'</span>'+
+      '</button>'
+    ).join('');
     const crewActivity=(result.crewActivity||[]).slice()
       .sort((a,b)=>(a.action==='PICKUP'?0:1)-(b.action==='PICKUP'?0:1)||
         String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
@@ -961,25 +963,31 @@
     }
     crewActivity.sort((a,b)=>(a.action==='PICKUP'?0:1)-(b.action==='PICKUP'?0:1)||
       String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
-    const crewCards=crewActivity.map(event=>{
-      const pickup=event.action==='PICKUP';
-      const note=crewNotesByStage.get(event.action);
-      const heading=(pickup?'Potwierdzony odbiór':'Raport końcowy')+
-        ' – '+(event.actor||route.crewSymbol||'Ekipa')+
-        ' – '+auditTime(event.createdAt);
-      const commentTitle=pickup?'Komentarz z odbioru':'Komentarz raportu zdawczego';
-      const openTag=note?'<button type="button" class="pl-route-crew-comment-preview" '+
-        'data-pl-route-crew-comment="'+html(route.id)+'" '+
-        'data-pl-route-crew-stage="'+html(event.action)+'" '+
-        'title="Otwórz cały komentarz ekipy">'
-        :'<div class="pl-route-audit-event pl-route-audit-static pl-route-crew-event">';
-      const closeTag=note?'</button>':'</div>';
-      return openTag+
-        '<strong>'+html(heading)+'</strong>'+
-        (note?'<span class="pl-route-crew-comment-label">'+html(commentTitle)+'</span>'+
-          '<span class="pl-route-crew-comment-text">'+html(note.comment)+'</span>':'')+
-        closeTag;
-    }).join('');
+    const crewName=route.crewSymbol||crewActivity[0]?.actor||'Ekipa';
+    const crewSections=['PICKUP','REPORT'].map(stage=>{
+      const event=crewActivity.find(item=>item.action===stage);
+      const note=crewNotesByStage.get(stage);
+      if(!event&&!note)return '';
+      const title=stage==='PICKUP'?'Komentarz z odbioru':'Komentarz raportu zdawczego';
+      const fallback=stage==='PICKUP'?'Potwierdzony odbiór':'Raport końcowy';
+      return '<span class="pl-route-crew-comment-section">'+
+        '<span class="pl-route-crew-comment-label">'+html(note?title:fallback)+'</span>'+
+        '<small>'+html(auditTime(note?.createdAt||event?.createdAt))+'</small>'+
+        (note?'<span class="pl-route-crew-comment-text">'+html(note.comment)+'</span>':'')+
+      '</span>';
+    }).filter(Boolean);
+    const hasCrewNotes=crewComments.length>0;
+    const crewCards=crewSections.length
+      ?(hasCrewNotes
+        ?'<button type="button" class="pl-route-crew-comment-preview" '+
+          'data-pl-route-crew-comment="'+html(route.id)+'" '+
+          'data-pl-route-crew-name="'+html(crewName)+'" '+
+          'title="Otwórz komentarze ekipy">'
+        :'<div class="pl-route-crew-comment-preview pl-route-audit-static">')+
+        '<strong class="pl-route-crew-card-heading">Komentarz ekipy – '+html(crewName)+'</strong>'+
+        crewSections.join('')+
+        (hasCrewNotes?'</button>':'</div>')
+      :'';
     const activity=editCards+approvalCards+crewCards;
     const activityPanel=activity
       ?'<div class="pl-route-detail-feed">'+
@@ -1006,7 +1014,6 @@
           '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+
             returnApprovalButton+deleteDemoButton+'</div>'+
           activityPanel+
-          returnApprovalDetails+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1149,10 +1156,28 @@
         '<p>'+html(note.comment)+'</p>'+
       '</section>'
     ).join('');
-    byId('plRouteAuditTitle').textContent=stage==='PICKUP'
-      ?'Komentarz z odbioru':stage==='REPORT'
-      ?'Komentarz raportu zdawczego':'Komentarze ekipy';
+    byId('plRouteAuditTitle').textContent='Komentarz ekipy – '+
+      (button.dataset.plRouteCrewName||'Ekipa');
     byId('plRouteAuditContent').innerHTML=content;
+    byId('plRouteAuditDialog').showModal();
+  }
+  function openReturnApprovalDetails(button){
+    const groups=returnApprovalsCache.get(button.dataset.plRouteReturnApproval||'')||[];
+    const index=Number(button.dataset.plRouteReturnGroup);
+    if(!Number.isSafeInteger(index)||index<0||index>=groups.length)return;
+    const group=groups[index];
+    byId('plRouteAuditTitle').textContent='Potwierdzenie zwrotu';
+    byId('plRouteAuditContent').innerHTML=
+      '<p class="pl-route-audit-meta">Zwrot zatwierdzony – '+
+        html(group.actor)+' · '+html(auditTime(group.approvedAt))+'</p>'+
+      '<div class="pl-route-return-detail-list">'+
+        group.items.map(item=>
+          '<div class="pl-route-return-detail-item">'+
+            '<strong>'+html(item.name)+'</strong>'+
+            '<span>'+html(item.quantity)+' szt. · '+html(item.location||'—')+'</span>'+
+          '</div>'
+        ).join('')+
+      '</div>';
     byId('plRouteAuditDialog').showModal();
   }
   function openRouteAudit(button){
@@ -1928,6 +1953,8 @@
     if(exportButton){openRouteExport(exportButton);return;}
     const deleteButton=e.target.closest('[data-pl-route-delete-demo03]');
     if(deleteButton){openDeleteDemo03(deleteButton);return;}
+    const returnButton=e.target.closest('[data-pl-route-return-approval]');
+    if(returnButton){openReturnApprovalDetails(returnButton);return;}
     const commentButton=e.target.closest('[data-pl-route-crew-comment]');
     if(commentButton){openCrewComments(commentButton);return;}
     const auditButton=e.target.closest('[data-pl-route-audit]');
