@@ -55,10 +55,9 @@ function parseRoute(body){
   if(!body||typeof body!=='object'||Array.isArray(body))return null;
   const routeNumber=String(body.routeNumber||'').trim();
   const routeDate=String(body.routeDate||'').trim();
-  const crewNumber=String(body.crewNumber||'').trim();
   const crewSymbol=String(body.crewSymbol||'').trim().toUpperCase();
   if(!routeNumber||routeNumber.length>80||!validDate(routeDate)||
-      !crewNumber||crewNumber.length>60||!crewSymbol||crewSymbol.length>20)return null;
+      !crewSymbol||crewSymbol.length>20)return null;
   if(!Array.isArray(body.lines)||body.lines.length<1||body.lines.length>150)return null;
   const lines=[];
   for(const item of body.lines){
@@ -70,7 +69,7 @@ function parseRoute(body){
        !Number.isSafeInteger(quantity)||quantity<1||quantity>999999)return null;
     lines.push({partCode,partName,quantity});
   }
-  return {routeNumber,routeDate,crewNumber,crewSymbol,lines};
+  return {routeNumber,routeDate,crewSymbol,lines};
 }
 export async function onRequestGet({request,env}){
   const auth=await authorize(request,env);
@@ -135,7 +134,7 @@ export async function onRequestPost({request,env}){
       env.DB.prepare(
         'INSERT INTO pl_routes (id,route_number,route_date,crew_number,crew_symbol,status,created_by) '+
         'VALUES (?,?,?,?,?,?,?)'
-      ).bind(id,route.routeNumber,route.routeDate,route.crewNumber,route.crewSymbol,
+      ).bind(id,route.routeNumber,route.routeDate,'',route.crewSymbol,
         'AWAITING_CONFIRMATION',auth.user.id)
     ];
     route.lines.forEach((line,i)=>{
