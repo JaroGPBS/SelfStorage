@@ -45,13 +45,29 @@ const retiredDemo48PL03=demoWeek48Id(2);
 // Retired demo must not be recreated by '+ Demo 48' after its one-off cleanup.
 const seedableDemoWeek48Ids=demoWeek48Ids.filter(id=>id!==retiredDemo48PL03);
 
-// Send a shortened display label, never a full staff surname, to the route list.
-function shortCreatorName(name){
-  const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
-  if(parts.length===0)return '—';
-  if(parts.length===1)return parts[0];
-  const initial=Array.from(parts[parts.length-1])[0]?.toLocaleUpperCase('pl-PL')||'';
-  return parts[0]+' '+initial+'.';
+// Use the recorded author ID. Display a name with surname initial only when
+// both private profile fields exist; otherwise fall back to the account symbol.
+// Never expose complete surnames or raw profile fields to the browser.
+function authorColumns(hasProfiles){
+  return "COALESCE(u.name,'') AS authorNickname,"+
+    (hasProfiles
+      ?"COALESCE(p.first_name,'') AS authorFirstName,"+
+       "COALESCE(p.last_name,'') AS authorLastName,"+
+       "COALESCE(p.display_code,'') AS authorCode"
+      :"'' AS authorFirstName,'' AS authorLastName,'' AS authorCode");
+}
+function authorJoins(hasProfiles,actorId){
+  return ' LEFT JOIN users u ON u.id='+actorId+
+    (hasProfiles?' LEFT JOIN user_private_profiles p ON p.user_id='+actorId:'');
+}
+function withAuthorLabel(row,field){
+  const {authorNickname,authorFirstName,authorLastName,authorCode,...rest}=row;
+  const first=String(authorFirstName||'').trim().split(/\s+/)[0];
+  const last=String(authorLastName||'').trim();
+  const initial=last?Array.from(last)[0]?.toLocaleUpperCase('pl-PL'):'';
+  const label=first&&initial?first+' '+initial+'.'
+    :String(authorCode||authorNickname||'').trim()||'—';
+  return {...rest,[field]:label};
 }
 
 async function authorize(request,env,write=false){
@@ -295,6 +311,7 @@ export async function onRequestGet({request,env}){
     if(!await exists(env.DB,'pl_routes'))
       return workerJson({ok:true,routes:[],storageReady:false,presentationMode:routeMode,demoWeek48Count:0});
     const presentationColumn=await hasPresentationFlag(env.DB);
+    const hasAuthorProfiles=await exists(env.DB,'user_private_profiles');
     const flag= presentationColumn?'is_presentation AS isPresentation':'0 AS isPresentation';
     const id=url.searchParams.get('id');
     if(id!==null){
@@ -302,15 +319,15 @@ export async function onRequestGet({request,env}){
       const routeColumns=(await env.DB.prepare('PRAGMA table_info(pl_routes)').all()).results||[];
       const revisionColumn=routeColumns.some(col=>col.name==='edit_revision')
         ?'edit_revision AS editRevision,':'0 AS editRevision,';
-      const route=await env.DB.prepare(
-        'SELECT id,route_number AS routeNumber,route_date AS routeDate,'+
-        'crew_symbol AS crewSymbol,status,created_at AS createdAt,'+revisionColumn+flag+','+
-        "COALESCE((SELECT u.name FROM users u WHERE u.id=pl_routes.created_by LIMIT 1),'') AS creatorFullName "+
-        'FROM pl_routes WHERE id=?'
+      const routeRow=await env.DB.prepare(
+        'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
+        'r.crew_symbol AS crewSymbol,r.status,r.created_at AS createdAt,'+
+        revisionColumn+flag+','+authorColumns(hasAuthorProfiles)+
+        ' FROM pl_routes r'+authorJoins(hasAuthorProfiles,'r.created_by')+
+        ' WHERE r.id=?'
       ).bind(id).first();
-      if(!route)return send('Nie znaleziono trasy.',404);
-      route.enteredBy=shortCreatorName(route.creatorFullName);
-      delete route.creatorFullName;
+      if(!routeRow)return send('Nie znaleziono trasy.',404);
+      const route=withAuthorLabel(routeRow,'enteredBy');
       const columns=await routeLineColumns(env.DB);
       const hasCataloguePartColumn=await routePartsLineColumnExists(env.DB);
       const canonicalPartNames=hasCataloguePartColumn&&await routePartsTableExists(env.DB);
@@ -345,16 +362,16 @@ export async function onRequestGet({request,env}){
       const audit=await exists(env.DB,'pl_route_audit')
         ?(await env.DB.prepare(
           'SELECT a.id,a.action,a.actor_id AS actorId,a.details_json AS detailsJson,'+
-          'a.created_at AS createdAt,'+
-          "COALESCE((SELECT u.name FROM users u WHERE u.id=a.actor_id LIMIT 1),'') AS actorName "+
-          'FROM pl_route_audit a WHERE a.route_id=? '+
-          'ORDER BY a.created_at DESC,a.id DESC LIMIT 30'
+          'a.created_at AS createdAt,'+authorColumns(hasAuthorProfiles)+
+          ' FROM pl_route_audit a'+authorJoins(hasAuthorProfiles,'a.actor_id')+
+          ' WHERE a.route_id=? ORDER BY a.created_at DESC,a.id DESC LIMIT 30'
         ).bind(id).all()).results||[]
         :[];
-      const history=audit.map(({actorName,...item})=>({
-        ...item,actor:item.actorId==='DEMO'
-          ?'Przykład (demo)':shortCreatorName(actorName)
-      }));
+      const history=audit.map(item=>{
+        const entry=withAuthorLabel(item,'actor');
+        if(entry.actorId==='DEMO')entry.actor='Przykład (demo)';
+        return entry;
+      });
       const crewActivity=[];
       if(await exists(env.DB,'pl_route_pickups')){
         const pickup=await env.DB.prepare(
@@ -379,12 +396,15 @@ export async function onRequestGet({request,env}){
         if(report)crewActivity.push({...report,action:'REPORT'});
       }
       const approvedTable=await exists(env.DB,'pl_route_return_approvals');
-      const returnApprovals=approvedTable?(await env.DB.prepare(
-        'SELECT a.position,a.quantity,a.location,a.approved_by AS approvedById,'+
-        'a.approved_at AS approvedAt,'+
-        "COALESCE((SELECT u.name FROM users u WHERE u.id=a.approved_by LIMIT 1),'') AS approvedBy "+
-        'FROM pl_route_return_approvals a WHERE a.route_id=? ORDER BY a.position'
-      ).bind(id).all()).results||[]:[];
+      const returnApprovals=approvedTable?(
+        (await env.DB.prepare(
+          'SELECT a.position,a.quantity,a.location,a.approved_by AS approvedById,'+
+          'a.approved_at AS approvedAt,'+authorColumns(hasAuthorProfiles)+
+          ' FROM pl_route_return_approvals a'+
+          authorJoins(hasAuthorProfiles,'a.approved_by')+
+          ' WHERE a.route_id=? ORDER BY a.position'
+        ).bind(id).all()).results||[]
+      ).map(item=>withAuthorLabel(item,'approvedBy')):[];
       const approvalsByPosition=new Map(returnApprovals.map(item=>[Number(item.position),item]));
       const positiveReturns=lines.filter(line=>Number(line.returnedQuantity)>0);
       route.returnCount=positiveReturns.length;
@@ -476,16 +496,14 @@ export async function onRequestGet({request,env}){
         ' THEN 1 ELSE 0 END AS hadVerification,'+
       hasCommentSql+' AS hasCrewComment,'+
       hasEditSql+' AS wasEdited,'+
-      "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
-      'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
-      'GROUP BY r.id HAVING '+(scope==='history'?'':'NOT ')+
+      authorColumns(hasAuthorProfiles)+
+      ' FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
+      authorJoins(hasAuthorProfiles,'r.created_by')+
+      ' GROUP BY r.id HAVING '+(scope==='history'?'':'NOT ')+
       '('+eligible+') '+
       'ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200';
     const routeRows=(await env.DB.prepare(listSql).bind(today).all()).results||[];
-    // Strip the full name before returning data to the browser.
-    const routes=routeRows.map(({creatorFullName,...route})=>({
-      ...route,enteredBy:shortCreatorName(creatorFullName)
-    }));
+    const routes=routeRows.map(row=>withAuthorLabel(row,'enteredBy'));
     if(scope==='active'){
       // Newest calendar week first; within each week:
       // Awaiting -> Needs review -> Confirmed/verified -> Confirmed -> Completed.
