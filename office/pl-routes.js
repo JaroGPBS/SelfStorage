@@ -556,8 +556,8 @@
     const history=routeContext()?.tab==='history';
     const lines=result.lines||[];
     const mismatches=lines.filter(line=>
-      line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
-      Number(line.confirmedQuantity)!==Number(line.verifiedQuantity??line.quantity)
+      line.confirmedQuantity!=null&&line.verifiedQuantity==null&&
+      Number(line.confirmedQuantity)!==Number(line.quantity)
     );
     const cols=history
       ?'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
@@ -566,17 +566,22 @@
       :'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
        '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Zakończono</th>';
     const rows=lines.map(line=>{
-      const mismatch=line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
-        Number(line.confirmedQuantity)!==Number(line.verifiedQuantity??line.quantity);
-      const displayedIssued=line.verifiedQuantity??line.quantity;
-      const originalNote=line.verifiedQuantity!==null&&line.verifiedQuantity!==undefined
-        ?'<small class="pl-route-original-quantity">pierwotnie '+html(line.quantity)+'</small>':'';
+      const mismatch=line.confirmedQuantity!=null&&line.verifiedQuantity==null&&
+        Number(line.confirmedQuantity)!==Number(line.quantity);
+      const verified=line.verifiedQuantity!=null;
+      const reported=line.confirmedQuantity;
+      const finalCount=verified?line.verifiedQuantity:reported;
+      const verifiedNote=verified
+        ?'<small class="pl-route-original-quantity">'+
+          (Number(finalCount)===Number(reported)?'po weryfikacji':
+            'zgłoszono '+html(reported)+' · po weryfikacji')+'</small>'
+        :'';
       let row='<tr'+(mismatch?' class="pl-route-detail-mismatch"':'')+'>'+
         '<td>'+html(line.position)+'</td>'+
         '<td>'+html(line.partCode||'—')+'</td>'+
         '<td>'+html(line.partName||'—')+'</td>'+
-        '<td>'+html(displayedIssued)+originalNote+'</td>'+
-        '<td>'+routeQuantity(line.confirmedQuantity)+'</td>'+
+        '<td>'+html(line.quantity)+'</td>'+
+        '<td>'+routeQuantity(finalCount)+verifiedNote+'</td>'+
         '<td>—</td>';
       if(history){
         row+='<td>'+routeQuantity(line.returnedQuantity)+'</td>'+
@@ -586,8 +591,8 @@
     }).join('');
     const warning=mismatches.length
       ?'<p class="pl-route-detail-warning">'+
-       'Rozbieżność w '+mismatches.length+
-          ' pozycjach: ilość potwierdzona przez ekipę różni się od wydanej po weryfikacji.'+
+       'Niezgodność w '+mismatches.length+
+          ' pozycjach. Zweryfikuj ilości i dodaj komentarz.'+
        '</p>':'';
     const caption=history
       ?'Rozliczenie zakończonej trasy ':'Wydane i potwierdzone części dla trasy ';
@@ -783,35 +788,32 @@
     let content='<p class="pl-route-audit-meta">'+html(entry.actor||'Użytkownik')+
       ' · '+html(auditTime(entry.createdAt))+'</p>';
     if(isExplain){
-      if(details.comment)
-        content+='<h3>Podsumowanie weryfikacji</h3>'+
-          '<p class="pl-route-audit-comment">'+html(details.comment)+'</p>';
-      content+='<h3>Rozliczenie poszczególnych części</h3>'+
+      content+='<h3>Komentarz</h3>'+
+        '<p class="pl-route-audit-comment">'+html(details.comment||'Brak ogólnego komentarza (starszy zapis).')+'</p>'+
+        '<h3>Zweryfikowane ilości</h3>'+
         '<div class="pl-route-audit-table-wrap"><table class="pl-route-audit-quantity-table">'+
         '<thead><tr><th>Część</th><th>Magazyn wpisał</th>'+
-        '<th>Ekipa potwierdziła</th><th>Po korekcie</th>'+
-        '<th>Wynik</th><th>Wyjaśnienie</th></tr></thead><tbody>';
+        '<th>Ekipa zgłosiła</th><th>Po weryfikacji</th></tr></thead><tbody>';
       for(const item of details.positions||[]){
-        // Old audit entries recorded "8 → 8" even when the crew had 7.
-        // Never present that unverified 8 as an actual reconciled count.
-        const corrected=item.decision==='MATCH_CREW'||
-          (!item.decision&&item.after!=null&&
-            Number(item.after)===Number(item.confirmed));
-        const actual=corrected?item.confirmed:null;
-        const label=corrected?'Skorygowano':'Niezgodność pozostaje';
-        const comment=item.note||'Brak osobnej notatki (starszy zapis).';
-        content+='<tr'+(corrected?' class="pl-route-audit-corrected"':'')+'>'+
+        // Older audit events can have an unresolved difference. Do not
+        // misrepresent an unverified quantity as the final actual count.
+        const isNew=item.verified===true;
+        const legacyMatched=item.decision==='MATCH_CREW'||
+          (!item.decision&&item.after!=null&&Number(item.after)===Number(item.confirmed));
+        const actual=isNew?item.after:(legacyMatched?item.confirmed:null);
+        content+='<tr'+(actual!==null?' class="pl-route-audit-corrected"':'')+'>'+
           '<td>'+html(item.partName||'Pozycja '+item.position)+'</td>'+
           '<td>'+html(item.before)+'</td>'+
           '<td>'+html(item.confirmed)+'</td>'+
-          '<td>'+html(actual===null?'—':actual)+'</td>'+
-          '<td><span class="pl-route-audit-change '+(corrected?'is-corrected':'is-unresolved')+'">'+
-            label+'</span></td>'+
-          '<td class="pl-route-audit-note">'+html(comment)+'</td></tr>';
+          '<td>'+html(actual===null?'—':actual)+'</td></tr>';
       }
-      content+='</tbody></table></div>'+
-        '<p class="pl-route-audit-help">„—” oznacza brak uzgodnionej korekty, a nie potwierdzoną ilość. '+
-        'Pozycja z otwartą niezgodnością nie jest rozliczona.</p>';
+      content+='</tbody></table></div>';
+      const olderNotes=(details.positions||[]).filter(item=>item.note);
+      if(olderNotes.length){
+        content+='<p class="pl-route-audit-help">Wcześniejsze uwagi do pozycji: '+
+          olderNotes.map(item=>html(item.partName||'Poz. '+item.position)+
+            ' — '+html(item.note)).join(' · ')+'</p>';
+      }
     }else{
       const prev=details.before||{},next=details.after||{};
       const descriptions=[['Numer trasy','routeNumber'],['Data','routeDate'],
