@@ -50,9 +50,17 @@
 .pl-routes-table .pl-route-details-button{border:1px solid #cfd9e3;border-radius:7px;background:#fff;padding:6px 10px;font-size:12px;cursor:pointer;color:#344a61}
 .pl-routes-table .pl-route-details-button:hover{background:#f0f4f8}
 .pl-routes-table .pl-route-expanded > td{padding:10px 13px;background:#f8fafc;text-align:left}
+.pl-route-detail-layout{
+  display:flex;align-items:flex-start;flex-wrap:wrap;
+  gap:14px clamp(18px,3vw,48px);width:100%
+}
 .pl-route-detail-lines{
-  /* Keep names and quantities in one compact reading area on wide monitors. */
-  width:min(100%,750px);max-width:750px;overflow-x:auto
+  /* Keep part names and quantities in a compact reading area. */
+  flex:0 1 750px;min-width:min(100%,590px);max-width:750px;overflow-x:auto
+}
+.pl-route-detail-side{
+  flex:1 1 150px;min-width:145px;display:flex;
+  justify-content:center;padding-top:14px
 }
 .pl-route-detail-lines strong{display:block;margin-bottom:8px;font-size:12px;text-align:left}
 .pl-route-detail-head{
@@ -61,7 +69,12 @@
 }
 .pl-route-detail-head > strong{margin:0;font-size:12px;flex:1 1 200px}
 .pl-route-detail-actions{
-  display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px
+  display:flex;flex-direction:column;align-items:stretch;
+  width:min(100%,170px);gap:9px
+}
+.pl-route-detail-actions > button{width:100%;min-height:32px}
+@media (max-width:850px){
+  .pl-route-detail-side{justify-content:flex-start;padding-top:0}
 }
 .pl-route-edit-button{
   padding:5px 10px;border:1px solid #a6b9cd;border-radius:7px;
