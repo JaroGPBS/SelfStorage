@@ -8,6 +8,7 @@
   }[ch]));
   const endpoint='/api/pl-routes';
   let photoUrl=null;
+  let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
   let busy=false;
   let loadSeq=0;
   const routeContext=()=>typeof window.getPlRoutesContext==='function'
@@ -139,6 +140,7 @@
     if(!allowed)return;
     const dialog=byId('plRouteDialog');
     byId('plRouteForm').reset();
+    savedRouteId=null;
     errorMessage();
     clearPhoto();
     byId('plRouteParts').replaceChildren();
@@ -173,7 +175,7 @@
       return;
     }
     byId('plRoutePhotoFile').textContent='Wybrano: '+file.name+
-      ' (podgląd lokalny, bez wysyłania)';
+      ' (po zapisaniu trasy zdjęcie będzie pomniejszone i archiwizowane w R2)';
     photoUrl=URL.createObjectURL(file);
     byId('plRoutePhotoPreview').src=photoUrl;
     byId('plRoutePhotoPreview').hidden=false;
@@ -210,26 +212,94 @@
     if(!response.ok||!data.ok)throw Error(data.error||'Błąd komunikacji z D1.');
     return data;
   }
+  async function compressRouteDocument(file){
+    // The original photo stays local at full resolution; future AI reading
+    // will use it before archiving the lighter, legible JPEG derivative.
+    let bitmap=null,temporaryUrl=null;
+    try{
+      if(typeof createImageBitmap==='function'){
+        bitmap=await createImageBitmap(file);
+      }else{
+        temporaryUrl=URL.createObjectURL(file);
+        bitmap=await new Promise((resolve,reject)=>{
+          const image=new Image();
+          image.onload=()=>resolve(image);
+          image.onerror=()=>reject(Error('Nie udało się otworzyć zdjęcia w przeglądarce.'));
+          image.src=temporaryUrl;
+        });
+      }
+      const width=bitmap.width||bitmap.naturalWidth;
+      const height=bitmap.height||bitmap.naturalHeight;
+      if(width<250||height<250)throw Error('Zdjęcie jest zbyt małe do archiwizacji.');
+      const canvas=document.createElement('canvas');
+      const context=canvas.getContext('2d',{alpha:false});
+      if(!context)throw Error('Nie można przetworzyć zdjęcia w przeglądarce.');
+      const encode=(longEdge,quality)=>new Promise((resolve,reject)=>{
+        const ratio=Math.min(1,longEdge/Math.max(width,height));
+        canvas.width=Math.max(1,Math.round(width*ratio));
+        canvas.height=Math.max(1,Math.round(height*ratio));
+        context.fillStyle='#ffffff';
+        context.fillRect(0,0,canvas.width,canvas.height);
+        context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+        canvas.toBlob(blob=>blob?resolve(blob):reject(Error('Kompresja zdjęcia nie powiodła się.')),
+          'image/jpeg',quality);
+      });
+      let blob=await encode(2600,0.84);
+      if(blob.size>2500000)blob=await encode(2300,0.78);
+      if(blob.size>4*1024*1024)
+        throw Error('Zdjęcie po kompresji przekracza 4 MB. Wybierz czytelne zdjęcie dokumentu.');
+      return new File([blob],'dokument-trasy.jpg',{type:'image/jpeg'});
+    }catch(error){
+      throw Error(error?.message==='Nie udało się otworzyć zdjęcia w przeglądarce.'
+        ?'Nie można pomniejszyć tego zdjęcia. Zapisz je jako JPG lub PNG i wybierz ponownie.'
+        :error?.message||'Nie udało się przygotować zdjęcia do R2.');
+    }finally{
+      if(temporaryUrl)URL.revokeObjectURL(temporaryUrl);
+      bitmap?.close?.();
+    }
+  }
+  async function archiveRouteDocument(routeId,file){
+    const compressed=await compressRouteDocument(file);
+    const form=new FormData();
+    form.append('routeId',routeId);
+    form.append('photo',compressed);
+    return jsonResponse(await fetch('/api/pl-routes-photo',{
+      method:'POST',credentials:'same-origin',body:form
+    }));
+  }
   async function saveRoute(event){
     event.preventDefault();
     if(busy)return;
     if(!byId('plRouteForm').reportValidity())return;
     let payload;
-    try{payload=routeData();}catch(e){errorMessage(e.message);return;}
+    if(!savedRouteId){
+      try{payload=routeData();}catch(error){errorMessage(error.message);return;}
+    }
     setBusy(true);
     errorMessage();
     try{
-      const response=await fetch(endpoint,{
-        method:'POST',credentials:'same-origin',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
-      });
-      await jsonResponse(response);
+      if(!savedRouteId){
+        const result=await jsonResponse(await fetch(endpoint,{
+          method:'POST',credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        }));
+        savedRouteId=result.id;
+      }
+      const file=byId('plRoutePhoto').files?.[0];
+      if(file)await archiveRouteDocument(savedRouteId,file);
+      savedRouteId=null;
       byId('plRouteDialog').close();
       await window.renderPlRoutesList();
-      byId('plRoutesListStatus').textContent='Trasa została zapisana w D1.';
-    }catch(e){
-      errorMessage(e.message||'Nie udało się zapisać trasy.');
+      byId('plRoutesListStatus').textContent=file
+        ?'Trasa i jej pomniejszone zdjęcie zostały zapisane (D1 + R2).'
+        :'Trasa została zapisana w D1.';
+    }catch(error){
+      errorMessage(savedRouteId
+        ?'Trasa została zapisana w D1, ale zdjęcia nie udało się zapisać. '+
+          (error.message||'Spróbuj ponownie.')+
+          ' Kliknij „Zapisz trasę” jeszcze raz, aby ponowić tylko zdjęcie.'
+        :error.message||'Nie udało się zapisać trasy.');
     }finally{
       setBusy(false);
     }
@@ -397,7 +467,16 @@
       '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
         rows+'</tbody></table>'+
       (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
-      '</div>';
+      '<div class="pl-route-document-links">'+
+        (result.documents?.length
+          ?'<strong>Zdjęcia dokumentu:</strong> '+result.documents.map((doc,index)=>{
+            const url='/api/pl-routes-photo?routeId='+encodeURIComponent(route.id)+
+              '&documentId='+encodeURIComponent(doc.id);
+            return '<a href="'+html(url)+'" target="_blank" rel="noopener noreferrer">'+
+              'Otwórz zdjęcie '+(index+1)+'</a>';
+          }).join(' · ')
+          :'<span>Nie dołączono zdjęcia dokumentu.</span>')+
+      '</div></div>';
   }
   async function showDetails(button){
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(button.dataset.plRouteDetails||''))return;
