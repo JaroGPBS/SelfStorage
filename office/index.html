@@ -124,8 +124,8 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=169"></script>
-  <script defer src="./pl-routes-export.js?v=4"></script>
-  <script defer src="./pl-routes.js?v=46"></script>
+  <script defer src="./pl-routes-export.js?v=5"></script>
+  <script defer src="./pl-routes.js?v=47"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -347,6 +347,7 @@
                 <small id="plRoutesSectionDescription">Lista tras w trakcie realizacji.</small>
               </div>
               <button type="button" id="plRouteAdd" class="btn pl-route-add-primary">+ Dodaj trasę</button>
+              <button type="button" id="plRouteBalanceExport" class="pl-route-export-button hidden" disabled>Eksportuj</button>
               <button type="button" id="plRoutesPrepareDemo47" class="btn outline pl-route-demo-action hidden"
                 title="Test tygodnia 47: zakończ 2 trasy demonstracyjne, potwierdź trzecią">Przygotuj demo 47</button>
               <button type="button" id="plRoutesCompleteDemo45" class="btn outline pl-route-demo-action hidden"
@@ -599,7 +600,7 @@
       <iframe id="plRouteExportPreview" title="Podgląd karty trasy do eksportu"
               referrerpolicy="same-origin"></iframe>
     </div>
-    <p class="pl-route-export-hint">PDF: w oknie drukowania wybierz „Zapisz jako PDF”. Zdjęcia nie są dołączane.</p>
+    <p id="plRouteExportHint" class="pl-route-export-hint">PDF: w oknie drukowania wybierz „Zapisz jako PDF”. Zdjęcia nie są dołączane.</p>
     <p id="plRouteExportError" class="pl-route-explain-error" role="alert" hidden></p>
     <div class="pl-route-small-actions">
       <button type="button" id="plRouteExportPdf" class="btn outline" disabled>PDF</button>
