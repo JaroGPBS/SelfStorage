@@ -54,6 +54,9 @@ async function ensureSchema(db){
         'route_id TEXT NOT NULL, position INTEGER NOT NULL,'+
         'part_code TEXT NOT NULL DEFAULT \'\', part_name TEXT NOT NULL DEFAULT \'\','+
         'quantity INTEGER NOT NULL CHECK(quantity>0),'+
+        'confirmed_quantity INTEGER CHECK(confirmed_quantity>=0),'+
+        'returned_quantity INTEGER CHECK(returned_quantity>=0),'+
+        'return_location TEXT,'+
         'PRIMARY KEY(route_id,position),'+
         'FOREIGN KEY(route_id) REFERENCES pl_routes(id) ON DELETE CASCADE)'
     ),
@@ -67,10 +70,28 @@ async function ensureSchema(db){
         'ALTER TABLE pl_routes ADD COLUMN is_presentation INTEGER NOT NULL DEFAULT 0 CHECK(is_presentation IN (0,1))'
       ).run();
     }catch(error){
-      // A concurrent writer may already have installed the same column.
       if(!await hasPresentationFlag(db))throw error;
     }
   }
+  // Route settlement values live on the original route lines; completed routes
+  // will be archived by status rather than duplicated to another table.
+  for(const [column,definition] of [
+    ['confirmed_quantity','INTEGER CHECK(confirmed_quantity>=0)'],
+    ['returned_quantity','INTEGER CHECK(returned_quantity>=0)'],
+    ['return_location','TEXT']
+  ]){
+    if((await routeLineColumns(db)).has(column))continue;
+    try{
+      await db.prepare('ALTER TABLE pl_route_lines ADD COLUMN '+column+' '+definition).run();
+    }catch(error){
+      if(!(await routeLineColumns(db)).has(column))throw error;
+    }
+  }
+}
+async function routeLineColumns(db){
+  if(!await exists(db,'pl_route_lines'))return new Set();
+  const schema=await db.prepare('PRAGMA table_info(pl_route_lines)').all();
+  return new Set((schema.results||[]).map(col=>col.name));
 }
 async function hasPresentationFlag(db){
   if(!await exists(db,'pl_routes'))return false;
@@ -139,12 +160,26 @@ export async function onRequestGet({request,env}){
         'FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
+      const columns=await routeLineColumns(env.DB);
+      const optional=[
+        columns.has('confirmed_quantity')
+          ?'confirmed_quantity AS confirmedQuantity':'NULL AS confirmedQuantity',
+        columns.has('returned_quantity')
+          ?'returned_quantity AS returnedQuantity':'NULL AS returnedQuantity',
+        columns.has('return_location')
+          ?'return_location AS returnLocation':'NULL AS returnLocation'
+      ].join(',');
       const lines=(await env.DB.prepare(
-        'SELECT position,part_code AS partCode,part_name AS partName,quantity '+
-        'FROM pl_route_lines WHERE route_id=? ORDER BY position'
+        'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
+        optional+' FROM pl_route_lines WHERE route_id=? ORDER BY position'
       ).bind(id).all()).results||[];
       return workerJson({ok:true,route,lines,storageReady:true});
     }
+    const scope=url.searchParams.get('scope')||'active';
+    if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
+    const where=scope==='history'
+      ?"WHERE r.status='COMPLETED' "
+      :"WHERE r.status<>'COMPLETED' ";
     const routeRows=(await env.DB.prepare(
       'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
       'r.crew_symbol AS crewSymbol,r.status,'+
@@ -152,6 +187,7 @@ export async function onRequestGet({request,env}){
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units,'+
       "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
+      where+
       'GROUP BY r.id ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200'
     ).all()).results||[];
     // Strip the full name before returning data to the browser.
@@ -207,8 +243,11 @@ export async function onRequestPost({request,env}){
   const route=parseRoute(body);
   if(!route)return send('Uzupełnij numer i datę trasy, ekipę oraz prawidłową listę części.',400);
   try{
-    if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines')||
-       !await hasPresentationFlag(env.DB))await ensureSchema(env.DB);
+    const lineColumns=await routeLineColumns(env.DB);
+    if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB)||
+       !['confirmed_quantity','returned_quantity','return_location'].every(
+         col=>lineColumns.has(col)
+       ))await ensureSchema(env.DB);
     const duplicate=await env.DB.prepare(
       'SELECT id FROM pl_routes WHERE route_number=? AND route_date=? LIMIT 1'
     ).bind(route.routeNumber,route.routeDate).first();
