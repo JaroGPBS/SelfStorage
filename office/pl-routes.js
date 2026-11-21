@@ -7,7 +7,6 @@
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[ch]));
   const endpoint='/api/pl-routes';
-  let photoUrl=null;
   let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
   let busy=false;
   let loadSeq=0;
@@ -26,11 +25,7 @@
     byId('plRouteSubmit').textContent=next?'Zapisywanie…':'Zapisz trasę';
   }
   function clearPhoto(){
-    if(photoUrl)URL.revokeObjectURL(photoUrl);
-    photoUrl=null;
     byId('plRoutePhoto').value='';
-    byId('plRoutePhotoPreview').hidden=true;
-    byId('plRoutePhotoPreview').removeAttribute('src');
     byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';
   }
   function addPartRow(data={}){
@@ -200,7 +195,6 @@
     return detected;
   }
   async function selectedPhoto(){
-    clearPhotoPreview();
     const file=byId('plRoutePhoto').files?.[0];
     if(!file){byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';return;}
     try{
@@ -215,16 +209,7 @@
     }
     byId('plRoutePhotoFile').textContent='Wybrano: '+file.name+
       ' (po zapisaniu trasy zdjęcie będzie pomniejszone i archiwizowane w R2)';
-    photoUrl=URL.createObjectURL(file);
-    byId('plRoutePhotoPreview').src=photoUrl;
-    byId('plRoutePhotoPreview').hidden=false;
     errorMessage();
-  }
-  function clearPhotoPreview(){
-    if(photoUrl)URL.revokeObjectURL(photoUrl);
-    photoUrl=null;
-    byId('plRoutePhotoPreview').hidden=true;
-    byId('plRoutePhotoPreview').removeAttribute('src');
   }
   function routeData(){
     const routeNumber=byId('plRouteNumber').value.trim().toUpperCase();
@@ -761,7 +746,10 @@
   });
   byId('plRouteDocumentClose').addEventListener('click',()=>
     byId('plRouteDocumentDialog').close());
-  byId('plRouteDocumentDialog').addEventListener('close',resetRouteDocumentViewer);
+  byId('plRouteDocumentDialog').addEventListener('close',()=>{
+    // A pending close event must not clear a new preview opened immediately.
+    if(!byId('plRouteDocumentDialog').open)resetRouteDocumentViewer();
+  });
   byId('plRouteDocumentDialog').addEventListener('click',event=>{
     if(event.target===byId('plRouteDocumentDialog'))
       byId('plRouteDocumentDialog').close();
