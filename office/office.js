@@ -1321,7 +1321,7 @@ function setHead(title,kicker,desc){
   if(isPlRoutes){
     const detail={
       list:'Aktualne trasy montażowe, wprowadzane przez biuro.',
-      balance:'Tutaj pojawi się zbiorczy bilans części: wydane, odebrane, zużyte, zwrócone i pozostałe.',
+      balance:'Lista części z wprowadzonych tras PL. Rozliczenia ilości uzupełnimy później.',
       remnants:'Tutaj pojawią się pozostałości części zgłoszone po zakończeniu tras.',
       history:'Historia tras zakończonych, pogrupowana według tygodni.'
     };
