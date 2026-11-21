@@ -590,11 +590,7 @@
         balanceAmount(part.issued),balanceAmount(part.used),
         balanceAmount(part.returned),balanceAmount(part.warehouse)];
       const current='<td class="pl-route-balance-current">'+
-        '<strong>'+balanceAmount(part.inRoute)+'</strong>'+
-        (Number(part.currentWeekIssued)>0
-          ?'<small>Pobrano w tygodniu: '+
-            balanceAmount(part.currentWeekIssued)+'</small>'
-          :'')+'</td>';
+        '<strong>'+balanceAmount(part.inRoute)+'</strong></td>';
       return '<tr data-pl-route-balance-part="'+html(part.catalogPartId||'')+'">'+
         columns.map(value=>'<td>'+html(value)+'</td>').join('')+
         current+'</tr>';
