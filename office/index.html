@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=168"></script>
-  <script defer src="./pl-routes.js?v=18"></script>
+  <script defer src="./pl-routes.js?v=19"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -524,6 +524,18 @@
     <button type="button" class="photo-viewer-close" id="photoViewerClose" data-photo-close="1" aria-label="Zamknij zdjęcie">×</button>
     <img id="photoViewerImage" alt="Antena meduza — powiększone zdjęcie">
   </div>
+  <dialog id="plRouteDocumentDialog" class="pl-route-document-dialog"
+          aria-labelledby="plRouteDocumentTitle">
+    <div class="pl-route-document-dialog-head">
+      <strong id="plRouteDocumentTitle">Zdjęcie dokumentu</strong>
+      <button type="button" id="plRouteDocumentClose" class="pl-route-document-dialog-close"
+              aria-label="Zamknij zdjęcie dokumentu">×</button>
+    </div>
+    <div class="pl-route-document-dialog-body">
+      <p id="plRouteDocumentStatus" role="status">Otwieranie zdjęcia…</p>
+      <img id="plRouteDocumentImage" alt="Zarchiwizowane zdjęcie dokumentu trasy" hidden>
+    </div>
+  </dialog>
   <div id="labelPrintRoot" class="label-print-root" aria-hidden="true"></div>
 </body>
 </html>
