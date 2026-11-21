@@ -930,7 +930,7 @@
       return '<button type="button" class="pl-route-audit-event" '+
         'data-pl-route-audit="'+html(event.id)+'" '+
         'title="Otwórz szczegóły zapisanej operacji">'+
-        '<span>'+html(event.action==='EXPLAIN'?'Wyjaśnienie niezgodności':'Edycja')+
+        '<span>'+html(event.action==='EXPLAIN'?'Wyjaśnienie niezgodności':'Edytował')+
           ' – '+html(event.actor||'Użytkownik')+
           ' – '+html(auditTime(event.createdAt))+'</span>'+
       '</button>';
