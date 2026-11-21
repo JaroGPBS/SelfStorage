@@ -8,6 +8,7 @@
   }[ch]));
   const endpoint='/api/pl-routes';
   let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
+  let editingRouteId=null; // Existing route opened for corrections before team confirmation.
   let busy=false;
   let loadSeq=0;
   const routeContext=()=>typeof window.getPlRoutesContext==='function'
@@ -22,7 +23,8 @@
     byId('plRouteSubmit').disabled=next;
     byId('plRouteCancel').disabled=next;
     byId('plRouteClose').disabled=next;
-    byId('plRouteSubmit').textContent=next?'Zapisywanie…':'Zapisz trasę';
+    byId('plRouteSubmit').textContent=next?'Zapisywanie…':
+      (savedRouteId?'Ponów zapis zdjęcia':editingRouteId?'Zapisz zmiany':'Zapisz trasę');
   }
   function clearPhoto(){
     byId('plRoutePhoto').value='';
@@ -149,6 +151,9 @@
     const dialog=byId('plRouteDialog');
     byId('plRouteForm').reset();
     savedRouteId=null;
+    editingRouteId=null;
+    byId('plRouteTitle').textContent='Dodaj trasę';
+    byId('plRouteSubmit').textContent='Zapisz trasę';
     lockSavedRouteFields(false);
     errorMessage();
     clearPhoto();
@@ -162,6 +167,48 @@
     setRouteCalendarOpen(false);
     dialog.showModal();
     byId('plRouteNumber').focus();
+  }
+  async function editRoute(button){
+    if(busy||byId('plRouteDialog').open)return;
+    if(!['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(routeContext()?.role))return;
+    const id=button.dataset.plRouteEdit||'';
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))return;
+    const status=byId('plRoutesListStatus');
+    button.disabled=true;
+    try{
+      const result=await jsonResponse(await fetch(
+        endpoint+'?id='+encodeURIComponent(id),{
+          credentials:'same-origin',cache:'no-store'
+        }
+      ));
+      if(!result.route?.canEdit){
+        status.classList.add('is-error');
+        status.textContent='Edycja jest zablokowana: trasa została potwierdzona przez ekipę.';
+        await window.renderPlRoutesList();
+        return;
+      }
+      openForm();
+      editingRouteId=id;
+      byId('plRouteTitle').textContent='Edytuj trasę';
+      byId('plRouteSubmit').textContent='Zapisz zmiany';
+      byId('plRouteNumber').value=result.route.routeNumber||'';
+      byId('plRouteCrewSymbol').value=result.route.crewSymbol||'';
+      byId('plRouteDate').value=result.route.routeDate||'';
+      const target=byId('plRouteParts');
+      target.replaceChildren();
+      (result.lines||[]).forEach(line=>addPartRow(line));
+      if(!target.children.length)addPartRow();
+      const photoCount=result.documents?.length||0;
+      byId('plRoutePhotoFile').textContent=photoCount
+        ?'Zapisane zdjęcia: '+photoCount+'. Zostaną zachowane. Możesz dodać nowe zdjęcie.'
+        :'Nie dołączono zdjęcia. Możesz je dodać podczas edycji.';
+      byId('plRouteNumber').focus();
+    }catch(error){
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie udało się otworzyć edycji trasy.';
+    }finally{
+      button.disabled=false;
+    }
   }
   function closeForm(){
     if(busy)return;
@@ -312,7 +359,13 @@
     if(!byId('plRouteForm').reportValidity())return;
     let payload;
     if(!savedRouteId){
-      try{payload=routeData();}catch(error){errorMessage(error.message);return;}
+      try{
+        payload=routeData();
+        if(editingRouteId){
+          payload.action='update';
+          payload.id=editingRouteId;
+        }
+      }catch(error){errorMessage(error.message);return;}
     }
     setBusy(true);
     errorMessage();
@@ -328,17 +381,19 @@
       }
       const file=byId('plRoutePhoto').files?.[0];
       if(file)await archiveRouteDocument(savedRouteId,file);
+      const wasEdit=Boolean(editingRouteId);
       savedRouteId=null;
+      editingRouteId=null;
       byId('plRouteDialog').close();
       await window.renderPlRoutesList();
-      byId('plRoutesListStatus').textContent=file
-        ?'Trasa i jej pomniejszone zdjęcie zostały zapisane (D1 + R2).'
-        :'Trasa została zapisana w D1.';
+      byId('plRoutesListStatus').textContent=(wasEdit?'Zapisano zmiany trasy.':'Trasa zapisana w D1.')+
+        (file?' Dodano zdjęcie dokumentu do R2.':'');
     }catch(error){
       errorMessage(savedRouteId
-        ?'Trasa została zapisana w D1, ale zdjęcia nie udało się zapisać. '+
+        ?(editingRouteId?'Zmiany trasy zapisano w D1, ale zdjęcia nie udało się dodać. '
+          :'Trasa jest zapisana w D1, ale zdjęcia nie udało się dodać. ')+
           (error.message||'Spróbuj ponownie.')+
-          ' Kliknij „Zapisz trasę” jeszcze raz, aby ponowić tylko zdjęcie.'
+          ' Kliknij „Ponów zapis zdjęcia”, aby ponowić samo zdjęcie.'
         :error.message||'Nie udało się zapisać trasy.');
     }finally{
       setBusy(false);
