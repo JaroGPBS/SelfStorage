@@ -8055,3 +8055,19 @@
 .office-market-list .office-pl-routes-entries .office-pl-routes-tab{min-height:32px;padding:7px 10px;font-size:12px;font-weight:550}
 .office-market-list .office-pl-routes-entries .office-pl-routes-tab.active{color:#fff;background:rgba(230,63,68,.13);box-shadow:inset 3px 0 #e63f44;font-weight:750}
 .office-market-list .office-pl-routes-toggle.active{color:#fff}
+
+/* Polska: clean market landing screen; navigation and warehouse stock stay separate. */
+.app.view-pl-home .main{background:#f1f3f6}
+.app.view-pl-home .content{max-width:none;min-height:calc(100dvh - 70px);padding:28px 32px}
+.app.view-pl-home .breadcrumbs>span:first-child,
+.app.view-pl-home .breadcrumbs>strong{display:none}
+.office-poland-home{width:100%;min-height:calc(100dvh - 130px);margin:0}
+.office-poland-heading{display:flex;align-items:center;gap:18px}
+.office-poland-logo{display:block;width:74px;height:74px;object-fit:contain;flex:0 0 74px}
+.office-poland-heading h1{margin:0;color:#233344;font-size:clamp(29px,2.8vw,38px);font-weight:850;line-height:1.14;letter-spacing:-.03em}
+@media(max-width:690px){
+  .app.view-pl-home .content{min-height:calc(100dvh - 58px);padding:19px 14px}
+  .office-poland-heading{gap:12px}
+  .office-poland-logo{width:58px;height:58px;flex-basis:58px}
+  .office-poland-home{min-height:calc(100dvh - 108px)}
+}
