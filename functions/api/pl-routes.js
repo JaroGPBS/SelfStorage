@@ -165,10 +165,21 @@ async function ensureReturnApprovalSchema(db){
       'route_id TEXT NOT NULL,position INTEGER NOT NULL,'+
       'quantity INTEGER NOT NULL CHECK(quantity>0),location TEXT NOT NULL,'+
       'approved_by TEXT NOT NULL,'+
+      'comment TEXT NOT NULL DEFAULT \'\','+
       'approved_at TEXT NOT NULL DEFAULT (strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')),'+
       'PRIMARY KEY(route_id,position),'+
       'FOREIGN KEY(route_id,position) REFERENCES pl_route_lines(route_id,position) ON DELETE CASCADE)'
   ).run();
+  // Existing deployments predate mandatory approval comments.
+  const schema=await db.prepare('PRAGMA table_info(pl_route_return_approvals)').all();
+  if(!(schema.results||[]).some(column=>column.name==='comment')){
+    try{
+      await db.prepare("ALTER TABLE pl_route_return_approvals ADD COLUMN comment TEXT NOT NULL DEFAULT ''").run();
+    }catch(error){
+      const fresh=await db.prepare('PRAGMA table_info(pl_route_return_approvals)').all();
+      if(!(fresh.results||[]).some(column=>column.name==='comment'))throw error;
+    }
+  }
 }
 const returnApprovalMatches=(line,approval)=>
   approval!=null&&
@@ -398,7 +409,7 @@ export async function onRequestGet({request,env}){
       const approvedTable=await exists(env.DB,'pl_route_return_approvals');
       const returnApprovals=approvedTable?(
         (await env.DB.prepare(
-          'SELECT a.position,a.quantity,a.location,a.approved_by AS approvedById,'+
+          'SELECT a.position,a.quantity,a.location,a.comment,a.approved_by AS approvedById,'+
           'a.approved_at AS approvedAt,'+authorColumns(hasAuthorProfiles)+
           ' FROM pl_route_return_approvals a'+
           authorJoins(hasAuthorProfiles,'a.approved_by')+
@@ -544,6 +555,9 @@ export async function onRequestPost({request,env}){
   if(body?.action==='approveReturns'){
     if(!['KOORDYNATOR','ADMIN'].includes(auth.user.role))
       return send('Zwroty może zatwierdzić tylko koordynator lub administrator.',403);
+    const comment=typeof body.comment==='string'?body.comment.trim():'';
+    if(comment.length<15||comment.length>1000)
+      return send('Komentarz do zatwierdzenia zwrotu jest wymagany (15–1000 znaków).',400);
     const id=String(body.id||'');
     const revision=Number(body.baseRevision);
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id)||
@@ -601,13 +615,13 @@ export async function onRequestPost({request,env}){
       for(const line of pending){
         statements.push(env.DB.prepare(
           'INSERT OR REPLACE INTO pl_route_return_approvals '+
-          '(route_id,position,quantity,location,approved_by) '+
-          'SELECT l.route_id,l.position,l.returned_quantity,trim(l.return_location),? '+
+          '(route_id,position,quantity,location,approved_by,comment) '+
+          'SELECT l.route_id,l.position,l.returned_quantity,trim(l.return_location),?,? '+
           'FROM pl_route_lines l JOIN pl_routes r ON r.id=l.route_id '+
           'WHERE l.route_id=? AND l.position=? AND l.returned_quantity=? '+
           "AND trim(COALESCE(l.return_location,''))=? "+
           'AND r.edit_revision=? AND r.edit_token=?'
-        ).bind(auth.user.id,id,line.position,line.returnedQuantity,
+        ).bind(auth.user.id,comment,id,line.position,line.returnedQuantity,
           String(line.returnLocation).trim(),revision+1,token));
       }
       const result=await env.DB.batch(statements);
