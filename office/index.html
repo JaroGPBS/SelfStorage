@@ -174,6 +174,15 @@
       <nav aria-label="Menu główne">
         <div id="warehouseMenu" class="office-warehouse-menu"></div>
       </nav>
+      <div class="office-side-sync">
+        <button type="button" id="refresh" class="office-side-sync-button"
+          title="Pobierz aktualne dane bieżącej zakładki"
+          aria-label="Synchronizuj aktualnie otwartą zakładkę">
+          <span class="office-side-sync-heading"><span aria-hidden="true">↻</span> Synchronizacja</span>
+          <strong id="syncTime">--:--</strong>
+          <small id="syncDate">Brak aktualizacji</small>
+        </button>
+      </div>
       <div class="side-footer office-side-footer">
         <div class="office-welcome">
           <p class="welcome-line"><span>Dzień dobry,</span><strong id="username">!</strong></p>
@@ -212,8 +221,6 @@
             <button type="button" id="bovisParisWzTab" role="tab" aria-selected="false" class="stock-tab hidden" data-bovis-paris-process="wz">WZ</button>
           </div>
           <div class="page-actions" id="pageActions">
-            <span class="sync-label" id="syncTime"></span>
-            <button type="button" class="btn outline" id="refresh" title="Odśwież dane">↻ <span>Synchronizuj</span></button>
             <button type="button" class="btn dark" id="newPart">+ Dodaj część</button>
           </div>
         </div>
