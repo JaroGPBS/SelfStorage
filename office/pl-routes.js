@@ -529,6 +529,7 @@
       const demoCount=Number(result.demoWeek48Count||0);
       byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount===6);
       byId('plRoutesDeleteDemo48').classList.toggle('hidden',!showDemo||demoCount===0);
+      routeAuditCache.clear();
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
       status.textContent='';
     }catch(error){
@@ -640,6 +641,157 @@
         '</div>'+
       '</div>'+
     '</div>';
+  }
+  let explainSaving=false;
+  async function openDiscrepancyExplanation(button){
+    if(explainSaving||byId('plRouteExplainDialog').open)return;
+    const id=button.dataset.plRouteExplain||'';
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))return;
+    button.disabled=true;
+    try{
+      const result=await jsonResponse(await fetch(
+        endpoint+'?id='+encodeURIComponent(id),{
+          credentials:'same-origin',cache:'no-store'
+        }
+      ));
+      const wrong=(result.lines||[]).filter(line=>
+        line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
+        Number(line.confirmedQuantity)!==Number(line.quantity));
+      if(!wrong.length||['COMPLETED','REVIEW_EXPLAINED'].includes(result.route?.status))
+        throw Error('Ta trasa nie wymaga już wyjaśnienia niezgodności.');
+      const dialog=byId('plRouteExplainDialog');
+      byId('plRouteExplainForm').reset();
+      byId('plRouteExplainError').hidden=true;
+      byId('plRouteExplainLines').innerHTML=
+        '<div class="pl-route-explain-head"><span>Część</span><span>Wydano</span>'+
+          '<span>Ekipa</span><span>Korekta wydania</span></div>'+
+        wrong.map(line=>
+          '<div class="pl-route-explain-line">'+
+            '<strong>'+html(line.partName||line.partCode||'Poz. '+line.position)+'</strong>'+
+            '<span>'+html(line.quantity)+'</span>'+
+            '<span>'+html(line.confirmedQuantity)+'</span>'+
+            '<input type="number" min="1" max="999999" step="1" required '+
+              'aria-label="Korekta wydanej ilości: '+html(line.partName||line.partCode||'część')+'" '+
+              'data-pl-route-explain-position="'+html(line.position)+'" '+
+              'value="'+html(line.quantity)+'">'+
+          '</div>'
+        ).join('');
+      dialog.dataset.routeId=id;
+      dialog.dataset.revision=String(result.route.editRevision||0);
+      dialog.showModal();
+      byId('plRouteExplainComment').focus();
+    }catch(error){
+      const status=byId('plRoutesListStatus');
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie można otworzyć weryfikacji.';
+    }finally{
+      button.disabled=false;
+    }
+  }
+  async function submitDiscrepancyExplanation(event){
+    event.preventDefault();
+    if(explainSaving)return;
+    const form=byId('plRouteExplainForm');
+    if(!form.reportValidity())return;
+    const comment=byId('plRouteExplainComment').value.trim();
+    const error=byId('plRouteExplainError');
+    if(comment.length<15){
+      error.hidden=false;
+      error.textContent='Komentarz musi mieć co najmniej 15 znaków.';
+      byId('plRouteExplainComment').focus();
+      return;
+    }
+    const corrections=[...byId('plRouteExplainLines').querySelectorAll(
+      '[data-pl-route-explain-position]'
+    )].map(field=>({
+      position:Number(field.dataset.plRouteExplainPosition),
+      quantity:Number(field.value)
+    }));
+    if(!corrections.every(row=>Number.isSafeInteger(row.position)&&
+       Number.isSafeInteger(row.quantity)&&row.quantity>=1&&row.quantity<=999999)){
+      error.hidden=false;
+      error.textContent='Wpisz prawidłowe ilości w każdej pozycji.';
+      return;
+    }
+    if(!window.confirm('Zatwierdzić wyjaśnienie niezgodności i zapisać komentarz?'))return;
+    explainSaving=true;
+    byId('plRouteExplainSave').disabled=true;
+    error.hidden=true;
+    try{
+      await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          action:'explainDiscrepancy',
+          id:byId('plRouteExplainDialog').dataset.routeId,
+          baseRevision:Number(byId('plRouteExplainDialog').dataset.revision),
+          comment,corrections
+        })
+      }));
+      byId('plRouteExplainDialog').close();
+      await window.renderPlRoutesList();
+      const status=byId('plRoutesListStatus');
+      status.classList.remove('is-error');
+      status.textContent='Wyjaśnienie zapisane. Szczegóły i komentarz znajdują się w historii trasy.';
+    }catch(ex){
+      error.hidden=false;
+      error.textContent=ex.message||'Nie udało się zatwierdzić wyjaśnienia.';
+    }finally{
+      explainSaving=false;
+      byId('plRouteExplainSave').disabled=false;
+    }
+  }
+  function openRouteAudit(button){
+    const entry=routeAuditCache.get(button.dataset.plRouteAudit||'');
+    if(!entry)return;
+    let details;
+    try{details=JSON.parse(entry.detailsJson||'{}');}
+    catch{details={};}
+    const isExplain=entry.action==='EXPLAIN';
+    byId('plRouteAuditTitle').textContent=isExplain?'Weryfikacja niezgodności':'Historia edycji trasy';
+    let content='<p class="pl-route-audit-meta">'+html(entry.actor||'Użytkownik')+
+      ' · '+html(auditTime(entry.createdAt))+'</p>';
+    if(isExplain){
+      content+='<h3>Wyjaśnienie</h3>'+
+        '<p class="pl-route-audit-comment">'+html(details.comment||'—')+'</p>'+
+        '<h3>Porównanie ilości</h3><div class="pl-route-audit-diff">';
+      for(const item of details.positions||[]){
+        content+='<div><strong>'+html(item.partName||'Pozycja '+item.position)+'</strong>'+
+          '<span>Wydano: '+html(item.before)+' → '+html(item.after)+
+            ' · Ekipa: '+html(item.confirmed)+'</span></div>';
+      }
+      content+='</div>';
+    }else{
+      const prev=details.before||{},next=details.after||{};
+      const descriptions=[['Numer trasy','routeNumber'],['Data','routeDate'],
+        ['Symbol ekipy','crewSymbol']];
+      content+='<h3>Zmiany w trasie</h3><div class="pl-route-audit-diff">';
+      let total=0;
+      for(const [label,key] of descriptions){
+        if(String(prev[key]??'')!==String(next[key]??'')){
+          total++;
+          content+='<div><strong>'+html(label)+'</strong><span>'+
+            html(prev[key]||'—')+' → '+html(next[key]||'—')+'</span></div>';
+        }
+      }
+      const oldLines=prev.lines||[],newLines=next.lines||[];
+      for(let index=0;index<Math.max(oldLines.length,newLines.length);index++){
+        const a=oldLines[index],b=newLines[index];
+        const describe=x=>x?(x.partCode?x.partCode+' / ':'')+
+          (x.partName||'Część')+' × '+x.quantity:'—';
+        if(describe(a)!==describe(b)){
+          total++;
+          content+='<div><strong>Pozycja '+(index+1)+'</strong><span>'+
+            html(describe(a))+' → '+html(describe(b))+'</span></div>';
+        }
+      }
+      if(!total)content+='<div>Potwierdzono zapis bez zmian w pozycjach.</div>';
+      content+='</div>';
+    }
+    byId('plRouteAuditContent').innerHTML=content;
+    const dialog=byId('plRouteAuditDialog');
+    if(dialog.open)dialog.close();
+    dialog.showModal();
   }
   let viewedDocumentUrl=null;
   let photoLoadId=0;
@@ -922,6 +1074,17 @@
     clearPhoto();
     if(!busy)errorMessage();
   });
+  byId('plRouteExplainForm').addEventListener('submit',submitDiscrepancyExplanation);
+  byId('plRouteExplainClose').addEventListener('click',()=>{
+    if(!explainSaving)byId('plRouteExplainDialog').close();
+  });
+  byId('plRouteExplainCancel').addEventListener('click',()=>{
+    if(!explainSaving)byId('plRouteExplainDialog').close();
+  });
+  byId('plRouteExplainDialog').addEventListener('cancel',event=>{
+    if(explainSaving)event.preventDefault();
+  });
+  byId('plRouteAuditClose').addEventListener('click',()=>byId('plRouteAuditDialog').close());
   byId('plRouteDocumentClose').addEventListener('click',()=>
     byId('plRouteDocumentDialog').close());
   byId('plRouteDocumentDialog').addEventListener('close',()=>{
@@ -933,6 +1096,10 @@
       byId('plRouteDocumentDialog').close();
   });
   byId('plRoutesTable').addEventListener('click',e=>{
+    const auditButton=e.target.closest('[data-pl-route-audit]');
+    if(auditButton){openRouteAudit(auditButton);return;}
+    const explainButton=e.target.closest('[data-pl-route-explain]');
+    if(explainButton){openDiscrepancyExplanation(explainButton);return;}
     const editButton=e.target.closest('[data-pl-route-edit]');
     if(editButton){
       editRoute(editButton);
