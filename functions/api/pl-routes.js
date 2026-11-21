@@ -3,6 +3,10 @@ import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worke
 import {verifyRememberSession} from '../../lib/pl-office-remember.js';
 
 const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
+// TEMPORARY: true during initial presentation-data entry.
+// After Admin uses "Wyczyść trasy", switch this ONE value to false.
+// The route schema, form and normal D1 writes remain unchanged.
+const ROUTE_PRESENTATION_MODE=true;
 const send=(message,status=400)=>workerJson({ok:false,error:message},status);
 
 async function authorize(request,env,write=false){
@@ -106,9 +110,8 @@ function parseRoute(body){
        !Number.isSafeInteger(quantity)||quantity<1||quantity>999999)return null;
     lines.push({partCode,partName,quantity});
   }
-  // During the presentation-only phase every newly added route is tagged automatically.
-  // The temporary presentation workflow can be retired after the agreed cleanup.
-  return {routeNumber,routeDate,crewSymbol,lines,isPresentation:true};
+  return {routeNumber,routeDate,crewSymbol,lines,
+    isPresentation:ROUTE_PRESENTATION_MODE};
 }
 export async function onRequestGet({request,env}){
   const auth=await authorize(request,env);
@@ -116,7 +119,7 @@ export async function onRequestGet({request,env}){
   const url=new URL(request.url);
   try{
     if(!await exists(env.DB,'pl_routes'))
-      return workerJson({ok:true,routes:[],storageReady:false});
+      return workerJson({ok:true,routes:[],storageReady:false,presentationMode:ROUTE_PRESENTATION_MODE});
     const presentationColumn=await hasPresentationFlag(env.DB);
     const flag= presentationColumn?'is_presentation AS isPresentation':'0 AS isPresentation';
     const id=url.searchParams.get('id');
@@ -142,7 +145,7 @@ export async function onRequestGet({request,env}){
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
       'GROUP BY r.id ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200'
     ).all()).results||[];
-    return workerJson({ok:true,routes,storageReady:true});
+    return workerJson({ok:true,routes,storageReady:true,presentationMode:ROUTE_PRESENTATION_MODE});
   }catch(e){
     console.error('PL routes list failed',e?.name||'Error');
     return send('Nie udało się odczytać tras z D1.',503);
@@ -162,6 +165,7 @@ export async function onRequestPost({request,env}){
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
   if(body?.action==='deletePresentation'){
+    if(!ROUTE_PRESENTATION_MODE)return send('Tryb wprowadzania tras prezentacyjnych jest wyłączony.',403);
     // Cleanup is deliberately separate from ordinary route creation.
     // Never run it for a non-Admin session or without a fresh D1 PIN check.
     if(auth.user.role!=='ADMIN')return send('Tylko administrator może usuwać trasy prezentacyjne.',403);
