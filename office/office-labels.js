@@ -96,9 +96,17 @@
     notice();
     try{
       const url='/api/office-labels?warehouse='+encodeURIComponent(warehouse);
-      const response=await fetch(url,{credentials:'same-origin',cache:'no-store'});
-      const json=await response.json().catch(()=>({}));
-      if(!response.ok||!json.ok)throw Error(json.error||'Nie można pobrać listy części.');
+      const fetchList=async()=>{
+        const response=await fetch(url,{credentials:'same-origin',cache:'no-store'});
+        const json=await response.json().catch(()=>({}));
+        if(!response.ok||!json.ok)
+          throw Error(json.error||'Nie można pobrać listy części.');
+        window.GPBSOfficeCache?.markRead?.();
+        return json;
+      };
+      const json=window.GPBSOfficeCache?.read
+        ?await window.GPBSOfficeCache.read('labels:'+warehouse,fetchList)
+        :await fetchList();
       if(request!==model.request||model.warehouse!==warehouse)return;
       model.parts=json.parts||[];
       for(const id of model.queue.keys())if(!model.parts.some(p=>p.id===id))model.queue.delete(id);
