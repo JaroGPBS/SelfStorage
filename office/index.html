@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=168"></script>
-  <script defer src="./pl-routes.js?v=25"></script>
+  <script defer src="./pl-routes.js?v=26"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -527,6 +527,17 @@
     <button type="button" class="photo-viewer-close" id="photoViewerClose" data-photo-close="1" aria-label="Zamknij zdjęcie">×</button>
     <img id="photoViewerImage" alt="Antena meduza — powiększone zdjęcie">
   </div>
+  <dialog id="plRouteConfirmDialog" class="pl-route-small-dialog pl-route-confirm-dialog"
+          aria-labelledby="plRouteConfirmTitle" aria-describedby="plRouteConfirmMessage">
+    <div class="pl-route-small-head">
+      <strong id="plRouteConfirmTitle">GPBS Storage</strong>
+    </div>
+    <div class="pl-route-confirm-message" id="plRouteConfirmMessage"></div>
+    <div class="pl-route-small-actions">
+      <button type="button" id="plRouteConfirmCancel" class="btn outline" autofocus>Anuluj</button>
+      <button type="button" id="plRouteConfirmApprove" class="btn dark">Zatwierdź</button>
+    </div>
+  </dialog>
   <dialog id="plRouteExplainDialog" class="pl-route-small-dialog" aria-labelledby="plRouteExplainTitle">
     <form id="plRouteExplainForm">
       <div class="pl-route-small-head">
