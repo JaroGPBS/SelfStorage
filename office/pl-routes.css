@@ -574,6 +574,18 @@
   .pl-route-export-dialog .pl-route-small-actions button{min-width:0;flex:1}
 }
 
+/* Mandatory return-approval note, recorded with the approving user and time. */
+.pl-route-return-approval-dialog{width:min(94vw,520px);max-width:520px}
+.pl-route-return-approval-description{
+  margin:0;white-space:pre-line;overflow-wrap:anywhere;
+  font-size:12px;line-height:1.5;color:#526477;
+}
+.pl-route-return-approval-dialog .pl-route-comment-label{margin-top:14px}
+.pl-route-return-approval-dialog textarea{width:100%;box-sizing:border-box}
+.pl-route-return-approval-dialog textarea:invalid:not(:placeholder-shown){
+  border-color:#b94c54;
+}
+
 /* Separate return acknowledgement, only for non-zero returns. */
 .pl-route-return-approve-button{
   display:inline-flex;align-items:center;justify-content:center;
