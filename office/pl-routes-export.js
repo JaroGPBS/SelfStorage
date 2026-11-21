@@ -156,6 +156,53 @@
     return '<div class="report-item"><span class="report-item-label">'+safe(label)+'</span>'+
       '<span class="report-item-value">'+safe(human(value))+'</span></div>';
   }
+  async function getBalance(){
+    const response=await fetch('/api/pl-route-balance',{
+      credentials:'same-origin',cache:'no-store'
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok||!data?.ok)
+      throw Error(data?.error||'Nie udało się pobrać bilansu części.');
+    return data;
+  }
+  function balanceCard(data){
+    const period=data.period||{},parts=data.parts||[];
+    const week='Tydzień '+human(period.week)+' / '+human(period.year);
+    const number=value=>value==null?'—':Number(value);
+    const columns=[
+      ['Indeks SAP',p=>p.sap||'—'],
+      ['Nazwa części',p=>p.name||'—'],
+      ['Ilość pobrana',p=>number(p.issued)],
+      ['Ilość wykorzystana',p=>number(p.used)],
+      ['Ilość zwrócona',p=>number(p.returned)],
+      ['Stan Tychy',p=>number(p.warehouse)],
+      ['W trasach · '+week,p=>number(p.inRoute)]
+    ];
+    return '<section class="route-sheet balance-route-sheet">'+
+      '<div class="report-head"><div><div class="report-logo">GPBS STORAGE</div>'+
+      '<h1 class="report-name">Bilans części – Trasy PL</h1>'+
+      '<div class="report-subhead">Wartości z D1 · bez zmiany stanów magazynowych</div></div>'+
+      '<div><div class="report-week">'+safe(week)+'</div>'+
+      '<div class="report-year">Bieżący tydzień poza bilansem</div></div></div>'+
+      '<div class="report-meta">'+
+      itemField('Od pierwszego dokumentu',polishDate(period.firstDocumentDate))+
+      itemField('Bilans zamknięty na dzień',polishDate(period.closedThrough))+
+      itemField('Stan Tychy','Do powiązania z magazynem')+
+      '</div>'+
+      '<table class="report-table balance-report-table"><thead><tr>'+
+      columns.map(c=>'<th>'+safe(c[0])+'</th>').join('')+
+      '</tr></thead><tbody>'+
+      parts.map(part=>'<tr>'+columns.map(c=>'<td>'+safe(c[1](part))+'</td>').join('')+
+        '</tr>').join('')+'</tbody></table>'+
+      '<div class="report-summary"><span>Liczba części: '+parts.length+'</span>'+
+      '<span>Bieżący tydzień jest oddzielony od bilansu zakończonych tygodni.</span></div>'+
+      (Number(period.unsettledHistoricalUnits)>0
+        ?'<p class="report-warning">Starsze nierozliczone pozycje: '+
+          safe(period.unsettledHistoricalUnits)+' szt. Brak potwierdzenia nie oznacza zużycia.</p>'
+        :'')+
+      '<div class="report-foot"><span>GPBS Storage · Bilans części</span>'+
+      '<span>— oznacza brak danych, a nie zero sztuk</span></div></section>';
+  }
   const encoder=new TextEncoder();
   const bytes=text=>encoder.encode(String(text));
   const LE16=n=>[n&255,n>>>8&255];
@@ -257,6 +304,9 @@
         .replace(/[:\\/?*\[\]]/g,'').slice(0,31),
       xml:excelSheet(excelRows(item))
     }));
+    return workbookBlob(sheets);
+  }
+  function workbookBlob(sheets){
     const workbook='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
@@ -289,8 +339,8 @@
       ...sheets.map((sheet,i)=>['xl/worksheets/sheet'+(i+1)+'.xml',sheet.xml])
     ]);
   }
-  function saveXlsx(items,name){
-    const blob=xlsxBlob(items),url=URL.createObjectURL(blob);
+  function saveBlob(blob,name){
+    const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
     a.download=(String(name||'GPBS-Trasy').replace(/[\\/:*?"<>|]/g,'_')||'GPBS-Trasy')+'.xlsx';
@@ -298,10 +348,37 @@
     document.body.append(a);
     a.click();
     a.remove();
-    // Let the browser own the download before releasing its blob URL.
     setTimeout(()=>URL.revokeObjectURL(url),60000);
   }
+  function saveXlsx(items,name){saveBlob(xlsxBlob(items),name);}
+  function balanceXlsxBlob(data){
+    const period=data.period||{},parts=data.parts||[];
+    const columns=['Indeks SAP','Nazwa części','Ilość pobrana',
+      'Ilość wykorzystana','Ilość zwrócona','Stan Tychy',
+      'W trasach · tydzień '+human(period.week)+' / '+human(period.year)];
+    const rows=[
+      ['GPBS STORAGE – BILANS CZĘŚCI / TRASY PL'],
+      ['Od pierwszego dokumentu',polishDate(period.firstDocumentDate),
+        'Bilans zamknięty',polishDate(period.closedThrough)],
+      ['Bieżący tydzień',human(period.week),'Rok',human(period.year),
+        'Ostatnia kolumna nie wchodzi do zamkniętego bilansu'],
+      ['Stan Tychy: brak powiązania z magazynem'],
+      [''],
+      columns
+    ];
+    for(const p of parts)rows.push([
+      p.sap||'',p.name||'',p.issued??null,p.used??null,p.returned??null,
+      p.warehouse??null,p.inRoute??null
+    ]);
+    return workbookBlob([{name:'Bilans części',xml:excelSheet(rows)}]);
+  }
+  function saveBalanceXlsx(data){
+    const period=data.period||{};
+    saveBlob(balanceXlsxBlob(data),'GPBS-Bilans-czesci-do-'+
+      (period.closedThrough||'ostatniego-tygodnia'));
+  }
   window.PlRouteExport=Object.freeze({
-    getRoute,getRoutes,reportCard,isoWeek,xlsxBlob,saveXlsx
+    getRoute,getRoutes,reportCard,isoWeek,xlsxBlob,saveXlsx,
+    getBalance,balanceCard,balanceXlsxBlob,saveBalanceXlsx
   });
 })();
