@@ -241,8 +241,10 @@
       </div>
 
       <div id="crewRouteScreen" hidden>
-        <button id="plCrewRoutesBack" class="text-button back-button" type="button">← Wróć</button>
-        <h2 id="plCrewRouteTitle" class="section-title">Trasy</h2>
+        <div class="crew-route-navigation">
+          <button id="plCrewRoutesBack" class="text-button back-button crew-route-back" type="button">← Wróć</button>
+          <h2 id="plCrewRouteTitle" class="section-title">Trasy</h2>
+        </div>
         <p id="plCrewRoutesError" class="error" role="alert" hidden></p>
         <div id="plCrewHistorySearchWrap" hidden>
           <label class="visually-hidden" for="plCrewHistorySearch">Szukaj trasy</label>
@@ -261,11 +263,26 @@
             <button id="plCrewConfirmPickup" class="btn btn-primary" type="submit">Potwierdź odbiór części</button>
           </form>
           <form id="plCrewReportForm" hidden>
-            <div id="plCrewReportLines" class="crew-report-lines"></div>
-            <label class="crew-comment-label" for="plCrewReportComment">Komentarz ekipy (opcjonalnie)</label>
-            <textarea id="plCrewReportComment" maxlength="1000" rows="3"
-              placeholder="Komentarz do rozliczenia trasy"></textarea>
-            <button id="plCrewSubmitReport" class="btn btn-primary" type="submit">Zdaj raport z wykorzystanych części</button>
+            <div class="crew-report-heading">
+              <strong>RAPORT KOŃCOWY ZDAWCZY</strong>
+              <small>Wpisz tylko ilości zwrócone. Wykorzystane części zostaną obliczone automatycznie.</small>
+            </div>
+            <div class="crew-report-scroll">
+              <div class="crew-report-column-head" aria-hidden="true">
+                <span>CZĘŚĆ / ODEBRANO</span>
+                <span>WYKORZYSTANO</span>
+                <span>ZWRÓCONO</span>
+              </div>
+              <div id="plCrewReportLines" class="crew-report-lines"></div>
+              <div class="crew-report-comment">
+                <label class="crew-comment-label" for="plCrewReportComment">Komentarz ekipy (opcjonalnie)</label>
+                <textarea id="plCrewReportComment" maxlength="1000" rows="2"
+                  placeholder="Komentarz do rozliczenia trasy"></textarea>
+              </div>
+            </div>
+            <div class="crew-report-submit-bar">
+              <button id="plCrewSubmitReport" class="btn btn-primary" type="submit">Zdaj raport z wykorzystanych części</button>
+            </div>
           </form>
           <section id="plCrewRouteReadOnly" hidden>
             <div id="plCrewRouteSummary" class="crew-pickup-lines"></div>
