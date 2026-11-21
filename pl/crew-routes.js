@@ -6,6 +6,7 @@
   const activeLabel=get('plCrewActiveRouteLabel');
   const historyButton=get('plCrewRoutesButton');
   const title=get('plCrewRouteTitle');
+  const routeScreen=get('crewRouteScreen');
   const errorNode=get('plCrewRoutesError');
   const back=get('plCrewRoutesBack');
   const list=get('plCrewRoutesList');
@@ -91,6 +92,8 @@
     hasMore=false;nextOffset=0;screen='home';busy=false;
     error();list.replaceChildren();pickupLines.replaceChildren();
     reportLines.replaceChildren();summary.replaceChildren();comments.replaceChildren();
+    routeScreen.classList.remove('is-report');
+    routeMeta.hidden=false;
     detail.hidden=true;pickupForm.hidden=true;reportForm.hidden=true;readOnly.hidden=true;
     searchWrap.hidden=true;more.hidden=true;
     activeButton.hidden=true;
@@ -123,6 +126,7 @@
   }
   function showHistoryList(){
     screen='history';current=null;detail.hidden=true;searchWrap.hidden=false;
+    routeScreen.classList.remove('is-report');routeMeta.hidden=false;
     list.hidden=false;title.textContent='Trasy';error();
     const filter=searchInput.value.trim().toLocaleUpperCase('pl');
     // The API filters across all saved weeks, not only already loaded pages.
@@ -183,6 +187,7 @@
     return input;
   }
   function showPickup(lines){
+    routeScreen.classList.remove('is-report');routeMeta.hidden=false;
     pickupLines.replaceChildren();
     pickupComment.value='';
     for(const line of lines){
@@ -199,42 +204,64 @@
   function showReport(lines){
     reportLines.replaceChildren();
     reportComment.value='';
+    routeScreen.classList.add('is-report');
+    routeMeta.hidden=true;
     for(const line of lines){
       const accepted=line.verifiedQuantity??line.confirmedQuantity;
       const actual=Number(accepted);
+      const partName=line.partName||line.partCode||'Część';
       const row=el('div','crew-report-line');
-      const head=lineHeader(line);
-      head.append(el('small','','Odebrano: '+actual+' szt.'));
-      const grid=el('div','crew-report-fields');
-      const usedLabel=el('label','','Wykorzystano');
-      const used=quantityInput(line.returnedQuantity===null?actual:
-        Math.max(0,actual-Number(line.returnedQuantity)),
-        'Wykorzystano: '+(line.partName||line.partCode),line.position,'used');
-      const returnedLabel=el('label','','Zwrócono');
+      const head=el('div','crew-report-part');
+      head.append(el('strong','',partName),
+        el('small','','Odebrano: '+actual+' szt.'));
+      const code=String(line.partCode||'').trim();
+      if(code&&code!==partName)head.append(el('small','crew-report-part-code',code));
+
+      // Used quantity is read-only and always follows the entered return count.
+      const used=el('output','crew-report-used',String(actual));
+      used.setAttribute('aria-label','Wykorzystano: '+partName);
       const returned=quantityInput(line.returnedQuantity??0,
-        'Zwrócono: '+(line.partName||line.partCode),line.position,'returned');
-      usedLabel.append(used);returnedLabel.append(returned);
-      grid.append(usedLabel,returnedLabel);
+        'Zwrócono: '+partName,line.position,'returned');
+      returned.max=String(actual);
+      returned.classList.add('crew-report-returned');
+
       const placeLabel=el('label','crew-report-place','Miejsce zwrotu');
-      const place=el('input','crew-place-input');
-      place.type='text';place.maxLength=90;place.placeholder='Np. Magazyn Tychy';
-      place.autocomplete='off';place.value=line.returnLocation||'';
+      const place=el('select','crew-place-input');
+      for(const [value,label] of [
+        ['','Wybierz miejsce zwrotu'],
+        ['Magazyn Tychy','Magazyn Tychy'],
+        ['InPost','InPost']
+      ]){
+        const option=el('option','',label);
+        option.value=value;place.append(option);
+      }
+      place.value=line.returnLocation||'';
       place.dataset.position=String(line.position);
       place.dataset.field='returnLocation';
-      place.setAttribute('aria-label','Miejsce zwrotu: '+(line.partName||line.partCode));
+      place.setAttribute('aria-label','Miejsce zwrotu: '+partName);
       placeLabel.append(place);
-      placeLabel.hidden=Number(returned.value)===0;
-      returned.addEventListener('input',()=>{
-        placeLabel.hidden=!Number(returned.value);
-        if(!Number(returned.value))place.value='';
-      });
-      row.append(head,grid,placeLabel);
+
+      function recalculate(){
+        const raw=returned.value.trim();
+        const count=raw===''?NaN:Number(raw);
+        const valid=Number.isSafeInteger(count)&&count>=0&&count<=actual;
+        returned.setCustomValidity(valid?'':'Zwrócono: wpisz liczbę od 0 do '+actual+'.');
+        used.textContent=valid?String(actual-count):'—';
+        used.classList.toggle('crew-report-invalid',!valid);
+        placeLabel.hidden=!valid||count===0;
+        place.required=valid&&count>0;
+        if(valid&&count===0)place.value='';
+      }
+      returned.addEventListener('input',recalculate);
+      recalculate();
+      row.append(head,used,returned,placeLabel);
       reportLines.append(row);
     }
     reportForm.hidden=false;
     pickupForm.hidden=true;readOnly.hidden=true;
   }
   function showReadOnly(data){
+    routeScreen.classList.remove('is-report');routeMeta.hidden=false;
     summary.replaceChildren();comments.replaceChildren();
     const r=data.route;
     for(const line of data.lines||[]){
@@ -277,6 +304,7 @@
     const token=++sequence,id=user.id;
     from=origin;
     screen='detail';current=null;error();
+    routeScreen.classList.remove('is-report');routeMeta.hidden=false;
     list.hidden=true;searchWrap.hidden=true;more.hidden=true;
     detail.hidden=true;
     title.textContent='Trasa';
@@ -319,6 +347,7 @@
       return;
     }
     screen='home';current=null;sequence++;
+    routeScreen.classList.remove('is-report');routeMeta.hidden=false;
     hideScreen?.();
   }
   function payload(formFields){
@@ -375,10 +404,12 @@
     for(const line of lines){
       const source=current.lines.find(x=>Number(x.position)===line.position);
       const received=Number(source?.verifiedQuantity??source?.confirmedQuantity);
-      if(!source||!cleanNumber(received)||line.used+line.returned!==received){
-        error('W każdej pozycji wykorzystane + zwrócone musi równać się ilości odebranej.');
+      if(!source||!cleanNumber(received)||!cleanNumber(line.returned)||
+          line.returned>received){
+        error('Zwrócona ilość nie może przekraczać liczby odebranych sztuk.');
         return;
       }
+      line.used=received-line.returned;
       if(line.returned>0&&!line.returnLocation){
         error('Podaj miejsce zwrotu dla każdej zwracanej części.');
         return;
