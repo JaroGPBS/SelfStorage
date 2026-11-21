@@ -569,7 +569,7 @@
       ?new Intl.NumberFormat('pl-PL').format(amount):'—';
   }
   function balanceDate(value){
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(value||'')))return '—';
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||'')))return '—';
     const [year,month,day]=value.split('-');
     return day+'.'+month+'.'+year;
   }
