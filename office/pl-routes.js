@@ -577,27 +577,20 @@
     );
     const cols=history
       ?'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
-       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Zakończono</th>'+
+       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Po weryfikacji</th><th>Zakończono</th>'+
        '<th>Zwrócono</th><th>Miejsce zwrotu</th>'
       :'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
-       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Zakończono</th>';
+       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Po weryfikacji</th><th>Zakończono</th>';
     const rows=lines.map(line=>{
       const mismatch=line.confirmedQuantity!=null&&line.verifiedQuantity==null&&
         Number(line.confirmedQuantity)!==Number(line.quantity);
-      const verified=line.verifiedQuantity!=null;
-      const reported=line.confirmedQuantity;
-      const finalCount=verified?line.verifiedQuantity:reported;
-      const verifiedNote=verified
-        ?'<small class="pl-route-original-quantity">'+
-          (Number(finalCount)===Number(reported)?'po weryfikacji':
-            'zgłoszono '+html(reported)+' · po weryfikacji')+'</small>'
-        :'';
       let row='<tr'+(mismatch?' class="pl-route-detail-mismatch"':'')+'>'+
         '<td>'+html(line.position)+'</td>'+
         '<td>'+html(line.partCode||'—')+'</td>'+
         '<td>'+html(line.partName||'—')+'</td>'+
         '<td>'+html(line.quantity)+'</td>'+
-        '<td>'+routeQuantity(finalCount)+verifiedNote+'</td>'+
+        '<td>'+routeQuantity(line.confirmedQuantity)+'</td>'+
+        '<td>'+routeQuantity(line.verifiedQuantity)+'</td>'+
         '<td>—</td>';
       if(history){
         row+='<td>'+routeQuantity(line.returnedQuantity)+'</td>'+
@@ -636,6 +629,14 @@
       ?'<button type="button" class="pl-route-explain-button" '+
         'data-pl-route-explain="'+html(route.id)+'">Wyjaśnij niezgodność</button>'
       :'';
+    const showDemoDelete=role==='ADMIN'&&
+      Number(route.isPresentation)===1&&
+      route.id==='PL-ROUTE-48de0000-0000-4000-8000-000000000003'&&
+      route.routeNumber==='48PL-03';
+    const deleteDemoButton=showDemoDelete
+      ?'<button type="button" class="pl-route-delete-single-button" '+
+        'data-pl-route-delete-demo03="'+html(route.id)+'">Usuń demo 48PL-03</button>'
+      :'';
     const audit=(result.audit||[]).map(event=>{
       routeAuditCache.set(event.id,event);
       return '<button type="button" class="pl-route-audit-event" '+
@@ -661,7 +662,7 @@
           (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
         '</div>'+
         '<div class="pl-route-detail-side">'+
-          '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+'</div>'+
+          '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+deleteDemoButton+'</div>'+
           (audit?'<div class="pl-route-audit-history">'+audit+'</div>':'')+
         '</div>'+
       '</div>'+
