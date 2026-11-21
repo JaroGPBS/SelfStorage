@@ -510,31 +510,32 @@ export async function onRequestPost({request,env}){
         return send('Trasa została już potwierdzona lub zakończona. Edycja jest zablokowana.',409);
       if(Number(current.revision)!==revision)
         return send('Trasa została zmieniona w innym oknie. Otwórz edycję ponownie.',409);
+      const operationToken=crypto.randomUUID();
       const before=(await env.DB.prepare(
         'SELECT position,part_code AS partCode,part_name AS partName,quantity '+
         'FROM pl_route_lines WHERE route_id=? ORDER BY position'
       ).bind(id).all()).results||[];
       const predicate=await routeEditablePredicate(env.DB,'pl_routes');
-      const guard='EXISTS (SELECT 1 FROM pl_routes WHERE id=? AND edit_revision=? AND '+predicate+')';
+      const guard='EXISTS (SELECT 1 FROM pl_routes WHERE id=? AND edit_revision=? AND edit_token=? AND '+predicate+')';
       const statements=[
         env.DB.prepare(
           'UPDATE pl_routes SET route_number=?,route_date=?,crew_symbol=?,'+
-          'edit_revision=edit_revision+1 '+
+          'edit_revision=edit_revision+1,edit_token=? '+
           'WHERE id=? AND edit_revision=? AND '+predicate
-        ).bind(updated.routeNumber,updated.routeDate,updated.crewSymbol,id,revision),
+        ).bind(updated.routeNumber,updated.routeDate,updated.crewSymbol,operationToken,id,revision),
         env.DB.prepare(
           'DELETE FROM pl_route_lines WHERE route_id=? AND '+guard
-        ).bind(id,id,revision+1)
+        ).bind(id,id,revision+1,operationToken)
       ];
       updated.lines.forEach((line,index)=>{
         statements.push(env.DB.prepare(
           'INSERT INTO pl_route_lines (route_id,position,part_code,part_name,quantity) '+
           'SELECT ?,?,?,?,? WHERE '+guard
-        ).bind(id,index+1,line.partCode,line.partName,line.quantity,id,revision+1));
+        ).bind(id,index+1,line.partCode,line.partName,line.quantity,id,revision+1,operationToken));
       });
       statements.push(auditEntry(env.DB,{
         id:crypto.randomUUID(),routeId:id,action:'EDIT',
-        actorId:auth.user.id,revision:revision+1,
+        actorId:auth.user.id,revision:revision+1,token:operationToken,
         details:{
           before:{routeNumber:current.routeNumber,routeDate:current.routeDate,
             crewSymbol:current.crewSymbol,lines:before},
@@ -589,6 +590,7 @@ export async function onRequestPost({request,env}){
       if(corrections.some(x=>!wrongPositions.has(x.position)))
         return send('Nie można korygować części bez niezgodności.',400);
       const correctionsByPosition=new Map(corrections.map(x=>[x.position,x.quantity]));
+      const operationToken=crypto.randomUUID();
       const corrected=wrong.map(line=>({
         position:Number(line.position),partName:line.partName,
         before:Number(line.quantity),confirmed:Number(line.confirmedQuantity),
@@ -599,23 +601,23 @@ export async function onRequestPost({request,env}){
       const newStatus=!discrepanciesRemain&&!unconfirmed?'CONFIRMED':'REVIEW_EXPLAINED';
       const statements=[
         env.DB.prepare(
-          "UPDATE pl_routes SET status=?,edit_revision=edit_revision+1 "+
+          "UPDATE pl_routes SET status=?,edit_revision=edit_revision+1,edit_token=? "+
           "WHERE id=? AND edit_revision=? AND status IN ('REVIEW_REQUIRED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION') "+
           'AND EXISTS (SELECT 1 FROM pl_route_lines l WHERE l.route_id=pl_routes.id '+
           'AND l.confirmed_quantity IS NOT NULL AND l.confirmed_quantity<>l.quantity)'
-        ).bind(newStatus,id,revision)
+        ).bind(newStatus,operationToken,id,revision)
       ];
       for(const line of corrected){
         if(line.after===line.before)continue;
         statements.push(env.DB.prepare(
           'UPDATE pl_route_lines SET quantity=? WHERE route_id=? AND position=? '+
           'AND quantity=? AND confirmed_quantity=? '+
-          'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? AND r.edit_revision=? )'
-        ).bind(line.after,id,line.position,line.before,line.confirmed,id,revision+1));
+          'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? AND r.edit_revision=? AND r.edit_token=?)'
+        ).bind(line.after,id,line.position,line.before,line.confirmed,id,revision+1,operationToken));
       }
       statements.push(auditEntry(env.DB,{
         id:crypto.randomUUID(),routeId:id,action:'EXPLAIN',
-        actorId:auth.user.id,revision:revision+1,
+        actorId:auth.user.id,revision:revision+1,token:operationToken,
         details:{comment,positions:corrected,statusBefore:route.status,statusAfter:newStatus}
       }));
       const result=await env.DB.batch(statements);
