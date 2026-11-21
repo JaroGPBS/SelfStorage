@@ -415,17 +415,28 @@
     return Number.isNaN(date.getTime())?'—':isoWeekNumber(date);
   }
   function statusInfo(route){
-    if(route.status==='REVIEW_EXPLAINED')
-      return {label:Number(route.discrepancyCount)>0?'Do weryfikacji – niezgodność':'Niezgodność wyjaśniona',
-        className:Number(route.discrepancyCount)>0?'is-discrepancy':'is-explained'};
-    if(Number(route.discrepancyCount)>0||
-       ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status))
+    const discrepancy=Number(route.discrepancyCount)>0||
+      ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
+    if(discrepancy)
       return {label:'Do weryfikacji – niezgodność',className:'is-discrepancy'};
     if(route.status==='COMPLETED'&&Number(route.unconfirmedCount)>0)
       return {label:'Do weryfikacji',className:'is-discrepancy'};
-    if(route.status==='COMPLETED')return {label:'Trasa zakończona',className:'is-completed'};
-    if(route.status==='CONFIRMED')return {label:'Potwierdzona',className:'is-confirmed'};
-    return {label:'Oczekuje na potwierdzenie',className:''};
+    let label='Oczekuje na potwierdzenie',className='';
+    if(route.status==='COMPLETED'){
+      label='Trasa zakończona';
+      className='is-completed';
+    }else if(route.status==='CONFIRMED'||route.status==='REVIEW_EXPLAINED'&&
+             Number(route.unconfirmedCount)===0){
+      label='Potwierdzona';
+      className='is-confirmed';
+    }
+    const hasHistory=Number(route.hadDiscrepancy)>0;
+    return {
+      label,className,
+      extraLabel:hasHistory
+        ?(Number(route.hadVerification)>0?'Wyjaśniono':'Była niezgodność')
+        :''
+    };
   }
   function routeWeekYear(dateText){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dateText||'')))return null;
@@ -462,7 +473,12 @@
         '<td>'+html(item.crewSymbol)+'</td>'+
         '<td>'+html(item.routeDate)+'</td>'+
         '<td>'+html(item.positions)+'</td>'+
-        '<td><span class="pl-route-status-badge '+status.className+'">'+status.label+'</span></td>'+
+        '<td><span class="pl-route-status-group">'+
+          '<span class="pl-route-status-badge '+status.className+'">'+html(status.label)+'</span>'+
+          (status.extraLabel
+            ?'<span class="pl-route-status-badge is-history-flag">'+html(status.extraLabel)+'</span>'
+            :'')+
+          '</span></td>'+
         '<td>'+html(item.enteredBy||'—')+'</td>'+
         '<td><button type="button" class="pl-route-details-button" data-pl-route-details="'+
         html(item.id)+'">Szczegóły</button></td></tr>';
@@ -530,7 +546,7 @@
         history||role!=='ADMIN'||result.presentationMode!==true);
       const showDemo=!history&&role==='ADMIN'&&result.presentationMode===true;
       const demoCount=Number(result.demoWeek48Count||0);
-      byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount>=8);
+      byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount>=7);
       byId('plRoutesDeleteDemo48').classList.toggle('hidden',!showDemo||demoCount===0);
       routeAuditCache.clear();
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
