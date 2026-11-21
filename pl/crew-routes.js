@@ -23,6 +23,9 @@
   const reportLines=get('plCrewReportLines');
   const reportComment=get('plCrewReportComment');
   const reportButton=get('plCrewSubmitReport');
+  const reportConfirmDialog=get('plCrewReportConfirmDialog');
+  const reportConfirmCancel=get('plCrewReportConfirmCancel');
+  const reportConfirmApprove=get('plCrewReportConfirmApprove');
   const readOnly=get('plCrewRouteReadOnly');
   const summary=get('plCrewRouteSummary');
   const comments=get('plCrewRouteComments');
@@ -411,6 +414,26 @@
     }catch(e){error(e.message);}
     finally{busy=false;pickupButton.disabled=false;}
   }
+  let reportConfirmResolve=null;
+  function finishReportConfirmation(approved){
+    const resolve=reportConfirmResolve;
+    if(!resolve)return;
+    reportConfirmResolve=null;
+    if(reportConfirmDialog.open)reportConfirmDialog.close();
+    resolve(Boolean(approved));
+  }
+  function confirmReportSubmission(){
+    if(reportConfirmResolve)return Promise.resolve(false);
+    return new Promise(resolve=>{
+      reportConfirmResolve=resolve;
+      try{
+        reportConfirmDialog.showModal();
+        reportConfirmCancel.focus();
+      }catch{
+        finishReportConfirmation(false);
+      }
+    });
+  }
   async function submitReport(event){
     event.preventDefault();
     if(busy||!current?.route?.pendingReport||!user)return;
@@ -434,7 +457,17 @@
       }
       if(line.returned===0)line.returnLocation='';
     }
-    busy=true;reportButton.disabled=true;error();
+    reportButton.disabled=true;
+    const confirmed=await confirmReportSubmission();
+    if(!confirmed){
+      reportButton.disabled=false;
+      return;
+    }
+    if(busy||!current?.route?.pendingReport||!user){
+      reportButton.disabled=false;
+      return;
+    }
+    busy=true;error();
     try{
       const route=current.route;
       await request('POST',path,{
@@ -457,6 +490,13 @@
   });
   pickupForm.addEventListener('submit',submitPickup);
   reportForm.addEventListener('submit',submitReport);
+  reportConfirmCancel.addEventListener('click',()=>finishReportConfirmation(false));
+  reportConfirmApprove.addEventListener('click',()=>finishReportConfirmation(true));
+  reportConfirmDialog.addEventListener('cancel',event=>{
+    event.preventDefault();
+    finishReportConfirmation(false);
+  });
+  reportConfirmDialog.addEventListener('close',()=>finishReportConfirmation(false));
   get('plCrewAfterPickupClose').addEventListener('click',()=>dialog.close());
   window.GPBSPlCrewRoutes={refresh,openAction,openHistory,clear,goBack};
 })();
