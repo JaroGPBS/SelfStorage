@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=135">
-  <link rel="stylesheet" href="./pl-routes.css?v=30">
+  <link rel="stylesheet" href="./pl-routes.css?v=31">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=168"></script>
-  <script defer src="./pl-routes.js?v=30"></script>
+  <script defer src="./pl-routes.js?v=31"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -537,6 +537,30 @@
       <button type="button" id="plRouteConfirmCancel" class="btn outline" autofocus>Anuluj</button>
       <button type="button" id="plRouteConfirmApprove" class="btn dark">Zatwierdź</button>
     </div>
+  </dialog>
+  <dialog id="plRouteDeleteDemo03Dialog" class="pl-route-small-dialog pl-route-delete-dialog"
+          aria-labelledby="plRouteDeleteDemo03Title">
+    <form id="plRouteDeleteDemo03Form">
+      <div class="pl-route-small-head">
+        <strong id="plRouteDeleteDemo03Title">GPBS Storage</strong>
+        <button type="button" id="plRouteDeleteDemo03Close" aria-label="Zamknij">×</button>
+      </div>
+      <div class="pl-route-small-body">
+        <p class="pl-route-delete-description"><strong>Usunąć trasę demo 48PL-03?</strong>
+          Zniknie jej lista części i cała historia weryfikacji.
+          Żadna inna trasa ani stany magazynowe nie zostaną zmienione.</p>
+        <label class="pl-route-delete-pin-label" for="plRouteDeleteDemo03Pin">PIN administratora
+          <input id="plRouteDeleteDemo03Pin" type="password" inputmode="numeric"
+                 pattern="[0-9]{4}" minlength="4" maxlength="4"
+                 autocomplete="off" required placeholder="••••">
+        </label>
+        <p id="plRouteDeleteDemo03Error" class="pl-route-explain-error" role="alert" hidden></p>
+      </div>
+      <div class="pl-route-small-actions">
+        <button type="button" id="plRouteDeleteDemo03Cancel" class="btn outline">Anuluj</button>
+        <button type="submit" id="plRouteDeleteDemo03Save" class="btn dark">Usuń 48PL-03</button>
+      </div>
+    </form>
   </dialog>
   <dialog id="plRouteExplainDialog" class="pl-route-small-dialog" aria-labelledby="plRouteExplainTitle">
     <form id="plRouteExplainForm">
