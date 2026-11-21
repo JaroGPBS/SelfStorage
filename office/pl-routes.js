@@ -172,20 +172,45 @@
     if(busy)return;
     byId('plRouteDialog').close();
   }
+  async function validateRoutePhoto(file){
+    // The picker filter alone is not security: verify the actual file
+    // signature and make sure the extension and declared MIME agree.
+    const ext=String(file?.name||'').split('.').pop().toLowerCase();
+    const supported={jpg:'image/jpeg',jpeg:'image/jpeg',jpe:'image/jpeg',
+      png:'image/png',webp:'image/webp',heic:'image/heic',heif:'image/heic'};
+    if(!Object.hasOwn(supported,ext))
+      throw Error('Dozwolone są wyłącznie zdjęcia JPG, PNG, WEBP lub HEIC/HEIF.');
+    if(!Number.isSafeInteger(file.size)||file.size<100||file.size>15*1024*1024)
+      throw Error('Zdjęcie musi mieć od 100 bajtów do 15 MB.');
+    const bytes=new Uint8Array(await file.slice(0,40).arrayBuffer());
+    const four=pos=>String.fromCharCode(...bytes.slice(pos,pos+4));
+    let detected=null;
+    if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)detected='image/jpeg';
+    else if(bytes[0]===137&&four(1).slice(0,3)==='PNG'&&
+      bytes[4]===13&&bytes[5]===10&&bytes[6]===26&&bytes[7]===10)
+      detected='image/png';
+    else if(four(0)==='RIFF'&&four(8)==='WEBP')detected='image/webp';
+    else if(four(4)==='ftyp'&&
+      ['heic','heix','hevc','hevx','heif','heis','hevm','mif1']
+        .includes(four(8)))detected='image/heic';
+    const declared={'image/jpg':'image/jpeg','image/pjpeg':'image/jpeg',
+      'image/heif':'image/heic'}[file.type]||file.type;
+    if(!detected||detected!==supported[ext]||(declared&&declared!==detected))
+      throw Error('Plik nie jest poprawnym zdjęciem lub jego format nie zgadza się z rozszerzeniem.');
+    return detected;
+  }
   async function selectedPhoto(){
     clearPhotoPreview();
     const file=byId('plRoutePhoto').files?.[0];
     if(!file){byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';return;}
-    const validTypes=['image/jpeg','image/png','image/webp','image/heic','image/heif'];
-    const validExtension=/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name||'');
-    if(!validTypes.includes(file.type)&&!(file.type===''&&validExtension)){
+    try{
+      await validateRoutePhoto(file);
+      if(byId('plRoutePhoto').files?.[0]!==file)return;
+    }catch(error){
+      if(byId('plRoutePhoto').files?.[0]!==file)return;
       byId('plRoutePhoto').value='';
-      byId('plRoutePhotoFile').textContent='Nieobsługiwany format. Wybierz JPG, PNG, WEBP lub HEIC.';
-      return;
-    }
-    if(file.size<16||file.size>15*1024*1024){
-      byId('plRoutePhoto').value='';
-      byId('plRoutePhotoFile').textContent='Zdjęcie musi mieć maksymalnie 15 MB.';
+      byId('plRoutePhotoFile').textContent=error.message;
+      errorMessage(error.message);
       return;
     }
     byId('plRoutePhotoFile').textContent='Wybrano: '+file.name+
@@ -231,6 +256,7 @@
     // will use it before archiving the lighter, legible JPEG derivative.
     let bitmap=null,temporaryUrl=null;
     try{
+      await validateRoutePhoto(file);
       if(typeof createImageBitmap==='function'){
         bitmap=await createImageBitmap(file);
       }else{
@@ -244,7 +270,9 @@
       }
       const width=bitmap.width||bitmap.naturalWidth;
       const height=bitmap.height||bitmap.naturalHeight;
-      if(width<250||height<250)throw Error('Zdjęcie jest zbyt małe do archiwizacji.');
+      if(!Number.isSafeInteger(width)||!Number.isSafeInteger(height)||
+         width<250||height<250||width*height>48000000)
+        throw Error('Zdjęcie ma nieprawidłowe wymiary lub przekracza 48 megapikseli.');
       const canvas=document.createElement('canvas');
       const context=canvas.getContext('2d',{alpha:false});
       if(!context)throw Error('Nie można przetworzyć zdjęcia w przeglądarce.');
@@ -258,8 +286,14 @@
         canvas.toBlob(blob=>blob?resolve(blob):reject(Error('Kompresja zdjęcia nie powiodła się.')),
           'image/jpeg',quality);
       });
+      // Prefer a clear 2600px document. Reduce JPEG quality first rather
+      // than aggressively shrinking small print on the route sheet.
+      const target=900*1024;
       let blob=await encode(2600,0.84);
-      if(blob.size>2500000)blob=await encode(2300,0.78);
+      if(blob.size>target)blob=await encode(2600,0.77);
+      if(blob.size>target)blob=await encode(2600,0.70);
+      if(blob.size>1500*1024)blob=await encode(2350,0.75);
+      if(blob.size>2300*1024)blob=await encode(2100,0.72);
       if(blob.size>4*1024*1024)
         throw Error('Zdjęcie po kompresji przekracza 4 MB. Wybierz czytelne zdjęcie dokumentu.');
       return new File([blob],'dokument-trasy.jpg',{type:'image/jpeg'});
@@ -350,10 +384,18 @@
       '<th>Numer tygodnia</th><th>Numer trasy</th><th>Symbol ekipy</th><th>Data</th>'+
       '<th>Pozycje</th><th>Status</th><th>Wprowadził</th><th></th>'+
       '</tr></thead><tbody>';
-    const rows=routes.map(item=>{
+    let previousWeek=null;
+    const rows=routes.map((item,index)=>{
       const status=statusInfo(item);
-      return '<tr'+(status.className==='is-discrepancy'
-        ?' class="pl-route-needs-review"':'')+
+      const weekKey=String(routeWeekYear(item.routeDate))+'-'+
+        String(routeWeekNumber(item.routeDate)).padStart(2,'0');
+      const newWeek=index>0&&weekKey!==previousWeek;
+      previousWeek=weekKey;
+      const rowClasses=[
+        status.className==='is-discrepancy'?'pl-route-needs-review':'',
+        newWeek?'pl-route-week-separator':''
+      ].filter(Boolean);
+      return '<tr'+(rowClasses.length?' class="'+rowClasses.join(' ')+'"':'')+
         '><td><strong>'+html(routeWeekNumber(item.routeDate))+'</strong></td>'+
         '<td><strong>'+html(item.routeNumber)+'</strong>'+
         (Number(item.isPresentation)===1
