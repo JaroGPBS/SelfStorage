@@ -306,6 +306,17 @@
       <button type="button" id="plCrewAfterPickupClose" class="btn btn-primary">OK</button>
     </div>
   </dialog>
+  <dialog id="plCrewReportConfirmDialog" class="inventory-dialog pl-action-confirm-dialog"
+    aria-labelledby="plCrewReportConfirmTitle" aria-describedby="plCrewReportConfirmMessage">
+    <div class="inventory-dialog-inner">
+      <h2 id="plCrewReportConfirmTitle">Zakończenie raportu</h2>
+      <p id="plCrewReportConfirmMessage">Czy na pewno chcesz zakończyć raport i wysłać?</p>
+      <div class="inventory-dialog-actions">
+        <button type="button" id="plCrewReportConfirmCancel" class="btn btn-outline">Nie, wróć</button>
+        <button type="button" id="plCrewReportConfirmApprove" class="btn btn-primary">Tak, wyślij</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Oddzielne pełnoekranowe okno PZ/WZ: bez logo, bez nagłówka magazynu.
        Osobne opcjonalne komentarze są przypisane do PZ i WZ. -->
