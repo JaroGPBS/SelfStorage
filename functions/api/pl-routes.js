@@ -121,6 +121,32 @@ const validDate=value=>{
   const parsed=new Date(value+'T00:00:00Z');
   return !Number.isNaN(parsed.valueOf())&&parsed.toISOString().slice(0,10)===value;
 };
+const polandToday=()=>{
+  // Business rollover: the start of Sunday (00:00 Europe/Warsaw).
+  // No scheduled job is needed; active/history lists are classified on read.
+  const parts=new Intl.DateTimeFormat('en-US',{
+    timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date());
+  const values=Object.fromEntries(parts.filter(p=>
+    ['year','month','day'].includes(p.type)).map(p=>[p.type,p.value]));
+  return values.year+'-'+values.month+'-'+values.day;
+};
+const routeWeekRollover=routeDate=>{
+  if(!validDate(String(routeDate||'')))return '9999-12-31';
+  const day=new Date(routeDate+'T00:00:00Z');
+  day.setUTCDate(day.getUTCDate()+(7-day.getUTCDay())%7);
+  return day.toISOString().slice(0,10);
+};
+const needsReview=route=>
+  Number(route.discrepancyCount)>0||
+  Number(route.unconfirmedCount)>0&&route.status==='COMPLETED'||
+  ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
+const activePriority=(route,today)=>{
+  if(needsReview(route))return 0;
+  if(route.status==='COMPLETED')return 2;
+  if(routeWeekRollover(route.routeDate)<=today)return 3;
+  return 1;
+};
 function parseRoute(body){
   if(!body||typeof body!=='object'||Array.isArray(body))return null;
   const routeNumber=String(body.routeNumber||'').trim();
@@ -177,29 +203,41 @@ export async function onRequestGet({request,env}){
     }
     const scope=url.searchParams.get('scope')||'active';
     if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
-    const where=scope==='history'
-      ?"WHERE r.status='COMPLETED' "
-      :"WHERE r.status<>'COMPLETED' ";
+    const today=polandToday();
     const hasConfirmations=(await routeLineColumns(env.DB)).has('confirmed_quantity');
-    const discrepancies=hasConfirmations
+    const mismatch=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
-       'AND l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0) AS discrepancyCount,'
-      :'0 AS discrepancyCount,';
-    const routeRows=(await env.DB.prepare(
+       'AND l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0)'
+      :'0';
+    const unconfirmed=hasConfirmations
+      ?'COALESCE(SUM(CASE WHEN l.position IS NOT NULL '+
+       'AND l.confirmed_quantity IS NULL THEN 1 ELSE 0 END),0)'
+      :'COUNT(l.position)';
+    // Archive only after Saturday -> Sunday midnight (Poland time), and only
+    // explicitly COMPLETED routes with no unresolved quantities.
+    // Open/exception routes remain current and are never archived by age alone.
+    const eligible="r.status='COMPLETED' AND date(r.route_date,'weekday 0')<=? "+
+      'AND '+mismatch+'=0 AND '+unconfirmed+'=0';
+    const listSql=
       'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
       'r.crew_symbol AS crewSymbol,r.status,'+
       (presentationColumn?'r.is_presentation AS isPresentation,':'0 AS isPresentation,')+
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units,'+
-      discrepancies+
+      mismatch+' AS discrepancyCount,'+unconfirmed+' AS unconfirmedCount,'+
       "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
-      where+
-      'GROUP BY r.id ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200'
-    ).all()).results||[];
+      'GROUP BY r.id HAVING '+(scope==='history'?'':'NOT ')+
+      '('+eligible+') '+
+      'ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200';
+    const routeRows=(await env.DB.prepare(listSql).bind(today).all()).results||[];
     // Strip the full name before returning data to the browser.
     const routes=routeRows.map(({creatorFullName,...route})=>({
       ...route,enteredBy:shortCreatorName(creatorFullName)
     }));
+    if(scope==='active'){
+      routes.sort((a,b)=>activePriority(a,today)-activePriority(b,today)||
+        String(b.routeDate).localeCompare(String(a.routeDate)));
+    }
     return workerJson({ok:true,routes,storageReady:true,presentationMode:ROUTE_PRESENTATION_MODE});
   }catch(e){
     console.error('PL routes list failed',e?.name||'Error');
