@@ -835,17 +835,10 @@
     const editable=!history&&route.canEdit===true&&canWork;
     const explainable=!history&&canWork&&mismatches.length>0&&
       route.status!=='COMPLETED';
-    const crewComments=(result.crewComments||[]).filter(item=>String(item.comment||'').trim());
+    const crewComments=(result.crewComments||[])
+      .filter(item=>String(item.comment||'').trim());
     crewCommentsCache.set(route.id,crewComments);
-    const crewNotes=crewComments.map(note=>
-      '<button type="button" class="pl-route-crew-comment-preview" '+
-        'data-pl-route-crew-comment="'+html(route.id)+'" '+
-        'title="Kliknij, aby wyświetlić cały komentarz ekipy">'+
-        '<strong>Komentarz ekipy · '+html(note.stage==='PICKUP'?'Odbiór':'Raport końcowy')+'</strong>'+
-        '<small>'+html(note.actor||'Ekipa')+' · '+html(auditTime(note.createdAt))+'</small>'+
-        '<span class="pl-route-crew-comment-text">'+html(note.comment)+'</span>'+
-      '</button>'
-    ).join('');
+    const crewNotesByStage=new Map(crewComments.map(note=>[note.stage,note]));
     const photoButtons=(result.documents||[]).length
       ?result.documents.map((doc,index)=>
         '<button type="button" class="pl-route-document-button" '+
@@ -900,42 +893,72 @@
     const exportButton='<button type="button" class="pl-route-export-button" '+
       'data-pl-route-export="'+html(route.id)+'" '+
       'data-pl-route-export-number="'+html(route.routeNumber)+'">Eksportuj</button>';
-    // Operational log appears first, comments immediately below it.
-    // Only real database receipts/approvals are listed; no inferred confirmations.
-    const activityEvents=[
-      ...(result.audit||[]).map(event=>({...event,kind:'AUDIT'})),
-      ...(result.crewActivity||[]).map(event=>({...event,kind:'CREW'})),
-      ...(result.returnApprovals||[]).map(event=>({
-        kind:'RETURN',actor:event.approvedBy||'Użytkownik',
-        createdAt:event.approvedAt,position:event.position,
-        quantity:event.quantity
-      }))
-    ].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-    const activity=activityEvents.map(event=>{
-      if(event.kind==='AUDIT'){
-        routeAuditCache.set(event.id,event);
-        return '<button type="button" class="pl-route-audit-event" '+
-            'data-pl-route-audit="'+html(event.id)+'" '+
-            'title="Otwórz szczegóły zapisanej operacji">'+
-            '<span>'+html(event.action==='EXPLAIN'?'Weryfikacja':'Edycja')+
-              ' · '+html(event.actor||'Użytkownik')+'</span>'+
-            '<small>'+html(auditTime(event.createdAt))+'</small>'+
-          '</button>';
-      }
-      const label=event.kind==='RETURN'
-        ?'Zwrot zatwierdzony (poz. '+event.position+', '+event.quantity+' szt.)'
-        :event.action==='PICKUP'?'Potwierdzony odbiór':'Raport końcowy';
-      return '<div class="pl-route-audit-event pl-route-audit-static">'+
-        '<span>'+html(label)+' · '+html(event.actor||'Ekipa')+'</span>'+
-        '<small>'+html(auditTime(event.createdAt))+'</small>'+
-      '</div>';
+    // Always group actual recorded events by meaning, not by timestamp:
+    // discrepancies first, then edits, approvals and crew confirmations/reports.
+    // A crew confirmation and its optional comment share exactly one card.
+    const auditEvents=(result.audit||[]).slice().sort((a,b)=>{
+      const rank=item=>item.action==='EXPLAIN'?0:1;
+      return rank(a)-rank(b)||
+        String(b.createdAt||'').localeCompare(String(a.createdAt||''));
+    });
+    const editCards=auditEvents.map(event=>{
+      routeAuditCache.set(event.id,event);
+      return '<button type="button" class="pl-route-audit-event" '+
+        'data-pl-route-audit="'+html(event.id)+'" '+
+        'title="Otwórz szczegóły zapisanej operacji">'+
+        '<span>'+html(event.action==='EXPLAIN'?'Wyjaśnienie niezgodności':'Edycja')+
+          ' – '+html(event.actor||'Użytkownik')+
+          ' – '+html(auditTime(event.createdAt))+'</span>'+
+      '</button>';
     }).join('');
-    const activityPanel=activity||crewNotes
+    const approvalCards=(result.returnApprovals||[]).slice()
+      .sort((a,b)=>String(b.approvedAt||'').localeCompare(String(a.approvedAt||'')))
+      .map(event=>
+        '<div class="pl-route-audit-event pl-route-audit-static">'+
+          '<span>Zwrot zatwierdzony – poz. '+html(event.position)+
+          ', '+html(event.quantity)+' szt. – '+
+          html(event.approvedBy||'Użytkownik')+' – '+
+          html(auditTime(event.approvedAt))+'</span>'+
+        '</div>'
+      ).join('');
+    const crewActivity=(result.crewActivity||[]).slice()
+      .sort((a,b)=>(a.action==='PICKUP'?0:1)-(b.action==='PICKUP'?0:1)||
+        String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+    // Older routes may have a saved note but lack an activity record.
+    // Still display that note once, without inventing a confirmation timestamp.
+    const recordedStages=new Set(crewActivity.map(entry=>entry.action));
+    for(const note of crewComments){
+      if(recordedStages.has(note.stage))continue;
+      crewActivity.push({
+        action:note.stage,actor:note.actor||route.crewSymbol,
+        createdAt:note.createdAt
+      });
+      recordedStages.add(note.stage);
+    }
+    const crewCards=crewActivity.map(event=>{
+      const pickup=event.action==='PICKUP';
+      const note=crewNotesByStage.get(event.action);
+      const heading=(pickup?'Potwierdzony odbiór':'Raport końcowy')+
+        ' – '+(event.actor||route.crewSymbol||'Ekipa')+
+        ' – '+auditTime(event.createdAt);
+      const commentTitle=pickup?'Komentarz z odbioru':'Komentarz raportu zdawczego';
+      const openTag=note?'<button type="button" class="pl-route-crew-comment-preview" '+
+        'data-pl-route-crew-comment="'+html(route.id)+'" '+
+        'data-pl-route-crew-stage="'+html(event.action)+'" '+
+        'title="Otwórz cały komentarz ekipy">'
+        :'<div class="pl-route-audit-event pl-route-audit-static pl-route-crew-event">';
+      const closeTag=note?'</button>':'</div>';
+      return openTag+
+        '<strong>'+html(heading)+'</strong>'+
+        (note?'<span class="pl-route-crew-comment-label">'+html(commentTitle)+'</span>'+
+          '<span class="pl-route-crew-comment-text">'+html(note.comment)+'</span>':'')+
+        closeTag;
+    }).join('');
+    const activity=editCards+approvalCards+crewCards;
+    const activityPanel=activity
       ?'<div class="pl-route-detail-feed">'+
-        (activity?'<div class="pl-route-audit-history" role="log" '+
-          'aria-label="Historia operacji trasy">'+activity+'</div>':'')+
-        (crewNotes?'<div class="pl-route-crew-comments-inline" '+
-          'aria-label="Komentarze ekipy">'+crewNotes+'</div>':'')+
+          '<div class="pl-route-activity-list" aria-label="Historia operacji i komentarze">'+
+            activity+'</div>'+
         '</div>'
       :'';
     // All three sections start on the exact table-heading line.
@@ -1089,16 +1112,20 @@
     }
   }
   function openCrewComments(button){
-    const notes=crewCommentsCache.get(button.dataset.plRouteCrewComment||'')||[];
+    const stage=button.dataset.plRouteCrewStage||'';
+    const notes=(crewCommentsCache.get(button.dataset.plRouteCrewComment||'')||[])
+      .filter(note=>!stage||note.stage===stage);
     if(!notes.length)return;
     const content=notes.map(note=>
       '<section class="pl-route-crew-comment-entry">'+
-        '<strong>'+html(note.stage==='PICKUP'?'Potwierdzenie odbioru':'Raport końcowy')+'</strong>'+
+        '<strong>'+html(note.stage==='PICKUP'?'Komentarz z odbioru':'Komentarz raportu zdawczego')+'</strong>'+
         '<small>'+html(note.actor||'Ekipa')+' · '+html(auditTime(note.createdAt))+'</small>'+
         '<p>'+html(note.comment)+'</p>'+
       '</section>'
     ).join('');
-    byId('plRouteAuditTitle').textContent='Komentarz ekipy';
+    byId('plRouteAuditTitle').textContent=stage==='PICKUP'
+      ?'Komentarz z odbioru':stage==='REPORT'
+      ?'Komentarz raportu zdawczego':'Komentarze ekipy';
     byId('plRouteAuditContent').innerHTML=content;
     byId('plRouteAuditDialog').showModal();
   }
@@ -1282,11 +1309,12 @@
     row.after(detail);
     button.textContent='Zwiń';
     try{
-      const result=await jsonResponse(await fetch(
-        endpoint+'?id='+encodeURIComponent(button.dataset.plRouteDetails),{
+      const routeId=button.dataset.plRouteDetails;
+      const result=await cachedRouteRead('details:'+routeId,async()=>
+        jsonResponse(await fetch(endpoint+'?id='+encodeURIComponent(routeId),{
           credentials:'same-origin',cache:'no-store'
-        }
-      ));
+        }))
+      );
       if(!detail.isConnected)return;
       detail.innerHTML='<td colspan="8">'+routeDetailsMarkup(result)+'</td>';
     }catch(error){
