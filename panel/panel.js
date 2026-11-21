@@ -10,6 +10,7 @@
     parts:['Katalog części','Jeden wspólny katalog części dla wszystkich rynków.'],
     boxParts:['Katalog części Boxy','Części dostępne w BOX-ach. Wycofanie pozycji nie usuwa jej z głównego katalogu ani historii.'],
     vehicleParts:['Katalog części Samochody','Wyposażenie aut: te same części co w głównym katalogu, z osobną wymaganą ilością na samochód.'],
+    routeParts:['Katalog części Trasy PL','Wspólny katalog części używanych na polskich trasach. Niezależny od stanów magazynowych.'],
     newParts:['Nowe części','Nowe części zgłoszone przez magazynierów — do weryfikacji.'],
     indexMigration:['Wymiana indeksów','Wymiana starych etykiet MG-FR na wspólne indeksy MG-000-000.'],
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
@@ -1319,6 +1320,130 @@
     finally{busy(button,false);}
   }
 
+  function renderRoutePartsTable(items){
+    const table=document.createElement('table');
+    table.className='route-parts-catalog-table';
+    const head=table.createTHead().insertRow();
+    for(const name of ['NAZWA CZĘŚCI','INDEKS SAP / GPBS','']){
+      const th=document.createElement('th');
+      th.textContent=name;head.append(th);
+    }
+    const body=table.createTBody();
+    for(const part of items){
+      const row=body.insertRow();
+      row.append(td(part.name||'—'),td(part.code||'—'));
+      const actions=document.createElement('td');
+      const button=document.createElement('button');
+      button.type='button';button.className='btn mini ghost';
+      button.textContent='Edytuj';
+      button.addEventListener('click',()=>openRoutePartEditor(part));
+      actions.append(button);row.append(actions);
+    }
+    return table;
+  }
+
+  function openRoutePartEditor(part=null){
+    const form=$('routePartForm');form.reset();
+    $('routePartId').value=part?.id||'';
+    $('routePartTitle').textContent=part?'Edytuj część':'Dodaj część';
+    $('routePartName').value=part?.name||'';
+    $('routePartCode').value=part?.code||'';
+    $('routePartError').textContent='';
+    $('routePartError').classList.add('hidden');
+    const merge=$('routePartMergeBox');
+    merge.classList.toggle('hidden',!part);
+    const select=$('routePartMergeTarget');
+    select.replaceChildren();
+    if(part){
+      const initial=document.createElement('option');
+      initial.value='';initial.textContent='Wybierz docelową część…';
+      select.append(initial);
+      for(const other of state.records){
+        if(other.id===part.id)continue;
+        const option=document.createElement('option');
+        option.value=other.id;
+        option.textContent=other.name+(other.code?' · '+other.code:'');
+        select.append(option);
+      }
+      select.value='';
+    }
+    $('routePartDialog').showModal();
+    $('routePartName').focus();
+  }
+
+  async function refreshRouteParts(){
+    const response=await api('routeParts');
+    if(state.view==='routeParts'){
+      state.records=response.parts||[];
+      renderList();
+    }
+  }
+
+  async function saveRoutePart(event){
+    event.preventDefault();
+    const button=$('routePartSave'),error=$('routePartError');
+    const id=$('routePartId').value;
+    const name=$('routePartName').value.trim();
+    const code=$('routePartCode').value.trim();
+    if(!name)return;
+    busy(button,true);
+    error.classList.add('hidden');
+    try{
+      await post({action:id?'routePartUpdate':'routePartCreate',id,name,code});
+      $('routePartDialog').close();
+      await refreshRouteParts();
+      message(id?'Poprawiono dane części w katalogu tras.':'Dodano część do katalogu tras.','success');
+    }catch(ex){
+      error.textContent=ex.message||'Nie udało się zapisać części.';
+      error.classList.remove('hidden');
+    }finally{busy(button,false);}
+  }
+
+  async function mergeRoutePart(){
+    const sourceId=$('routePartId').value,targetId=$('routePartMergeTarget').value;
+    if(!sourceId||!targetId||sourceId===targetId)return;
+    const source=state.records.find(p=>p.id===sourceId);
+    const target=state.records.find(p=>p.id===targetId);
+    if(!source||!target)return;
+    if(!await confirmAction({
+      title:'Scalić części z katalogu tras?',
+      description:'„'+source.name+'” zostanie połączona z „'+target.name+'”. Ilości i historyczne wpisy tras pozostaną bez zmian.',
+      confirmLabel:'Scal części',danger:true
+    }))return;
+    const button=$('routePartMergeBtn');busy(button,true);
+    try{
+      const result=await post({action:'routePartMerge',sourceId,targetId});
+      $('routePartDialog').close();
+      await refreshRouteParts();
+      message('Scalono części. Zaktualizowano '+Number(result.remapped||0)+' powiązań tras.','success');
+    }catch(error){
+      $('routePartError').textContent=error.message||'Nie udało się scalić części.';
+      $('routePartError').classList.remove('hidden');
+    }finally{busy(button,false);}
+  }
+
+  async function importRouteParts(){
+    if(!await confirmAction({
+      title:'Dodać części ze starszych tras?',
+      description:'Pobierane są tylko rzeczywiste trasy PL, bez tras prezentacyjnych. Operacja nie zmienia ilości, zwrotów ani stanów magazynów.',
+      confirmLabel:'Importuj części'
+    }))return;
+    const button=$('routePartImportBtn');busy(button,true);
+    try{
+      let imported=0,remaining=0;
+      for(let i=0;i<20;i++){
+        const result=await post({action:'routePartImport'});
+        imported+=Number(result.imported||0);
+        remaining=Number(result.remaining||0);
+        if(!remaining||!Number(result.imported))break;
+      }
+      await refreshRouteParts();
+      message('Powiązano '+imported+' pozycji ze starszych tras.'+
+        (remaining?' Pozostało '+remaining+' pozycji – kliknij import ponownie.':''),'success');
+    }catch(error){message(error.message||'Nie udało się zaimportować części.','error');}
+    finally{busy(button,false);}
+  }
+
   function renderList() {
     const q=$('tableSearch').value.toLocaleLowerCase('pl').trim();
     const matching=state.records.filter(row=>
@@ -1330,7 +1455,8 @@
       const empty=document.createElement('div');empty.className='empty';
       empty.textContent=state.records.length?'Nie znaleziono pasujących pozycji.':'Brak danych do wyświetlenia.';
       $('tableResults').append(empty);
-    }else $('tableResults').append(state.view==='users'?renderUsersTable(matching)
+    }else $('tableResults').append(state.view==='routeParts'?renderRoutePartsTable(matching)
+      :state.view==='users'?renderUsersTable(matching)
       :state.view==='warehouses'?renderWarehousesTable(matching)
       :state.view==='boxParts'?renderBoxPartsTable(matching)
       :state.view==='parts'||state.view==='newParts'
@@ -1378,6 +1504,8 @@
     $('pinRoleFilter').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('warehouseFilter').classList.add('hidden');
     $('addPartBtn').classList.toggle('hidden',view!=='parts');
+    $('routePartAddBtn').classList.toggle('hidden',view!=='routeParts');
+    $('routePartImportBtn').classList.toggle('hidden',view!=='routeParts');
     $('vehicleAddPartBtn').classList.toggle('hidden',view!=='vehicleParts');
     $('boxAddPartBtn').classList.toggle('hidden',view!=='boxParts');
     $('showBoxWarehouseFormBtn').classList.toggle('hidden',
@@ -1442,7 +1570,7 @@
           $('generateMissingPins').textContent=state.pinReady?'Generuj brakujące PIN-y':'Skonfiguruj generator PIN-ów';
         } else {
           const response=await api(view);
-          state.records=(view==='parts'||view==='newParts'||view==='boxParts'||view==='vehicleParts')
+          state.records=(view==='parts'||view==='newParts'||view==='boxParts'||view==='vehicleParts'||view==='routeParts')
             ?response.parts:response;
           if(view==='newParts')setNewPartsBadge(state.records.length);
           if(view==='vehicleParts'&&state.view===view){
@@ -2244,6 +2372,11 @@
     $('userPermissionsForm').addEventListener('submit',saveUserPermissions);
     $('closeUserPermissions').addEventListener('click',()=>$('userPermissionsDialog').close());
     $('cancelUserPermissions').addEventListener('click',()=>$('userPermissionsDialog').close());
+    $('routePartAddBtn').addEventListener('click',()=>openRoutePartEditor());
+    $('routePartImportBtn').addEventListener('click',importRouteParts);
+    $('routePartCancel').addEventListener('click',()=>$('routePartDialog').close());
+    $('routePartForm').addEventListener('submit',saveRoutePart);
+    $('routePartMergeBtn').addEventListener('click',mergeRoutePart);
     $('addPartBtn').addEventListener('click',openPartCreate);
     $('partCreateForm').addEventListener('submit',savePartCreate);
     $('partCreateCancel').addEventListener('click',()=>$('partCreateDialog').close());
