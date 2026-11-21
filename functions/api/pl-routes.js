@@ -36,6 +36,9 @@ const DEMO_WEEK48=[
 const demoWeek48Id=i=>'PL-ROUTE-48de0000-0000-4000-8000-'+
   String(i+1).padStart(12,'0');
 const demoWeek48Ids=DEMO_WEEK48.map((_,i)=>demoWeek48Id(i));
+const retiredDemo48PL03=demoWeek48Id(2);
+// Retired demo must not be recreated by '+ Demo 48' after its one-off cleanup.
+const seedableDemoWeek48Ids=demoWeek48Ids.filter(id=>id!==retiredDemo48PL03);
 
 // Send a shortened display label, never a full staff surname, to the route list.
 function shortCreatorName(name){
@@ -286,6 +289,17 @@ export async function onRequestGet({request,env}){
     // Open/exception routes remain current and are never archived by age alone.
     const eligible="r.status='COMPLETED' AND date(r.route_date,'weekday 0')<=? "+
       'AND '+mismatch+'=0 AND '+unconfirmed+'=0';
+    const hasAudit=await exists(env.DB,'pl_route_audit');
+    const everDifferent=hasConfirmations
+      ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
+        'AND l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0)'
+      :'0';
+    const auditExplained=hasAudit
+      ?"EXISTS (SELECT 1 FROM pl_route_audit a WHERE a.route_id=r.id AND a.action='EXPLAIN')"
+      :'0';
+    const individuallyVerified=columns.has('verified_quantity')
+      ?'COALESCE(SUM(CASE WHEN l.verified_quantity IS NOT NULL THEN 1 ELSE 0 END),0)>0'
+      :'0';
     const listSql=
       'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
       'r.crew_symbol AS crewSymbol,r.status,'+
@@ -293,6 +307,10 @@ export async function onRequestGet({request,env}){
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units,'+
       editableSql+
       mismatch+' AS discrepancyCount,'+unconfirmed+' AS unconfirmedCount,'+
+      'CASE WHEN '+everDifferent+'>0 OR '+auditExplained+
+        ' THEN 1 ELSE 0 END AS hadDiscrepancy,'+
+      'CASE WHEN '+individuallyVerified+' OR '+auditExplained+
+        ' THEN 1 ELSE 0 END AS hadVerification,'+
       "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
       'GROUP BY r.id HAVING '+(scope==='history'?'':'NOT ')+
@@ -316,8 +334,8 @@ export async function onRequestGet({request,env}){
     const demoWeek48Count=auth.user.role==='ADMIN'&&presentationColumn
       ?Number((await env.DB.prepare(
         'SELECT COUNT(*) AS total FROM pl_routes WHERE is_presentation=1 AND id IN ('+
-        demoWeek48Ids.map(()=>'?').join(',')+')'
-      ).bind(...demoWeek48Ids).first())?.total||0)
+        seedableDemoWeek48Ids.map(()=>'?').join(',')+')'
+      ).bind(...seedableDemoWeek48Ids).first())?.total||0)
       :0;
     return workerJson({ok:true,routes,storageReady:true,
       presentationMode:ROUTE_PRESENTATION_MODE,demoWeek48Count});
@@ -350,10 +368,10 @@ export async function onRequestPost({request,env}){
       if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB)||
          !['confirmed_quantity','verified_quantity','returned_quantity','return_location'].every(c=>columns.has(c)))
         await ensureSchema(env.DB);
-      const placeholders=demoWeek48Ids.map(()=>'?').join(',');
+      const placeholders=seedableDemoWeek48Ids.map(()=>'?').join(',');
       const existing=(await env.DB.prepare(
         'SELECT id,is_presentation FROM pl_routes WHERE id IN ('+placeholders+')'
-      ).bind(...demoWeek48Ids).all()).results||[];
+      ).bind(...seedableDemoWeek48Ids).all()).results||[];
       if(existing.some(row=>Number(row.is_presentation)!==1))
         return send('Identyfikator demo jest zajęty przez zwykłą trasę. Niczego nie zmieniono.',409);
       const present=new Set(existing.map(row=>row.id));
@@ -363,6 +381,7 @@ export async function onRequestPost({request,env}){
       let added=0;
       for(let i=0;i<DEMO_WEEK48.length;i++){
         const item=DEMO_WEEK48[i],id=demoWeek48Id(i);
+        if(id===retiredDemo48PL03)continue;
         if(present.has(id))continue; // repeat click never duplicates or rewrites a demo
         const occupied=await env.DB.prepare(
           'SELECT id FROM pl_routes WHERE route_number=? AND route_date=? LIMIT 1'
@@ -406,7 +425,7 @@ export async function onRequestPost({request,env}){
         added++;
       }
       if(statements.length)await env.DB.batch(statements);
-      return workerJson({ok:true,added,alreadyPresent:DEMO_WEEK48.length-added,
+      return workerJson({ok:true,added,alreadyPresent:seedableDemoWeek48Ids.length-added,
         demoWeek:48,year:2026});
     }catch(error){
       console.error('PL week48 demo seed failed',error?.name||'Error');
