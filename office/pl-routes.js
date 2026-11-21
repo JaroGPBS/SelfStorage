@@ -764,7 +764,7 @@
     const pin=window.prompt('Potwierdź usunięcie PIN-em administratora:');
     if(pin===null)return;
     const status=byId('plRoutesListStatus');
-    if(!/^\\d{4}$/.test(pin)){
+    if(!/^[0-9]{4}$/.test(pin)){
       status.classList.add('is-error');
       status.textContent='Wpisz 4-cyfrowy PIN administratora.';
       return;
