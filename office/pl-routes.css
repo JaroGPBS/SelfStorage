@@ -592,3 +592,18 @@
 .pl-route-return-approval-item{display:flex;flex-direction:column;gap:2px}
 .pl-route-return-approval-item span{font-weight:650}
 .pl-route-return-approval-item small{font-size:10px;color:#6b7d8c}
+
+
+/* Crew comments live beside route documents and edits, not in edit audit. */
+.pl-route-crew-comment-button{
+  border:1px solid #9eacc0;border-radius:7px;
+  background:#eff3f8;color:#344e69;padding:7px 8px;
+  font-size:10.5px;font-weight:750;cursor:pointer;line-height:1.3
+}
+.pl-route-crew-comment-button:hover:not(:disabled){background:#e2ecf5}
+.pl-route-crew-comment-button:disabled{opacity:.55;cursor:not-allowed}
+.pl-route-crew-comment-entry{padding:10px 0;border-bottom:1px solid #dbe4ed}
+.pl-route-crew-comment-entry:last-child{border-bottom:0}
+.pl-route-crew-comment-entry strong{display:block;color:#273e56;font-size:13px}
+.pl-route-crew-comment-entry small{display:block;font-size:11px;color:#64778a;margin:4px 0 9px}
+.pl-route-crew-comment-entry p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.55}
