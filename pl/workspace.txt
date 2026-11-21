@@ -73,6 +73,21 @@
             <strong>Inwentaryzacja</strong>
           </button>
         </div>
+        <section id="plCrewPlannedAdmin" class="section-spaced" hidden>
+          <h2 class="section-title">Planowane funkcje ekip PL</h2>
+          <div class="action-grid">
+            <div class="action-tile action-pending">
+              <span class="action-icon" aria-hidden="true">▣</span>
+              <strong>Wizyty na magazynie</strong>
+              <span class="action-caption">Do wdrożenia w późniejszym czasie</span>
+            </div>
+            <div class="action-tile action-pending">
+              <span class="action-icon" aria-hidden="true">▰</span>
+              <strong>Stany samochodu</strong>
+              <span class="action-caption">Do wdrożenia w późniejszym czasie</span>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div id="stockScreen" hidden>
@@ -215,20 +230,8 @@
       </div>
 
       <div id="crewHome" hidden>
-        <h2 class="section-title">Ekipa serwisowa</h2>
-        <p class="section-info">Wybierz funkcję, z której chcesz korzystać.</p>
-        <div class="action-grid">
-          <div class="action-tile action-pending">
-            <span class="action-icon" aria-hidden="true">▣</span>
-            <strong>Wizyty na magazynie</strong>
-            <span class="action-caption">Skanowanie QR — w przygotowaniu dla PL</span>
-          </div>
-          <div class="action-tile action-pending">
-            <span class="action-icon" aria-hidden="true">▰</span>
-            <strong>Stany samochodu</strong>
-            <span class="action-caption">W przygotowaniu dla PL</span>
-          </div>
-        </div>
+        <h2 id="plCrewTitle" class="section-title">Ekipa</h2>
+        <p class="section-info">Panel tras będzie dostępny tutaj po podłączeniu do Office PL.</p>
       </div>
 
       <div id="officeHome" hidden>
