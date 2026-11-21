@@ -373,9 +373,6 @@ export async function onRequestGet({request,env}){
     // Keep original statuses and recorded quantities: no fake "COMPLETED"
     // confirmations and no D1 mutations. All other weeks keep the existing
     // rule: archived only when completed, reconciled, and after week end.
-    const eligible="(r.route_date>='2026-11-02' AND r.route_date<='2026-11-08') OR ("+
-      "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<? "+
-      'AND '+mismatch+'=0 AND '+unconfirmed+'=0 AND '+pendingReturns+'=0)';
     const approvalTable=await exists(env.DB,'pl_route_return_approvals');
     const pendingReturns=columns.has('returned_quantity')
       ?'COALESCE(SUM(CASE WHEN l.returned_quantity>0 AND '+
@@ -387,6 +384,9 @@ export async function onRequestGet({request,env}){
           :'1=1')+
         ' THEN 1 ELSE 0 END),0)'
       :'0';
+    const eligible="(r.route_date>='2026-11-02' AND r.route_date<='2026-11-08') OR ("+
+      "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<? "+
+      'AND '+mismatch+'=0 AND '+unconfirmed+'=0 AND '+pendingReturns+'=0)';
     const hasAudit=await exists(env.DB,'pl_route_audit');
     const everDifferent=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
