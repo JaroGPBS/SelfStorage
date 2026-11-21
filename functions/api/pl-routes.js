@@ -31,7 +31,10 @@ const DEMO_WEEK48=[
       ['Rynna + uszczelka',4],['Kotwa trójkątna',12]]},
   {no:'48PL-08',date:'2026-11-29',crew:'TJ',status:'REVIEW_REQUIRED',sampleAudit:true,
     parts:[['Separator',8,7],['Osłona przyłącza',3,2],
-      ['Słupek',4],['Kotwa trójkątna',10]]}
+      ['Słupek',4],['Kotwa trójkątna',10]]},
+  {no:'48PL-09',date:'2026-11-28',crew:'VN',status:'REVIEW_REQUIRED',
+    parts:[['Słupek',6,5],['Rynna + uszczelka',3,4],
+      ['Dach uniwersalny',2],['Kotwa trójkątna',10]]}
 ];
 const demoWeek48Id=i=>'PL-ROUTE-48de0000-0000-4000-8000-'+
   String(i+1).padStart(12,'0');
