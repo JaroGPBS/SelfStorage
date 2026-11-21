@@ -10,11 +10,13 @@
   const id=params.get('id');
   const week=params.get('week');
   const embedded=params.get('embed')==='1';
+  const balance=params.get('balance')==='1';
+  if(balance)document.documentElement.classList.add('pl-route-balance-print');
   if(embedded)document.documentElement.classList.add('pl-route-print-embedded');
   const api=window.PlRouteExport;
   function notifyParent(type){
     if(embedded&&window.parent!==window)
-      window.parent.postMessage({type,routeId:id},window.location.origin);
+      window.parent.postMessage({type,routeId:balance?'BALANCE':id},window.location.origin);
   }
   const showError=message=>{
     status.hidden=false;
@@ -25,6 +27,15 @@
   };
   async function main(){
     if(!api)throw Error('Moduł eksportu nie został załadowany.');
+    if(balance){
+      const data=await api.getBalance();
+      report.innerHTML=api.balanceCard(data);
+      printButton.disabled=false;
+      document.title='GPBS Storage – Bilans części';
+      status.remove();
+      notifyParent('gpbs-route-export-preview-ready');
+      return;
+    }
     let items=[];
     if(id){
       items=[await api.getRoute(id)];
