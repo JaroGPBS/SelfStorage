@@ -61,7 +61,7 @@
   const warehouseRoles = new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
   const roleLabels = {
     ADMIN:'Administrator', KIEROWNIK:'Kierownik', KOORDYNATOR:'Koordynator',
-    MAGAZYNIER:'Magazynier', EKIPA:'Ekipa serwisowa'
+    MAGAZYNIER:'Magazynier', EKIPA:'Ekipa'
   };
   const state = {
     user:null, warehouse:null, subview:'', busy:false, stockBusy:false,
@@ -259,6 +259,9 @@
     byId('sessionTitle').textContent='—';
     byId('workerBadge').textContent='—';
     byId('workerRole').textContent='';
+    byId('plCrewTitle').textContent='Ekipa';
+    byId('plCrewPlannedAdmin').hidden=true;
+    byId('warehouseName').closest('.session-compact-warehouse').hidden=false;
     byId('stockList').replaceChildren();
     pinInput.value='';
   }
@@ -362,6 +365,10 @@
     state.user={...user,role,warehouses};
     byId('sessionTitle').textContent=nickname;
     byId('workerRole').textContent=roleLabels[role];
+    byId('plCrewPlannedAdmin').hidden=role!=='ADMIN';
+    byId('warehouseName').closest('.session-compact-warehouse').hidden=role==='EKIPA';
+    byId('plCrewTitle').textContent='Ekipa '+
+      String(user.displayCode||nickname).trim().toLocaleUpperCase('pl-PL');
     byId('workerBadge').textContent=nickname
       .replace(/[^A-Za-z0-9ĄĆĘŁŃÓŚŹŻąćęłńóśźż]/g,'')
       .slice(0,3).toLocaleUpperCase('pl')||'PL';
