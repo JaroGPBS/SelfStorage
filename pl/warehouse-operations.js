@@ -145,7 +145,7 @@
     const lock=!!state.pending||state.busy;
     for(const id of ['operationCounterparty','operationPlate','operationVisitContinue',
       'operationEditVisit','operationBackToMenu','operationSearchQuery','operationSearchButton',
-      'operationStartScan','operationFinishStage','operationNewPartOpen','operationAddButton','operationQuantity',
+      'operationStartScan','operationNewPartOpen','operationAddButton','operationQuantity',
       'operationTabPZ','operationTabWZ','operationClearSearch','operationNok',
       'operationCommentToggle','operationCommentText']){
       el(id).disabled=lock;
@@ -155,6 +155,9 @@
     // A click must always produce clear feedback, even when no parts were added.
     el('operationSave').disabled=state.busy||!state.ready;
     el('operationSave').textContent=state.pending?'Ponów zapis tej samej wizyty':'Zakończ wizytę';
+    // An unknown network result must remain retryable without leaving the task.
+    el('operationFinishStage').disabled=state.busy||!state.ready;
+    el('operationFinishStage').textContent=state.pending?'Ponów zapis':'Zakończ';
   }
 
   function makeLine(row,side){
@@ -729,7 +732,7 @@
       state.stage='details';
       el('operationCounterparty').value='';
       el('operationPlate').value='';
-      el('operationSearchResults').replaceChildren();
+      clearSuggestions({clearQuery:true,blur:true});
       el('operationQuantityForm').hidden=true;
       saveDraft();
       let committedAt='';
@@ -776,7 +779,7 @@
     state.comments={PZ:'',WZ:''};
     el('operationCounterparty').value='';
     el('operationPlate').value='';
-    el('operationSearchResults').replaceChildren();
+    clearSuggestions({clearQuery:true,blur:true});
     status('Anulowano niezapisaną wizytę.');
     saveDraft();render();
   }
@@ -793,8 +796,7 @@
     state.direction=['PZ','WZ'].includes(state.stage)?state.stage:'PZ';
     state.part=null;
     el('operationWarehouseCaption').textContent=warehouse.name+' · '+warehouse.id;
-    el('operationSearchResults').replaceChildren();
-    el('operationSearchQuery').value='';
+    clearSuggestions({clearQuery:true,blur:true});
     el('operationQuantityForm').hidden=true;
     el('operationScanPanel').hidden=true;
     el('operationStartScan').hidden=false;
@@ -809,7 +811,8 @@
     closeQuantity();
     el('operationDirectionPanel').hidden=true;
     document.body.classList.remove('operation-task-open');
-    state.searchSeq++;
+    clearSuggestions({clearQuery:true,blur:true});
+    positionSearchForKeyboard();
     state.warehouse=null;state.userId='';
     state.part=null;state.ready=false;
   }
@@ -878,7 +881,7 @@
       ?'Zakończenie wizyty'
       :'Zakończenie '+currentName+' ('+side+')';
     el('operationStageFinishMessage').textContent=hasSecondStage
-      ?'Wizyta zawiera już przyjęcie i wydanie. Czy chcesz zakończyć ją i wysłać dane do systemu?'
+      ?'Przygotowano części do rozliczenia. Czy chcesz zakończyć wizytę i wysłać je do systemu?'
       :'Czy chcesz jeszcze wykonać '+otherName+' części?';
     el('operationStageFinishSummary').textContent=
       'Przyjęcie: '+lines('PZ').length+' pozycji · Wydanie: '+lines('WZ').length+' pozycji';
@@ -891,7 +894,7 @@
     el('operationStageFinishSendLabel').textContent=hasSecondStage
       ?'Zakończ i wyślij wizytę':'NIE – Zakończ i wyślij wizytę';
     el('operationStageFinishSendHint').textContent=hasSecondStage
-      ?'Zapisz razem wszystkie przyjęcia i wydania w systemie GPBS Storage.'
+      ?'Zapisz dotychczasowe przyjęcia i wydania w systemie GPBS Storage.'
       :'Zapisz tylko '+(side==='PZ'?'przyjęcie':'wydanie')+' w systemie GPBS Storage.';
     dialog.dataset.nextDirection=other;
     dialog.showModal();
