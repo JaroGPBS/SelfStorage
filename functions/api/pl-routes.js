@@ -81,6 +81,7 @@ async function ensureSchema(db){
         'part_code TEXT NOT NULL DEFAULT \'\', part_name TEXT NOT NULL DEFAULT \'\','+
         'quantity INTEGER NOT NULL CHECK(quantity>0),'+
         'confirmed_quantity INTEGER CHECK(confirmed_quantity>=0),'+
+        'verified_quantity INTEGER CHECK(verified_quantity>=0),'+
         'returned_quantity INTEGER CHECK(returned_quantity>=0),'+
         'return_location TEXT,'+
         'PRIMARY KEY(route_id,position),'+
@@ -103,6 +104,7 @@ async function ensureSchema(db){
   // will be archived by status rather than duplicated to another table.
   for(const [column,definition] of [
     ['confirmed_quantity','INTEGER CHECK(confirmed_quantity>=0)'],
+    ['verified_quantity','INTEGER CHECK(verified_quantity>=0)'],
     ['returned_quantity','INTEGER CHECK(returned_quantity>=0)'],
     ['return_location','TEXT']
   ]){
@@ -164,7 +166,7 @@ const routeWeekRollover=routeDate=>{
   return day.toISOString().slice(0,10);
 };
 const needsReview=route=>
-  route.status!=='REVIEW_EXPLAINED'&&Number(route.discrepancyCount)>0||
+  Number(route.discrepancyCount)>0||
   Number(route.unconfirmedCount)>0&&route.status==='COMPLETED'||
   ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
 const activePriority=route=>{
@@ -221,7 +223,9 @@ export async function onRequestGet({request,env}){
         columns.has('returned_quantity')
           ?'returned_quantity AS returnedQuantity':'NULL AS returnedQuantity',
         columns.has('return_location')
-          ?'return_location AS returnLocation':'NULL AS returnLocation'
+          ?'return_location AS returnLocation':'NULL AS returnLocation',
+        columns.has('verified_quantity')
+          ?'verified_quantity AS verifiedQuantity':'NULL AS verifiedQuantity'
       ].join(',');
       const lines=(await env.DB.prepare(
         'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
@@ -263,9 +267,11 @@ export async function onRequestGet({request,env}){
           ' THEN 1 ELSE 0 END),0)=0 '
         :'')+
       'THEN 1 ELSE 0 END AS canEdit,';
+    const effectiveQuantity=columns.has('verified_quantity')
+      ?'COALESCE(l.verified_quantity,l.quantity)':'l.quantity';
     const mismatch=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
-       'AND l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0)'
+       'AND l.confirmed_quantity<>'+effectiveQuantity+' THEN 1 ELSE 0 END),0)'
       :'0';
     const unconfirmed=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.position IS NOT NULL '+
