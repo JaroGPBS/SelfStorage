@@ -332,22 +332,51 @@
       <p id="operationTaskStatus" class="operation-status" role="status" aria-live="polite" hidden></p>
       <div id="operationPZList" class="operation-lines operation-task-lines" hidden></div>
       <div id="operationWZList" class="operation-lines operation-task-lines" hidden></div>
-      <div id="operationSearchResults" class="operation-search-results operation-task-results"></div>
-      <button id="operationMore" class="btn btn-outline" type="button" hidden>Wczytaj więcej</button>
-    </main>
+     </main>
     <div class="operation-task-bottom">
       <button id="operationCommentToggle" class="operation-comment-toggle" type="button"
         aria-controls="operationCommentPanel" aria-haspopup="dialog" aria-expanded="false">✎ Komentarz</button>
-      <form id="operationSearchForm" class="operation-task-search" role="search" autocomplete="off">
-        <label for="operationSearchQuery" class="visually-hidden">Indeks lub numer SAP części</label>
-        <input id="operationSearchQuery" type="search" maxlength="80"
-          placeholder="Wpisz indeks części / SAP" autocapitalize="characters" spellcheck="false">
-        <button id="operationSearchButton" type="submit">Znajdź</button>
-      </form>
+      <div class="operation-search-anchor">
+        <div id="operationSearchSuggestions" class="operation-search-suggestions" hidden>
+          <div id="operationSearchResults" class="operation-search-results operation-task-results" role="listbox" aria-label="Pasujące części"></div>
+          <button id="operationMore" class="btn btn-outline" type="button" hidden>Wczytaj więcej</button>
+        </div>
+        <form id="operationSearchForm" class="operation-task-search" role="search" autocomplete="off">
+          <label for="operationSearchQuery" class="visually-hidden">Nazwa, indeks lub SAP części</label>
+          <input id="operationSearchQuery" type="search" maxlength="80"
+            placeholder="Wpisz 3 litery nazwy / indeks" autocomplete="off"
+            autocapitalize="characters" spellcheck="false" aria-controls="operationSearchResults"
+            aria-autocomplete="list" aria-expanded="false">
+          <button id="operationSearchButton" type="submit">Znajdź</button>
+        </form>
+      </div>
       <button id="operationClearSearch" type="button" hidden>Wyczyść wyszukiwanie</button>
-      <button id="operationStartScan" class="btn btn-primary operation-task-scan" type="button">Skanuj QR</button>
+      <div class="operation-scan-finish-row">
+        <button id="operationFinishStage" class="btn btn-outline operation-task-finish-stage" type="button">Zakończ</button>
+        <button id="operationStartScan" class="btn btn-primary operation-task-scan" type="button">Skanuj QR</button>
+      </div>
     </div>
   </section>
+
+  <dialog id="operationStageFinishDialog" class="inventory-dialog operation-stage-finish-dialog"
+    aria-labelledby="operationStageFinishTitle" aria-describedby="operationStageFinishMessage">
+    <div class="inventory-dialog-inner">
+      <h2 id="operationStageFinishTitle">Zakończenie przyjęcia</h2>
+      <p id="operationStageFinishMessage"></p>
+      <p id="operationStageFinishSummary" class="operation-stage-finish-summary"></p>
+      <div class="operation-stage-finish-actions">
+        <button id="operationStageFinishNext" class="btn btn-outline" type="button">
+          <strong id="operationStageFinishNextLabel">TAK – Przejdź do wydania</strong>
+          <small id="operationStageFinishNextHint">Zachowaj przyjęcie w telefonie. Dane nie zostaną jeszcze wysłane.</small>
+        </button>
+        <button id="operationStageFinishSend" class="btn btn-primary" type="button">
+          <strong id="operationStageFinishSendLabel">NIE – Zakończ i wyślij wizytę</strong>
+          <small id="operationStageFinishSendHint">Zapisz dane w systemie GPBS Storage.</small>
+        </button>
+      </div>
+      <button id="operationStageFinishCancel" class="text-button operation-stage-finish-cancel" type="button">Wróć do edycji</button>
+    </div>
+  </dialog>
 
   <dialog id="operationCommentPanel" class="inventory-dialog operation-comment-dialog"
     aria-labelledby="operationCommentTitle" aria-modal="true">
