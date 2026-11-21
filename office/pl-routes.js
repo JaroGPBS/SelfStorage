@@ -557,6 +557,24 @@
     thursday.setUTCDate(thursday.getUTCDate()+4-(thursday.getUTCDay()||7));
     return thursday.getUTCFullYear();
   }
+  function routeStatusIndicators(route){
+    const hasComment=Number(route.hasCrewComment)>0;
+    const edited=Number(route.wasEdited)>0;
+    if(!hasComment&&!edited)return '';
+    const comment=hasComment?'<span class="pl-route-indicator" '+
+      'title="Ekipa dodała komentarz" aria-label="Ekipa dodała komentarz">'+
+      '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" '+
+      'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+      '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>'+
+      '</svg></span>':'';
+    const pencil=edited?'<span class="pl-route-indicator" '+
+      'title="Trasa została edytowana" aria-label="Trasa została edytowana">'+
+      '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" '+
+      'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+      '<path d="m16 5 3 3M4 20l4.5-1L19 8.5a2.12 2.12 0 0 0-3-3L5.5 16z"/>'+
+      '</svg></span>':'';
+    return '<span class="pl-route-row-indicators">'+comment+pencil+'</span>';
+  }
   function listTable(routes){
     if(!routes.length)
       return '<div class="pl-routes-empty">Brak tras do wyświetlenia.</div>';
@@ -586,8 +604,10 @@
         '<td>'+html(item.crewSymbol)+'</td>'+
         '<td>'+html(item.routeDate)+'</td>'+
         '<td>'+html(item.positions)+'</td>'+
-        '<td><span class="pl-route-status-badge '+status.className+'">'+
-          html(status.label)+'</span></td>'+
+        '<td><span class="pl-route-status-cell">'+
+          '<span class="pl-route-status-badge '+status.className+'">'+
+            html(status.label)+'</span>'+
+          routeStatusIndicators(item)+'</span></td>'+
         '<td>'+html(item.enteredBy||'—')+'</td>'+
         '<td><button type="button" class="pl-route-details-button" data-pl-route-details="'+
         html(item.id)+'">Szczegóły</button></td></tr>';
@@ -675,6 +695,7 @@
     const role=context?.role;
     byId('plRouteAdd').classList.toggle('hidden',balance||history||
       !['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role));
+    byId('plRouteIconLegend').classList.toggle('hidden',balance);
     byId('plRouteBalanceExport').classList.toggle('hidden',!balance);
     byId('plRouteBalanceExport').disabled=true;
     byId('plRoutesClearPresentation').classList.toggle('hidden',true);
