@@ -28,14 +28,15 @@
 .pl-routes-status:empty{display:none}
 .pl-routes-status.is-error{color:#b52135!important}
 .pl-routes-table{width:100%;overflow-x:auto}
-.pl-routes-table > table{width:100%;min-width:780px;table-layout:fixed;border-collapse:collapse;font-size:12.5px}
-.pl-routes-table > table > thead > tr > th:nth-child(1){width:12%}
-.pl-routes-table > table > thead > tr > th:nth-child(2){width:17%}
-.pl-routes-table > table > thead > tr > th:nth-child(3){width:13%}
-.pl-routes-table > table > thead > tr > th:nth-child(4){width:15%}
-.pl-routes-table > table > thead > tr > th:nth-child(5){width:10%}
-.pl-routes-table > table > thead > tr > th:nth-child(6){width:22%}
-.pl-routes-table > table > thead > tr > th:nth-child(7){width:11%}
+.pl-routes-table > table{width:100%;min-width:910px;table-layout:fixed;border-collapse:collapse;font-size:12.5px}
+.pl-routes-table > table > thead > tr > th:nth-child(1){width:10%}
+.pl-routes-table > table > thead > tr > th:nth-child(2){width:16%}
+.pl-routes-table > table > thead > tr > th:nth-child(3){width:12%}
+.pl-routes-table > table > thead > tr > th:nth-child(4){width:13%}
+.pl-routes-table > table > thead > tr > th:nth-child(5){width:9%}
+.pl-routes-table > table > thead > tr > th:nth-child(6){width:19%}
+.pl-routes-table > table > thead > tr > th:nth-child(7){width:13%}
+.pl-routes-table > table > thead > tr > th:nth-child(8){width:8%}
 .pl-routes-table > table > thead > tr > th{text-align:center}
 .pl-routes-table > table > tbody > tr:not(.pl-route-expanded) > td{text-align:center}
  .pl-routes-table th{padding:11px 12px;text-align:center;background:#f2f5f8;color:#627488;font-weight:800;white-space:nowrap;border-bottom:1px solid #dce4ed}
