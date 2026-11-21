@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=135">
-  <link rel="stylesheet" href="./pl-routes.css?v=3">
+  <link rel="stylesheet" href="./pl-routes.css?v=4">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=165"></script>
-  <script defer src="./pl-routes.js?v=5"></script>
+  <script defer src="./pl-routes.js?v=6"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -347,7 +347,7 @@
               </div>
               <button type="button" id="plRouteAdd" class="btn pl-route-add-primary">+ Dodaj trasę</button>
               <button type="button" id="plRoutesClearPresentation" class="btn outline pl-routes-clear hidden"
-                title="Usuń tylko trasy prezentacyjne oznaczone gwiazdką">Wyczyść trasy *</button>
+                title="Usuń wprowadzone trasy prezentacyjne">Wyczyść trasy</button>
             </div>
             <p id="plRoutesListStatus" class="pl-routes-status" role="status" aria-live="polite"></p>
             <div id="plRoutesTable" class="pl-routes-table"></div>
@@ -440,13 +440,6 @@
             <input id="plRouteDate" type="date" required>
           </label>
         </div>
-        <label class="pl-route-presentation-option" for="plRoutePresentation">
-          <input id="plRoutePresentation" type="checkbox" checked>
-          <span>
-            <strong>Trasa prezentacyjna</strong>
-            <small>Na liście będzie oznaczona tylko gwiazdką (*). Administrator może później wyczyścić wszystkie takie trasy.</small>
-          </span>
-        </label>
         <div class="pl-route-parts-head">
           <div>
             <h3>Lista części</h3>
