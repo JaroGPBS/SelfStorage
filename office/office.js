@@ -666,6 +666,9 @@ function setLoggedIn(payload){
   $('username').textContent=name?greetingVocative(name)+'!':'!';
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
+  state.lastSync=null;
+  $('syncTime').textContent='--:--';
+  $('syncDate').textContent='Brak aktualizacji';
   showOfficeHome();
 }
 function showOfficeHome(){
