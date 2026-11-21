@@ -4106,8 +4106,13 @@ document.addEventListener('click',e=>{
   const plWarehouseToggle=e.target.closest('[data-pl-warehouse-toggle]');
   if(plWarehouseToggle){
     const id=plWarehouseToggle.dataset.plWarehouseToggle;
-    state.plExpanded=state.plExpanded===id?null:id;
-    renderMenu();return;
+    const warehouse=realWarehouse(id);
+    if(warehouse?.country_code==='PL'){
+      state.warehouseMenus.PL=true;
+      state.plExpanded=id;
+      selectView('stocks',id);
+    }
+    return;
   }
   const w=e.target.closest('[data-warehouse]');
   if(w){
@@ -4230,8 +4235,14 @@ document.addEventListener('click',e=>{
   }
   const plRoutesToggle=e.target.closest('[data-pl-routes-toggle]');
   if(plRoutesToggle){
-    state.plRoutesExpanded=!state.plRoutesExpanded;
-    renderMenu();
+    const warehouse=state.warehouses.find(w=>w.country_code==='PL'&&w.id===state.warehouse)||
+      state.warehouses.find(w=>w.country_code==='PL');
+    if(warehouse){
+      state.plRoutesExpanded=true;
+      state.plRoutesTab='list';
+      state.warehouseMenus.PL=true;
+      selectView('plRoutes',warehouse.id);
+    }
     return;
   }
   const plRoutesTab=e.target.closest('[data-pl-routes-tab]');
