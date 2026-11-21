@@ -8510,3 +8510,37 @@
 .app.view-receipts:not(.view-vehicles):not(.view-aggregate) .content{
   padding-top:7px;
 }
+
+/* Parent navigation: white context, red active leaf.
+   This applies equally to Polska/Trasy, Tychy, Belleville, boxes and Bovis. */
+#sidebar .office-market-list .subnav-btn.active-parent{
+  position:relative;
+  isolation:isolate;
+  color:#fff;
+  font-weight:800;
+  background:
+    radial-gradient(ellipse 110px 46px at 0% 50%,rgba(255,255,255,.20),transparent 96%),
+    linear-gradient(90deg,rgba(255,255,255,.17),rgba(255,255,255,.07) 54%,rgba(255,255,255,.02));
+  box-shadow:inset 3px 0 rgba(248,250,253,.97),inset 12px 0 18px -15px rgba(255,255,255,.65);
+  transition:background .18s ease,box-shadow .18s ease;
+}
+#sidebar .office-market-list .subnav-btn.active-parent::before{
+  content:"";
+  position:absolute;
+  left:2px;top:6px;bottom:6px;width:2px;border-radius:3px;
+  background:#fff;
+  box-shadow:0 0 7px rgba(255,255,255,.47);
+  pointer-events:none;
+}
+#sidebar .office-market-list .subnav-btn.active-parent:hover{
+  background:
+    radial-gradient(ellipse 115px 48px at 0% 50%,rgba(255,255,255,.27),transparent 98%),
+    linear-gradient(90deg,rgba(255,255,255,.22),rgba(255,255,255,.10) 54%,rgba(255,255,255,.03));
+}
+#sidebar .office-market-list .subnav-btn.active-parent .office-operation-icon,
+#sidebar .office-market-list .subnav-btn.active-parent .office-fr-warehouse-chevron{
+  color:#fff;
+}
+@media(prefers-reduced-motion:reduce){
+  #sidebar .office-market-list .subnav-btn.active-parent{transition:none}
+}
