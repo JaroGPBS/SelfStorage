@@ -47,7 +47,7 @@
       verified:quantity(verified),
       used:valid?Number(actual)-Number(returned):'—',
       returned:quantity(returned),
-      returnLocation:human(line.returnLocation),
+      returnLocation:Number(returned)===0?'':human(line.returnLocation),
       mismatch
     };
   };
@@ -139,8 +139,9 @@
       '</div>'+
       '<h3 class="report-section-title">Pobrane i rozliczone części</h3>'+
       '<table class="report-table"><thead><tr>'+columns.map(c=>'<th>'+safe(c[0])+'</th>').join('')+
-        '</tr></thead><tbody>'+rows.map(r=>'<tr>'+columns.map(c=>'<td>'+safe(human(c[1](r)))+'</td>').join('')+
-        '</tr>').join('')+'</tbody></table>'+
+        '</tr></thead><tbody>'+rows.map(r=>'<tr>'+columns.map(c=>
+          '<td>'+safe(c[0]==='Miejsce zwrotu'&&r.returned===0?'':human(c[1](r)))+'</td>'
+        ).join('')+'</tr>').join('')+'</tbody></table>'+
       '<div class="report-summary"><span>Liczba pozycji: <strong>'+rows.length+'</strong></span>'+
         '<span>Łącznie wydano: <strong>'+rows.reduce((n,r)=>n+Number(r.issued||0),0)+'</strong> szt.</span>'+
         '<span>Potwierdzono: <strong>'+rows.filter(x=>x.confirmed!=='—').length+'/'+rows.length+'</strong> pozycji</span></div>'+
@@ -228,7 +229,8 @@
         'Wykorzystano','Zwrócono','Miejsce zwrotu']
     ];
     for(const r of rows)data.push([r.position,r.name,r.code,
-      r.issued,r.confirmed,r.verified,r.used,r.returned,r.returnLocation]);
+      r.issued,r.confirmed,r.verified,r.used,r.returned,
+      r.returned===0?null:r.returnLocation]);
     data.push([''],['Wyjaśnienia / weryfikacje']);
     for(const a of history.filter(x=>x.type==='Weryfikacja'))
       data.push([a.date,a.actor,a.note||'Brak komentarza (starszy zapis)']);
