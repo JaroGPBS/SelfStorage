@@ -530,7 +530,7 @@
         history||role!=='ADMIN'||result.presentationMode!==true);
       const showDemo=!history&&role==='ADMIN'&&result.presentationMode===true;
       const demoCount=Number(result.demoWeek48Count||0);
-      byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount>=7);
+      byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount>=8);
       byId('plRoutesDeleteDemo48').classList.toggle('hidden',!showDemo||demoCount===0);
       routeAuditCache.clear();
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
