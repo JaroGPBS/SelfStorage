@@ -14,6 +14,7 @@
   let busy=false;
   let loadSeq=0;
   let demo47Routes=[];
+  const partSuggestionsEndpoint='/api/pl-route-parts';
   const routeContext=()=>typeof window.getPlRoutesContext==='function'
     ?window.getPlRoutesContext():null;
   function errorMessage(message=''){
@@ -43,11 +44,15 @@
     row.className='pl-route-part-row';
     row.innerHTML='<label class="pl-route-part-code">Indeks SAP / GPBS (opcjonalnie)'+
       '<input type="text" data-pl-route-part-code maxlength="100" autocomplete="off" placeholder="Indeks części"></label>'+
-      '<label class="pl-route-part-name">Nazwa części'+
-      '<input type="text" data-pl-route-part-name maxlength="180" autocomplete="off" placeholder="Nazwa części"></label>'+
+      '<div class="pl-route-part-name-wrap"><label class="pl-route-part-name">Nazwa części'+
+      '<input type="text" data-pl-route-part-name maxlength="180" autocomplete="off" aria-autocomplete="list" placeholder="Zacznij wpisywać nazwę"></label>'+
+      '<div class="pl-route-part-suggestions hidden" data-pl-route-suggestions role="listbox"></div></div>'+
       '<label class="pl-route-part-quantity">Ilość'+
       '<input type="number" data-pl-route-part-quantity min="1" max="999999" step="1" inputmode="numeric" placeholder="0"></label>'+
       '<button type="button" class="pl-route-remove-part" data-pl-route-remove-part aria-label="Usuń pozycję">×</button>';
+    row.dataset.catalogPartId=data.catalogPartId||'';
+    row.dataset.catalogSelectedName=data.partName||'';
+    row.dataset.catalogSelectedCode=data.partCode||'';
     row.querySelector('[data-pl-route-part-code]').value=data.partCode||'';
     row.querySelector('[data-pl-route-part-name]').value=data.partName||'';
     row.querySelector('[data-pl-route-part-quantity]').value=data.quantity||'';
@@ -134,6 +139,58 @@
     drawRouteCalendar();
   }
 
+  // Shared D1 suggestions; never create new catalogue entries merely by typing.
+  function hidePartSuggestions(row){
+    row?.querySelector('[data-pl-route-suggestions]')?.classList.add('hidden');
+  }
+  function pickPartSuggestion(row,part){
+    if(!part)return;
+    row.querySelector('[data-pl-route-part-name]').value=part.name||'';
+    row.querySelector('[data-pl-route-part-code]').value=part.code||'';
+    row.dataset.catalogPartId=part.id;
+    row.dataset.catalogSelectedName=part.name||'';
+    row.dataset.catalogSelectedCode=part.code||'';
+    row.dataset.suggestionSequence=String(Number(row.dataset.suggestionSequence||0)+1);
+    hidePartSuggestions(row);
+    row.querySelector('[data-pl-route-part-quantity]').focus();
+  }
+  async function searchPartSuggestions(row,query,seq){
+    try{
+      const result=await jsonResponse(await fetch(
+        partSuggestionsEndpoint+'?q='+encodeURIComponent(query),
+        {credentials:'same-origin',cache:'no-store'}
+      ));
+      if(!row.isConnected||Number(row.dataset.suggestionSequence)!==seq||
+         byId('plRouteDialog').open===false)return;
+      const target=row.querySelector('[data-pl-route-suggestions]');
+      target.replaceChildren();
+      const items=(result.parts||[]).slice(0,35);
+      row._routePartSuggestions=items;
+      if(!items.length){hidePartSuggestions(row);return;}
+      items.forEach((part,index)=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='pl-route-part-suggestion';
+        button.dataset.plRouteSuggestionIndex=String(index);
+        button.textContent=part.name+(part.code?' · '+part.code:'');
+        target.append(button);
+      });
+      target.classList.remove('hidden');
+    }catch(error){
+      // Never prevent manual entry when the suggestion service is unavailable.
+      hidePartSuggestions(row);
+    }
+  }
+  function queuePartSuggestions(row){
+    row.dataset.catalogPartId='';
+    const term=row.querySelector('[data-pl-route-part-name]').value.trim()||
+      row.querySelector('[data-pl-route-part-code]').value.trim();
+    const seq=Number(row.dataset.suggestionSequence||0)+1;
+    row.dataset.suggestionSequence=String(seq);
+    clearTimeout(row._routeSuggestionTimer);
+    if(term.length<2){hidePartSuggestions(row);return;}
+    row._routeSuggestionTimer=setTimeout(()=>searchPartSuggestions(row,term,seq),160);
+  }
   function lockSavedRouteFields(locked){
     // After the D1 record exists, retrying a failed photo upload must not
     // imply that edits to the visible form would update the stored route.
@@ -278,7 +335,8 @@
          quantity<1||quantity>999999)throw Error(
         'Każda pozycja musi mieć indeks lub nazwę części oraz dodatnią ilość.'
       );
-      lines.push({partCode,partName,quantity});
+      lines.push({partCode,partName,quantity,
+        catalogPartId:row.dataset.catalogPartId||''});
     }
     if(!lines.length)throw Error('Dodaj co najmniej jedną część do trasy.');
     return {action:'create',routeNumber,routeDate,crewSymbol,lines};
@@ -1344,6 +1402,32 @@
   byId('plRouteClose').addEventListener('click',closeForm);
   byId('plRouteCancel').addEventListener('click',closeForm);
   byId('plRouteAddPart').addEventListener('click',()=>addPartRow());
+  // The selected catalogue ID is invalidated whenever the user edits its name/index.
+  byId('plRouteParts').addEventListener('input',event=>{
+    const field=event.target;
+    if(!field.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
+    const row=field.closest('.pl-route-part-row');
+    if(row)queuePartSuggestions(row);
+  });
+  byId('plRouteParts').addEventListener('focusin',event=>{
+    const input=event.target;
+    if(!input.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
+    const row=input.closest('.pl-route-part-row');
+    if(row&&input.value.trim().length>=2)queuePartSuggestions(row);
+  });
+  byId('plRouteParts').addEventListener('focusout',event=>{
+    const row=event.target.closest?.('.pl-route-part-row');
+    if(row)setTimeout(()=>{
+      if(!row.contains(document.activeElement))hidePartSuggestions(row);
+    },160);
+  });
+  byId('plRouteParts').addEventListener('click',event=>{
+    const button=event.target.closest('[data-pl-route-suggestion-index]');
+    if(!button)return;
+    const row=button.closest('.pl-route-part-row');
+    const part=row?._routePartSuggestions?.[Number(button.dataset.plRouteSuggestionIndex)];
+    if(row&&part)pickPartSuggestion(row,part);
+  });
   // Enter in a part line adds the next line; it must never submit the route.
   byId('plRouteParts').addEventListener('keydown',event=>{
     if(event.key!=='Enter'||event.isComposing)return;
@@ -1352,6 +1436,13 @@
     if(!row||!input.matches('input'))return;
     event.preventDefault();
     if(event.repeat||busy)return;
+    if(input.matches('[data-pl-route-part-name],[data-pl-route-part-code]')){
+      const suggestions=row.querySelector('[data-pl-route-suggestions]');
+      if(suggestions&&!suggestions.classList.contains('hidden')&&row._routePartSuggestions?.length){
+        pickPartSuggestion(row,row._routePartSuggestions[0]);
+        return;
+      }
+    }
     const code=row.querySelector('[data-pl-route-part-code]');
     const name=row.querySelector('[data-pl-route-part-name]');
     const qty=row.querySelector('[data-pl-route-part-quantity]');
@@ -1376,7 +1467,11 @@
     if(!remove)return;
     const row=remove.closest('.pl-route-part-row');
     if(byId('plRouteParts').children.length>1)row.remove();
-    else row.querySelectorAll('input').forEach(input=>input.value='');
+    else{
+      row.querySelectorAll('input').forEach(input=>input.value='');
+      row.dataset.catalogPartId='';
+      hidePartSuggestions(row);
+    }
   });
   byId('plRoutePhotoPick').addEventListener('click',()=>byId('plRoutePhoto').click());
   byId('plRoutePhoto').addEventListener('change',selectedPhoto);
