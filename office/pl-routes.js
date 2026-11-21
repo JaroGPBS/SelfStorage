@@ -58,7 +58,6 @@
     if(!allowed)return;
     const dialog=byId('plRouteDialog');
     byId('plRouteForm').reset();
-    byId('plRoutePresentation').checked=true; // Presentation phase; uncheck for real routes.
     errorMessage();
     clearPhoto();
     byId('plRouteParts').replaceChildren();
@@ -122,8 +121,7 @@
       lines.push({partCode,partName,quantity});
     }
     if(!lines.length)throw Error('Dodaj co najmniej jedną część do trasy.');
-    return {action:'create',routeNumber,routeDate,crewSymbol,lines,
-      isPresentation:byId('plRoutePresentation').checked};
+    return {action:'create',routeNumber,routeDate,crewSymbol,lines};
   }
   async function jsonResponse(response){
     const data=await response.json().catch(()=>({}));
