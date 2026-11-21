@@ -231,7 +231,24 @@
 
       <div id="crewHome" hidden>
         <h2 id="plCrewTitle" class="section-title">Ekipa</h2>
-        <p class="section-info">Panel tras będzie dostępny tutaj po podłączeniu do Office PL.</p>
+        <div class="action-grid">
+          <button id="plCrewRoutesButton" type="button" class="action-tile action-available crew-routes-tile">
+            <span class="action-icon" aria-hidden="true">▤</span>
+            <strong>Trasy</strong>
+            <span id="plCrewRoutesAlert" class="crew-routes-alert" hidden></span>
+          </button>
+        </div>
+      </div>
+
+      <div id="crewRouteScreen" hidden>
+        <button id="plCrewRoutesBack" class="text-button back-button" type="button">← Wróć</button>
+        <h2 id="plCrewRouteTitle" class="section-title">Trasy</h2>
+        <p id="plCrewRoutesError" class="error" role="alert" hidden></p>
+        <div id="plCrewRoutesList" class="crew-routes-list"></div>
+        <form id="plCrewPickupForm" hidden>
+          <div id="plCrewPickupLines" class="crew-pickup-lines"></div>
+          <button id="plCrewConfirmPickup" class="btn btn-primary" type="submit">Potwierdź odbiór części</button>
+        </form>
       </div>
 
       <div id="officeHome" hidden>
@@ -246,6 +263,14 @@
     <footer class="page-footer page-footer-signature"><img src="/icons/jaro-signature.svg" alt="Created by Jaro" width="80" height="29"></footer>
   </main>
 
+
+  <dialog id="plCrewAfterPickup" class="inventory-dialog" aria-labelledby="plCrewAfterPickupTitle">
+    <div class="modal-inner">
+      <h2 id="plCrewAfterPickupTitle">Odbiór potwierdzony</h2>
+      <p>Po zakończeniu trasy zdaj raport z wykorzystanych i zwracanych części.</p>
+      <button type="button" id="plCrewAfterPickupClose" class="btn btn-primary">OK</button>
+    </div>
+  </dialog>
 
   <!-- Oddzielne pełnoekranowe okno PZ/WZ: bez logo, bez nagłówka magazynu.
        Osobne opcjonalne komentarze są przypisane do PZ i WZ. -->
