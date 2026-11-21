@@ -8106,3 +8106,96 @@
   .office-poland-logo{width:min(76vw,320px)}
   .office-poland-heading h1{font-size:42px}
 }
+
+
+/* Market dashboards: shared GPBS warehouse wallpaper (Poland and France). */
+/* Only the two market start screens use this wallpaper; warehouse views remain unchanged. */
+.app.view-pl-home .main,
+.app .main:has(#officeFranceHome:not(.hidden)){
+  background:
+    radial-gradient(ellipse at 95% 90%,rgba(152,26,38,.15),transparent 48%),
+    linear-gradient(115deg,rgba(9,14,21,.75) 0%,rgba(12,18,26,.79) 52%,rgba(9,14,21,.86) 100%),
+    url('/images/warehouse-background.jpg?v=2') center 58%/cover no-repeat,
+    #101821;
+}
+.app .main:has(#officeFranceHome:not(.hidden)){
+  background:
+    linear-gradient(115deg,rgba(10,15,22,.84) 0%,rgba(12,18,26,.86) 55%,rgba(10,15,22,.88) 100%),
+    url('/images/warehouse-background.jpg?v=2') center 58%/cover no-repeat,
+    #101821;
+}
+/* Consistent dark dashboard header, without changing the persistent left menu. */
+.app.view-pl-home .topbar,
+.app .main:has(#officeFranceHome:not(.hidden)) .topbar{
+  background:rgba(12,18,26,.94);
+  border-bottom-color:rgba(219,229,242,.14);
+}
+.app.view-pl-home .topbar .breadcrumbs,
+.app .main:has(#officeFranceHome:not(.hidden)) .topbar .breadcrumbs,
+.app.view-pl-home .topbar .breadcrumbs strong,
+.app .main:has(#officeFranceHome:not(.hidden)) .topbar .breadcrumbs strong{
+  color:#e7edf4;
+}
+.app.view-pl-home .topbar .top-status,
+.app .main:has(#officeFranceHome:not(.hidden)) .topbar .top-status{
+  color:#ced8e4;
+}
+.app.view-pl-home .topbar .mobile-menu,
+.app .main:has(#officeFranceHome:not(.hidden)) .topbar .mobile-menu{
+  color:#f4f6fa;
+}
+/* Polska: approved top-left branding lockup; no additional dashboard tiles. */
+.app.view-pl-home .office-poland-home{
+  align-items:flex-start;
+  justify-content:flex-start;
+}
+.app.view-pl-home .office-poland-heading{
+  align-items:flex-start;
+  justify-content:flex-start;
+  gap:9px;
+  text-align:left;
+  transform:none;
+}
+.app.view-pl-home .office-poland-logo{
+  width:clamp(200px,22vw,304px);
+}
+.app.view-pl-home .office-poland-heading h1{
+  font-size:clamp(43px,4.4vw,62px);
+  text-shadow:0 3px 16px rgba(0,0,0,.55);
+}
+/* Francja: keep existing functional tiles light against the dark warehouse photo. */
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-heading h1,
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-section h2{
+  color:#f5f8fd;
+  text-shadow:0 2px 14px rgba(0,0,0,.35);
+}
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-kicker,
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-heading p:not(.office-france-kicker),
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-date,
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-status{
+  color:#cbd7e4;
+}
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-section h2{
+  border-bottom-color:rgba(220,232,248,.24);
+}
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-stat,
+.app .main:has(#officeFranceHome:not(.hidden)) .office-france-links button{
+  background:rgba(255,255,255,.95);
+  border-color:rgba(226,234,243,.82);
+  box-shadow:0 9px 24px rgba(0,0,0,.15);
+}
+@media(max-width:690px){
+  .app.view-pl-home .office-poland-heading{
+    gap:7px;
+    transform:none;
+  }
+  .app.view-pl-home .office-poland-logo{
+    width:min(68vw,260px);
+  }
+  .app.view-pl-home .office-poland-heading h1{
+    font-size:clamp(39px,8vw,50px);
+  }
+  .app .main:has(#officeFranceHome:not(.hidden)) .content{
+    padding:18px 14px 30px;
+  }
+}
