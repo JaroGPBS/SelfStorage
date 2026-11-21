@@ -667,3 +667,108 @@
 .pl-route-activity-list .pl-route-audit-event{
   font-size:11px;line-height:1.4;
 }
+
+
+/* PL route status: meaningful note and edit indicators, no extra data requests. */
+.pl-routes-table .pl-route-status-cell{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  max-width:100%;
+  gap:7px;
+}
+.pl-routes-table .pl-route-status-cell .pl-route-status-badge{
+  width:auto;
+  flex:1 1 auto;
+  min-width:0;
+  max-width:218px;
+  white-space:normal;
+  line-height:1.25;
+}
+.pl-routes-table .pl-route-row-indicators{
+  display:inline-flex;
+  align-items:center;
+  flex:0 0 auto;
+  gap:5px;
+}
+.pl-routes-table .pl-route-indicator{
+  width:16px;
+  height:16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#597087;
+}
+.pl-routes-table .pl-route-indicator svg{
+  width:16px;
+  height:16px;
+  display:block;
+}
+/* A single info icon next to route actions explains both indicator meanings. */
+.pl-routes-toolbar .pl-route-icon-legend{
+  position:relative;
+  margin-left:auto;
+  flex:0 0 auto;
+  align-self:center;
+  z-index:5;
+}
+.pl-routes-toolbar .pl-route-icon-legend > summary{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:24px;
+  height:24px;
+  list-style:none;
+  border:1px solid #c8d4df;
+  border-radius:50%;
+  background:#f6f8fa;
+  color:#526a81;
+  font-size:13px;
+  line-height:1;
+  font-style:normal;
+  font-weight:750;
+  cursor:pointer;
+  user-select:none;
+}
+.pl-routes-toolbar .pl-route-icon-legend > summary::-webkit-details-marker{display:none}
+.pl-routes-toolbar .pl-route-icon-legend[open] > summary,
+.pl-routes-toolbar .pl-route-icon-legend > summary:hover{
+  background:#eaf1f8;
+  border-color:#98aec1;
+}
+.pl-routes-toolbar .pl-route-icon-legend > summary:focus-visible{
+  outline:2px solid #c92832;
+  outline-offset:3px;
+}
+.pl-routes-toolbar .pl-route-icon-legend-content{
+  position:absolute;
+  right:0;
+  top:calc(100% + 8px);
+  z-index:30;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  width:max-content;
+  max-width:min(310px,calc(100vw - 36px));
+  padding:13px 15px;
+  border:1px solid #d5dfe8;
+  border-radius:8px;
+  background:#fff;
+  color:#40566c;
+  box-shadow:0 12px 34px rgba(28,44,63,.17);
+  font-size:12px;
+  font-weight:500;
+}
+.pl-routes-toolbar .pl-route-icon-legend-entry{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  white-space:nowrap;
+}
+.pl-routes-toolbar .pl-route-icon-legend-entry svg{
+  width:16px;
+  height:16px;
+  flex:0 0 16px;
+  color:#597087;
+}
