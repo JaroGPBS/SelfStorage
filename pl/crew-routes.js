@@ -198,6 +198,13 @@
         action:'confirmPickup',id:route.id,revision:route.revision,lines:items
       });
       current=null;
+      const confirmedRoute=routes.find(x=>x.id===route.id);
+      if(confirmedRoute){
+        confirmedRoute.pending=false;
+        confirmedRoute.unconfirmedCount=0;
+        confirmedRoute.status=result.status;
+        renderTile();
+      }
       hideScreen?.();
       await refresh(user);
       dialogTitle.textContent=result.discrepancy?'Odbiór zapisany — różnice przekazano do biura':
