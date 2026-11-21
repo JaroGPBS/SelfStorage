@@ -458,6 +458,8 @@
       previousWeek=weekKey;
       const rowClasses=[
         status.className==='is-discrepancy'?'pl-route-needs-review':'',
+        item.status==='COMPLETED'&&Number(item.pendingReturnApprovals)>0
+          ?'pl-route-awaiting-returns':'',
         newWeek?'pl-route-week-separator':''
       ].filter(Boolean);
       return '<tr'+(rowClasses.length?' class="'+rowClasses.join(' ')+'"':'')+
