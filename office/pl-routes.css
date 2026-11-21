@@ -67,6 +67,10 @@
   display:block;margin-top:4px;font-size:10px;letter-spacing:0;
   font-weight:700;text-transform:none;color:#647e93
 }
+.pl-routes-table .pl-route-balance-current strong{font-size:13px;color:#30485e}
+.pl-routes-table .pl-route-balance-current small{
+  display:block;margin-top:4px;font-size:10px;font-weight:500;color:#718596
+}
 .pl-routes-table .pl-route-balance-table tbody tr:hover td{background:#f5f8fb}
 .pl-routes-table .pl-route-balance-table tbody tr:hover td:last-child{background:#e5edf3}
 
