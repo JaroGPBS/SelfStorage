@@ -212,6 +212,7 @@
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'
   }[c]));
   function excelCell(value){
+    if(value===null)return '<c t="inlineStr"><is><t></t></is></c>';
     if(typeof value==='number'&&Number.isFinite(value))
       return '<c><v>'+value+'</v></c>';
     return '<c t="inlineStr"><is><t xml:space="preserve">'+xEsc(human(value))+'</t></is></c>';
