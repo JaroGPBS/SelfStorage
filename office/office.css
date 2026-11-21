@@ -8278,3 +8278,35 @@
     animation:none;
   }
 }
+
+
+/* Compact, low-contrast sidebar synchronization tile (~half the original height). */
+#sidebar .office-side-sync{padding:7px 5px 5px}
+#sidebar .office-side-sync-button{
+  min-height:52px;
+  padding:5px 8px;
+  gap:0;
+  border-color:rgba(218,230,242,.17);
+  background:rgba(255,255,255,.045);
+}
+#sidebar .office-side-sync-heading{
+  gap:5px;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.25;
+  color:#d9e0e8;
+}
+#sidebar .office-side-sync-heading > span{font-size:14px}
+#sidebar .office-side-sync-button strong{
+  font-size:14px;
+  line-height:1.25;
+  font-weight:450;
+  letter-spacing:0;
+  color:#e7edf4;
+}
+#sidebar .office-side-sync-button small{
+  font-size:10px;
+  line-height:1.2;
+  font-weight:450;
+  color:#aebbc9;
+}
