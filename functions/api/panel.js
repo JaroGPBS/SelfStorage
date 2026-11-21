@@ -1,5 +1,6 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
+import {listRouteParts,createRoutePart,updateRoutePart,mergeRouteParts,importPreviousRouteParts} from '../../lib/pl-route-parts.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {readFrBoxSharedCatalog,removeBoxCataloguePart,addBoxCataloguePart} from '../../lib/fr-box-office-stock.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
@@ -617,6 +618,7 @@ async function queryPanel(env,view,url) {
     ).all();
     return rows.results||[];
   }
+  if(view==='routeParts')return {parts:await listRouteParts(env.DB,'',3000)};
   if(view==='vehicleParts')return getVehicleCatalogue(env.DB);
   if(view==='boxParts') {
     // The very same source and current balances as French Office.
@@ -1691,6 +1693,33 @@ async function route(request,env) {
     }catch(error){
       console.error('FR weekly settings update failed',error?.name||'Error');
       return fail('Nie udało się zapisać harmonogramu.',503);
+    }
+  }
+  if(['routePartCreate','routePartUpdate','routePartMerge','routePartImport'].includes(body?.action)){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień do katalogu tras.',403);
+    try{
+      if(body.action==='routePartImport'){
+        const existing=await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_routes'"
+        ).first();
+        if(!existing)return respond({ok:true,imported:0,remaining:0});
+        return respond({ok:true,...await importPreviousRouteParts(env.DB,100)});
+      }
+      if(body.action==='routePartMerge'){
+        const result=await mergeRouteParts(env.DB,String(body.sourceId||''),String(body.targetId||''));
+        if(result.error)return fail(result.error,result.conflict?409:400);
+        return respond({ok:true,...result});
+      }
+      const result=body.action==='routePartCreate'
+        ?await createRoutePart(env.DB,body)
+        :await updateRoutePart(env.DB,String(body.id||''),body);
+      if(result.error)return fail(result.error,result.conflict?409:400);
+      return respond({ok:true,...result});
+    }catch(error){
+      console.error('PL route part admin action failed',error?.name||'Error');
+      if(/unique constraint/i.test(String(error?.message||'')))
+        return fail('Część o tej nazwie już istnieje. Wybierz ją z katalogu.',409);
+      return fail('Nie udało się zapisać katalogu części tras PL.',503);
     }
   }
   if(['setUserMarkets','setUserPermissions','setUserApps'].includes(body?.action)){
