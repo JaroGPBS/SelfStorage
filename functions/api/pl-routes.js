@@ -355,6 +355,29 @@ export async function onRequestGet({request,env}){
         ...item,actor:item.actorId==='DEMO'
           ?'Przykład (demo)':shortCreatorName(actorName)
       }));
+      const crewActivity=[];
+      if(await exists(env.DB,'pl_route_pickups')){
+        const pickup=await env.DB.prepare(
+          'SELECT p.confirmed_at AS createdAt,'+
+          "COALESCE(NULLIF(TRIM(profile.display_code),''),u.name,'Ekipa') AS actor "+
+          'FROM pl_route_pickups p '+
+          'LEFT JOIN users u ON u.id=p.actor_id '+
+          'LEFT JOIN user_private_profiles profile ON profile.user_id=p.actor_id '+
+          'WHERE p.route_id=?'
+        ).bind(id).first();
+        if(pickup)crewActivity.push({...pickup,action:'PICKUP'});
+      }
+      if(await exists(env.DB,'pl_route_reports')){
+        const report=await env.DB.prepare(
+          'SELECT p.submitted_at AS createdAt,'+
+          "COALESCE(NULLIF(TRIM(profile.display_code),''),u.name,'Ekipa') AS actor "+
+          'FROM pl_route_reports p '+
+          'LEFT JOIN users u ON u.id=p.actor_id '+
+          'LEFT JOIN user_private_profiles profile ON profile.user_id=p.actor_id '+
+          'WHERE p.route_id=?'
+        ).bind(id).first();
+        if(report)crewActivity.push({...report,action:'REPORT'});
+      }
       const approvedTable=await exists(env.DB,'pl_route_return_approvals');
       const returnApprovals=approvedTable?(await env.DB.prepare(
         'SELECT a.position,a.quantity,a.location,a.approved_by AS approvedById,'+
@@ -372,7 +395,7 @@ export async function onRequestGet({request,env}){
       route.canEdit=canEditRoute(route.status,lines);
       const crewComments=await getPlRouteCrewNotes(env.DB,id);
       return workerJson({ok:true,route,lines,documents,audit:history,
-        crewComments,returnApprovals,storageReady:true});
+        crewComments,crewActivity,returnApprovals,storageReady:true});
     }
     const scope=url.searchParams.get('scope')||'active';
     if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
