@@ -372,7 +372,7 @@
         }
       }catch(error){errorMessage(error.message);return;}
     }
-    if(!savedRouteId&&!window.confirm(editingRouteId
+    if(!savedRouteId&&!await confirmRouteAction(editingRouteId
       ?'Czy na pewno wszystkie zmienione dane trasy są poprawne? Zapisać edycję?'
       :'Czy na pewno wszystkie dane trasy zostały wprowadzone poprawnie? Zapisać trasę?'))return;
     setBusy(true);
@@ -644,6 +644,27 @@
       '</div>'+
     '</div>';
   }
+  let routeConfirmResolve=null;
+  function finishRouteConfirmation(approved){
+    const resolve=routeConfirmResolve;
+    routeConfirmResolve=null;
+    const dialog=byId('plRouteConfirmDialog');
+    if(dialog.open)dialog.close();
+    if(resolve)resolve(Boolean(approved));
+  }
+  function confirmRouteAction(message){
+    if(routeConfirmResolve)return Promise.resolve(false);
+    return new Promise(resolve=>{
+      routeConfirmResolve=resolve;
+      byId('plRouteConfirmMessage').textContent=message;
+      try{
+        byId('plRouteConfirmDialog').showModal();
+        byId('plRouteConfirmCancel').focus();
+      }catch{
+        finishRouteConfirmation(false);
+      }
+    });
+  }
   let explainSaving=false;
   async function openDiscrepancyExplanation(button){
     if(explainSaving||byId('plRouteExplainDialog').open)return;
@@ -715,7 +736,7 @@
       error.textContent='Wpisz prawidłowe ilości w każdej pozycji.';
       return;
     }
-    if(!window.confirm('Zatwierdzić wyjaśnienie niezgodności i zapisać komentarz?'))return;
+    if(!await confirmRouteAction('Zatwierdzić wyjaśnienie niezgodności i zapisać komentarz?'))return;
     explainSaving=true;
     byId('plRouteExplainSave').disabled=true;
     error.hidden=true;
@@ -1076,6 +1097,9 @@
     clearPhoto();
     if(!busy)errorMessage();
   });
+  byId('plRouteConfirmApprove').addEventListener('click',()=>finishRouteConfirmation(true));
+  byId('plRouteConfirmCancel').addEventListener('click',()=>finishRouteConfirmation(false));
+  byId('plRouteConfirmDialog').addEventListener('close',()=>finishRouteConfirmation(false));
   byId('plRouteExplainForm').addEventListener('submit',submitDiscrepancyExplanation);
   byId('plRouteExplainClose').addEventListener('click',()=>{
     if(!explainSaving)byId('plRouteExplainDialog').close();
