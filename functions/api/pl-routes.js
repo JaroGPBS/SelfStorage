@@ -434,6 +434,62 @@ export async function onRequestPost({request,env}){
       return send('Nie udało się wstawić tras demo do D1.',503);
     }
   }
+  if(body?.action==='deleteDemo48PL03'){
+    // Exact, one-time removal of the demonstrative route with duplicate audit
+    // history. Never expose deletion of a normal route through this action.
+    if(auth.user.role!=='ADMIN')return send('Tylko administrator może usunąć trasę pokazową.',403);
+    if(body.confirm!=='USUŃ 48PL-03')return send('Potwierdź usunięcie trasy 48PL-03.',400);
+    try{
+      if(!await verifyCleanupPin(env.DB,env,auth.user.id,body.pin))
+        return send('Nieprawidłowy PIN administratora.',403);
+      if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB))
+        return workerJson({ok:true,deleted:0});
+      const route=await env.DB.prepare(
+        'SELECT id,route_number AS routeNumber,route_date AS routeDate,'+
+        'is_presentation AS isPresentation FROM pl_routes WHERE id=?'
+      ).bind(retiredDemo48PL03).first();
+      if(!route)return workerJson({ok:true,deleted:0});
+      if(Number(route.isPresentation)!==1||route.routeNumber!=='48PL-03'||
+         route.routeDate!=='2026-11-25')
+        return send('Nie znaleziono właściwej trasy pokazowej. Niczego nie usunięto.',409);
+      const hasDocuments=await exists(env.DB,'pl_route_documents');
+      const docs=hasDocuments?(await env.DB.prepare(
+        'SELECT object_key,size_bytes FROM pl_route_documents WHERE route_id=?'
+      ).bind(retiredDemo48PL03).all()).results||[]:[];
+      if(docs.length){
+        if(!env.PART_PHOTOS||typeof env.PART_PHOTOS.delete!=='function')
+          return send('Usuwanie przerwane: brakuje dostępu do zdjęć w R2.',503);
+        for(let i=0;i<docs.length;i+=1000){
+          await env.PART_PHOTOS.delete(docs.slice(i,i+1000).map(d=>d.object_key));
+        }
+      }
+      const statements=[];
+      if(docs.length&&await exists(env.DB,'pl_r2_photo_quota')){
+        const bytes=docs.reduce((sum,doc)=>sum+Number(doc.size_bytes||0),0);
+        statements.push(env.DB.prepare(
+          'UPDATE pl_r2_photo_quota SET used_bytes=MAX(0,used_bytes-?) WHERE id=1'
+        ).bind(bytes));
+      }
+      if(hasDocuments)statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_documents WHERE route_id=?'
+      ).bind(retiredDemo48PL03));
+      if(await exists(env.DB,'pl_route_audit'))statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_audit WHERE route_id=?'
+      ).bind(retiredDemo48PL03));
+      statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_lines WHERE route_id=?'
+      ).bind(retiredDemo48PL03));
+      statements.push(env.DB.prepare(
+        "DELETE FROM pl_routes WHERE id=? AND is_presentation=1 "+
+        "AND route_number='48PL-03' AND route_date='2026-11-25'"
+      ).bind(retiredDemo48PL03));
+      const result=await env.DB.batch(statements);
+      return workerJson({ok:true,deleted:Number(result[result.length-1]?.meta?.changes||0)});
+    }catch(error){
+      console.error('PL route 48PL-03 scoped cleanup failed',error?.name||'Error');
+      return send('Nie udało się usunąć wyłącznie trasy demo 48PL-03.',503);
+    }
+  }
   if(body?.action==='deleteDemoWeek48'){
     if(auth.user.role!=='ADMIN')return send('Tylko administrator może usuwać demo 48.',403);
     if(body.confirm!=='USUŃ DEMO 48')return send('Brak potwierdzenia usunięcia.',400);
