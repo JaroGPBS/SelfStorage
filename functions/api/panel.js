@@ -8,6 +8,7 @@ import {listAdminWarehouses,createManagedWarehouse,updateManagedWarehouse,delete
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
+import {ensurePlTestTable,plTestTableExists,isPlTestCrew,deletePlTestCrew} from '../../lib/pl-test-crew.js';
 import {resolveFrCarClaim} from '../../lib/fr-car-review.js';
 import {readFrWeeklySettings,saveFrWeeklySettings} from '../../lib/fr-weekly-schedule.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
@@ -777,6 +778,7 @@ async function queryPanel(env,view,url) {
       ?"(SELECT CASE WHEN c.inventory_json IS NULL THEN 0 ELSE 1 END "+
        "FROM fr_car_claims c WHERE c.user_id=u.id AND c.status='PENDING')"
       :'NULL';
+    const hasPlTest=await plTestTableExists(env.DB);
     const archived=url.searchParams.get('archived')==='1';
     if(archived&&!hasArchiveTable)return [];
     const rows=await env.DB.prepare(
@@ -786,6 +788,9 @@ async function queryPanel(env,view,url) {
       'COALESCE('+realPlate+",'') AS car_plate, "+
       'COALESCE('+pendingPlate+",'') AS car_pending_plate, "+
       'COALESCE('+pendingInventory+',0) AS car_pending_inventory, '+
+      (hasPlTest
+        ?'CASE WHEN EXISTS(SELECT 1 FROM pl_test_crews t WHERE t.user_id=u.id) THEN 1 ELSE 0 END AS is_pl_test, '
+        :'0 AS is_pl_test, ')+
       "COALESCE((SELECT GROUP_CONCAT(a.warehouse_id, ', ') FROM user_warehouse_access a WHERE a.user_id=u.id),'') AS warehouses, "+
       "COALESCE((SELECT GROUP_CONCAT(DISTINCT w.country_code) FROM user_warehouse_access a "+
       "JOIN warehouses w ON w.id=a.warehouse_id WHERE a.user_id=u.id),'') AS warehouse_countries "+
@@ -959,6 +964,10 @@ async function staffMutation(env,body,actor,edit) {
   if(!staff) return fail('Podaj użytkownika, rolę i poprawne dane kontaktowe, jeśli je wpisujesz.',400);
   if(!await requireStaffSchema(db))
     return fail('Najpierw wykonaj migrację db/05-user-private-profiles.sql w D1.',503);
+  const testCrewRequested=body?.testCrew===true;
+  if(testCrewRequested&&(
+    edit||staff.role!=='EKIPA'||body.crewMarket!=='PL'||staff.warehouses.length
+  ))return fail('Ekipa testowa musi być nową ekipą PL bez przypisanego magazynu.',400);
   const id=edit?String(body.userId||''):'GPBS-U-'+crypto.randomUUID();
   let before=null,prior=[];
   if(edit) {
@@ -968,6 +977,9 @@ async function staffMutation(env,body,actor,edit) {
       'FROM users u LEFT JOIN user_private_profiles p ON p.user_id=u.id WHERE u.id=?'
     ).bind(id).first();
     if(!before)return fail('Nie znaleziono użytkownika.',404);
+    if(await isPlTestCrew(db,id)&&(
+      staff.nickname!==before.name||staff.role!=='EKIPA'||body.crewMarket!=='PL'
+    ))return fail('Nie można zmienić identyfikatora ani rynku ekipy testowej. Usuń ją po testach.',409);
     if(await archiveTableExists(db)) {
       const archived=await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first();
       if(archived)return fail('Użytkownik jest archiwalny. Najpierw go przywróć.',409);
@@ -996,6 +1008,7 @@ async function staffMutation(env,body,actor,edit) {
   if(staff.role==='EKIPA' && !['PL','FR'].includes(String(body.crewMarket||'')))
     return fail('Wybierz rynek ekipy: Polska albo Francja.',400);
   if(staff.role==='EKIPA')await ensureAccessTable(db);
+  if(testCrewRequested)await ensurePlTestTable(db);
   const stmts=[];
   if(edit) {
     stmts.push(db.prepare('UPDATE users SET name=?,role_code=?,active=? WHERE id=?')
@@ -1018,6 +1031,8 @@ async function staffMutation(env,body,actor,edit) {
     stmts.push(db.prepare('INSERT INTO user_warehouse_access (user_id,warehouse_id) VALUES (?,?)')
       .bind(id,wh));
   }
+  if(testCrewRequested)
+    stmts.push(db.prepare('INSERT INTO pl_test_crews(user_id) VALUES(?)').bind(id));
   if(staff.role==='EKIPA'){
     stmts.push(db.prepare(
       'INSERT INTO user_access_settings(user_id,pl_enabled,fr_enabled) VALUES(?,?,?) '+
@@ -1048,6 +1063,12 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   if(!user)return fail('Nie znaleziono ekipy. Odśwież listę użytkowników.',404);
   if(user.role_code!=='EKIPA')return fail('Trwale można usuwać tylko konta ekip.',403);
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
+  // Remove only the explicitly flagged PL test crew and its own demo routes.
+  if(await isPlTestCrew(db,id)){
+    const result=await deletePlTestCrew(env,id);
+    if(result.error)return fail(result.error,result.status||409);
+    return respond({ok:true,userId:id,message:result.notice,deletedRoutes:result.deletedRoutes});
+  }
   const markedTest=await isFrTestAccount(db,id);
   const deleteAa=String(user.name||'').trim().toUpperCase()==='AA';
   // AA is an explicitly identified presentation crew. The operator chose to
