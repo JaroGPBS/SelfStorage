@@ -14,6 +14,15 @@
 }
 .pl-routes-toolbar .pl-routes-clear:hover{background:#fff4f5;color:#a02b39;border-color:#d4afb3}
 .pl-routes-toolbar .pl-routes-clear[disabled]{opacity:.5;cursor:wait}
+.pl-routes-toolbar .pl-route-demo-action{
+  min-height:32px;padding:6px 10px;border:1px solid #c9d6e2;
+  border-radius:7px;background:#f8fafc;color:#526d86;
+  font-size:11px;font-weight:750;box-shadow:none
+}
+.pl-routes-toolbar #plRoutesSeedDemo48:hover{background:#eaf2f8;color:#2f607f}
+.pl-routes-toolbar #plRoutesDeleteDemo48{color:#8d4a52;border-color:#e0ccd1}
+.pl-routes-toolbar #plRoutesDeleteDemo48:hover{background:#fff1f2;color:#a32c40}
+.pl-routes-toolbar .pl-route-demo-action[disabled]{opacity:.5;cursor:wait}
 .pl-route-presentation-star{margin-left:4px;color:#ab3243;font-size:13px;font-weight:800;vertical-align:super}
 .pl-routes-toolbar #plRouteAdd{
   display:inline-flex;align-items:center;justify-content:center;
