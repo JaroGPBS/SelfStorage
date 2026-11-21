@@ -180,11 +180,17 @@ export async function onRequestGet({request,env}){
     const where=scope==='history'
       ?"WHERE r.status='COMPLETED' "
       :"WHERE r.status<>'COMPLETED' ";
+    const hasConfirmations=(await routeLineColumns(env.DB)).has('confirmed_quantity');
+    const discrepancies=hasConfirmations
+      ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
+       'AND l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0) AS discrepancyCount,'
+      :'0 AS discrepancyCount,';
     const routeRows=(await env.DB.prepare(
       'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
       'r.crew_symbol AS crewSymbol,r.status,'+
       (presentationColumn?'r.is_presentation AS isPresentation,':'0 AS isPresentation,')+
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units,'+
+      discrepancies+
       "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
       where+
