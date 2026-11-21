@@ -1537,3 +1537,75 @@ body.operation-task-open {overflow:hidden}
 .operation-photo-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
 .operation-photo-controls .btn{min-height:43px;font-size:12px;padding:8px 5px;white-space:normal}
 @media(max-width:350px){.operation-photo-controls{grid-template-columns:1fr}}
+
+
+/* Polish crew routes. Only an unconfirmed pickup highlights the entry tile. */
+.crew-routes-tile{
+  grid-column:1/-1;
+  min-height:100px;
+  width:100%;
+  justify-content:center;
+  gap:8px;
+  transition:background .18s,border-color .18s,min-height .18s;
+}
+.crew-routes-tile.crew-routes-attention{
+  min-height:135px;
+  background:linear-gradient(145deg,#ec303c,#a91625);
+  color:#fff;
+  border-color:#ff8689;
+  box-shadow:0 12px 27px #9f17273d;
+}
+.crew-routes-attention .action-icon{background:#ffffff26;color:#fff}
+.crew-routes-alert{font-size:14px;font-weight:750;line-height:1.5}
+.crew-routes-list{display:grid;gap:10px}
+.crew-route-row{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:5px;
+  width:100%;
+  background:#1a232c;
+  color:var(--text);
+  border:1px solid #414f5c;
+  border-radius:12px;
+  padding:15px 16px;
+  text-align:left;
+}
+.crew-route-row.pending{border-color:#d74a58;background:#362026}
+.crew-route-row strong{font-size:16px}
+.crew-route-row small,.crew-route-row-status{font-size:12px;color:#b9c6d2}
+.crew-route-row.pending .crew-route-row-status{color:#ffb7bc}
+.crew-pickup-lines{display:grid;gap:0;margin:12px 0 22px}
+.crew-pickup-line{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  justify-content:space-between;
+  padding:14px 0;
+  border-bottom:1px solid #39434f;
+}
+.crew-pickup-description{min-width:0;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+.crew-pickup-description strong{font-size:14px;line-height:1.4}
+.crew-pickup-description small{font-size:12px;color:#b1bdcc;line-height:1.4}
+.crew-pickup-line input{
+  width:80px;
+  min-width:80px;
+  border:1px solid #637182;
+  background:#101820;
+  color:#fff;
+  border-radius:10px;
+  text-align:center;
+  padding:12px 6px;
+  font-size:18px;
+  font-variant-numeric:tabular-nums;
+}
+.crew-pickup-line input:disabled{border-color:#303b45;background:#202a34;opacity:.85}
+.crew-pickup-line input:focus-visible{outline:2px solid #ff676c;outline-offset:2px}
+#plCrewAfterPickup{max-width:min(420px,calc(100vw - 30px));width:100%;border:1px solid #56616f;border-radius:16px;background:#192129;color:#fff;padding:22px}
+#plCrewAfterPickup::backdrop{background:#000a}
+#plCrewAfterPickup h2{font-size:20px;margin:0 0 12px}
+#plCrewAfterPickup p{font-size:14px;line-height:1.6;color:#cbd4de;margin:0 0 22px}
+@media(max-width:360px){
+  .crew-pickup-line{gap:9px}
+  .crew-pickup-line input{width:66px;min-width:66px}
+}
