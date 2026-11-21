@@ -341,7 +341,7 @@ export async function onRequestGet({request,env}){
       route.pendingReturnApprovals=positiveReturns.filter(line=>
         !returnApprovalMatches(line,approvalsByPosition.get(Number(line.position)))).length;
       route.canApproveReturns=route.status==='COMPLETED'&&route.pendingReturnApprovals>0&&
-        ['COORDYNATOR','ADMIN'].includes(auth.user.role);
+        ['KOORDYNATOR','ADMIN'].includes(auth.user.role);
       route.canEdit=canEditRoute(route.status,lines);
       return workerJson({ok:true,route,lines,documents,audit:history,
         returnApprovals,storageReady:true});
@@ -457,7 +457,7 @@ export async function onRequestPost({request,env}){
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
   if(body?.action==='approveReturns'){
-    if(!['COORDYNATOR','ADMIN'].includes(auth.user.role))
+    if(!['KOORDYNATOR','ADMIN'].includes(auth.user.role))
       return send('Zwroty może zatwierdzić tylko koordynator lub administrator.',403);
     const id=String(body.id||'');
     const revision=Number(body.baseRevision);
