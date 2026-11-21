@@ -449,6 +449,7 @@ export async function onRequestPost({request,env}){
         if(settlement.error)return send(settlement.error,409);
         const updates=settlement.updates;
         const matching=route.status==='COMPLETED'&&updates.every((x,index)=>
+          lines[index].confirmedQuantity!=null&&lines[index].returnedQuantity!=null&&
           Number(lines[index].confirmedQuantity)===x.quantity&&
           Number(lines[index].returnedQuantity)===x.returnedQuantity&&
           String(lines[index].returnLocation||'')===String(x.returnLocation||''));
