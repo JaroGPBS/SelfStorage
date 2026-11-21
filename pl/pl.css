@@ -1609,3 +1609,78 @@ body.operation-task-open {overflow:hidden}
   .crew-pickup-line{gap:9px}
   .crew-pickup-line input{width:66px;min-width:66px}
 }
+
+
+/* PL crew: current route remains a red task, history is a separate low tile. */
+.crew-active-route{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:112px;margin:0 0 11px;
+  border:1px solid #ff777d;border-radius:12px;
+  background:linear-gradient(145deg,#ea3342,#aa1727);color:#fff;
+  padding:18px 15px;text-align:left;
+  box-shadow:0 8px 25px #910d2136;
+}
+.crew-active-route:hover{background:linear-gradient(145deg,#f04651,#b51e2d)}
+.crew-active-route.pickup #plCrewActiveRouteLabel{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:7px;width:100%;
+  font-size:15px;font-weight:700;line-height:1.4
+}
+.crew-active-route.pickup strong{font-size:18px}
+.crew-active-route.report{
+  min-height:55px;padding:12px 13px;box-shadow:none;
+  justify-content:flex-start
+}
+.crew-active-route.report #plCrewActiveRouteLabel{
+  font-size:clamp(11px,3.35vw,13px);font-weight:800;line-height:1.4;
+  overflow-wrap:anywhere;white-space:normal
+}
+.crew-history-button{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;min-height:45px;background:#1b242e;color:#eaf0f7;
+  border:1px solid #485663;border-radius:11px;
+  padding:11px 14px;font-size:14px;font-weight:800;text-align:left
+}
+.crew-history-button:hover{background:#28323d}
+.crew-history-button span:last-child{font-size:19px;line-height:1;color:#b9c8d7}
+.crew-week-heading{color:#c6d2dd;font-size:13px;margin:13px 0 1px}
+.crew-history-search{
+  width:100%;min-height:43px;margin:0 0 15px;border:1px solid #5d6876;
+  border-radius:10px;background:#111820;color:#fff;padding:10px 12px;font-size:14px
+}
+.crew-history-search:focus-visible{outline:2px solid #fa6970;outline-offset:2px}
+.crew-comment-label{
+  display:block;color:#e3e9f1;font-weight:750;font-size:13px;margin:16px 0 7px
+}
+#plCrewPickupForm textarea,#plCrewReportForm textarea{
+  display:block;width:100%;min-height:82px;resize:vertical;
+  border:1px solid #5d6a78;background:#101820;color:#fff;
+  border-radius:10px;padding:11px;font-size:14px;font-family:inherit;line-height:1.4;
+  margin:0 0 17px
+}
+.crew-report-lines{display:grid;gap:2px;margin:12px 0 22px}
+.crew-report-line{padding:15px 0;border-bottom:1px solid #39434f}
+.crew-report-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.crew-report-fields label,.crew-report-place{
+  display:flex;flex-direction:column;gap:6px;
+  min-width:0;color:#cbd5df;font-size:12px;font-weight:700
+}
+.crew-report-fields input,.crew-report-place input{
+  width:100%;min-height:43px;min-width:0;border:1px solid #657283;
+  background:#101820;color:#fff;border-radius:10px;padding:10px;
+  font-size:17px;font-weight:600
+}
+.crew-report-place{margin-top:12px}
+.crew-report-place input{font-size:14px;font-weight:400}
+.crew-route-summary-row{padding:13px 0;border-bottom:1px solid #39434f}
+.crew-route-summary-values{display:flex;flex-wrap:wrap;gap:6px 13px;margin-top:8px}
+.crew-route-summary-values span{font-size:12px;color:#c4cedb}
+.crew-history-note{background:#202934;border:1px solid #485565;border-radius:10px;padding:13px;margin:13px 0}
+.crew-history-note strong{display:block;font-size:13px}
+.crew-history-note small{display:block;color:#9cabbc;margin-top:3px}
+.crew-history-note p{font-size:13px;color:#e3e9f0;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0 0}
+.crew-route-stamps{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#96a6b7}
+@media(max-width:360px){
+ .crew-report-fields{gap:8px}
+ .crew-active-route.report #plCrewActiveRouteLabel{font-size:11px}
+}
