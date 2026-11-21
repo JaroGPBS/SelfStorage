@@ -679,6 +679,7 @@ function errorBanner(message){$('errorBanner').textContent=message||'';$('errorB
 function showLogin(message=''){
   invalidateOfficeReadCache();
   state.user=null;
+  try{sessionStorage.removeItem(OFFICE_SYNC_STAMP_KEY);}catch{}
   $('app').classList.add('hidden');$('loginScreen').classList.remove('hidden');
   $('loginError').textContent=message;$('loginError').classList.toggle('hidden',!message);
   $('pin').value='';if(!message)$('pin').focus();
@@ -729,9 +730,8 @@ function setLoggedIn(payload){
   $('username').textContent=name?greetingVocative(name)+'!':'!';
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
-  state.lastSync=null;
-  $('syncTime').textContent='--:--';
-  $('syncDate').textContent='Brak aktualizacji';
+  // The warehouse/session GET has just succeeded. Always show its timestamp,
+  // including after a full-page refresh; never leave "--:--" in logged-in Office.
   invalidateOfficeReadCache();
   markSynced();
   lastManualSyncAt=0;
@@ -1556,14 +1556,35 @@ function selectView(view,warehouse,focusDocument=null){
   render();
 }
 function setLoading(){errorBanner('');$('tableArea').innerHTML='<div class="loading">Wczytywanie danych...</div>';$('tableFooter').textContent='';$('searchNote').classList.add('hidden');}
-function markSynced(){
-  state.lastSync=new Date();
+const OFFICE_SYNC_STAMP_KEY='gpbs-office-last-server-read';
+function displaySyncStamp(value){
+  const stamp=new Date(value);
+  if(Number.isNaN(stamp.getTime()))return false;
   $('syncTime').textContent=new Intl.DateTimeFormat('pl-PL',{
     hour:'2-digit',minute:'2-digit',timeZone:'Europe/Warsaw'
-  }).format(state.lastSync);
+  }).format(stamp);
   $('syncDate').textContent=new Intl.DateTimeFormat('pl-PL',{
     day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Warsaw'
-  }).format(state.lastSync);
+  }).format(stamp);
+  return true;
+}
+function markSynced(){
+  state.lastSync=new Date();
+  displaySyncStamp(state.lastSync);
+  if(state.user?.id){
+    try{
+      sessionStorage.setItem(OFFICE_SYNC_STAMP_KEY,JSON.stringify({
+        userId:state.user.id,at:state.lastSync.getTime()
+      }));
+    }catch{ /* Session storage is optional; server reads still work. */ }
+  }
+}
+function restoreSyncStamp(){
+  try{
+    const saved=JSON.parse(sessionStorage.getItem(OFFICE_SYNC_STAMP_KEY)||'null');
+    if(saved&&Number.isFinite(saved.at)&&saved.at<=Date.now()&&
+       saved.at>Date.now()-24*60*60*1000)displaySyncStamp(saved.at);
+  }catch{ /* No saved timestamp is not an error. */ }
 }
 async function loadStocks(warehouseId){
   if(!freshPartsCache(warehouseId)){
@@ -4681,6 +4702,7 @@ $('installOffice').addEventListener('click',async()=>{
   }
 });
 updateOfficeInstallUI();
+restoreSyncStamp();
 (async()=>{try{setLoggedIn(await api('warehouses'));}catch{showLogin();}})();
 
 })();
