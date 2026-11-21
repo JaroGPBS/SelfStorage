@@ -106,7 +106,9 @@ function parseRoute(body){
        !Number.isSafeInteger(quantity)||quantity<1||quantity>999999)return null;
     lines.push({partCode,partName,quantity});
   }
-  return {routeNumber,routeDate,crewSymbol,lines,isPresentation:body.isPresentation===true};
+  // During the presentation-only phase every newly added route is tagged automatically.
+  // The temporary presentation workflow can be retired after the agreed cleanup.
+  return {routeNumber,routeDate,crewSymbol,lines,isPresentation:true};
 }
 export async function onRequestGet({request,env}){
   const auth=await authorize(request,env);
