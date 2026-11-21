@@ -52,15 +52,16 @@
 .pl-routes-table .pl-route-expanded > td{padding:10px 13px;background:#f8fafc;text-align:left}
 .pl-route-detail-layout{
   display:flex;align-items:flex-start;flex-wrap:wrap;
-  gap:14px clamp(18px,3vw,48px);width:100%
+  column-gap:14px;row-gap:12px;width:100%
 }
 .pl-route-detail-lines{
   /* Keep part names and quantities in a compact reading area. */
   flex:0 1 750px;min-width:min(100%,590px);max-width:750px;overflow-x:auto
 }
 .pl-route-detail-side{
-  flex:1 1 150px;min-width:145px;display:flex;
-  justify-content:center;padding-top:14px
+  /* Sit directly beside the 750px table, not centered in empty screen width. */
+  flex:0 0 170px;min-width:0;display:flex;
+  justify-content:flex-start;padding-top:49px
 }
 .pl-route-detail-lines strong{display:block;margin-bottom:8px;font-size:12px;text-align:left}
 .pl-route-detail-head{
