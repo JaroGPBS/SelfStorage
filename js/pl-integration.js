@@ -8,7 +8,7 @@ const POLISH_SCRIPTS = [
   '/pl/inventory-scanner.js?v=2',
   '/pl/inventory-flow.js?v=6',
   '/pl/warehouse-operations.js?v=19',
-  '/pl/pl.js?v=24'
+  '/pl/pl.js?v=25'
 ];
 
 let workspacePromise = null;
@@ -73,7 +73,7 @@ async function buildPolishWorkspace() {
   if (!workspace) throw new Error('Brak kontenera polskiej części aplikacji.');
 
   // Load the internal PL workspace template into the single main application.
-  const response = await fetch('/pl/workspace.txt?v=5', {
+  const response = await fetch('/pl/workspace.txt?v=6', {
     credentials: 'same-origin',
     cache: 'no-store'
   });
