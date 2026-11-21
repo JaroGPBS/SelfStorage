@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=148">
-  <link rel="stylesheet" href="./pl-routes.css?v=52">
+  <link rel="stylesheet" href="./pl-routes.css?v=53">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -125,7 +125,7 @@
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=180"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
-  <script defer src="./pl-routes.js?v=57"></script>
+  <script defer src="./pl-routes.js?v=58"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -355,8 +355,8 @@
         <section id="officePlRoutesView" class="office-pl-routes-view hidden" aria-label="Trasy – Polska">
           <div id="plRoutesListPanel" class="pl-routes-list-panel hidden">
             <div class="pl-routes-toolbar">
-              <div class="pl-routes-heading hidden" aria-hidden="true">
-                <strong id="plRoutesSectionTitle">Aktualne trasy</strong>
+              <div class="pl-routes-heading">
+                <strong id="plRoutesSectionTitle" class="hidden">Aktualne trasy</strong>
                 <small id="plRoutesSectionDescription">Lista tras w trakcie realizacji.</small>
               </div>
               <button type="button" id="plRouteAdd" class="btn pl-route-add-primary">+ Dodaj trasę</button>
