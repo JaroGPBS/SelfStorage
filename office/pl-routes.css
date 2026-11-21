@@ -57,24 +57,6 @@
 .pl-route-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr);gap:16px;margin-bottom:26px}
 .pl-route-form label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:800;color:#43566c;min-width:0}
 .pl-route-form label span{color:#be2635}
-.pl-route-form .pl-route-presentation-option{
-  display:flex;flex-direction:row;align-items:flex-start;gap:11px;
-  margin:-7px 0 23px;padding:11px 13px;
-  background:#f8fafc;border:1px solid #e5ebf1;border-radius:8px;cursor:pointer;
-}
-.pl-route-form .pl-route-presentation-option input[type=checkbox]{
-  appearance:auto;flex:0 0 auto;width:17px;height:17px;min-height:0;
-  margin:3px 0 0;accent-color:#bd2c39;cursor:pointer;
-}
-.pl-route-form .pl-route-presentation-option span{
-  display:flex;flex-direction:column;gap:4px;color:#4f6073;min-width:0
-}
-.pl-route-form .pl-route-presentation-option strong{
-  font-size:12px;font-weight:800;color:#33475d
-}
-.pl-route-form .pl-route-presentation-option small{
-  font-size:11px;font-weight:500;color:#708193;line-height:1.45
-}
 .pl-route-form input:not([type=file]):not([type=checkbox]){width:100%;min-height:41px;padding:9px 11px;font-size:13px;font-weight:500;color:#24354b;background:#fff;border:1px solid #cbd7e1;border-radius:8px;outline:none}
 .pl-route-form input:focus{border-color:#527fab;box-shadow:0 0 0 3px #4a86ba21}
 .pl-route-parts-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:13px}
