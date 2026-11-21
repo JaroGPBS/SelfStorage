@@ -1390,6 +1390,8 @@ function setHead(title,kicker,desc){
   const isPlRoutes=state.view==='plRoutes';
   $('app').classList.toggle('view-pl-routes',isPlRoutes);
   $('plRoutesTopDescription').classList.toggle('hidden',!isPlRoutes);
+  $('plRoutesTopActions').classList.toggle('hidden',
+    !isPlRoutes||state.plRoutesTab!=='balance');
   $('officePlRoutesView').classList.toggle('hidden',!isPlRoutes);
   if(isPlRoutes){
     const detail={
