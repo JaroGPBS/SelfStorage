@@ -493,13 +493,75 @@ function isoWeek(raw){
   const yearStart=new Date(Date.UTC(utc.getUTCFullYear(),0,1));
   return Math.ceil((((utc-yearStart)/86400000)+1)/7);
 }
+// Five-minute per-dataset TTL cache. Only navigation triggers reads; no polling.
+const OFFICE_CACHE_TTL_MS=5*60*1000;
+const officeReadCache=new Map();
+const officeInFlight=new Map();
+const partsCacheTimes=new Map();
+const detailCacheTimes=new Map();
+let officeCacheGeneration=0;
+function freshCacheEntry(entry){
+  return entry&&Date.now()-entry.at<OFFICE_CACHE_TTL_MS;
+}
+async function cachedOfficeRead(key,loader){
+  if(!state.user)return loader();
+  const scopedKey=String(state.user.id||state.user.nickname||'office')+':'+key;
+  const saved=officeReadCache.get(scopedKey);
+  if(freshCacheEntry(saved))return saved.data;
+  const pending=officeInFlight.get(scopedKey);
+  if(pending)return pending;
+  const generation=officeCacheGeneration;
+  const task=(async()=>{
+    const data=await loader();
+    if(generation===officeCacheGeneration)
+      officeReadCache.set(scopedKey,{at:Date.now(),data});
+    return data;
+  })();
+  officeInFlight.set(scopedKey,task);
+  try{return await task;}
+  finally{if(officeInFlight.get(scopedKey)===task)officeInFlight.delete(scopedKey);}
+}
+function invalidateOfficeReadCache(){
+  ++officeCacheGeneration;
+  officeReadCache.clear();officeInFlight.clear();
+  state.partsCache.clear();partsCacheTimes.clear();
+  state.detailCache.clear();detailCacheTimes.clear();
+  state.frAggregateSets=null;
+}
+function freshPartsCache(key){
+  return state.partsCache.has(key)&&freshCacheEntry({at:partsCacheTimes.get(key)||0});
+}
+function putPartsCache(key,value){
+  state.partsCache.set(key,value);
+  partsCacheTimes.set(key,Date.now());
+}
+function freshDetailCache(key){
+  return state.detailCache.has(key)&&freshCacheEntry({at:detailCacheTimes.get(key)||0});
+}
+function putDetailCache(key,value){
+  state.detailCache.set(key,value);
+  detailCacheTimes.set(key,Date.now());
+}
+window.GPBSOfficeCache={
+  read:cachedOfficeRead,
+  invalidate:invalidateOfficeReadCache,
+  markRead:()=>{if(state.user)markSynced();},
+  ttlMs:OFFICE_CACHE_TTL_MS
+};
 async function api(view,params={}){
   const url=new URL('/api/office',location.origin);url.searchParams.set('view',view);
   for(const [k,v] of Object.entries(params))url.searchParams.set(k,String(v));
-  const response=await fetch(url,{credentials:'same-origin',cache:'no-store'});
-  const payload=await response.json().catch(()=>({}));
-  if(!response.ok||!payload.ok){const ex=new Error(payload.error||'Nie udało się pobrać danych.');ex.status=response.status;throw ex;}
-  return payload;
+  return cachedOfficeRead('office:'+url.pathname+url.search,async()=>{
+    const response=await fetch(url,{credentials:'same-origin',cache:'no-store'});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok||!payload.ok){
+      const ex=new Error(payload.error||'Nie udało się pobrać danych.');
+      ex.status=response.status;
+      throw ex;
+    }
+    if(state.user)markSynced();
+    return payload;
+  });
 }
 // Office adds parts to the same central PL catalogue as the mobile warehouse.
 // New-part photos go directly to private R2 with server-side type and quota checks.
@@ -598,8 +660,7 @@ async function saveOfficeNewPart(event){
     const result=await response.json().catch(()=>({}));
     if(!response.ok||!result.ok)throw Error(result.error||'Nie udało się zapisać nowej części.');
     $('officeNewPartDialog').close();
-    state.partsCache.clear();
-    state.detailCache.clear();
+    invalidateOfficeReadCache();
     await render();
     // A visible new catalogue row is sufficient confirmation.
     if(!target.fr){
@@ -669,6 +730,8 @@ function setLoggedIn(payload){
   state.lastSync=null;
   $('syncTime').textContent='--:--';
   $('syncDate').textContent='Brak aktualizacji';
+  invalidateOfficeReadCache();
+  markSynced();
   lastManualSyncAt=0;
   updateSyncButtonAvailability();
   showOfficeHome();
@@ -1089,8 +1152,6 @@ function renderMenu(){
 }
 function showOfficePreview(type,key,label,warehouseContext=null){
   if(type==='warehouse'){
-    if(key==='toulouse'||key==='paris')
-      state.partsCache.delete('FR-BOX-'+(key==='toulouse'?'FR-TOULOUSE':'FR-PARIS'));
     // Unconnected French warehouses use exactly the same stock layout as Tychy.
     // No D1 request or invented stock quantities are made for a layout-only entry.
     ++state.requestId;
@@ -1461,9 +1522,7 @@ function setModuleCategory(category){
 function selectView(view,warehouse,focusDocument=null){
   const targetWarehouse=warehouse||state.warehouse;
   if(view==='plRoutes')++state.requestId;
-  // Reopening a BOX should show current balances, not an old local cache.
-  if(view==='stocks'&&['FR-TOULOUSE','FR-PARIS'].includes(targetWarehouse))
-    state.partsCache.delete(targetWarehouse);
+  // Real box data follows the same five-minute cache as other stocks.
   const french=warehouse?realWarehouse(warehouse)?.country_code==='FR':
     Boolean(state.preview)||realWarehouse(targetWarehouse)?.country_code==='FR';
   const realBoxDocuments=['pz','wz'].includes(view)&&
@@ -1505,8 +1564,9 @@ function markSynced(){
   }).format(state.lastSync);
 }
 async function loadStocks(warehouseId){
-  if(!state.partsCache.has(warehouseId)){
-    const payload=await api('stocks',{warehouse:warehouseId});state.partsCache.set(warehouseId,payload.parts);
+  if(!freshPartsCache(warehouseId)){
+    const payload=await api('stocks',{warehouse:warehouseId});
+    putPartsCache(warehouseId,payload.parts);
   }
   return state.partsCache.get(warehouseId);
 }
@@ -2468,7 +2528,7 @@ async function openDocumentPrint(id,direction){
       if(state.view!==(direction==='PZ'?'pz':'wz')||state.warehouse!==warehouseAtClick)return;
       lines=response.lines;
       if(!Array.isArray(lines))throw Error('Nieprawidłowe dane dokumentu.');
-      state.detailCache.set(direction+':'+id,lines);
+      putDetailCache(direction+':'+id,lines);
     }catch(ex){
       errorBanner(ex.message||'Nie udało się przygotować dokumentu do wydruku.');
       return;
@@ -3628,12 +3688,12 @@ async function render({silent=false}={}){
       state.preview.key==='paris'?'FR-PARIS':null;
     const cacheKey=isBox?'FR-BOX-'+boxId:'FR-COMMON-CATALOG';
     try{
-      if(!state.partsCache.has(cacheKey)){
+      if(!freshPartsCache(cacheKey)){
         if(!silent)setLoading();
         const response=isBox?await api('frBoxCatalog',{warehouse:boxId}):
           await api('frCatalog');
         if(ticket!==state.requestId)return;
-        state.partsCache.set(cacheKey,response.parts||[]);
+        putPartsCache(cacheKey,response.parts||[]);
       }
       if(ticket!==state.requestId)return;
       drawStocks(state.partsCache.get(cacheKey)||[],null);
@@ -3689,10 +3749,10 @@ async function render({silent=false}={}){
       if(columns.some(col=>!col.source)&&state.user?.role==='ADMIN'&&
          String(state.user?.nickname||'').trim().toUpperCase()==='JJ'){
         const cacheKey='FR-COMMON-CATALOG';
-        if(!state.partsCache.has(cacheKey)){
+        if(!freshPartsCache(cacheKey)){
           const response=await api('frCatalog');
           if(ticket!==state.requestId)return;
-          state.partsCache.set(cacheKey,response.parts||[]);
+          putPartsCache(cacheKey,response.parts||[]);
         }
         sharedParts=state.partsCache.get(cacheKey)||[];
       }
@@ -3722,11 +3782,11 @@ async function render({silent=false}={}){
         if(state.docs.some(d=>d.id===focus)){
           state.expanded=focus;
           const key=direction+':'+focus;
-          if(!state.detailCache.has(key)){
+          if(!freshDetailCache(key)){
             try{
               const details=await api('document',{...params,direction,id:focus});
               if(ticket!==state.requestId)return;
-              state.detailCache.set(key,details.lines);
+              putDetailCache(key,details.lines);
             }catch(ex){
               if(ticket!==state.requestId)return;
               errorBanner(ex.message||'Nie można pobrać powiązanego dokumentu.');
@@ -3792,8 +3852,8 @@ async function expandRow(id){
   let key,view,params;
   if(state.view==='inventories'){key='inv:'+id;view='inventory';params={warehouse:state.warehouse,id};}
   else{const direction=state.view==='pz'?'PZ':'WZ';key=direction+':'+id;view='document';params={warehouse:state.warehouse,direction,id};}
-  if(!state.detailCache.has(key)){
-    try{const payload=await api(view,params);state.detailCache.set(key,payload.lines);}
+  if(!freshDetailCache(key)){
+    try{const payload=await api(view,params);putDetailCache(key,payload.lines);}
     catch(ex){errorBanner(ex.message);}
   }
   if(state.expanded===id)filterCurrent();
@@ -4471,6 +4531,7 @@ async function synchronizeOffice(){
     if(button){button.setAttribute('aria-busy','true');}
   }
   try{
+    invalidateOfficeReadCache(); // Current view reloads now; others on demand.
     if(state.view==='home'||state.view==='bovisOverview'||
        state.preview?.type==='module'||
        (state.preview?.type==='operation'&&state.view!=='vehicles')){
@@ -4480,7 +4541,6 @@ async function synchronizeOffice(){
       if(user!==state.user)return;
       state.warehouses=data.warehouses||[];
       renderMenu();
-      markSynced();
       if(state.view==='home'){
         const status=$('homeSyncError');
         status.classList.remove('is-error');
@@ -4490,6 +4550,8 @@ async function synchronizeOffice(){
       }else{
         if(state.view==='bovisOverview')drawBovisOverview();
       }
+    }else if(state.view==='plRoutes'){
+      await window.renderPlRoutesList?.();
     }else if(state.view==='labels'){
       // The label component keeps the user's pending print queue intact.
       await window.GPBSOfficeLabels?.refresh();
@@ -4499,8 +4561,6 @@ async function synchronizeOffice(){
       const top=scroll.scrollTop,left=scroll.scrollLeft;
       const viewAtStart=state.view,warehouseAtStart=state.warehouse;
       const previewAtStart=state.preview;
-      state.partsCache.clear();
-      state.detailCache.clear();
       await render();
       if(user===state.user&&state.view===viewAtStart&&
          state.warehouse===warehouseAtStart&&state.preview===previewAtStart){
