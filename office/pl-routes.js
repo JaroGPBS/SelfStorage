@@ -185,7 +185,7 @@
     byId('plRoutePhotoPreview').removeAttribute('src');
   }
   function routeData(){
-    const routeNumber=byId('plRouteNumber').value.trim();
+    const routeNumber=byId('plRouteNumber').value.trim().toUpperCase();
     const routeDate=byId('plRouteDate').value;
     const crewSymbol=byId('plRouteCrewSymbol').value.trim().toUpperCase();
     const lines=[];
@@ -483,6 +483,25 @@
     setRouteCalendarOpen(false);
   });
 
+  // Uppercase visible text during typing and pasting, without moving the caret.
+  for(const id of ['plRouteNumber','plRouteCrewSymbol']){
+    const input=byId(id);
+    const uppercase=()=>{
+      const value=input.value;
+      const upper=value.toUpperCase();
+      if(value===upper)return;
+      const start=input.selectionStart;
+      const end=input.selectionEnd;
+      input.value=upper;
+      if(start!==null&&end!==null){
+        input.setSelectionRange(value.slice(0,start).toUpperCase().length,
+          value.slice(0,end).toUpperCase().length);
+      }
+    };
+    input.addEventListener('input',event=>{if(!event.isComposing)uppercase();});
+    input.addEventListener('compositionend',uppercase);
+    input.addEventListener('change',uppercase);
+  }
   byId('plRouteAdd').addEventListener('click',openForm);
   byId('plRouteClose').addEventListener('click',closeForm);
   byId('plRouteCancel').addEventListener('click',closeForm);
