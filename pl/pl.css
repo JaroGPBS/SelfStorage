@@ -1721,8 +1721,8 @@ body.operation-task-open {overflow:hidden}
 #crewRouteScreen .crew-report-line{
   display:grid;
   grid-template-columns:minmax(0,1fr) 62px 62px;
-  align-items:center;column-gap:8px;row-gap:8px;min-width:0;
-  padding:13px 3px;border-bottom:1px solid #3b4653;
+  align-items:center;column-gap:8px;row-gap:6px;min-width:0;
+  padding:7px 3px;border-bottom:1px solid #3b4653;
 }
 #crewRouteScreen .crew-report-part{
   display:flex;flex-direction:column;align-items:flex-start;
@@ -1743,7 +1743,7 @@ body.operation-task-open {overflow:hidden}
 }
 #crewRouteScreen .crew-report-quantity{
   display:flex;flex-direction:column;align-items:center;
-  gap:7px;min-width:0;
+  gap:4px;min-width:0;
 }
 #crewRouteScreen .crew-report-quantity-label{
   color:#d6e1ed;font-size:13px;font-weight:800;
