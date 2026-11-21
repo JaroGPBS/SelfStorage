@@ -9,6 +9,8 @@
     ready:false,part:null,editing:null,pending:null,busy:false,searchSeq:0,scanSeq:0,
     scanning:false,stopPromise:null,searchPage:0,hasMore:false,photoPreviewUrl:null};
   const MAX_QUANTITY=100000;
+  const LIVE_SEARCH_DELAY=350;
+  let searchTimer=null;
   const upperName=value=>String(value||'').trim().replace(/\s+/g,' ').toLocaleUpperCase('pl-PL');
   const upperPlate=value=>String(value||'').trim().replace(/\s+/g,' ').toUpperCase();
   const validPlate=value=>/^[A-Z0-9][A-Z0-9 -]{1,19}$/.test(value) && /[A-Z0-9]$/.test(value);
@@ -95,6 +97,41 @@
     node.textContent=message;
     node.hidden=!message;
   }
+  function toggleSuggestions(show){
+    const visible=Boolean(show);
+    el('operationSearchSuggestions').hidden=!visible;
+    el('operationSearchQuery').setAttribute('aria-expanded',String(visible));
+  }
+  function clearSuggestions({clearQuery=false,blur=false}={}){
+    if(searchTimer!==null){clearTimeout(searchTimer);searchTimer=null;}
+    state.searchSeq++;
+    state.searchPage=0;
+    state.hasMore=false;
+    el('operationSearchResults').replaceChildren();
+    el('operationMore').hidden=true;
+    toggleSuggestions(false);
+    if(clearQuery)el('operationSearchQuery').value='';
+    if(blur)el('operationSearchQuery').blur();
+  }
+  function positionSearchForKeyboard(){
+    const panel=el('operationDirectionPanel');
+    const view=window.visualViewport;
+    const editing=document.activeElement===el('operationSearchQuery');
+    if(!editing||!view||panel.hidden){
+      // During option tapping, keep the popup stationary until selection closes it.
+      if(!editing&&!el('operationSearchSuggestions').hidden)return;
+      panel.style.removeProperty('top');
+      panel.style.removeProperty('bottom');
+      panel.style.removeProperty('height');
+      panel.style.removeProperty('max-height');
+      return;
+    }
+    panel.style.top=Math.round(view.offsetTop)+'px';
+    panel.style.bottom='auto';
+    panel.style.height=Math.floor(view.height)+'px';
+    panel.style.maxHeight=Math.floor(view.height)+'px';
+  }
+
   function closeQuantity(){
     if(el('operationQuantityDialog').open)el('operationQuantityDialog').close();
     state.part=null;state.editing=null;
@@ -108,7 +145,7 @@
     const lock=!!state.pending||state.busy;
     for(const id of ['operationCounterparty','operationPlate','operationVisitContinue',
       'operationEditVisit','operationBackToMenu','operationSearchQuery','operationSearchButton',
-      'operationStartScan','operationNewPartOpen','operationAddButton','operationQuantity',
+      'operationStartScan','operationFinishStage','operationNewPartOpen','operationAddButton','operationQuantity',
       'operationTabPZ','operationTabWZ','operationClearSearch','operationNok',
       'operationCommentToggle','operationCommentText']){
       el(id).disabled=lock;
@@ -252,10 +289,8 @@
   function backToMenu(){
     if(!['PZ','WZ'].includes(state.stage))return false;
     state.stage='menu';
-    state.searchSeq++;
+    clearSuggestions({clearQuery:true,blur:true});
     closeQuantity();
-    el('operationSearchResults').replaceChildren();
-    el('operationSearchQuery').value='';
     stopScanner();
     status('');
     saveDraft();render();
@@ -267,10 +302,8 @@
     if(!['PZ','WZ'].includes(side))return;
     state.direction=side;
     state.stage=side;
-    state.searchSeq++;
+    clearSuggestions({clearQuery:true,blur:true});
     closeQuantity();
-    el('operationSearchResults').replaceChildren();
-    el('operationSearchQuery').value='';
     stopScanner();
     status('');
     saveDraft();render();
@@ -382,6 +415,7 @@
 
   function selectPart(part,editing=null){
     if(state.pending||state.busy||!['PZ','WZ'].includes(state.stage))return;
+    clearSuggestions({clearQuery:true,blur:true});
     state.part=part;
     state.editing=editing;
     el('operationPartName').textContent=part.name+' · '+part.number;
@@ -425,28 +459,31 @@
     render();
   }
 
-  async function search(append=false){
+  async function search(append=false,automatic=false){
     if(!state.warehouse||state.pending||state.busy)return;
     const seq=++state.searchSeq;
     const warehouseId=state.warehouse.id;
+    const direction=state.stage;
     const page=append?state.searchPage+1:0;
     const query=el('operationSearchQuery').value.trim();
-    if(!query){
-      status('Wpisz indeks lub numer SAP części.',true);
+    if(!query||(automatic&&query.length<3)){
+      if(!automatic)status('Wpisz nazwę lub indeks części.',true);
+      else clearSuggestions();
       return;
     }
     if(!append)el('operationSearchResults').replaceChildren();
     el('operationMore').hidden=true;
+    toggleSuggestions(true);
+    status('');
     try{
-      // An exact manually typed index opens quantity directly; partial entries
-      // still use the existing catalogue search to choose the correct part.
-      if(!append){
+      // An explicit search still resolves an exact code immediately.
+      // Live suggestions use one paged query, avoiding extra D1 reads per keystroke.
+      if(!append&&!automatic){
         try{
           const exact=await api('/api/pl/warehouse?view=resolve&warehouse='+
             encodeURIComponent(warehouseId)+'&code='+encodeURIComponent(query));
           if(seq!==state.searchSeq||state.warehouse?.id!==warehouseId||
-             !['PZ','WZ'].includes(state.stage))return;
-          el('operationSearchQuery').value='';
+             state.stage!==direction)return;
           selectPart({id:exact.part.id,name:exact.part.name,number:exact.part.number});
           return;
         }catch(error){
@@ -457,7 +494,7 @@
         encodeURIComponent(warehouseId)+'&q='+encodeURIComponent(query)+
         '&page='+page);
       if(seq!==state.searchSeq||state.warehouse?.id!==warehouseId||
-         !['PZ','WZ'].includes(state.stage))return;
+         state.stage!==direction||el('operationSearchQuery').value.trim()!==query)return;
       state.searchPage=page;
       state.hasMore=Boolean(data.stock?.hasMore);
       const results=el('operationSearchResults');
@@ -465,6 +502,7 @@
         const button=document.createElement('button');
         button.type='button';
         button.className='operation-result';
+        button.setAttribute('role','option');
         const description=document.createElement('span');
         description.textContent=part.name+' · '+part.number;
         const stock=document.createElement('small');
@@ -476,10 +514,22 @@
         }));
         results.append(button);
       }
-      if(!results.children.length)status('Nie znaleziono części. Sprawdź kod lub użyj inwentaryzacji.',true);
+      if(!results.children.length){
+        const empty=document.createElement('p');
+        empty.className='operation-search-empty';
+        empty.textContent='Brak pasujących części.';
+        results.append(empty);
+      }
       el('operationMore').hidden=!state.hasMore;
     }catch(error){
-      if(seq===state.searchSeq)status(error.message,true);
+      if(seq!==state.searchSeq)return;
+      const results=el('operationSearchResults');
+      results.replaceChildren();
+      const failure=document.createElement('p');
+      failure.className='operation-search-empty';
+      failure.textContent='Nie udało się wyszukać: '+error.message;
+      results.append(failure);
+      el('operationMore').hidden=true;
     }
   }
 
@@ -497,6 +547,7 @@
   async function startScanner(){
     if(state.scanning||state.pending||state.busy||!state.warehouse||
        !['PZ','WZ'].includes(state.stage))return;
+    clearSuggestions({clearQuery:true,blur:true});
     const warehouseId=state.warehouse.id;
     const direction=state.direction;
     const seq=++state.scanSeq;
