@@ -997,6 +997,8 @@ export async function onRequestPost({request,env}){
       if(hasDocs)statements.push(env.DB.prepare('DELETE FROM pl_route_documents'));
       if(await exists(env.DB,'pl_route_return_approvals'))
         statements.push(env.DB.prepare('DELETE FROM pl_route_return_approvals'));
+      if(await exists(env.DB,'pl_route_pickups'))
+        statements.push(env.DB.prepare('DELETE FROM pl_route_pickups'));
       if(await exists(env.DB,'pl_route_audit'))
         statements.push(env.DB.prepare('DELETE FROM pl_route_audit'));
       if(await exists(env.DB,'pl_route_lines'))
@@ -1058,6 +1060,10 @@ export async function onRequestPost({request,env}){
       }
       if(hasDocuments)statements.push(env.DB.prepare(
         'DELETE FROM pl_route_documents WHERE route_id IN ('+
+        'SELECT id FROM pl_routes WHERE is_presentation=1)'
+      ));
+      if(await exists(env.DB,'pl_route_pickups'))statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_pickups WHERE route_id IN ('+
         'SELECT id FROM pl_routes WHERE is_presentation=1)'
       ));
       if(await exists(env.DB,'pl_route_audit'))statements.push(env.DB.prepare(
