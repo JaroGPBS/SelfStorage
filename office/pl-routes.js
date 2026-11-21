@@ -292,8 +292,14 @@
       let blob=await encode(2600,0.84);
       if(blob.size>target)blob=await encode(2600,0.77);
       if(blob.size>target)blob=await encode(2600,0.70);
-      if(blob.size>1500*1024)blob=await encode(2350,0.75);
-      if(blob.size>2300*1024)blob=await encode(2100,0.72);
+      if(blob.size>1500*1024){
+        const smaller=await encode(2350,0.75);
+        if(smaller.size<blob.size)blob=smaller;
+      }
+      if(blob.size>2300*1024){
+        const smaller=await encode(2100,0.72);
+        if(smaller.size<blob.size)blob=smaller;
+      }
       if(blob.size>4*1024*1024)
         throw Error('Zdjęcie po kompresji przekracza 4 MB. Wybierz czytelne zdjęcie dokumentu.');
       return new File([blob],'dokument-trasy.jpg',{type:'image/jpeg'});
