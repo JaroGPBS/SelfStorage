@@ -1014,6 +1014,53 @@
       button.disabled=false;
     }
   }
+  let deletingDemo03=false;
+  function openDeleteDemo03(button){
+    if(deletingDemo03||routeContext()?.role!=='ADMIN')return;
+    const id=button.dataset.plRouteDeleteDemo03;
+    if(id!=='PL-ROUTE-48de0000-0000-4000-8000-000000000003')return;
+    const dialog=byId('plRouteDeleteDemo03Dialog');
+    if(dialog.open)return;
+    byId('plRouteDeleteDemo03Form').reset();
+    byId('plRouteDeleteDemo03Error').hidden=true;
+    dialog.showModal();
+    byId('plRouteDeleteDemo03Pin').focus();
+  }
+  async function submitDeleteDemo03(event){
+    event.preventDefault();
+    if(deletingDemo03||routeContext()?.role!=='ADMIN')return;
+    const form=byId('plRouteDeleteDemo03Form');
+    if(!form.reportValidity())return;
+    deletingDemo03=true;
+    const btn=byId('plRouteDeleteDemo03Save');
+    const err=byId('plRouteDeleteDemo03Error');
+    btn.disabled=true;
+    err.hidden=true;
+    try{
+      const result=await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          action:'deleteDemo48PL03',confirm:'USUŃ 48PL-03',
+          pin:byId('plRouteDeleteDemo03Pin').value
+        })
+      }));
+      byId('plRouteDeleteDemo03Dialog').close();
+      await window.renderPlRoutesList();
+      const status=byId('plRoutesListStatus');
+      status.classList.remove('is-error');
+      status.textContent=Number(result.deleted)>0
+        ?'Usunięto tylko trasę demo 48PL-03 i jej historię weryfikacji.'
+        :'Trasa 48PL-03 była już usunięta.';
+    }catch(error){
+      err.hidden=false;
+      err.textContent=error.message||'Nie udało się usunąć trasy.';
+    }finally{
+      deletingDemo03=false;
+      btn.disabled=false;
+      byId('plRouteDeleteDemo03Pin').value='';
+    }
+  }
   async function deleteDemoWeek48(){
     if(busy||routeContext()?.role!=='ADMIN')return;
     if(!window.confirm(
@@ -1047,6 +1094,16 @@
       button.disabled=false;
     }
   }
+  byId('plRouteDeleteDemo03Form').addEventListener('submit',submitDeleteDemo03);
+  byId('plRouteDeleteDemo03Close').addEventListener('click',()=>{
+    if(!deletingDemo03)byId('plRouteDeleteDemo03Dialog').close();
+  });
+  byId('plRouteDeleteDemo03Cancel').addEventListener('click',()=>{
+    if(!deletingDemo03)byId('plRouteDeleteDemo03Dialog').close();
+  });
+  byId('plRouteDeleteDemo03Dialog').addEventListener('cancel',event=>{
+    if(deletingDemo03)event.preventDefault();
+  });
   byId('plRoutesSeedDemo48').addEventListener('click',seedDemoWeek48);
   byId('plRoutesDeleteDemo48').addEventListener('click',deleteDemoWeek48);
 
@@ -1169,6 +1226,8 @@
       byId('plRouteDocumentDialog').close();
   });
   byId('plRoutesTable').addEventListener('click',e=>{
+    const deleteButton=e.target.closest('[data-pl-route-delete-demo03]');
+    if(deleteButton){openDeleteDemo03(deleteButton);return;}
     const auditButton=e.target.closest('[data-pl-route-audit]');
     if(auditButton){openRouteAudit(auditButton);return;}
     const explainButton=e.target.closest('[data-pl-route-explain]');
