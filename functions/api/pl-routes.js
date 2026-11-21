@@ -199,7 +199,15 @@ export async function onRequestGet({request,env}){
         'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
         optional+' FROM pl_route_lines WHERE route_id=? ORDER BY position'
       ).bind(id).all()).results||[];
-      return workerJson({ok:true,route,lines,storageReady:true});
+      // Metadata only. The JPEG bytes are read from a separate authenticated R2 endpoint.
+      const documents=await exists(env.DB,'pl_route_documents')
+        ?(await env.DB.prepare(
+          'SELECT id,mime_type AS mimeType,size_bytes AS sizeBytes,'+
+          'uploaded_at AS uploadedAt FROM pl_route_documents '+
+          'WHERE route_id=? ORDER BY uploaded_at DESC,id DESC LIMIT 10'
+        ).bind(id).all()).results||[]
+        :[];
+      return workerJson({ok:true,route,lines,documents,storageReady:true});
     }
     const scope=url.searchParams.get('scope')||'active';
     if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
@@ -268,16 +276,41 @@ export async function onRequestPost({request,env}){
         return send('Nieprawidłowy PIN administratora.',403);
       if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB))
         return workerJson({ok:true,deleted:0});
-      // Both statements are executed in one atomic D1 batch, scoped *only*
-      // to the is_presentation flag. No stock, real routes or vehicle data.
-      const results=await env.DB.batch([
-        env.DB.prepare(
-          'DELETE FROM pl_route_lines WHERE route_id IN ('+
-          'SELECT id FROM pl_routes WHERE is_presentation=1)'
-        ),
-        env.DB.prepare('DELETE FROM pl_routes WHERE is_presentation=1')
-      ]);
-      return workerJson({ok:true,deleted:Number(results[1]?.meta?.changes||0)});
+      // Demo cleanup also removes its linked R2 photos, not just D1 metadata.
+      // Delete remote files first so a database failure never leaves charged
+      // R2 orphans. Any failed R2 deletion aborts the D1 cleanup.
+      const hasDocuments=await exists(env.DB,'pl_route_documents');
+      const documents=hasDocuments
+        ?(await env.DB.prepare(
+          'SELECT d.object_key,d.size_bytes FROM pl_route_documents d '+
+          'JOIN pl_routes r ON r.id=d.route_id WHERE r.is_presentation=1'
+        ).all()).results||[]
+        :[];
+      if(documents.length){
+        if(!env.PART_PHOTOS||typeof env.PART_PHOTOS.delete!=='function')
+          return send('Nie można wyczyścić tras ze zdjęciami: R2 jest niedostępne.',503);
+        for(let i=0;i<documents.length;i+=1000){
+          await env.PART_PHOTOS.delete(documents.slice(i,i+1000).map(d=>d.object_key));
+        }
+      }
+      const statements=[];
+      if(documents.length&&await exists(env.DB,'pl_r2_photo_quota')){
+        const bytes=documents.reduce((sum,d)=>sum+Number(d.size_bytes||0),0);
+        statements.push(env.DB.prepare(
+          'UPDATE pl_r2_photo_quota SET used_bytes=MAX(0,used_bytes-?) WHERE id=1'
+        ).bind(bytes));
+      }
+      if(hasDocuments)statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_documents WHERE route_id IN ('+
+        'SELECT id FROM pl_routes WHERE is_presentation=1)'
+      ));
+      statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_lines WHERE route_id IN ('+
+        'SELECT id FROM pl_routes WHERE is_presentation=1)'
+      ));
+      statements.push(env.DB.prepare('DELETE FROM pl_routes WHERE is_presentation=1'));
+      const results=await env.DB.batch(statements);
+      return workerJson({ok:true,deleted:Number(results[results.length-1]?.meta?.changes||0)});
     }catch(error){
       console.error('PL route presentation cleanup failed',error?.name||'Error');
       return send('Nie udało się wyczyścić tras prezentacyjnych.',503);
