@@ -81,9 +81,47 @@
   padding-top:9px;margin-top:10px;border-top:1px solid #dce4ec;font-size:11px;
   color:#667b90;text-align:left}
 .pl-route-document-links strong{font-size:11px;margin:0;color:#34495d}
-.pl-route-document-links a{color:#176899;text-decoration:underline;text-underline-offset:2px;
-  font-weight:750;white-space:nowrap}
-.pl-route-document-links a:hover{color:#084c70}
+.pl-route-document-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:6px 11px;border:1px solid #c8d6e3;border-radius:7px;
+  background:#fff;color:#275c82;font:inherit;font-weight:750;
+  cursor:pointer;white-space:nowrap
+}
+.pl-route-document-button:hover{background:#eff5f9;border-color:#94b3c9}
+.pl-route-document-button:focus-visible{outline:2px solid #266d9b;outline-offset:2px}
+/* Preview is opened only on demand. Never render the saved photo in a route row. */
+.pl-route-document-dialog{
+  box-sizing:border-box;width:min(94vw,1120px);height:min(92dvh,980px);
+  max-width:none;max-height:none;margin:auto;padding:0;
+  border:1px solid #536273;border-radius:12px;
+  background:#f5f7fa;color:#223246;box-shadow:0 30px 95px rgba(0,0,0,.4);
+  overflow:hidden
+}
+.pl-route-document-dialog[open]{display:flex;flex-direction:column}
+.pl-route-document-dialog::backdrop{background:rgba(7,15,27,.82)}
+.pl-route-document-dialog-head{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  flex:0 0 auto;padding:12px 17px;background:#fff;border-bottom:1px solid #dce4ec
+}
+.pl-route-document-dialog-head strong{font-size:15px;font-weight:800}
+.pl-route-document-dialog-close{
+  display:flex;align-items:center;justify-content:center;flex:0 0 34px;
+  width:34px;height:34px;border:1px solid #d4dde6;border-radius:7px;
+  background:#fff;color:#465b70;font-size:26px;line-height:1;cursor:pointer
+}
+.pl-route-document-dialog-close:hover{background:#edf2f6}
+.pl-route-document-dialog-body{
+  display:flex;align-items:center;justify-content:center;flex:1 1 auto;
+  min-width:0;min-height:0;padding:16px;overflow:auto
+}
+.pl-route-document-dialog-body img{
+  display:block;max-width:100%;max-height:100%;object-fit:contain;
+  box-shadow:0 2px 12px rgba(0,0,0,.1)
+}
+.pl-route-document-dialog-body img[hidden]{display:none}
+.pl-route-document-dialog-body #plRouteDocumentStatus{
+  color:#63768c;font-size:13px;text-align:center
+}
 .pl-routes-table tr.pl-route-needs-review > td{
   background:#fff3f3!important;
   border-bottom:1px solid #efd0d3;
