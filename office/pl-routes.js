@@ -10,6 +10,8 @@
   let photoUrl=null;
   let busy=false;
   let loadSeq=0;
+  const routeContext=()=>typeof window.getPlRoutesContext==='function'
+    ?window.getPlRoutesContext():null;
   function errorMessage(message=''){
     const element=byId('plRouteError');
     element.textContent=message;
@@ -52,8 +54,7 @@
   }
   function openForm(){
     if(busy)return;
-    const allowed=typeof state==='object'&&
-      ['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(state.user?.role);
+    const allowed=['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(routeContext()?.role);
     if(!allowed)return;
     const dialog=byId('plRouteDialog');
     byId('plRouteForm').reset();
@@ -175,12 +176,12 @@
   window.renderPlRoutesList=async function(){
     const panel=byId('plRoutesListPanel');
     if(!panel)return;
-    const selected=typeof state==='object'&&state.view==='plRoutes'&&
-      state.plRoutesTab==='list';
+    const context=routeContext();
+    const selected=context?.view==='plRoutes'&&context.tab==='list';
     panel.classList.toggle('hidden',!selected);
     byId('officePlRoutesMessage').classList.toggle('hidden',selected);
     if(!selected)return;
-    const role=state.user?.role;
+    const role=context?.role;
     byId('plRouteAdd').classList.toggle('hidden',
       !['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role));
     const seq=++loadSeq;
@@ -261,6 +262,6 @@
     const button=e.target.closest('[data-pl-route-details]');
     if(button)showDetails(button);
   });
-  if(typeof state==='object'&&state.view==='plRoutes')
+  if(routeContext()?.view==='plRoutes')
     window.renderPlRoutesList();
 })();
