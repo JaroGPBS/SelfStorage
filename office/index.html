@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=138">
+  <link rel="stylesheet" href="./office.css?v=139">
   <link rel="stylesheet" href="./pl-routes.css?v=49">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
@@ -178,9 +178,11 @@
         <button type="button" id="refresh" class="office-side-sync-button"
           title="Pobierz aktualne dane bieżącej zakładki"
           aria-label="Synchronizuj aktualnie otwartą zakładkę">
+          <span class="office-side-sync-meta">
+            <small id="syncDate">Pobieranie danych</small>
+            <strong id="syncTime">Łączenie…</strong>
+          </span>
           <span class="office-side-sync-heading"><span aria-hidden="true">↻</span> Synchronizacja</span>
-          <strong id="syncTime">Łączenie…</strong>
-          <small id="syncDate">Pobieranie danych</small>
         </button>
       </div>
       <div class="side-footer office-side-footer">
