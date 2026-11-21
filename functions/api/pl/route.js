@@ -101,10 +101,15 @@ export async function onRequestGet({request,env}){
     if(!Number.isSafeInteger(offset)||offset<0||offset>100000)
       return send('Nieprawidłowa strona historii.',400);
     const limit=view==='active'?200:100;
+    const search=String(url.searchParams.get('search')||'').trim();
+    if(search.length>80)return send('Wpisz krótszy numer trasy.',400);
     const where=view==='active'?"AND r.status<>'COMPLETED' ":'';
-    const rows=(await env.DB.prepare(query+where+
+    const filter=view==='history'&&search
+      ?'AND r.route_number LIKE ? ESCAPE '+String.fromCharCode(39,92,39)+' ':'';
+    const pattern='%'+search.replace(/[\\%_]/g,'\\$&')+'%';
+    const rows=(await env.DB.prepare(query+where+filter+
       'ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT ? OFFSET ?'
-    ).bind(auth.symbol,limit+1,offset).all()).results||[];
+    ).bind(auth.symbol,...(filter?[pattern]:[]),limit+1,offset).all()).results||[];
     return workerJson({ok:true,routes:rows.slice(0,limit).map(routeRow),
       hasMore:rows.length>limit,nextOffset:offset+limit});
   }catch(error){
