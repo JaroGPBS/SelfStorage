@@ -589,6 +589,15 @@
       Number(line.confirmedQuantity)!==Number(line.quantity)
     );
     const completed=route.status==='COMPLETED';
+    const approvalsByPosition=new Map((result.returnApprovals||[])
+      .map(approval=>[Number(approval.position),approval]));
+    const returnedLines=lines.filter(line=>Number(line.returnedQuantity)>0);
+    const pendingReturns=returnedLines.filter(line=>{
+      const approval=approvalsByPosition.get(Number(line.position));
+      return !approval||
+        Number(approval.quantity)!==Number(line.returnedQuantity)||
+        String(approval.location)!==String(line.returnLocation||'').trim();
+    });
     // Show verification only when a discrepancy was reported, or a verified
     // quantity was recorded. Ordinary agreed routes stay compact.
     const showVerification=lines.some(line=>
@@ -660,6 +669,30 @@
       ?'<button type="button" class="pl-route-explain-button" '+
         'data-pl-route-explain="'+html(route.id)+'">Wyjaśnij niezgodność</button>'
       :'';
+    const returnApprovalButton=route.canApproveReturns===true
+      ?'<button type="button" class="pl-route-return-approve-button" '+
+        'data-pl-route-approve-returns="'+html(route.id)+'">Zatwierdź zwroty</button>'
+      :'';
+    const returnApprovalDetails=completed&&returnedLines.length
+      ?'<div class="pl-route-return-approvals">'+
+        '<strong>Potwierdzenie zwrotów</strong>'+
+        returnedLines.map(line=>{
+          const approval=approvalsByPosition.get(Number(line.position));
+          const approved=approval&&
+            Number(approval.quantity)===Number(line.returnedQuantity)&&
+            String(approval.location)===String(line.returnLocation||'').trim();
+          return '<div class="pl-route-return-approval-item">'+
+            '<span>'+html(line.partName||line.partCode||'Poz. '+line.position)+
+              ': '+html(line.returnedQuantity)+' szt. · '+
+              html(line.returnLocation||'—')+'</span>'+
+            '<small>'+(
+              approved
+                ?'Zatwierdził: '+html(approval.approvedBy||'—')+
+                  ' · '+html(auditTime(approval.approvedAt))
+                :'Oczekuje na zatwierdzenie koordynatora'
+            )+'</small></div>';
+        }).join('')+'</div>'
+      :'';
     const showDemoDelete=role==='ADMIN'&&
       Number(route.isPresentation)===1&&
       route.id==='PL-ROUTE-48de0000-0000-4000-8000-000000000003'&&
@@ -697,8 +730,10 @@
           (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
         '</div>'+
         '<div class="pl-route-detail-side">'+
-          '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+deleteDemoButton+'</div>'+
+          '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+
+            returnApprovalButton+deleteDemoButton+'</div>'+
           (audit?'<div class="pl-route-audit-history">'+audit+'</div>':'')+
+          returnApprovalDetails+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1463,7 +1498,61 @@
       setRoutePreviewReady(routePreviewReady);
     }
   });
+  let approvingReturns=false;
+  async function approveRouteReturns(button){
+    if(approvingReturns||!['KOORDYNATOR','ADMIN'].includes(routeContext()?.role))return;
+    const id=button.dataset.plRouteApproveReturns;
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))return;
+    approvingReturns=true;
+    button.disabled=true;
+    try{
+      const detail=await jsonResponse(await fetch(
+        endpoint+'?id='+encodeURIComponent(id),
+        {credentials:'same-origin',cache:'no-store'}
+      ));
+      if(detail.route?.canApproveReturns!==true)
+        throw Error('W tej trasie nie ma już zwrotów do zatwierdzenia.');
+      const approvals=new Map((detail.returnApprovals||[])
+        .map(x=>[Number(x.position),x]));
+      const returns=(detail.lines||[]).filter(line=>{
+        if(!(Number(line.returnedQuantity)>0))return false;
+        const approval=approvals.get(Number(line.position));
+        return !approval||
+          Number(approval.quantity)!==Number(line.returnedQuantity)||
+          String(approval.location)!==String(line.returnLocation||'').trim();
+      });
+      if(!returns.length)throw Error('Zwroty zostały już zatwierdzone.');
+      const message='Potwierdź, że wymienione części zostały rzeczywiście zwrócone:\n\n'+
+        returns.map(x=>(x.partName||x.partCode||'Poz. '+x.position)+
+          ': '+x.returnedQuantity+' szt. → '+(x.returnLocation||'BRAK MIEJSCA')
+        ).join('\n')+'\n\nSystem zapisze Twoje konto i godzinę zatwierdzenia.';
+      const accepted=await confirmRouteAction(message);
+      if(!accepted)return;
+      const response=await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          action:'approveReturns',id,baseRevision:detail.route.editRevision
+        })
+      }));
+      await window.renderPlRoutesList();
+      const status=byId('plRoutesListStatus');
+      status.classList.remove('is-error');
+      status.textContent=Number(response.approved)>0
+        ?'Zatwierdzono '+response.approved+' pozycje zwrotu. Zapisano osobę i czas.'
+        :'Wszystkie zwroty w tej trasie są już zatwierdzone.';
+    }catch(error){
+      const status=byId('plRoutesListStatus');
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie udało się zatwierdzić zwrotów.';
+    }finally{
+      approvingReturns=false;
+      button.disabled=false;
+    }
+  }
   byId('plRoutesTable').addEventListener('click',e=>{
+    const approveButton=e.target.closest('[data-pl-route-approve-returns]');
+    if(approveButton){approveRouteReturns(approveButton);return;}
     const exportButton=e.target.closest('[data-pl-route-export]');
     if(exportButton){openRouteExport(exportButton);return;}
     const deleteButton=e.target.closest('[data-pl-route-delete-demo03]');
