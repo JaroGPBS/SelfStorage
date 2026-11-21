@@ -628,7 +628,7 @@
       wzComment:wz.length?state.comments.WZ.trim():''};
   }
 
-  async function review(){
+  async function review({directCommit=false}={}){
     if(!state.ready||state.busy||!state.warehouse)return;
     if(state.pending){
       const approved=await window.GPBSPlConfirm.ask({
@@ -650,6 +650,7 @@
     const input=payloadForCommit();
     if(!input)return;
     state.reviewPayload=null;
+    let autoSubmit=false;
     state.busy=true;
     disableDuringPending();
     status('Sprawdzanie aktualnych stanów magazynowych…');
@@ -687,13 +688,21 @@
       el('operationConfirmApprove').textContent=warnings.length
         ?'Potwierdź wydanie i zakończ':'Tak, zakończ i zapisz';
       status('');
-      el('operationConfirmDialog').showModal();
+      if(directCommit&&!warnings.length){
+        // The stage-choice dialog already provided the final confirmation.
+        // Keep a separate warning confirmation only for stock discrepancies.
+        autoSubmit=true;
+      }else{
+        el('operationConfirmDialog').showModal();
+      }
     }catch(error){
       status('Nie można sprawdzić stanów: '+error.message,true);
     }finally{
       state.busy=false;
       render();
     }
+    if(autoSubmit&&state.reviewPayload&&state.warehouse?.id===input.warehouseId)
+      await submit();
   }
 
   async function submit(){
@@ -854,6 +863,56 @@
     el('operationNewPartPhoto'),el('operationNewPartCamera')));
   el('operationNewPartCamera').addEventListener('change',()=>selectedNewPartPhoto(
     el('operationNewPartCamera'),el('operationNewPartPhoto')));
+  function finishStage(){
+    if(!state.ready||state.busy||!['PZ','WZ'].includes(state.stage))return;
+    if(state.pending){review({directCommit:true});return;}
+    clearSuggestions({clearQuery:true,blur:true});
+    const side=state.stage;
+    const other=side==='PZ'?'WZ':'PZ';
+    const otherName=other==='PZ'?'przyjęcie':'wydanie';
+    const currentName=side==='PZ'?'przyjęcia':'wydania';
+    const hasSecondStage=lines(other).length>0;
+    const dialog=el('operationStageFinishDialog');
+    const next=el('operationStageFinishNext');
+    el('operationStageFinishTitle').textContent=hasSecondStage
+      ?'Zakończenie wizyty'
+      :'Zakończenie '+currentName+' ('+side+')';
+    el('operationStageFinishMessage').textContent=hasSecondStage
+      ?'Wizyta zawiera już przyjęcie i wydanie. Czy chcesz zakończyć ją i wysłać dane do systemu?'
+      :'Czy chcesz jeszcze wykonać '+otherName+' części?';
+    el('operationStageFinishSummary').textContent=
+      'Przyjęcie: '+lines('PZ').length+' pozycji · Wydanie: '+lines('WZ').length+' pozycji';
+    next.hidden=hasSecondStage;
+    if(!hasSecondStage){
+      el('operationStageFinishNextLabel').textContent='TAK – Przejdź do '+(other==='PZ'?'przyjęcia':'wydania');
+      el('operationStageFinishNextHint').textContent=
+        'Zachowaj dotychczasowe części w bieżącej wizycie. Nic nie zostanie jeszcze wysłane.';
+    }
+    el('operationStageFinishSendLabel').textContent=hasSecondStage
+      ?'Zakończ i wyślij wizytę':'NIE – Zakończ i wyślij wizytę';
+    el('operationStageFinishSendHint').textContent=hasSecondStage
+      ?'Zapisz razem wszystkie przyjęcia i wydania w systemie GPBS Storage.'
+      :'Zapisz tylko '+(side==='PZ'?'przyjęcie':'wydanie')+' w systemie GPBS Storage.';
+    dialog.dataset.nextDirection=other;
+    dialog.showModal();
+  }
+  el('operationFinishStage').addEventListener('click',finishStage);
+  el('operationStageFinishNext').addEventListener('click',()=>{
+    const dialog=el('operationStageFinishDialog');
+    if(!dialog.open||state.busy||state.pending)return;
+    const next=dialog.dataset.nextDirection;
+    dialog.close();
+    changeDirection(next);
+  });
+  el('operationStageFinishSend').addEventListener('click',()=>{
+    const dialog=el('operationStageFinishDialog');
+    if(!dialog.open||state.busy)return;
+    dialog.close();
+    review({directCommit:true});
+  });
+  el('operationStageFinishCancel').addEventListener('click',()=>{
+    el('operationStageFinishDialog').close();
+  });
   el('operationVisitForm').addEventListener('submit',beginVisit);
   el('operationEditVisit').addEventListener('click',editVisit);
   el('operationBackToMenu').addEventListener('click',backToMenu);
@@ -913,8 +972,28 @@
   window.visualViewport?.addEventListener('resize',positionCommentDialog);
   window.visualViewport?.addEventListener('scroll',positionCommentDialog);
   window.addEventListener('resize',positionCommentDialog);
+  const searchQuery=el('operationSearchQuery');
+  searchQuery.addEventListener('input',()=>{
+    clearSuggestions();
+    status('');
+    if(searchQuery.value.trim().length<3||!['PZ','WZ'].includes(state.stage)||
+       !state.ready||state.pending||state.busy)return;
+    searchTimer=setTimeout(()=>{
+      searchTimer=null;
+      search(false,true);
+    },LIVE_SEARCH_DELAY);
+  });
+  searchQuery.addEventListener('focus',()=>{
+    positionSearchForKeyboard();
+    requestAnimationFrame(positionSearchForKeyboard);
+  });
+  searchQuery.addEventListener('blur',()=>requestAnimationFrame(positionSearchForKeyboard));
+  window.visualViewport?.addEventListener('resize',positionSearchForKeyboard);
+  window.visualViewport?.addEventListener('scroll',positionSearchForKeyboard);
   el('operationSearchForm').addEventListener('submit',event=>{
-    event.preventDefault();search();
+    event.preventDefault();
+    if(searchTimer!==null){clearTimeout(searchTimer);searchTimer=null;}
+    search(false,false);
   });
   el('operationMore').addEventListener('click',()=>search(true));
   el('operationQuantityForm').addEventListener('submit',addPart);
@@ -943,9 +1022,11 @@
   el('operationStartScan').addEventListener('click',startScanner);
   el('operationStopScan').addEventListener('click',stopScanner);
   el('operationClearSearch').addEventListener('click',()=>{
-    el('operationSearchQuery').value='';el('operationSearchResults').replaceChildren();
+    clearSuggestions({clearQuery:true});
+    status('');
+    el('operationSearchQuery').focus();
   });
-  el('operationSave').addEventListener('click',review);
+  el('operationSave').addEventListener('click',()=>review());
   el('operationConfirmCancel').addEventListener('click',()=>{
     state.reviewPayload=null;el('operationConfirmDialog').close();
   });
