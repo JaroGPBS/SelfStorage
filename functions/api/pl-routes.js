@@ -196,7 +196,7 @@ export async function onRequestGet({request,env}){
   const url=new URL(request.url);
   try{
     if(!await exists(env.DB,'pl_routes'))
-      return workerJson({ok:true,routes:[],storageReady:false,presentationMode:ROUTE_PRESENTATION_MODE});
+      return workerJson({ok:true,routes:[],storageReady:false,presentationMode:ROUTE_PRESENTATION_MODE,demoWeek48Count:0});
     const presentationColumn=await hasPresentationFlag(env.DB);
     const flag= presentationColumn?'is_presentation AS isPresentation':'0 AS isPresentation';
     const id=url.searchParams.get('id');
@@ -279,7 +279,14 @@ export async function onRequestGet({request,env}){
       routes.sort((a,b)=>activePriority(a,today)-activePriority(b,today)||
         String(b.routeDate).localeCompare(String(a.routeDate)));
     }
-    return workerJson({ok:true,routes,storageReady:true,presentationMode:ROUTE_PRESENTATION_MODE});
+    const demoWeek48Count=auth.user.role==='ADMIN'&&presentationColumn
+      ?Number((await env.DB.prepare(
+        'SELECT COUNT(*) AS total FROM pl_routes WHERE is_presentation=1 AND id IN ('+
+        demoWeek48Ids.map(()=>'?').join(',')+')'
+      ).bind(...demoWeek48Ids).first())?.total||0)
+      :0;
+    return workerJson({ok:true,routes,storageReady:true,
+      presentationMode:ROUTE_PRESENTATION_MODE,demoWeek48Count});
   }catch(e){
     console.error('PL routes list failed',e?.name||'Error');
     return send('Nie udało się odczytać tras z D1.',503);
