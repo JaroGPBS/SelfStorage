@@ -444,7 +444,7 @@
       return '<div class="pl-routes-empty">Brak tras do wyświetlenia.</div>';
     const header='<table class="pl-route-list-table"><thead><tr>'+
       '<th>Numer tygodnia</th><th>Numer trasy</th><th>Symbol ekipy</th><th>Data</th>'+
-      '<th>Pozycje</th><th>Status</th><th>Wprowadził</th><th></th>'+
+      '<th>Pozycje</th><th>Status</th><th>Dodał</th><th></th>'+
       '</tr></thead><tbody>';
     let previousWeek=null;
     const rows=routes.map((item,index)=>{
@@ -822,30 +822,49 @@
       }
     }else{
       const prev=details.before||{},next=details.after||{};
-      const descriptions=[['Numer trasy','routeNumber'],['Data','routeDate'],
-        ['Symbol ekipy','crewSymbol']];
-      content+='<h3>Zmiany w trasie</h3><div class="pl-route-audit-diff">';
-      let total=0;
-      for(const [label,key] of descriptions){
-        if(String(prev[key]??'')!==String(next[key]??'')){
-          total++;
-          content+='<div><strong>'+html(label)+'</strong><span>'+
-            html(prev[key]||'—')+' → '+html(next[key]||'—')+'</span></div>';
+      const changed=[];
+      const addChange=(name,before,after)=>{
+        if(String(before??'')!==String(after??''))
+          changed.push({name,before:before??'—',after:after??'—'});
+      };
+      for(const [name,key] of [
+        ['Numer trasy','routeNumber'],['Data','routeDate'],['Symbol ekipy','crewSymbol']
+      ])addChange(name,prev[key],next[key]);
+      const beforeLines=prev.lines||[],afterLines=next.lines||[];
+      for(let index=0;index<Math.max(beforeLines.length,afterLines.length);index++){
+        const original=beforeLines[index],updated=afterLines[index];
+        const position=index+1;
+        if(!original&&updated){
+          changed.push({name:'Dodano: '+(updated.partName||updated.partCode||'Część')+
+            ' (poz. '+position+')',before:'—',after:updated.quantity+' szt.'});
+          continue;
         }
-      }
-      const oldLines=prev.lines||[],newLines=next.lines||[];
-      for(let index=0;index<Math.max(oldLines.length,newLines.length);index++){
-        const a=oldLines[index],b=newLines[index];
-        const describe=x=>x?(x.partCode?x.partCode+' / ':'')+
-          (x.partName||'Część')+' × '+x.quantity:'—';
-        if(describe(a)!==describe(b)){
-          total++;
-          content+='<div><strong>Pozycja '+(index+1)+'</strong><span>'+
-            html(describe(a))+' → '+html(describe(b))+'</span></div>';
+        if(original&&!updated){
+          changed.push({name:'Usunięto: '+(original.partName||original.partCode||'Część')+
+            ' (poz. '+position+')',before:original.quantity+' szt.',after:'—'});
+          continue;
         }
+        if(!original||!updated)continue;
+        const partLabel=updated.partName||original.partName||updated.partCode||
+          original.partCode||'Pozycja '+position;
+        addChange('Nazwa części (poz. '+position+')',original.partName,updated.partName);
+        addChange('Indeks – '+partLabel,original.partCode,updated.partCode);
+        addChange(partLabel,original.quantity,updated.quantity);
       }
-      if(!total)content+='<div>Potwierdzono zapis bez zmian w pozycjach.</div>';
-      content+='</div>';
+      content+='<h3>Zmienione dane</h3>';
+      if(changed.length){
+        content+='<div class="pl-route-audit-table-wrap">'+
+          '<table class="pl-route-audit-quantity-table pl-route-audit-edit-table">'+
+          '<thead><tr><th>Zmieniona pozycja</th><th>Przed edycją</th>'+
+          '<th>Po edycji</th></tr></thead><tbody>'+
+          changed.map(item=>'<tr>'+
+            '<td>'+html(item.name)+'</td>'+
+            '<td>'+html(item.before)+'</td>'+
+            '<td>'+html(item.after)+'</td>'+
+          '</tr>').join('')+'</tbody></table></div>';
+      }else{
+        content+='<p class="pl-route-audit-empty">Zapisano bez zmian.</p>';
+      }
     }
     byId('plRouteAuditContent').innerHTML=content;
     const dialog=byId('plRouteAuditDialog');
