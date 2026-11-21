@@ -532,14 +532,76 @@
       (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
       '<div class="pl-route-document-links">'+
         (result.documents?.length
-          ?'<strong>Zdjęcia dokumentu:</strong> '+result.documents.map((doc,index)=>{
-            const url='/api/pl-routes-photo?routeId='+encodeURIComponent(route.id)+
-              '&documentId='+encodeURIComponent(doc.id);
-            return '<a href="'+html(url)+'" target="_blank" rel="noopener noreferrer">'+
-              'Otwórz zdjęcie '+(index+1)+'</a>';
-          }).join(' · ')
+          ?result.documents.map((doc,index)=>
+            '<button type="button" class="pl-route-document-button" '+
+              'data-pl-route-document="'+html(doc.id)+'" '+
+              'data-pl-route-document-route="'+html(route.id)+'">'+
+              (result.documents.length===1?'Zdjęcie dokumentu':'Zdjęcie dokumentu '+(index+1))+
+            '</button>'
+          ).join('')
           :'<span>Nie dołączono zdjęcia dokumentu.</span>')+
       '</div></div>';
+  }
+  let viewedDocumentUrl=null;
+  let photoLoadId=0;
+  function resetRouteDocumentViewer(){
+    ++photoLoadId;
+    const image=byId('plRouteDocumentImage');
+    image.hidden=true;
+    image.removeAttribute('src');
+    if(viewedDocumentUrl){
+      URL.revokeObjectURL(viewedDocumentUrl);
+      viewedDocumentUrl=null;
+    }
+    const status=byId('plRouteDocumentStatus');
+    status.hidden=false;
+    status.textContent='';
+  }
+  async function showRouteDocument(button){
+    const routeId=button.dataset.plRouteDocumentRoute||'';
+    const documentId=button.dataset.plRouteDocument||'';
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(routeId)||
+       !/^PL-DOC-[a-f0-9-]{36}$/.test(documentId))return;
+    const dialog=byId('plRouteDocumentDialog');
+    if(dialog.open)dialog.close();
+    resetRouteDocumentViewer();
+    const seq=photoLoadId;
+    byId('plRouteDocumentTitle').textContent=button.textContent.trim();
+    const status=byId('plRouteDocumentStatus');
+    status.hidden=false;
+    status.textContent='Otwieranie zapisanego zdjęcia…';
+    dialog.showModal();
+    try{
+      const response=await fetch('/api/pl-routes-photo?routeId='+
+        encodeURIComponent(routeId)+'&documentId='+encodeURIComponent(documentId),{
+          credentials:'same-origin',cache:'no-store'
+        });
+      if(!response.ok)throw Error('Nie udało się otworzyć zdjęcia dokumentu.');
+      const type=(response.headers.get('Content-Type')||'').split(';')[0].trim().toLowerCase();
+      if(type!=='image/jpeg')throw Error('Serwer nie zwrócił zdjęcia JPEG.');
+      const blob=await response.blob();
+      if(blob.size===0||blob.size>4*1024*1024)
+        throw Error('Zdjęcie ma nieprawidłowy rozmiar.');
+      if(seq!==photoLoadId||!dialog.open)return;
+      viewedDocumentUrl=URL.createObjectURL(blob);
+      const image=byId('plRouteDocumentImage');
+      image.onload=()=>{
+        if(seq!==photoLoadId||!dialog.open)return;
+        image.hidden=false;
+        status.hidden=true;
+      };
+      image.onerror=()=>{
+        if(seq!==photoLoadId||!dialog.open)return;
+        image.hidden=true;
+        status.hidden=false;
+        status.textContent='Nie można wyświetlić zdjęcia dokumentu.';
+      };
+      image.src=viewedDocumentUrl;
+    }catch(error){
+      if(seq!==photoLoadId||!dialog.open)return;
+      status.hidden=false;
+      status.textContent=error.message||'Nie udało się pobrać zdjęcia.';
+    }
   }
   async function showDetails(button){
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(button.dataset.plRouteDetails||''))return;
@@ -697,7 +759,19 @@
     clearPhoto();
     if(!busy)errorMessage();
   });
+  byId('plRouteDocumentClose').addEventListener('click',()=>
+    byId('plRouteDocumentDialog').close());
+  byId('plRouteDocumentDialog').addEventListener('close',resetRouteDocumentViewer);
+  byId('plRouteDocumentDialog').addEventListener('click',event=>{
+    if(event.target===byId('plRouteDocumentDialog'))
+      byId('plRouteDocumentDialog').close();
+  });
   byId('plRoutesTable').addEventListener('click',e=>{
+    const photoButton=e.target.closest('[data-pl-route-document]');
+    if(photoButton){
+      showRouteDocument(photoButton);
+      return;
+    }
     const week=e.target.closest('[data-pl-route-week]');
     if(week){
       const container=week.nextElementSibling;
