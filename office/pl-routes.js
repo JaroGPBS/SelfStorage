@@ -577,16 +577,22 @@
       ?'<button type="button" class="pl-route-edit-button" '+
         'data-pl-route-edit="'+html(route.id)+'">Edytuj</button>'
       :'';
-    return '<div class="pl-route-detail-lines">'+
-      '<div class="pl-route-detail-head">'+
-        '<strong>'+caption+html(route.routeNumber)+
-          (Number(route.isPresentation)===1?' *':'')+'</strong>'+
-        '<div class="pl-route-detail-actions">'+photoButtons+editButton+'</div>'+
+    return '<div class="pl-route-detail-layout">'+
+      '<div class="pl-route-detail-lines">'+
+        '<div class="pl-route-detail-head">'+
+          '<strong>'+caption+html(route.routeNumber)+
+            (Number(route.isPresentation)===1?' *':'')+'</strong>'+
+        '</div>'+
+        warning+
+        '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
+          rows+'</tbody></table>'+
+        (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
       '</div>'+
-      warning+
-      '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
-        rows+'</tbody></table>'+
-      (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
+      (photoButtons||editButton
+        ?'<div class="pl-route-detail-side">'+
+           '<div class="pl-route-detail-actions">'+photoButtons+editButton+'</div>'+
+         '</div>'
+        :'')+
       '</div>';
   }
   let viewedDocumentUrl=null;
