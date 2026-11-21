@@ -876,10 +876,10 @@ function renderMenu(){
   const routesButton=()=>{
     const open=state.plRoutesExpanded;
     const tabs=[
-      {id:'list',label:'Lista tras'},
+      {id:'list',label:'Aktualne trasy'},
       {id:'balance',label:'Bilans części'},
       {id:'remnants',label:'Pozostałości tras'},
-      {id:'history',label:'Historia'}
+      {id:'history',label:'Historia tras'}
     ];
     return '<div class="office-pl-routes-group">'+
       '<button type="button" class="subnav-btn office-operation-link office-routes-link office-pl-routes-toggle" '+
@@ -1320,10 +1320,10 @@ function setHead(title,kicker,desc){
   $('officePlRoutesView').classList.toggle('hidden',!isPlRoutes);
   if(isPlRoutes){
     const detail={
-      list:'Tutaj pojawi się lista tras, wprowadzanych przez koordynatorów.',
+      list:'Aktualne trasy montażowe, wprowadzane przez biuro.',
       balance:'Tutaj pojawi się zbiorczy bilans części: wydane, odebrane, zużyte, zwrócone i pozostałe.',
       remnants:'Tutaj pojawią się pozostałości części zgłoszone po zakończeniu tras.',
-      history:'Tutaj pojawi się historia tras i rozliczeń części.'
+      history:'Historia tras zakończonych, pogrupowana według tygodni.'
     };
     $('officePlRoutesMessage').textContent=detail[state.plRoutesTab]||detail.list;
     if(typeof window.renderPlRoutesList==='function')window.renderPlRoutesList();
@@ -1499,8 +1499,8 @@ function selectView(view,warehouse,focusDocument=null){
   const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.',plRoutes:'Rozliczenia tras montażowych – Polska.'};
   const market=view==='aggregate'?'FR':realWarehouse(state.warehouse)?.country_code;
   const marketName=market==='FR'?'FRANCJA':'POLSKA';
-  const routeTitles={list:'Lista tras',balance:'Bilans części',remnants:'Pozostałości tras',history:'Historia'};
-  const title=view==='plRoutes'?(routeTitles[state.plRoutesTab]||'Lista tras'):
+  const routeTitles={list:'Aktualne trasy',balance:'Bilans części',remnants:'Pozostałości tras',history:'Historia tras'};
+  const title=view==='plRoutes'?(routeTitles[state.plRoutesTab]||'Aktualne trasy'):
     view==='aggregate'?'Zestawienie zbiorcze — '+(market==='FR'?'FR':'PL'):
     (titles[view]||'Stany magazynowe');
   setHead(title,'GPBS STORAGE / '+marketName,descriptions[view]||'');
