@@ -47,7 +47,7 @@
       verified:quantity(verified),
       used:valid?Number(actual)-Number(returned):'—',
       returned:quantity(returned),
-      returnLocation:Number(returned)===0?'':human(line.returnLocation),
+      returnLocation:returned!=null&&Number(returned)===0?'':human(line.returnLocation),
       mismatch
     };
   };
