@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=141">
+  <link rel="stylesheet" href="./office.css?v=142">
   <link rel="stylesheet" href="./pl-routes.css?v=50">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
@@ -178,20 +178,22 @@
         <button type="button" id="refresh" class="office-side-sync-button"
           title="Pobierz aktualne dane bieżącej zakładki"
           aria-label="Synchronizuj aktualnie otwartą zakładkę">
-          <span class="office-side-sync-meta">
-            <small id="syncDate">Pobieranie danych</small>
-            <strong id="syncTime">Łączenie…</strong>
-          </span>
           <span class="office-side-sync-heading"><span aria-hidden="true">↻</span> Synchronizacja</span>
+          <span class="office-side-sync-meta">
+            <small id="syncDate">—</small>
+            <strong id="syncTime">—</strong>
+          </span>
         </button>
       </div>
       <div class="side-footer office-side-footer">
         <div class="office-welcome">
           <p class="welcome-line"><span>Dzień dobry,</span><strong id="username">!</strong></p>
           <p class="welcome-wish">Miłej pracy!</p>
-          <small id="userRole">—</small>
+          <div class="office-footer-bottom">
+            <small id="userRole">—</small>
+            <button type="button" id="logout" class="office-logout-button" title="Wyloguj" aria-label="Wyloguj">WYLOGUJ</button>
+          </div>
         </div>
-        <button type="button" id="logout" class="icon-btn light-on-dark" title="Wyloguj" aria-label="Wyloguj">↗</button>
       </div>
     </aside>
     <div class="main">
