@@ -407,6 +407,11 @@
 }
 .pl-route-audit-quantity-table td:first-child{text-align:left;font-weight:650}
 .pl-route-audit-quantity-table td:last-child{text-align:left}
+.pl-route-audit-edit-table th:first-child{width:50%}
+.pl-route-audit-edit-table th:last-child,
+.pl-route-audit-edit-table td:last-child{text-align:center}
+.pl-route-audit-empty{font-size:11px;color:#708197;margin:9px 0 0}
+
 .pl-route-audit-note{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10.5px;line-height:1.45}
 .pl-route-audit-change.is-unresolved{background:#fcebe9;border-color:#e6cbca;color:#8e4345;white-space:normal}
 .pl-route-audit-quantity-table tr.pl-route-audit-corrected td{
