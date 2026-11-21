@@ -412,6 +412,125 @@ export async function onRequestPost({request,env}){
   if(raw.length>40000)return send('Zbyt duży formularz trasy.',413);
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
+  if(body?.action==='prepareDemoWeek47'){
+    // Explicit demo-only preparation for the week-end rollover test.
+    // Exactly two routes are settled as COMPLETED; one is just CONFIRMED.
+    // Neither route dates nor warehouse/car stocks are touched.
+    if(auth.user.role!=='ADMIN')
+      return send('Tylko administrator może przygotować trasy pokazowe.',403);
+    if(body.confirm!=='PRZYGOTUJ DEMO 47')
+      return send('Potwierdź przygotowanie tygodnia 47.',400);
+    const completeIds=body.completeIds,confirmedId=body.confirmedId;
+    const validId=id=>typeof id==='string'&&/^PL-ROUTE-[a-f0-9-]{36}$/.test(id);
+    if(!Array.isArray(completeIds)||completeIds.length!==2||
+       !completeIds.every(validId)||!validId(confirmedId)||
+       new Set([...completeIds,confirmedId]).size!==3)
+      return send('Podaj dokładnie dwie trasy do zakończenia i trzecią do potwierdzenia.',400);
+    try{
+      if(!await verifyCleanupPin(env.DB,env,auth.user.id,body.pin))
+        return send('Nieprawidłowy PIN administratora.',403);
+      if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines')||
+         !await hasPresentationFlag(env.DB))
+        return send('Nie znaleziono tras pokazowych.',404);
+      const columns=await routeLineColumns(env.DB);
+      if(!['confirmed_quantity','verified_quantity','returned_quantity','return_location'].every(c=>columns.has(c)))
+        return send('Baza nie obsługuje jeszcze rozliczenia trasy.',409);
+      await ensureRouteAuditSchema(env.DB);
+      const routes=(await env.DB.prepare(
+        'SELECT id,route_number AS routeNumber,route_date AS routeDate,'+
+        'crew_symbol AS crewSymbol,status,edit_revision AS revision '+
+        'FROM pl_routes WHERE is_presentation=1 AND '+
+        "route_date BETWEEN '2026-11-16' AND '2026-11-22' "+
+        'ORDER BY route_number,id'
+      ).all()).results||[];
+      const requestedIds=new Set([...completeIds,confirmedId]);
+      if(routes.length!==3||routes.some(route=>!requestedIds.has(route.id)))
+        return send('Tydzień 47 musi zawierać dokładnie te trzy trasy pokazowe. Niczego nie zmieniono.',409);
+      const staged=[];
+      for(const route of routes){
+        const targetStatus=route.id===confirmedId?'CONFIRMED':'COMPLETED';
+        if(!['AWAITING_CONFIRMATION','CONFIRMED','COMPLETED'].includes(route.status))
+          return send('Trasa '+route.routeNumber+' wymaga wcześniejszego wyjaśnienia. Niczego nie zmieniono.',409);
+        const lines=(await env.DB.prepare(
+          'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
+          'confirmed_quantity AS confirmedQuantity,verified_quantity AS verifiedQuantity,'+
+          'returned_quantity AS returnedQuantity,return_location AS returnLocation '+
+          'FROM pl_route_lines WHERE route_id=? ORDER BY position'
+        ).bind(route.id).all()).results||[];
+        if(!lines.length||lines.length>150)
+          return send('Trasa '+route.routeNumber+' nie ma prawidłowej listy części.',409);
+        const updates=[];
+        for(const line of lines){
+          const q=Number(line.quantity),position=Number(line.position);
+          if(!Number.isSafeInteger(q)||q<1||!Number.isSafeInteger(position)||position<1||
+             line.confirmedQuantity!=null&&Number(line.confirmedQuantity)!==q||
+             line.verifiedQuantity!=null&&Number(line.verifiedQuantity)!==q||
+             line.returnedQuantity!=null&&Number(line.returnedQuantity)!==0||
+             String(line.returnLocation||'').trim()!=='')
+            return send('Trasa '+route.routeNumber+' ma niezgodność lub istniejący zwrot. Niczego nie nadpisano.',409);
+          updates.push({
+            position,partCode:line.partCode||'',partName:line.partName||'',
+            quantity:q,confirmedQuantity:q,verifiedQuantity:line.verifiedQuantity??null,
+            returnedQuantity:targetStatus==='COMPLETED'?0:null,returnLocation:null
+          });
+        }
+        const already=route.status===targetStatus&&lines.every((line,i)=>
+          line.confirmedQuantity!=null&&Number(line.confirmedQuantity)===updates[i].quantity&&
+          (targetStatus==='COMPLETED'
+            ?line.returnedQuantity!=null&&Number(line.returnedQuantity)===0
+            :line.returnedQuantity==null)&&
+          !line.returnLocation
+        );
+        if(route.status==='COMPLETED'&&!already)
+          return send('Trasa '+route.routeNumber+' została już zakończona z innymi danymi. Niczego nie nadpisano.',409);
+        if(!already)staged.push({route,lines,updates,targetStatus});
+      }
+      if(!staged.length)return workerJson({ok:true,updated:0,alreadyPrepared:true});
+      const statements=[];
+      for(const {route,lines,updates,targetStatus} of staged){
+        const token=crypto.randomUUID();
+        statements.push(env.DB.prepare(
+          'UPDATE pl_routes SET status=?,edit_revision=edit_revision+1,edit_token=? '+
+          'WHERE id=? AND is_presentation=1 AND edit_revision=? AND status=? '+
+          "AND route_date BETWEEN '2026-11-16' AND '2026-11-22'"
+        ).bind(targetStatus,token,route.id,route.revision,route.status));
+        for(const item of updates){
+          statements.push(env.DB.prepare(
+            'UPDATE pl_route_lines SET confirmed_quantity=quantity,returned_quantity=?,return_location=NULL '+
+            'WHERE route_id=? AND position=? AND quantity=? '+
+            'AND (confirmed_quantity IS NULL OR confirmed_quantity=quantity) '+
+            'AND (verified_quantity IS NULL OR verified_quantity=quantity) '+
+            'AND (returned_quantity IS NULL OR returned_quantity=0) '+
+            '(AND_REPLACE_ME) '
+          .replace('(AND_REPLACE_ME) ','AND (return_location IS NULL OR trim(return_location)=\'\') ')+
+            'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? '+
+            'AND r.edit_revision=? AND r.edit_token=?)'
+          ).bind(item.returnedQuantity,route.id,item.position,item.quantity,
+            route.id,route.revision+1,token));
+        }
+        statements.push(auditEntry(env.DB,{
+          id:crypto.randomUUID(),routeId:route.id,action:'EDIT',
+          actorId:auth.user.id,revision:route.revision+1,token,
+          details:{
+            demo:true,comment:'Test automatycznej archiwizacji tygodnia 47. Bez zmian stanów.',
+            before:{routeNumber:route.routeNumber,routeDate:route.routeDate,
+              crewSymbol:route.crewSymbol,status:route.status,lines},
+            after:{routeNumber:route.routeNumber,routeDate:route.routeDate,
+              crewSymbol:route.crewSymbol,status:targetStatus,lines:updates}
+          }
+        }));
+      }
+      const result=await env.DB.batch(statements);
+      if(result.some(step=>Number(step?.meta?.changes||0)!==1))
+        return send('Jedna z tras została zmieniona w innym oknie. Odśwież listę.',409);
+      return workerJson({ok:true,updated:staged.length,
+        completed:routes.filter(r=>completeIds.includes(r.id)).map(r=>r.routeNumber),
+        confirmed:routes.find(r=>r.id===confirmedId)?.routeNumber});
+    }catch(error){
+      console.error('PL demo week47 preparation failed',error?.name||'Error');
+      return send('Nie udało się przygotować tras pokazowych tygodnia 47.',503);
+    }
+  }
   if(body?.action==='completeDemoWeek45'){
     // Only the two specifically requested presentation routes, never real stock.
     if(auth.user.role!=='ADMIN')return send('Tylko administrator może rozliczyć trasy pokazowe.',403);
