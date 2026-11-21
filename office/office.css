@@ -8310,3 +8310,49 @@
   font-weight:450;
   color:#aebbc9;
 }
+
+
+/* Final compact layout: date and time side by side, action underneath. */
+#sidebar .office-side-sync{padding:6px 5px 4px}
+#sidebar .office-side-sync-button{
+  min-height:0;
+  padding:4px 10px 5px;
+  gap:2px;
+}
+#sidebar .office-side-sync-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:9px;
+  width:100%;
+  min-width:0;
+  color:#c6d0db;
+  font-variant-numeric:tabular-nums;
+}
+#sidebar .office-side-sync-meta small{
+  display:block;
+  flex:0 1 auto;
+  color:#b2becc;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:450;
+  white-space:nowrap;
+}
+#sidebar .office-side-sync-meta strong{
+  display:block;
+  flex:0 0 auto;
+  color:#e4eaf1;
+  font-size:12px;
+  line-height:1.2;
+  font-weight:450;
+  white-space:nowrap;
+}
+#sidebar .office-side-sync-heading{
+  align-self:center;
+  justify-content:center;
+  gap:6px;
+  font-size:12px;
+  line-height:1.15;
+  font-weight:700;
+}
+#sidebar .office-side-sync-heading > span{font-size:13px}
