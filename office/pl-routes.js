@@ -922,7 +922,7 @@
     const partByPosition=new Map(lines.map(part=>[Number(part.position),part]));
     for(const event of (result.returnApprovals||[]).slice()
       .sort((a,b)=>String(b.approvedAt||'').localeCompare(String(a.approvedAt||'')))){
-      const key=String(event.approvedById||event.approvedBy||'')+'|'+String(event.approvedAt||'');
+      const key=String(event.approvedById||event.approvedBy||'')+'|'+String(event.approvedAt||'').slice(0,19);
       let group=groupsByKey.get(key);
       if(!group){
         group={actor:event.approvedBy||'Użytkownik',approvedAt:event.approvedAt,items:[]};
