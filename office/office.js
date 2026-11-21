@@ -2544,7 +2544,8 @@ async function openDocumentPrint(id,direction){
     return;
   }
   const warehouseAtClick=state.warehouse;
-  let lines=state.detailCache.get(direction+':'+id);
+  let lines=freshDetailCache(direction+':'+id)
+    ?state.detailCache.get(direction+':'+id):null;
   if(!Array.isArray(lines)){
     try{
       const response=await api('document',{warehouse:warehouseAtClick,direction,id});
