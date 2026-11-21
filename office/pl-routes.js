@@ -416,7 +416,8 @@
   }
   function statusInfo(route){
     if(route.status==='REVIEW_EXPLAINED')
-      return {label:'Niezgodność wyjaśniona',className:'is-explained'};
+      return {label:Number(route.discrepancyCount)>0?'Do weryfikacji – niezgodność':'Niezgodność wyjaśniona',
+        className:Number(route.discrepancyCount)>0?'is-discrepancy':'is-explained'};
     if(Number(route.discrepancyCount)>0||
        ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status))
       return {label:'Do weryfikacji – niezgodność',className:'is-discrepancy'};
@@ -556,7 +557,7 @@
     const lines=result.lines||[];
     const mismatches=lines.filter(line=>
       line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
-      Number(line.confirmedQuantity)!==Number(line.quantity)
+      Number(line.confirmedQuantity)!==Number(line.verifiedQuantity??line.quantity)
     );
     const cols=history
       ?'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
@@ -566,12 +567,15 @@
        '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Zakończono</th>';
     const rows=lines.map(line=>{
       const mismatch=line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
-        Number(line.confirmedQuantity)!==Number(line.quantity);
+        Number(line.confirmedQuantity)!==Number(line.verifiedQuantity??line.quantity);
+      const displayedIssued=line.verifiedQuantity??line.quantity;
+      const originalNote=line.verifiedQuantity!==null&&line.verifiedQuantity!==undefined
+        ?'<small class="pl-route-original-quantity">pierwotnie '+html(line.quantity)+'</small>':'';
       let row='<tr'+(mismatch?' class="pl-route-detail-mismatch"':'')+'>'+
         '<td>'+html(line.position)+'</td>'+
         '<td>'+html(line.partCode||'—')+'</td>'+
         '<td>'+html(line.partName||'—')+'</td>'+
-        '<td>'+html(line.quantity)+'</td>'+
+        '<td>'+html(displayedIssued)+originalNote+'</td>'+
         '<td>'+routeQuantity(line.confirmedQuantity)+'</td>'+
         '<td>—</td>';
       if(history){
@@ -582,10 +586,8 @@
     }).join('');
     const warning=mismatches.length
       ?'<p class="pl-route-detail-warning">'+
-       (route.status==='REVIEW_EXPLAINED'
-         ?'Wyjaśniono różnice w '+mismatches.length+' pozycjach (bez pełnej korekty ilości).'
-         :'Rozbieżność w '+mismatches.length+
-          ' pozycjach: ilość potwierdzona przez ekipę różni się od wydanej.')+
+       'Rozbieżność w '+mismatches.length+
+          ' pozycjach: ilość potwierdzona przez ekipę różni się od wydanej po weryfikacji.'+
        '</p>':'';
     const caption=history
       ?'Rozliczenie zakończonej trasy ':'Wydane i potwierdzone części dla trasy ';
@@ -593,7 +595,7 @@
     const canWork=['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role);
     const editable=!history&&route.canEdit===true&&canWork;
     const explainable=!history&&canWork&&mismatches.length>0&&
-      !['COMPLETED','REVIEW_EXPLAINED'].includes(route.status);
+      route.status!=='COMPLETED';
     const photoButtons=(result.documents||[]).length
       ?result.documents.map((doc,index)=>
         '<button type="button" class="pl-route-document-button" '+
