@@ -33,6 +33,7 @@ async function ensureSchema(db){
       'CREATE TABLE IF NOT EXISTS pl_routes ('+
         'id TEXT PRIMARY KEY, route_number TEXT NOT NULL, route_date TEXT NOT NULL,'+
         'crew_number TEXT NOT NULL, crew_symbol TEXT NOT NULL, status TEXT NOT NULL,'+
+        'is_presentation INTEGER NOT NULL DEFAULT 0 CHECK(is_presentation IN (0,1)),'+
         'created_by TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'+
         'UNIQUE(route_number,route_date))'
     ),
@@ -46,6 +47,41 @@ async function ensureSchema(db){
     ),
     db.prepare('CREATE INDEX IF NOT EXISTS idx_pl_routes_date ON pl_routes(route_date DESC,created_at DESC)')
   ]);
+  // Existing route tables are upgraded in place; existing rows remain REAL (0).
+  // A label/star in the UI is never used to decide which records to delete.
+  if(!await hasPresentationFlag(db)){
+    try{
+      await db.prepare(
+        'ALTER TABLE pl_routes ADD COLUMN is_presentation INTEGER NOT NULL DEFAULT 0 CHECK(is_presentation IN (0,1))'
+      ).run();
+    }catch(error){
+      // A concurrent writer may already have installed the same column.
+      if(!await hasPresentationFlag(db))throw error;
+    }
+  }
+}
+async function hasPresentationFlag(db){
+  if(!await exists(db,'pl_routes'))return false;
+  const result=await db.prepare('PRAGMA table_info(pl_routes)').all();
+  return (result.results||[]).some(col=>col.name==='is_presentation');
+}
+async function verifyCleanupPin(db,env,userId,pin){
+  if(typeof pin!=='string'||!/^\d{4}$/.test(pin))return false;
+  const credentials=await db.prepare(
+    'SELECT c.pin_digest,u.role_code,u.active FROM user_pin_credentials c '+
+    'JOIN users u ON u.id=c.user_id WHERE c.user_id=?'
+  ).bind(userId).first();
+  if(!credentials||credentials.role_code!=='ADMIN'||Number(credentials.active)!==1||
+     !/^[0-9a-f]{64}$/i.test(String(credentials.pin_digest||'')))return false;
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.PIN_PEPPER),
+    {name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const signed=await crypto.subtle.sign('HMAC',key,
+    new TextEncoder().encode('GPBS:D1:PIN:v1:'+pin));
+  const digest=Array.from(new Uint8Array(signed),b=>b.toString(16).padStart(2,'0')).join('');
+  const stored=String(credentials.pin_digest).toLowerCase();
+  let difference=0;
+  for(let i=0;i<64;i++)difference|=digest.charCodeAt(i)^stored.charCodeAt(i);
+  return difference===0;
 }
 const validDate=value=>{
   if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
@@ -70,7 +106,7 @@ function parseRoute(body){
        !Number.isSafeInteger(quantity)||quantity<1||quantity>999999)return null;
     lines.push({partCode,partName,quantity});
   }
-  return {routeNumber,routeDate,crewSymbol,lines};
+  return {routeNumber,routeDate,crewSymbol,lines,isPresentation:body.isPresentation===true};
 }
 export async function onRequestGet({request,env}){
   const auth=await authorize(request,env);
@@ -79,12 +115,14 @@ export async function onRequestGet({request,env}){
   try{
     if(!await exists(env.DB,'pl_routes'))
       return workerJson({ok:true,routes:[],storageReady:false});
+    const presentationColumn=await hasPresentationFlag(env.DB);
+    const flag= presentationColumn?'is_presentation AS isPresentation':'0 AS isPresentation';
     const id=url.searchParams.get('id');
     if(id!==null){
       if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))return send('Nieprawidłowa trasa.',400);
       const route=await env.DB.prepare(
         'SELECT id,route_number AS routeNumber,route_date AS routeDate,'+
-        'crew_symbol AS crewSymbol,status,created_at AS createdAt '+
+        'crew_symbol AS crewSymbol,status,created_at AS createdAt,'+flag+' '+
         'FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
@@ -97,6 +135,7 @@ export async function onRequestGet({request,env}){
     const routes=(await env.DB.prepare(
       'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
       'r.crew_symbol AS crewSymbol,r.status,'+
+      (presentationColumn?'r.is_presentation AS isPresentation,':'0 AS isPresentation,')+
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units '+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
       'GROUP BY r.id ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200'
@@ -120,12 +159,36 @@ export async function onRequestPost({request,env}){
   if(raw.length>40000)return send('Zbyt duży formularz trasy.',413);
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
+  if(body?.action==='deletePresentation'){
+    // Cleanup is deliberately separate from ordinary route creation.
+    // Never run it for a non-Admin session or without a fresh D1 PIN check.
+    if(auth.user.role!=='ADMIN')return send('Tylko administrator może usuwać trasy prezentacyjne.',403);
+    if(body.confirm!=='USUŃ TRASY')return send('Potwierdzenie usuwania jest nieprawidłowe.',400);
+    try{
+      if(!await verifyCleanupPin(env.DB,env,auth.user.id,body.pin))
+        return send('Nieprawidłowy PIN administratora.',403);
+      if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB))
+        return workerJson({ok:true,deleted:0});
+      // Both statements are executed in one atomic D1 batch, scoped *only*
+      // to the is_presentation flag. No stock, real routes or vehicle data.
+      const results=await env.DB.batch([
+        env.DB.prepare(
+          'DELETE FROM pl_route_lines WHERE route_id IN ('+
+          'SELECT id FROM pl_routes WHERE is_presentation=1)'
+        ),
+        env.DB.prepare('DELETE FROM pl_routes WHERE is_presentation=1')
+      ]);
+      return workerJson({ok:true,deleted:Number(results[1]?.meta?.changes||0)});
+    }catch(error){
+      console.error('PL route presentation cleanup failed',error?.name||'Error');
+      return send('Nie udało się wyczyścić tras prezentacyjnych.',503);
+    }
+  }
   if(body?.action!=='create')return send('Nieznana operacja.',400);
   const route=parseRoute(body);
   if(!route)return send('Uzupełnij numer i datę trasy, ekipę oraz prawidłową listę części.',400);
   try{
-    if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines'))
-      await ensureSchema(env.DB);
+    await ensureSchema(env.DB);
     const duplicate=await env.DB.prepare(
       'SELECT id FROM pl_routes WHERE route_number=? AND route_date=? LIMIT 1'
     ).bind(route.routeNumber,route.routeDate).first();
@@ -133,10 +196,10 @@ export async function onRequestPost({request,env}){
     const id='PL-ROUTE-'+crypto.randomUUID();
     const steps=[
       env.DB.prepare(
-        'INSERT INTO pl_routes (id,route_number,route_date,crew_number,crew_symbol,status,created_by) '+
-        'VALUES (?,?,?,?,?,?,?)'
+        'INSERT INTO pl_routes (id,route_number,route_date,crew_number,crew_symbol,status,created_by,is_presentation) '+
+        'VALUES (?,?,?,?,?,?,?,?)'
       ).bind(id,route.routeNumber,route.routeDate,'',route.crewSymbol,
-        'AWAITING_CONFIRMATION',auth.user.id)
+        'AWAITING_CONFIRMATION',auth.user.id,route.isPresentation?1:0)
     ];
     route.lines.forEach((line,i)=>{
       steps.push(env.DB.prepare(
