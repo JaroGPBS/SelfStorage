@@ -456,6 +456,84 @@ export async function onRequestPost({request,env}){
   if(raw.length>40000)return send('Zbyt duży formularz trasy.',413);
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
+  if(body?.action==='approveReturns'){
+    if(!['COORDYNATOR','ADMIN'].includes(auth.user.role))
+      return send('Zwroty może zatwierdzić tylko koordynator lub administrator.',403);
+    const id=String(body.id||'');
+    const revision=Number(body.baseRevision);
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id)||
+       !Number.isSafeInteger(revision)||revision<0)
+      return send('Nieprawidłowa trasa lub wersja danych.',400);
+    try{
+      if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines'))
+        return send('Trasa nie istnieje.',404);
+      const columns=await routeLineColumns(env.DB);
+      if(!['confirmed_quantity','returned_quantity','return_location','verified_quantity']
+        .every(col=>columns.has(col)))
+        return send('Brakuje danych rozliczenia.',409);
+      await ensureRouteAuditSchema(env.DB);
+      await ensureReturnApprovalSchema(env.DB);
+      const route=await env.DB.prepare(
+        'SELECT id,status,edit_revision AS revision FROM pl_routes WHERE id=?'
+      ).bind(id).first();
+      if(!route)return send('Trasa nie istnieje.',404);
+      if(route.status!=='COMPLETED')
+        return send('Zatwierdzenie zwrotów jest możliwe dopiero po zakończeniu trasy.',409);
+      if(Number(route.revision)!==revision)
+        return send('Dane trasy zostały zmienione. Odśwież szczegóły.',409);
+      const lines=(await env.DB.prepare(
+        'SELECT position,quantity,confirmed_quantity AS confirmedQuantity,'+
+        'verified_quantity AS verifiedQuantity,returned_quantity AS returnedQuantity,'+
+        'return_location AS returnLocation FROM pl_route_lines WHERE route_id=? ORDER BY position'
+      ).bind(id).all()).results||[];
+      if(!lines.length)return send('W trasie nie ma części do rozliczenia.',409);
+      const positive=lines.filter(line=>Number(line.returnedQuantity)>0);
+      if(!positive.length)return send('W tej trasie nie zgłoszono zwrotów.',409);
+      for(const line of lines){
+        const actual=line.verifiedQuantity??line.confirmedQuantity;
+        const returned=line.returnedQuantity;
+        if(actual==null||returned==null||
+           line.verifiedQuantity==null&&
+             Number(line.confirmedQuantity)!==Number(line.quantity)||
+           !Number.isSafeInteger(Number(actual))||
+           !Number.isSafeInteger(Number(returned))||
+           Number(returned)<0||Number(returned)>Number(actual)||
+           Number(returned)>0&&!String(line.returnLocation||'').trim())
+          return send('Trasa zawiera niezweryfikowaną ilość, zwrot lub brak miejsca zwrotu.',409);
+      }
+      const approvals=(await env.DB.prepare(
+        'SELECT position,quantity,location FROM pl_route_return_approvals WHERE route_id=?'
+      ).bind(id).all()).results||[];
+      const byPosition=new Map(approvals.map(item=>[Number(item.position),item]));
+      const pending=positive.filter(line=>
+        !returnApprovalMatches(line,byPosition.get(Number(line.position))));
+      if(!pending.length)return workerJson({ok:true,approved:0,alreadyApproved:true});
+      const token=crypto.randomUUID();
+      const statements=[env.DB.prepare(
+        "UPDATE pl_routes SET edit_revision=edit_revision+1,edit_token=? "+
+        "WHERE id=? AND status='COMPLETED' AND edit_revision=?"
+      ).bind(token,id,revision)];
+      for(const line of pending){
+        statements.push(env.DB.prepare(
+          'INSERT OR REPLACE INTO pl_route_return_approvals '+
+          '(route_id,position,quantity,location,approved_by) '+
+          'SELECT l.route_id,l.position,l.returned_quantity,trim(l.return_location),? '+
+          'FROM pl_route_lines l JOIN pl_routes r ON r.id=l.route_id '+
+          'WHERE l.route_id=? AND l.position=? AND l.returned_quantity=? '+
+          "AND trim(COALESCE(l.return_location,''))=? "+
+          'AND r.edit_revision=? AND r.edit_token=?'
+        ).bind(auth.user.id,id,line.position,line.returnedQuantity,
+          String(line.returnLocation).trim(),revision+1,token));
+      }
+      const result=await env.DB.batch(statements);
+      if(result.some(step=>Number(step?.meta?.changes||0)!==1))
+        return send('Trasa została zmieniona. Otwórz ponownie szczegóły.',409);
+      return workerJson({ok:true,approved:pending.length});
+    }catch(error){
+      console.error('PL route return approval failed',error?.name||'Error');
+      return send('Nie udało się zatwierdzić zwrotów.',503);
+    }
+  }
   if(body?.action==='prepareDemoWeek47'){
     // Explicit demo-only preparation for the week-end rollover test.
     // Exactly two routes are settled as COMPLETED; one is just CONFIRMED.
