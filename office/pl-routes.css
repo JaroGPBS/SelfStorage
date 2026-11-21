@@ -407,7 +407,10 @@
 }
 .pl-route-audit-quantity-table td:first-child{text-align:left;font-weight:650}
 .pl-route-audit-quantity-table td:last-child{text-align:left}
-.pl-route-audit-edit-table th:first-child{width:50%}
+.pl-route-audit-edit-table{min-width:0}
+.pl-route-audit-edit-table th:first-child{width:52%}
+.pl-route-audit-edit-table th:nth-child(2),
+.pl-route-audit-edit-table th:nth-child(3){width:24%}
 .pl-route-audit-edit-table th:last-child,
 .pl-route-audit-edit-table td:last-child{text-align:center}
 .pl-route-audit-empty{font-size:11px;color:#708197;margin:9px 0 0}
@@ -446,6 +449,8 @@
 }
 .pl-route-small-dialog:has(.pl-route-explain-lines){width:min(96vw,640px);max-width:640px}
 .pl-route-small-dialog:has(.pl-route-audit-quantity-table){width:min(96vw,680px);max-width:680px}
+/* Narrow only edit history; discrepancy verification keeps its own width. */
+.pl-route-small-dialog:has(.pl-route-audit-edit-table){width:min(94vw,510px);max-width:510px}
 
 .pl-route-delete-single-button{
   padding:6px 8px;border:1px solid #debbbb;border-radius:5px;
