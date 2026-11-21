@@ -418,6 +418,9 @@ export async function onRequestPost({request,env}){
       if(hasDocuments)statements.push(env.DB.prepare(
         'DELETE FROM pl_route_documents WHERE route_id IN ('+marks+')'
       ).bind(...remove));
+      if(await exists(env.DB,'pl_route_audit'))statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_audit WHERE route_id IN ('+marks+')'
+      ).bind(...remove));
       statements.push(env.DB.prepare(
         'DELETE FROM pl_route_lines WHERE route_id IN ('+marks+')'
       ).bind(...remove));
@@ -468,6 +471,10 @@ export async function onRequestPost({request,env}){
       }
       if(hasDocuments)statements.push(env.DB.prepare(
         'DELETE FROM pl_route_documents WHERE route_id IN ('+
+        'SELECT id FROM pl_routes WHERE is_presentation=1)'
+      ));
+      if(await exists(env.DB,'pl_route_audit'))statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_audit WHERE route_id IN ('+
         'SELECT id FROM pl_routes WHERE is_presentation=1)'
       ));
       statements.push(env.DB.prepare(
