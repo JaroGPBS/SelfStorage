@@ -51,6 +51,7 @@
     row.querySelector('[data-pl-route-part-name]').value=data.partName||'';
     row.querySelector('[data-pl-route-part-quantity]').value=data.quantity||'';
     target.append(row);
+    return row;
   }
 
   // ISO 8601: weeks begin on Monday and week 1 contains January 4.
@@ -506,6 +507,33 @@
   byId('plRouteClose').addEventListener('click',closeForm);
   byId('plRouteCancel').addEventListener('click',closeForm);
   byId('plRouteAddPart').addEventListener('click',()=>addPartRow());
+  // Enter in a part line adds the next line; it must never submit the route.
+  byId('plRouteParts').addEventListener('keydown',event=>{
+    if(event.key!=='Enter'||event.isComposing)return;
+    const input=event.target;
+    const row=input.closest?.('.pl-route-part-row');
+    if(!row||!input.matches('input'))return;
+    event.preventDefault();
+    if(event.repeat||busy)return;
+    const code=row.querySelector('[data-pl-route-part-code]');
+    const name=row.querySelector('[data-pl-route-part-name]');
+    const qty=row.querySelector('[data-pl-route-part-quantity]');
+    const quantity=Number(qty.value);
+    if(!code.value.trim()&&!name.value.trim()){
+      errorMessage('Wpisz indeks lub nazwę części przed dodaniem kolejnej pozycji.');
+      name.focus();
+      return;
+    }
+    if(!qty.value.trim()||!Number.isSafeInteger(quantity)||quantity<1||
+       quantity>999999){
+      errorMessage('Wpisz prawidłową ilość, aby dodać kolejną część.');
+      qty.focus();
+      return;
+    }
+    errorMessage();
+    const next=addPartRow();
+    next?.querySelector('[data-pl-route-part-code]').focus();
+  });
   byId('plRouteParts').addEventListener('click',e=>{
     const remove=e.target.closest('[data-pl-route-remove-part]');
     if(!remove)return;
