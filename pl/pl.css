@@ -1793,8 +1793,10 @@ body.operation-task-open {overflow:hidden}
   min-height:68px;margin:0;resize:vertical;
 }
 #crewRouteScreen .crew-report-submit-bar{
-  flex:0 0 auto;padding:10px 0 max(4px,env(safe-area-inset-bottom));
-  background:#161d24;border-top:1px solid #3b4653;
+  margin-top:10px;
+  padding:13px 0 max(24px,env(safe-area-inset-bottom));
+  background:transparent;
+  border-top:1px solid #3b4653;
 }
 #crewRouteScreen .crew-report-submit-bar .btn{
   margin:0;min-height:48px;font-size:13px;padding:10px 12px;
