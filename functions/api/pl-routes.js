@@ -73,6 +73,21 @@ async function exists(db,name){
     .bind(name).first();
   return Boolean(row);
 }
+async function presentationMode(db){
+  if(!await exists(db,'pl_route_settings'))return ROUTE_PRESENTATION_MODE;
+  const setting=await db.prepare('SELECT presentation_mode FROM pl_route_settings WHERE id=1').first();
+  return setting?Number(setting.presentation_mode)===1:ROUTE_PRESENTATION_MODE;
+}
+async function isTestCrewSymbol(db,symbol){
+  if(!await exists(db,'pl_test_crews'))return false;
+  const row=await db.prepare(
+    'SELECT t.user_id FROM pl_test_crews t '+
+    'JOIN user_private_profiles p ON p.user_id=t.user_id '+
+    'JOIN users u ON u.id=t.user_id '+
+    'WHERE u.active=1 AND UPPER(TRIM(p.display_code))=? LIMIT 1'
+  ).bind(String(symbol||'').trim().toUpperCase()).first();
+  return Boolean(row);
+}
 async function ensureSchema(db){
   // Created on the first authorized save. Reading an empty module never writes D1.
   // crew_number stays as a legacy NOT NULL column for existing D1 schemas.
@@ -268,16 +283,16 @@ function parseRoute(body){
     if(catalogPartId&&!/^PL-RPART-[a-f0-9-]{36}$/.test(catalogPartId))return null;
     lines.push({partCode,partName,quantity,catalogPartId});
   }
-  return {routeNumber,routeDate,crewSymbol,lines,
-    isPresentation:ROUTE_PRESENTATION_MODE};
+  return {routeNumber,routeDate,crewSymbol,lines};
 }
 export async function onRequestGet({request,env}){
   const auth=await authorize(request,env);
   if(auth.response)return auth.response;
   const url=new URL(request.url);
   try{
+    const routeMode=await presentationMode(env.DB);
     if(!await exists(env.DB,'pl_routes'))
-      return workerJson({ok:true,routes:[],storageReady:false,presentationMode:ROUTE_PRESENTATION_MODE,demoWeek48Count:0});
+      return workerJson({ok:true,routes:[],storageReady:false,presentationMode:routeMode,demoWeek48Count:0});
     const presentationColumn=await hasPresentationFlag(env.DB);
     const flag= presentationColumn?'is_presentation AS isPresentation':'0 AS isPresentation';
     const id=url.searchParams.get('id');
@@ -450,7 +465,7 @@ export async function onRequestGet({request,env}){
       ).bind(...seedableDemoWeek48Ids).first())?.total||0)
       :0;
     return workerJson({ok:true,routes,storageReady:true,
-      presentationMode:ROUTE_PRESENTATION_MODE,demoWeek48Count});
+      presentationMode:routeMode,demoWeek48Count});
   }catch(e){
     console.error('PL routes list failed',e?.name||'Error');
     return send('Nie udało się odczytać tras z D1.',503);
@@ -469,6 +484,7 @@ export async function onRequestPost({request,env}){
   if(raw.length>40000)return send('Zbyt duży formularz trasy.',413);
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
+  const routeMode=await presentationMode(env.DB);
   if(body?.action==='approveReturns'){
     if(!['KOORDYNATOR','ADMIN'].includes(auth.user.role))
       return send('Zwroty może zatwierdzić tylko koordynator lub administrator.',403);
@@ -759,7 +775,7 @@ export async function onRequestPost({request,env}){
   }
   if(body?.action==='seedDemoWeek48'){
     // One deliberate, ADMIN-authenticated POST; never seed on GET or page load.
-    if(!ROUTE_PRESENTATION_MODE||auth.user.role!=='ADMIN')
+    if(!routeMode||auth.user.role!=='ADMIN')
       return send('Tylko administrator może dodawać trasy pokazowe.',403);
     if(body.confirm!=='DODAJ DEMO 48')
       return send('Potwierdź dodanie tras prezentacyjnych.',400);
@@ -945,7 +961,7 @@ export async function onRequestPost({request,env}){
     }
   }
   if(body?.action==='deletePresentation'){
-    if(!ROUTE_PRESENTATION_MODE)return send('Tryb wprowadzania tras prezentacyjnych jest wyłączony.',403);
+    if(!routeMode)return send('Tryb wprowadzania tras prezentacyjnych jest wyłączony.',403);
     // Cleanup is deliberately separate from ordinary route creation.
     // Never run it for a non-Admin session or without a fresh D1 PIN check.
     if(auth.user.role!=='ADMIN')return send('Tylko administrator może usuwać trasy prezentacyjne.',403);
@@ -1172,7 +1188,8 @@ export async function onRequestPost({request,env}){
         'INSERT INTO pl_routes (id,route_number,route_date,crew_number,crew_symbol,status,created_by,is_presentation) '+
         'VALUES (?,?,?,?,?,?,?,?)'
       ).bind(id,route.routeNumber,route.routeDate,'',route.crewSymbol,
-        'AWAITING_CONFIRMATION',auth.user.id,route.isPresentation?1:0)
+        'AWAITING_CONFIRMATION',auth.user.id,
+        routeMode||await isTestCrewSymbol(env.DB,route.crewSymbol)?1:0)
     ];
     catalogLines.forEach((line,i)=>{
       steps.push(env.DB.prepare(
