@@ -202,6 +202,7 @@ export function handlePolishSystemBack() {
   if (dialog) { dialog.close(); return false; }
 
   const screens = [
+    ['crewRouteScreen', 'plCrewRoutesBack'],
     ['operationScreen', 'backFromOperationButton'],
     ['inventoryScreen', 'backFromInventoryButton'],
     ['stockScreen', 'backFromStockButton']
