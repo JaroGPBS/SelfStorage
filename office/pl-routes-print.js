@@ -9,12 +9,19 @@
   const params=new URLSearchParams(window.location.search);
   const id=params.get('id');
   const week=params.get('week');
+  const embedded=params.get('embed')==='1';
+  if(embedded)document.documentElement.classList.add('pl-route-print-embedded');
   const api=window.PlRouteExport;
+  function notifyParent(type){
+    if(embedded&&window.parent!==window)
+      window.parent.postMessage({type,routeId:id},window.location.origin);
+  }
   const showError=message=>{
     status.hidden=false;
     status.classList.add('is-error');
     status.textContent=message||'Nie udało się przygotować karty trasy.';
     printButton.disabled=true;
+    notifyParent('gpbs-route-export-preview-error');
   };
   async function main(){
     if(!api)throw Error('Moduł eksportu nie został załadowany.');
@@ -44,6 +51,7 @@
       ?'Karta trasy '+(items[0].route.routeNumber||'GPBS')
       :'GPBS Storage – Karty tras '+week;
     status.remove();
+    notifyParent('gpbs-route-export-preview-ready');
   }
   main().catch(error=>showError(error.message));
 })();
