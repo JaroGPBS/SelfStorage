@@ -407,15 +407,26 @@ export async function onRequestGet({request,env}){
         if(report)crewActivity.push({...report,action:'REPORT'});
       }
       const approvedTable=await exists(env.DB,'pl_route_return_approvals');
-      const returnApprovals=approvedTable?(
-        (await env.DB.prepare(
-          'SELECT a.position,a.quantity,a.location,a.comment,a.approved_by AS approvedById,'+
-          'a.approved_at AS approvedAt,'+authorColumns(hasAuthorProfiles)+
-          ' FROM pl_route_return_approvals a'+
-          authorJoins(hasAuthorProfiles,'a.approved_by')+
-          ' WHERE a.route_id=? ORDER BY a.position'
-        ).bind(id).all()).results||[]
-      ).map(item=>withAuthorLabel(item,'approvedBy')):[];
+      // Read pre-migration approvals without writing to D1 on every detail view.
+      const readApprovals=withComment=>env.DB.prepare(
+        'SELECT a.position,a.quantity,a.location,'+
+        (withComment?'a.comment':'\'\' AS comment')+
+        ',a.approved_by AS approvedById,'+
+        'a.approved_at AS approvedAt,'+authorColumns(hasAuthorProfiles)+
+        ' FROM pl_route_return_approvals a'+
+        authorJoins(hasAuthorProfiles,'a.approved_by')+
+        ' WHERE a.route_id=? ORDER BY a.position'
+      ).bind(id).all();
+      let approvalRecords=[];
+      if(approvedTable){
+        try{
+          approvalRecords=(await readApprovals(true)).results||[];
+        }catch(error){
+          if(!/no such column.*comment/i.test(String(error?.message||error)))throw error;
+          approvalRecords=(await readApprovals(false)).results||[];
+        }
+      }
+      const returnApprovals=approvalRecords.map(item=>withAuthorLabel(item,'approvedBy'));
       const approvalsByPosition=new Map(returnApprovals.map(item=>[Number(item.position),item]));
       const positiveReturns=lines.filter(line=>Number(line.returnedQuantity)>0);
       route.returnCount=positiveReturns.length;
