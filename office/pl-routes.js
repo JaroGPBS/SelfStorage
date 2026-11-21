@@ -141,6 +141,40 @@
   }
 
   // Shared D1 suggestions; never create new catalogue entries merely by typing.
+  // Position the list in the dialog's visible area instead of letting the
+  // scrollable form body clip it below the last part row.
+  function positionPartSuggestions(row){
+    const list=row?.querySelector('[data-pl-route-suggestions]');
+    const dialog=byId('plRouteDialog');
+    if(!list||list.classList.contains('hidden')||!dialog.open)return;
+    const focused=document.activeElement;
+    const field=row.contains(focused)&&focused.matches?.(
+      '[data-pl-route-part-name],[data-pl-route-part-code]'
+    )?focused:row.querySelector('[data-pl-route-part-name]');
+    const input=field.getBoundingClientRect();
+    const frame=dialog.getBoundingClientRect();
+    const scroller=dialog.querySelector('.pl-route-form-body').getBoundingClientRect();
+    if(input.bottom<=scroller.top||input.top>=scroller.bottom){
+      hidePartSuggestions(row);
+      return;
+    }
+    const leftEdge=Math.max(8,frame.left+12);
+    const rightEdge=Math.min(window.innerWidth-8,frame.right-12);
+    const width=Math.min(440,Math.max(320,input.width),rightEdge-leftEdge);
+    const left=Math.max(leftEdge,Math.min(input.left,rightEdge-width));
+    const topEdge=Math.max(8,frame.top+12);
+    const bottomEdge=Math.min(window.innerHeight-8,frame.bottom-12);
+    const gap=5;
+    const spaceBelow=Math.max(0,bottomEdge-input.bottom-gap);
+    const spaceAbove=Math.max(0,input.top-topEdge-gap);
+    const above=spaceBelow<170&&spaceAbove>spaceBelow;
+    const height=Math.max(0,Math.min(245,list.scrollHeight,
+      above?spaceAbove:spaceBelow));
+    list.style.left=Math.round(left)+'px';
+    list.style.top=Math.round(above?input.top-gap-height:input.bottom+gap)+'px';
+    list.style.width=Math.round(width)+'px';
+    list.style.maxHeight=Math.floor(height)+'px';
+  }
   function hidePartSuggestions(row){
     row?.querySelector('[data-pl-route-suggestions]')?.classList.add('hidden');
   }
@@ -177,6 +211,7 @@
         target.append(button);
       });
       target.classList.remove('hidden');
+      positionPartSuggestions(row);
     }catch(error){
       // Never prevent manual entry when the suggestion service is unavailable.
       hidePartSuggestions(row);
@@ -1501,6 +1536,16 @@
     const row=field.closest('.pl-route-part-row');
     if(row)queuePartSuggestions(row);
   });
+  // Keep the floating list aligned when the user scrolls or resizes Office.
+  function repositionVisiblePartSuggestions(){
+    byId('plRouteParts').querySelectorAll('.pl-route-part-row').forEach(row=>{
+      const list=row.querySelector('[data-pl-route-suggestions]');
+      if(list&&!list.classList.contains('hidden'))positionPartSuggestions(row);
+    });
+  }
+  byId('plRouteDialog').querySelector('.pl-route-form-body')
+    .addEventListener('scroll',repositionVisiblePartSuggestions,{passive:true});
+  window.addEventListener('resize',repositionVisiblePartSuggestions);
   byId('plRouteParts').addEventListener('focusin',event=>{
     const input=event.target;
     if(!input.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
