@@ -477,8 +477,35 @@
   font-weight:750;cursor:pointer
 }
 .pl-route-export-button:hover{background:#edf2f7;border-color:#9fb2c4}
-.pl-route-export-dialog{width:min(92vw,420px);max-width:420px}
-.pl-route-export-description{
-  margin:0;font-size:12px;line-height:1.55;color:#54677b
+.pl-route-export-dialog{
+  width:min(95vw,910px);max-width:910px;max-height:95dvh;
+  border-radius:8px;overflow:hidden
 }
-.pl-route-export-dialog .pl-route-small-actions{gap:9px}
+.pl-route-export-preview-area{
+  position:relative;background:#e9edf2;padding:12px;
+  border-bottom:1px solid #d8e1e9
+}
+.pl-route-export-preview-area iframe{
+  width:100%;height:min(68dvh,780px);display:block;border:1px solid #cbd6df;
+  border-radius:3px;background:#fff
+}
+.pl-route-export-loading{
+  position:absolute;inset:12px;display:flex;align-items:center;justify-content:center;
+  margin:0;padding:15px;background:#eef2f6;color:#556b7d;
+  font-size:12px;font-weight:650;z-index:1
+}
+.pl-route-export-loading[hidden]{display:none}
+.pl-route-export-hint{
+  font-size:11px;line-height:1.4;color:#64768a;
+  margin:0;padding:8px 20px 0
+}
+.pl-route-export-dialog > .pl-route-explain-error{margin:6px 20px 0}
+.pl-route-export-dialog .pl-route-small-actions{gap:9px;padding:10px 20px 15px}
+.pl-route-export-dialog .pl-route-small-actions button{min-width:100px}
+@media(max-width:600px){
+  .pl-route-export-dialog{width:98vw;max-width:98vw}
+  .pl-route-export-preview-area{padding:5px}
+  .pl-route-export-preview-area iframe{height:62dvh}
+  .pl-route-export-dialog .pl-route-small-actions{gap:6px;padding:9px}
+  .pl-route-export-dialog .pl-route-small-actions button{min-width:0;flex:1}
+}
