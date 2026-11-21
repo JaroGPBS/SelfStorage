@@ -159,7 +159,7 @@ const validDate=value=>{
   return !Number.isNaN(parsed.valueOf())&&parsed.toISOString().slice(0,10)===value;
 };
 const polandToday=()=>{
-  // Business rollover: the start of Sunday (00:00 Europe/Warsaw).
+  // Business rollover: Monday 00:00 Europe/Warsaw (after Sunday finishes).
   // No scheduled job is needed; active/history lists are classified on read.
   const parts=new Intl.DateTimeFormat('en-US',{
     timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'
@@ -342,7 +342,7 @@ export async function onRequestGet({request,env}){
     // confirmations and no D1 mutations. All other weeks keep the existing
     // rule: archived only when completed, reconciled, and after week end.
     const eligible="(r.route_date>='2026-11-02' AND r.route_date<='2026-11-08') OR ("+
-      "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<=? "+
+      "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<? "+
       'AND '+mismatch+'=0 AND '+unconfirmed+'=0)';
     const hasAudit=await exists(env.DB,'pl_route_audit');
     const everDifferent=hasConfirmations
