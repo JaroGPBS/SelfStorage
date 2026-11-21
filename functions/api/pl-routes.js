@@ -3,6 +3,7 @@ import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worke
 import {verifyRememberSession} from '../../lib/pl-office-remember.js';
 import {routeEditablePredicate,canEditRoute,ROUTE_SETTLEMENT_COLUMNS} from '../../lib/pl-route-editability.js';
 import {ensureRouteAuditSchema,auditEntry} from '../../lib/pl-route-audit.js';
+import {getPlRouteCrewNotes} from '../../lib/pl-route-crew.js';
 import {resolveRouteParts,routePartsLineColumnExists,routePartsTableExists} from '../../lib/pl-route-parts.js';
 
 const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
@@ -369,8 +370,9 @@ export async function onRequestGet({request,env}){
       route.canApproveReturns=route.status==='COMPLETED'&&route.pendingReturnApprovals>0&&
         ['KOORDYNATOR','ADMIN'].includes(auth.user.role);
       route.canEdit=canEditRoute(route.status,lines);
+      const crewComments=await getPlRouteCrewNotes(env.DB,id);
       return workerJson({ok:true,route,lines,documents,audit:history,
-        returnApprovals,storageReady:true});
+        crewComments,returnApprovals,storageReady:true});
     }
     const scope=url.searchParams.get('scope')||'active';
     if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
