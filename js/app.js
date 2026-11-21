@@ -2,7 +2,7 @@ import { api } from './api.js?v=3';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
-import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=18';
+import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=19';
 
 const APP_VERSION = '0.60';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v2_box78';
