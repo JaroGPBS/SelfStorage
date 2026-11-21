@@ -28,7 +28,10 @@ const DEMO_WEEK48=[
       ['Separator',8]]},
   {no:'48PL-07',date:'2026-11-28',crew:'RS',status:'REVIEW_REQUIRED',
     parts:[['Separator',9,7],['Dach uniwersalny',3,2],['Słupek',5],
-      ['Rynna + uszczelka',4],['Kotwa trójkątna',12]]}
+      ['Rynna + uszczelka',4],['Kotwa trójkątna',12]]},
+  {no:'48PL-08',date:'2026-11-29',crew:'TJ',status:'REVIEW_REQUIRED',sampleAudit:true,
+    parts:[['Separator',8,7],['Osłona przyłącza',3,2],
+      ['Słupek',4],['Kotwa trójkątna',10]]}
 ];
 const demoWeek48Id=i=>'PL-ROUTE-48de0000-0000-4000-8000-'+
   String(i+1).padStart(12,'0');
@@ -249,7 +252,8 @@ export async function onRequestGet({request,env}){
         ).bind(id).all()).results||[]
         :[];
       const history=audit.map(({actorName,...item})=>({
-        ...item,actor:shortCreatorName(actorName)
+        ...item,actor:item.actorId==='DEMO'
+          ?'Przykład (demo)':shortCreatorName(actorName)
       }));
       route.canEdit=canEditRoute(route.status,lines);
       return workerJson({ok:true,route,lines,documents,audit:history,storageReady:true});
@@ -344,7 +348,7 @@ export async function onRequestPost({request,env}){
     try{
       const columns=await routeLineColumns(env.DB);
       if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB)||
-         !['confirmed_quantity','returned_quantity','return_location'].every(c=>columns.has(c)))
+         !['confirmed_quantity','verified_quantity','returned_quantity','return_location'].every(c=>columns.has(c)))
         await ensureSchema(env.DB);
       const placeholders=demoWeek48Ids.map(()=>'?').join(',');
       const existing=(await env.DB.prepare(
@@ -353,6 +357,8 @@ export async function onRequestPost({request,env}){
       if(existing.some(row=>Number(row.is_presentation)!==1))
         return send('Identyfikator demo jest zajęty przez zwykłą trasę. Niczego nie zmieniono.',409);
       const present=new Set(existing.map(row=>row.id));
+      // Only the new 48PL-08 carries clearly labeled, fictional explanation history.
+      if(!present.has(demoWeek48Id(7)))await ensureRouteAuditSchema(env.DB);
       const statements=[];
       let added=0;
       for(let i=0;i<DEMO_WEEK48.length;i++){
@@ -364,19 +370,39 @@ export async function onRequestPost({request,env}){
         if(occupied)return send('Numer '+item.no+' w tej dacie jest już zajęty. Niczego nie dodano.',409);
         statements.push(env.DB.prepare(
           'INSERT INTO pl_routes '+
-          '(id,route_number,route_date,crew_number,crew_symbol,status,created_by,is_presentation) '+
-          'VALUES (?,?,?,?,?,?,?,1)'
-        ).bind(id,item.no,item.date,'',item.crew,item.status,auth.user.id));
+          '(id,route_number,route_date,crew_number,crew_symbol,status,created_by,is_presentation,edit_revision) '+
+          'VALUES (?,?,?,?,?,?,?,1,?)'
+        ).bind(id,item.no,item.date,'',item.crew,item.status,auth.user.id,item.sampleAudit?1:0));
         item.parts.forEach(([name,quantity,confirmedOverride],position)=>{
           const confirmed=item.status==='AWAITING_CONFIRMATION'
             ?null:confirmedOverride===undefined?quantity:confirmedOverride;
           const returned=item.status==='COMPLETED'?0:null;
+          const verified=item.sampleAudit&&position===0?confirmed:null;
           statements.push(env.DB.prepare(
             'INSERT INTO pl_route_lines '+
-            '(route_id,position,part_code,part_name,quantity,confirmed_quantity,returned_quantity) '+
-            'VALUES (?,?,?,?,?,?,?)'
-          ).bind(id,position+1,'',name,quantity,confirmed,returned));
+            '(route_id,position,part_code,part_name,quantity,confirmed_quantity,verified_quantity,returned_quantity) '+
+            'VALUES (?,?,?,?,?,?,?,?)'
+          ).bind(id,position+1,'',name,quantity,confirmed,verified,returned));
         });
+        if(item.sampleAudit){
+          const sample={
+            demo:true,
+            comment:'Przykład demonstracyjny: jedna pozycja została skorygowana, druga pozostaje do dalszego sprawdzenia.',
+            statusBefore:'REVIEW_REQUIRED',statusAfter:'REVIEW_REQUIRED',
+            positions:[
+              {position:1,partName:'Separator',before:8,confirmed:7,after:7,
+                decision:'MATCH_CREW',
+                note:'Po kontakcie z magazynem potwierdzono, że wydano 7 zamiast 8 sztuk. Poprawiono zapis do ilości otrzymanej przez ekipę.'},
+              {position:2,partName:'Osłona przyłącza',before:3,confirmed:2,after:null,
+                decision:'LEAVE_OPEN',
+                note:'Ekipa otrzymała 2 sztuki, magazyn wskazuje 3. Trwa sprawdzanie dokumentu wydania; nie wprowadzono fikcyjnej korekty.'}
+            ]
+          };
+          statements.push(env.DB.prepare(
+            'INSERT INTO pl_route_audit (id,route_id,action,actor_id,details_json) '+
+            'VALUES (?,?,?,?,?)'
+          ).bind(crypto.randomUUID(),id,'EXPLAIN','DEMO',JSON.stringify(sample)));
+        }
         added++;
       }
       if(statements.length)await env.DB.batch(statements);
