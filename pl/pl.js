@@ -340,7 +340,8 @@
       typeof w?.id==='string' && typeof w?.name==='string'
     ):[];
     const role=String(user?.role||'').toUpperCase();
-    if(!nickname||!user?.id||warehouses.length===0||!roleLabels[role])
+    if(!nickname||!user?.id||!roleLabels[role]||
+       (role!=='EKIPA'&&warehouses.length===0))
       throw new Error('Konto nie ma przypisanego aktywnego magazynu w Polsce.');
 
     const firstLoad=!state.user;
