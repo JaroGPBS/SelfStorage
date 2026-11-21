@@ -57,7 +57,7 @@
     return {ask};
   })();
   const pinInput = byId('workerPin');
-  const subscreens = ['warehouseSelection','warehouseHome','stockScreen','operationScreen','inventoryScreen','crewHome','officeHome'];
+  const subscreens = ['warehouseSelection','warehouseHome','stockScreen','operationScreen','inventoryScreen','crewHome','crewRouteScreen','officeHome'];
   const warehouseRoles = new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
   const roleLabels = {
     ADMIN:'Administrator', KIEROWNIK:'Kierownik', KOORDYNATOR:'Koordynator',
@@ -239,6 +239,7 @@
   }
 
   function clearSession() {
+    window.GPBSPlCrewRoutes?.clear();
     forgetScreen();
     window.GPBSPlInventory?.close();
     window.GPBSPlOperations?.close();
@@ -375,7 +376,8 @@
 
     if(role==='EKIPA') {
       state.warehouse=null;
-      subview('crewHome');
+      subview(previousSubview==='crewRouteScreen'?'crewRouteScreen':'crewHome');
+      window.GPBSPlCrewRoutes?.refresh(state.user);
     } else if(warehouseRoles.has(role)) {
       const selected=warehouses.find(w=>w.id===previous) ||
         (saved?warehouses.find(w=>w.id===saved.warehouseId):null) ||
@@ -874,6 +876,11 @@
   byId('loginForm').addEventListener('submit',login);
   byId('logoutButton').addEventListener('click',logout);
   byId('switchWarehouseButton').addEventListener('click',showWarehousePicker);
+  byId('plCrewRoutesButton').addEventListener('click',()=>{
+    if(state.user?.role!=='EKIPA')return;
+    window.GPBSPlCrewRoutes?.open(state.user,
+      ()=>subview('crewRouteScreen'),()=>subview('crewHome'));
+  });
   byId('openInventoryButton').addEventListener('click',openInventory);
   function openOperation() {
     if(!state.warehouse||!state.user||!warehouseRoles.has(state.user.role))return;
