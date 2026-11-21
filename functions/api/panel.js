@@ -978,8 +978,9 @@ async function staffMutation(env,body,actor,edit) {
     ).bind(id).first();
     if(!before)return fail('Nie znaleziono użytkownika.',404);
     if(await isPlTestCrew(db,id)&&(
-      staff.nickname!==before.name||staff.role!=='EKIPA'||body.crewMarket!=='PL'
-    ))return fail('Nie można zmienić identyfikatora ani rynku ekipy testowej. Usuń ją po testach.',409);
+      staff.nickname!==before.name||staff.role!=='EKIPA'||
+      body.crewMarket!=='PL'||staff.warehouses.length>0
+    ))return fail('Nie można zmienić identyfikatora, rynku ani magazynu ekipy testowej. Usuń ją po testach.',409);
     if(await archiveTableExists(db)) {
       const archived=await db.prepare('SELECT user_id FROM user_archives WHERE user_id=?').bind(id).first();
       if(archived)return fail('Użytkownik jest archiwalny. Najpierw go przywróć.',409);
@@ -1063,12 +1064,6 @@ async function permanentlyDeleteUnusedCrew(env,body) {
   if(!user)return fail('Nie znaleziono ekipy. Odśwież listę użytkowników.',404);
   if(user.role_code!=='EKIPA')return fail('Trwale można usuwać tylko konta ekip.',403);
   if(await isProtectedOwnerRecord(db,user))return fail('Konto chronione.',403);
-  // Remove only the explicitly flagged PL test crew and its own demo routes.
-  if(await isPlTestCrew(db,id)){
-    const result=await deletePlTestCrew(env,id);
-    if(result.error)return fail(result.error,result.status||409);
-    return respond({ok:true,userId:id,message:result.notice,deletedRoutes:result.deletedRoutes});
-  }
   const markedTest=await isFrTestAccount(db,id);
   const deleteAa=String(user.name||'').trim().toUpperCase()==='AA';
   // AA is an explicitly identified presentation crew. The operator chose to
@@ -1086,6 +1081,13 @@ async function permanentlyDeleteUnusedCrew(env,body) {
     if(hasLiveOperations&&!deleteAa)return fail(
       'Ekipa ma pobrania lub zwroty zapisane na rzeczywistych stanach. Nie usunięto ich automatycznie.',409);
   }
+  // Remove only the explicitly flagged PL test crew and its own demo routes.
+  if(await isPlTestCrew(db,id)){
+    const result=await deletePlTestCrew(env,id);
+    if(result.error)return fail(result.error,result.status||409);
+    return respond({ok:true,userId:id,message:result.notice,deletedRoutes:result.deletedRoutes});
+  }
+
   if(markedTest||deleteAa){
     // Delete this crew's isolated test history plus its own recorded
     // in-app visits and inventories. No stock balance or part catalogue writes.
