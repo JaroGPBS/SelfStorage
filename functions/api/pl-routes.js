@@ -441,6 +441,17 @@ export async function onRequestGet({request,env}){
       "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<? "+
       'AND '+mismatch+'=0 AND '+unconfirmed+'=0 AND '+pendingReturns+'=0)';
     const hasAudit=await exists(env.DB,'pl_route_audit');
+    const hasCrewNotes=await exists(env.DB,'pl_route_crew_notes');
+    // Existence flags are part of the same list query. Never fetch 200
+    // individual route details just to display small comment/edit icons.
+    const hasCommentSql=hasCrewNotes
+      ?"CASE WHEN EXISTS (SELECT 1 FROM pl_route_crew_notes n "+
+        "WHERE n.route_id=r.id AND trim(n.comment)<>'') THEN 1 ELSE 0 END"
+      :'0';
+    const hasEditSql=hasAudit
+      ?"CASE WHEN EXISTS (SELECT 1 FROM pl_route_audit ed "+
+        "WHERE ed.route_id=r.id AND ed.action='EDIT') THEN 1 ELSE 0 END"
+      :'0';
     const everDifferent=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
         'AND l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0)'
@@ -463,6 +474,8 @@ export async function onRequestGet({request,env}){
         ' THEN 1 ELSE 0 END AS hadDiscrepancy,'+
       'CASE WHEN '+individuallyVerified+' OR '+auditExplained+
         ' THEN 1 ELSE 0 END AS hadVerification,'+
+      hasCommentSql+' AS hasCrewComment,'+
+      hasEditSql+' AS wasEdited,'+
       "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
       'GROUP BY r.id HAVING '+(scope==='history'?'':'NOT ')+
