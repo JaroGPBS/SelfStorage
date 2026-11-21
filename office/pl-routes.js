@@ -415,6 +415,8 @@
     return Number.isNaN(date.getTime())?'—':isoWeekNumber(date);
   }
   function statusInfo(route){
+    if(route.status==='REVIEW_EXPLAINED')
+      return {label:'Niezgodność wyjaśniona',className:'is-explained'};
     if(Number(route.discrepancyCount)>0||
        ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status))
       return {label:'Do weryfikacji – niezgodność',className:'is-discrepancy'};
