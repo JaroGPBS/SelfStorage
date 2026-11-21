@@ -58,6 +58,7 @@
     if(!allowed)return;
     const dialog=byId('plRouteDialog');
     byId('plRouteForm').reset();
+    byId('plRoutePresentation').checked=true; // Presentation phase; uncheck for real routes.
     errorMessage();
     clearPhoto();
     byId('plRouteParts').replaceChildren();
@@ -121,7 +122,8 @@
       lines.push({partCode,partName,quantity});
     }
     if(!lines.length)throw Error('Dodaj co najmniej jedną część do trasy.');
-    return {action:'create',routeNumber,routeDate,crewSymbol,lines};
+    return {action:'create',routeNumber,routeDate,crewSymbol,lines,
+      isPresentation:byId('plRoutePresentation').checked};
   }
   async function jsonResponse(response){
     const data=await response.json().catch(()=>({}));
@@ -160,7 +162,10 @@
       '<th>Pozycje</th><th>Sztuki</th><th>Status</th><th></th>'+
       '</tr></thead><tbody>';
     const rows=routes.map(item=>
-      '<tr><td><strong>'+html(item.routeNumber)+'</strong></td>'+
+      '<tr><td><strong>'+html(item.routeNumber)+'</strong>'+
+        (Number(item.isPresentation)===1
+          ?'<sup class="pl-route-presentation-star" title="Trasa prezentacyjna" aria-label="Trasa prezentacyjna">*</sup>'
+          :'')+'</td>'+
       '<td>'+html(item.crewSymbol)+'</td>'+
       '<td>'+html(item.routeDate)+'</td>'+
       '<td>'+html(item.positions)+'</td>'+
@@ -182,6 +187,7 @@
     const role=context?.role;
     byId('plRouteAdd').classList.toggle('hidden',
       !['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role));
+    byId('plRoutesClearPresentation').classList.toggle('hidden',role!=='ADMIN');
     const seq=++loadSeq;
     const status=byId('plRoutesListStatus');
     const table=byId('plRoutesTable');
@@ -223,7 +229,8 @@
       ));
       if(!detail.isConnected)return;
       detail.innerHTML='<td colspan="7"><div class="pl-route-detail-lines">'+
-        '<strong>Lista części dla trasy '+html(result.route.routeNumber)+'</strong>'+
+        '<strong>Lista części dla trasy '+html(result.route.routeNumber)+
+          (Number(result.route.isPresentation)===1?' *':'')+'</strong>'+
         '<table><thead><tr><th>#</th><th>Indeks</th><th>Nazwa</th><th>Ilość</th></tr></thead><tbody>'+
         (result.lines||[]).map(line=>'<tr><td>'+html(line.position)+'</td>'+
           '<td>'+html(line.partCode||'—')+'</td>'+
@@ -235,6 +242,41 @@
         e.message||'Nie udało się odczytać pozycji.';
     }
   }
+  async function clearPresentationRoutes(){
+    if(busy||routeContext()?.role!=='ADMIN')return;
+    if(!window.confirm(
+      'Usunąć wszystkie trasy oznaczone gwiazdką (*) oraz ich listy części? '+
+      'Prawdziwe trasy i stany magazynowe nie zostaną zmienione.'
+    ))return;
+    const pin=window.prompt('Potwierdź usunięcie 4-cyfrowym PIN-em administratora:');
+    if(pin===null)return;
+    const status=byId('plRoutesListStatus');
+    status.classList.remove('is-error');
+    if(!/^\d{4}$/.test(pin)){
+      status.classList.add('is-error');
+      status.textContent='Wpisz prawidłowy 4-cyfrowy PIN administratora.';
+      return;
+    }
+    const button=byId('plRoutesClearPresentation');
+    button.disabled=true;
+    try{
+      const result=await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'deletePresentation',confirm:'USUŃ TRASY',pin})
+      }));
+      await window.renderPlRoutesList();
+      status.classList.remove('is-error');
+      status.textContent='Usunięto '+Number(result.deleted||0)+
+        ' tras prezentacyjnych. Prawdziwe trasy pozostały bez zmian.';
+    }catch(error){
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie udało się wyczyścić tras.';
+    }finally{
+      button.disabled=false;
+    }
+  }
+  byId('plRoutesClearPresentation').addEventListener('click',clearPresentationRoutes);
   byId('plRouteAdd').addEventListener('click',openForm);
   byId('plRouteClose').addEventListener('click',closeForm);
   byId('plRouteCancel').addEventListener('click',closeForm);
