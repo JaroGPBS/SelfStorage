@@ -163,10 +163,9 @@ const needsReview=route=>
   Number(route.discrepancyCount)>0||
   Number(route.unconfirmedCount)>0&&route.status==='COMPLETED'||
   ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
-const activePriority=(route,today)=>{
+const activePriority=route=>{
   if(needsReview(route))return 0;
   if(route.status==='COMPLETED')return 2;
-  if(routeWeekRollover(route.routeDate)<=today)return 3;
   return 1;
 };
 function parseRoute(body){
@@ -276,8 +275,14 @@ export async function onRequestGet({request,env}){
       ...route,enteredBy:shortCreatorName(creatorFullName)
     }));
     if(scope==='active'){
-      routes.sort((a,b)=>activePriority(a,today)-activePriority(b,today)||
-        String(b.routeDate).localeCompare(String(a.routeDate)));
+      // Group by calendar week first (Sunday of the ISO Monday-Sunday week).
+      // Inside each week: discrepancies at top, completed routes at bottom.
+      // Do not push a completed route below routes from older weeks.
+      routes.sort((a,b)=>
+        routeWeekRollover(b.routeDate).localeCompare(routeWeekRollover(a.routeDate))||
+        activePriority(a)-activePriority(b)||
+        String(b.routeDate).localeCompare(String(a.routeDate))||
+        String(b.id).localeCompare(String(a.id)));
     }
     const demoWeek48Count=auth.user.role==='ADMIN'&&presentationColumn
       ?Number((await env.DB.prepare(
