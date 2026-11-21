@@ -545,11 +545,11 @@
         <button type="button" id="plRouteExplainClose" aria-label="Zamknij">×</button>
       </div>
       <div class="pl-route-small-body">
-        <p class="pl-route-explain-guide">Sprawdź ilości i ewentualnie popraw „Wydano”. Oryginalne wartości zostaną zachowane w historii.</p>
+        <p class="pl-route-explain-guide">Dla każdej części wybierz: skoryguj do ilości potwierdzonej przez ekipę lub pozostaw niezgodność otwartą. Każda decyzja wymaga osobnego komentarza. Pierwotna ilość magazynu zostanie zachowana w historii.</p>
         <div id="plRouteExplainLines" class="pl-route-explain-lines"></div>
-        <label class="pl-route-comment-label" for="plRouteExplainComment">Wyjaśnienie — wymagane
-          <textarea id="plRouteExplainComment" minlength="15" maxlength="2000" rows="4" required
-            placeholder="Np. Po kontakcie z magazynem potwierdzono wydanie mniejszej ilości…"></textarea>
+        <label class="pl-route-comment-label" for="plRouteExplainComment">Podsumowanie całej weryfikacji (opcjonalnie)
+          <textarea id="plRouteExplainComment" maxlength="2000" rows="2"
+            placeholder="Dodatkowe ustalenia dotyczące całej trasy…"></textarea>
         </label>
         <p id="plRouteExplainError" class="pl-route-explain-error" role="alert" hidden></p>
       </div>
