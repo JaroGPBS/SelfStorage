@@ -55,6 +55,60 @@
 .pl-route-photo-preview{grid-column:1/-1;display:block;width:auto;max-width:100%;max-height:180px;object-fit:contain;border-radius:6px;background:#e6ebef}
 .pl-route-photo-preview[hidden]{display:none}
 .pl-route-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr);gap:16px;margin-bottom:26px}
+
+/* Date selector with a dedicated ISO-8601 week-number column. */
+.pl-route-date-field{min-width:0}
+.pl-route-date-field>label{display:block;margin-bottom:7px;font-size:12px;font-weight:800;color:#43566c}
+.pl-route-date-control{position:relative;display:flex;align-items:center;min-width:0}
+.pl-route-date-control input[readonly]{padding-right:45px!important;cursor:pointer}
+.pl-route-date-control button{
+  position:absolute;right:4px;top:4px;bottom:4px;
+  min-width:35px;padding:0;border:0;border-radius:6px;
+  color:#53677c;background:#f1f4f7;cursor:pointer;font-size:20px;line-height:1;
+}
+.pl-route-date-control button:hover{background:#e5ebf1}
+.pl-route-date-control button:focus-visible,.pl-route-calendar button:focus-visible{
+  outline:2px solid #af3544;outline-offset:2px
+}
+.pl-route-calendar{
+  grid-column:1/-1;justify-self:end;box-sizing:border-box;
+  width:min(100%,378px);padding:13px 14px 11px;
+  margin-top:-3px;background:#fff;border:1px solid #d6dfe8;
+  border-radius:11px;box-shadow:0 9px 24px rgba(30,43,59,.10)
+}
+.pl-route-calendar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:11px}
+.pl-route-calendar-head strong{font-size:13px;font-weight:800;color:#293c50;text-transform:capitalize}
+.pl-route-calendar-head button{
+  width:30px;height:30px;border:1px solid #e0e6ec;border-radius:7px;
+  color:#526378;background:#f8fafc;font-size:22px;line-height:1;cursor:pointer
+}
+.pl-route-calendar-head button:hover{background:#edf1f5}
+.pl-route-calendar-days{
+  display:grid;grid-template-columns:36px repeat(7,minmax(0,1fr));
+  gap:3px;align-items:center;text-align:center
+}
+.pl-route-calendar-days .pl-route-calendar-week-header,
+.pl-route-calendar-days .pl-route-calendar-day-header{
+  font-size:10px;font-weight:800;color:#7b8b9d;padding:8px 0 6px
+}
+.pl-route-calendar-days .pl-route-calendar-week-header{font-size:9px}
+.pl-route-calendar-week{
+  display:flex;align-items:center;justify-content:center;height:32px;
+  border-right:1px solid #e1e7ee;background:#f5f7fa;
+  color:#576d86;font-size:11px;font-weight:800
+}
+.pl-route-calendar-day{
+  min-width:0;width:100%;height:32px;padding:0;
+  border:0;border-radius:6px;background:#fff;
+  color:#31455a;font-size:12px;cursor:pointer
+}
+.pl-route-calendar-day:hover{background:#f0f4f8}
+.pl-route-calendar-day.is-outside{color:#a0acb9}
+.pl-route-calendar-day.is-today:not(.is-selected){box-shadow:inset 0 0 0 1px #bd9aa1}
+.pl-route-calendar-day.is-selected,
+.pl-route-calendar-day.is-selected:hover{background:#c92832;color:#fff;font-weight:800}
+.pl-route-calendar-note{margin:9px 0 0!important;font-size:10px!important;color:#8090a2!important}
+
 .pl-route-form label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:800;color:#43566c;min-width:0}
 .pl-route-form label span{color:#be2635}
 .pl-route-form input:not([type=file]):not([type=checkbox]){width:100%;min-height:41px;padding:9px 11px;font-size:13px;font-weight:500;color:#24354b;background:#fff;border:1px solid #cbd7e1;border-radius:8px;outline:none}
@@ -84,6 +138,7 @@
   .pl-route-photo{grid-template-columns:1fr;padding:13px}
   .pl-route-photo button{justify-self:start}
   .pl-route-grid{grid-template-columns:1fr;gap:12px;margin-bottom:20px}
+  .pl-route-calendar{width:100%;justify-self:stretch}
   .pl-route-part-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px}
   .pl-route-part-row .pl-route-part-name{grid-column:1/3}
   .pl-route-part-row .pl-route-part-code{grid-column:1}
