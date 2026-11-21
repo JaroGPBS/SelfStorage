@@ -9,6 +9,8 @@
   const endpoint='/api/pl-routes';
   let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
   let editingRouteId=null; // Existing route opened for corrections before team confirmation.
+  let editingRouteRevision=0;
+  const routeAuditCache=new Map();
   let busy=false;
   let loadSeq=0;
   const routeContext=()=>typeof window.getPlRoutesContext==='function'
@@ -152,6 +154,7 @@
     byId('plRouteForm').reset();
     savedRouteId=null;
     editingRouteId=null;
+    editingRouteRevision=0;
     byId('plRouteTitle').textContent='Dodaj trasę';
     byId('plRouteSubmit').textContent='Zapisz trasę';
     lockSavedRouteFields(false);
@@ -189,6 +192,7 @@
       }
       openForm();
       editingRouteId=id;
+      editingRouteRevision=Number(result.route.editRevision)||0;
       byId('plRouteTitle').textContent='Edytuj trasę';
       byId('plRouteSubmit').textContent='Zapisz zmiany';
       byId('plRouteNumber').value=result.route.routeNumber||'';
@@ -364,9 +368,13 @@
         if(editingRouteId){
           payload.action='update';
           payload.id=editingRouteId;
+          payload.baseRevision=editingRouteRevision;
         }
       }catch(error){errorMessage(error.message);return;}
     }
+    if(!savedRouteId&&!window.confirm(editingRouteId
+      ?'Czy na pewno wszystkie zmienione dane trasy są poprawne? Zapisać edycję?'
+      :'Czy na pewno wszystkie dane trasy zostały wprowadzone poprawnie? Zapisać trasę?'))return;
     setBusy(true);
     errorMessage();
     try{
@@ -384,6 +392,7 @@
       const wasEdit=Boolean(editingRouteId);
       savedRouteId=null;
       editingRouteId=null;
+      editingRouteRevision=0;
       byId('plRouteDialog').close();
       await window.renderPlRoutesList();
       byId('plRoutesListStatus').textContent=(wasEdit?'Zapisano zmiany trasy.':'Trasa zapisana w D1.')+
