@@ -8,6 +8,14 @@ const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
 // The route schema, form and normal D1 writes remain unchanged.
 const ROUTE_PRESENTATION_MODE=true;
 const send=(message,status=400)=>workerJson({ok:false,error:message},status);
+// Send a shortened display label, never a full staff surname, to the route list.
+function shortCreatorName(name){
+  const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+  if(parts.length===0)return '—';
+  if(parts.length===1)return parts[0];
+  const initial=Array.from(parts[parts.length-1])[0]?.toLocaleUpperCase('pl-PL')||'';
+  return parts[0]+' '+initial+'.';
+}
 
 async function authorize(request,env,write=false){
   if(!workerAuthReady(env)||!env.DB)return {response:send('Panel biurowy nie jest skonfigurowany.',503)};
@@ -137,14 +145,19 @@ export async function onRequestGet({request,env}){
       ).bind(id).all()).results||[];
       return workerJson({ok:true,route,lines,storageReady:true});
     }
-    const routes=(await env.DB.prepare(
+    const routeRows=(await env.DB.prepare(
       'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
       'r.crew_symbol AS crewSymbol,r.status,'+
       (presentationColumn?'r.is_presentation AS isPresentation,':'0 AS isPresentation,')+
-      'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units '+
+      'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units,'+
+      "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
       'GROUP BY r.id ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200'
     ).all()).results||[];
+    // Strip the full name before returning data to the browser.
+    const routes=routeRows.map(({creatorFullName,...route})=>({
+      ...route,enteredBy:shortCreatorName(creatorFullName)
+    }));
     return workerJson({ok:true,routes,storageReady:true,presentationMode:ROUTE_PRESENTATION_MODE});
   }catch(e){
     console.error('PL routes list failed',e?.name||'Error');
