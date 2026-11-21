@@ -149,7 +149,7 @@ const activePriority=(route,today)=>{
 };
 function parseRoute(body){
   if(!body||typeof body!=='object'||Array.isArray(body))return null;
-  const routeNumber=String(body.routeNumber||'').trim();
+  const routeNumber=String(body.routeNumber||'').trim().toUpperCase();
   const routeDate=String(body.routeDate||'').trim();
   const crewSymbol=String(body.crewSymbol||'').trim().toUpperCase();
   if(!routeNumber||routeNumber.length>80||!validDate(routeDate)||
