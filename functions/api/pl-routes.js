@@ -271,11 +271,11 @@ export async function onRequestGet({request,env}){
           ' THEN 1 ELSE 0 END),0)=0 '
         :'')+
       'THEN 1 ELSE 0 END AS canEdit,';
-    const effectiveQuantity=columns.has('verified_quantity')
-      ?'COALESCE(l.verified_quantity,l.quantity)':'l.quantity';
+    const notVerified=columns.has('verified_quantity')
+      ?'l.verified_quantity IS NULL AND ':'';
     const mismatch=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
-       'AND l.confirmed_quantity<>'+effectiveQuantity+' THEN 1 ELSE 0 END),0)'
+       'AND '+notVerified+'l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0)'
       :'0';
     const unconfirmed=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.position IS NOT NULL '+
@@ -592,21 +592,18 @@ export async function onRequestPost({request,env}){
   if(body?.action==='explainDiscrepancy'){
     const id=String(body.id||'');
     const revision=Number(body.baseRevision);
-    const summary=String(body.comment||'').trim();
+    const comment=String(body.comment||'').trim();
     const corrections=body.corrections;
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id)||
        !Number.isSafeInteger(revision)||revision<0||
-       summary.length>2000||!Array.isArray(corrections)||
-       corrections.length<1||corrections.length>150)
-      return send('Podaj prawidłowe dane weryfikacji.',400);
-    const validCorrections=corrections.every(item=>
-      item&&Number.isSafeInteger(item.position)&&item.position>=1&&
-      ['MATCH_CREW','LEAVE_OPEN'].includes(item.decision)&&
-      typeof item.note==='string'&&item.note.trim().length>=12&&
-      item.note.trim().length<=1000);
-    if(!validCorrections||
+       comment.length<15||comment.length>2000||
+       !Array.isArray(corrections)||corrections.length<1||corrections.length>150)
+      return send('Wpisz komentarz (minimum 15 znaków) i prawidłowe ilości.',400);
+    if(corrections.some(item=>!item||
+       !Number.isSafeInteger(item.position)||item.position<1||
+       !Number.isSafeInteger(item.quantity)||item.quantity<0||item.quantity>999999)||
        new Set(corrections.map(item=>item.position)).size!==corrections.length)
-      return send('Każda niezgodna część wymaga decyzji i własnego komentarza (min. 12 znaków).',400);
+      return send('Wpisz prawidłową ilość po weryfikacji dla każdej części.',400);
     try{
       if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines'))
         return send('Nie znaleziono trasy.',404);
@@ -618,7 +615,7 @@ export async function onRequestPost({request,env}){
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
       if(!['REVIEW_REQUIRED','REVIEW_EXPLAINED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION'].includes(route.status))
-        return send('Trasa jest zakończona lub nie pozwala na korekty.',409);
+        return send('Trasa jest zakończona lub nie pozwala na weryfikację.',409);
       if(Number(route.revision)!==revision)
         return send('Dane trasy zmieniły się. Otwórz weryfikację ponownie.',409);
       const lines=(await env.DB.prepare(
@@ -626,75 +623,56 @@ export async function onRequestPost({request,env}){
         'confirmed_quantity AS confirmedQuantity,verified_quantity AS verifiedQuantity '+
         'FROM pl_route_lines WHERE route_id=? ORDER BY position'
       ).bind(id).all()).results||[];
-      const wrong=lines.filter(line=>line.confirmedQuantity!==null&&
-        line.confirmedQuantity!==undefined&&
-        Number(line.confirmedQuantity)!==
-          Number(line.verifiedQuantity??line.quantity));
-      if(!wrong.length)return send('W tej trasie nie ma już niezgodności.',409);
-      const byPosition=new Map(corrections.map(item=>[item.position,item]));
-      if(byPosition.size!==wrong.length||
-         wrong.some(line=>!byPosition.has(Number(line.position))))
-        return send('Wyjaśnij każdą aktualną niezgodność. Odśwież formularz.',409);
-      const operationToken=crypto.randomUUID();
-      const explanation=wrong.map(line=>{
-        const decision=byPosition.get(Number(line.position));
-        const issued=Number(line.quantity);
-        const confirmed=Number(line.confirmedQuantity);
-        const effective=Number(line.verifiedQuantity??line.quantity);
-        return {
-          position:Number(line.position),partName:line.partName,
-          before:issued,confirmed,
-          verifiedBefore:line.verifiedQuantity===null?null:Number(line.verifiedQuantity),
-          after:decision.decision==='MATCH_CREW'?confirmed:null,
-          decision:decision.decision,note:decision.note.trim(),
-          unresolved:decision.decision==='LEAVE_OPEN',
-          // Preserve the current issued record when the office has not
-          // established agreement with the crew. Do not invent a new count.
-          effectiveBefore:effective
-        };
-      });
-      const unresolved=explanation.some(item=>item.unresolved);
-      const unconfirmed=lines.some(line=>line.confirmedQuantity===null||
-        line.confirmedQuantity===undefined);
-      const newStatus=unresolved?'REVIEW_REQUIRED':
-        unconfirmed?'AWAITING_CONFIRMATION':'CONFIRMED';
+      const mismatches=lines.filter(line=>line.confirmedQuantity!=null&&
+        line.verifiedQuantity==null&&Number(line.confirmedQuantity)!==Number(line.quantity));
+      if(!mismatches.length)return send('W tej trasie nie ma już niezweryfikowanych różnic.',409);
+      const byPosition=new Map(corrections.map(item=>[item.position,item.quantity]));
+      if(byPosition.size!==mismatches.length||
+         mismatches.some(line=>!byPosition.has(Number(line.position))))
+        return send('Podaj ilość po weryfikacji dla każdej niezgodnej pozycji.',409);
+      // Final verified quantities may differ from both the original issue
+      // and the crew's first report (e.g. the crew collected missing parts).
+      // All three values remain available in D1 and the audit log.
+      const verified=mismatches.map(line=>({
+        position:Number(line.position),partName:line.partName,
+        before:Number(line.quantity),confirmed:Number(line.confirmedQuantity),
+        after:byPosition.get(Number(line.position)),verified:true
+      }));
+      const unconfirmed=lines.some(line=>line.confirmedQuantity==null);
+      const status=unconfirmed?'AWAITING_CONFIRMATION':'CONFIRMED';
+      const token=crypto.randomUUID();
       const statements=[
         env.DB.prepare(
           'UPDATE pl_routes SET status=?,edit_revision=edit_revision+1,edit_token=? '+
-          "WHERE id=? AND edit_revision=? AND status IN ("+
-          "'REVIEW_REQUIRED','REVIEW_EXPLAINED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION') "+
+          'WHERE id=? AND edit_revision=? '+
+          "AND status IN ('REVIEW_REQUIRED','REVIEW_EXPLAINED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION') "+
           'AND EXISTS (SELECT 1 FROM pl_route_lines l WHERE l.route_id=pl_routes.id '+
-          'AND l.confirmed_quantity IS NOT NULL AND '+
-          'l.confirmed_quantity<>COALESCE(l.verified_quantity,l.quantity))'
-        ).bind(newStatus,operationToken,id,revision)
+          'AND l.confirmed_quantity IS NOT NULL AND l.verified_quantity IS NULL '+
+          'AND l.confirmed_quantity<>l.quantity)'
+        ).bind(status,token,id,revision)
       ];
-      for(const item of explanation){
-        if(item.decision!=='MATCH_CREW')continue;
+      for(const item of verified){
         statements.push(env.DB.prepare(
           'UPDATE pl_route_lines SET verified_quantity=? '+
           'WHERE route_id=? AND position=? AND quantity=? AND confirmed_quantity=? '+
-          'AND COALESCE(verified_quantity,quantity)=? '+
+          'AND verified_quantity IS NULL '+
           'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? '+
           'AND r.edit_revision=? AND r.edit_token=?)'
-        ).bind(item.confirmed,id,item.position,item.before,item.confirmed,
-          item.effectiveBefore,id,revision+1,operationToken));
+        ).bind(item.after,id,item.position,item.before,item.confirmed,
+          id,revision+1,token));
       }
       statements.push(auditEntry(env.DB,{
         id:crypto.randomUUID(),routeId:id,action:'EXPLAIN',
-        actorId:auth.user.id,revision:revision+1,token:operationToken,
-        details:{
-          comment:summary,positions:explanation,
-          statusBefore:route.status,statusAfter:newStatus
-        }
+        actorId:auth.user.id,revision:revision+1,token,
+        details:{comment,positions:verified,statusBefore:route.status,statusAfter:status}
       }));
       const result=await env.DB.batch(statements);
       if(Number(result[0]?.meta?.changes||0)!==1)
         return send('Trasa została w międzyczasie zmieniona. Otwórz weryfikację ponownie.',409);
-      return workerJson({ok:true,id,status:newStatus,
-        unresolvedCount:explanation.filter(item=>item.unresolved).length});
+      return workerJson({ok:true,id,status,verifiedCount:verified.length});
     }catch(error){
       console.error('PL route discrepancy explanation failed',error?.name||'Error');
-      return send('Nie udało się zatwierdzić wyjaśnienia.',503);
+      return send('Nie udało się zatwierdzić weryfikacji.',503);
     }
   }
   if(body?.action!=='create')return send('Nieznana operacja.',400);
