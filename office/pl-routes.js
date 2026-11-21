@@ -608,7 +608,8 @@
           ' pozycjach. Zweryfikuj ilości i dodaj komentarz.'+
        '</p>':'';
     const caption=history
-      ?'Rozliczenie zakończonej trasy ':'Wydane i potwierdzone części dla trasy ';
+      ?(completed?'Rozliczenie zakończonej trasy ':'Archiwalne dane trasy ')
+      :'Wydane i potwierdzone części dla trasy ';
     const role=routeContext()?.role;
     const canWork=['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role);
     const editable=!history&&route.canEdit===true&&canWork;
