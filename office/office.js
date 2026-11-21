@@ -730,8 +730,9 @@ function setLoggedIn(payload){
   $('username').textContent=name?greetingVocative(name)+'!':'!';
   $('userRole').textContent=({ADMIN:'Administrator',KIEROWNIK:'Kierownik',KOORDYNATOR:'Koordynator',MAGAZYNIER:'Magazynier'})[state.user.role]||state.user.role;
   $('loginScreen').classList.add('hidden');$('app').classList.remove('hidden');
-  // The warehouse/session GET has just succeeded. Always show its timestamp,
-  // including after a full-page refresh; never leave "--:--" in logged-in Office.
+  // Only the signed-in user's own timestamp may be restored. The successful
+  // warehouse/session GET immediately stamps this computer's fresh read.
+  restoreSyncStamp(state.user);
   invalidateOfficeReadCache();
   markSynced();
   lastManualSyncAt=readManualSyncStamp(state.user);
@@ -1561,10 +1562,10 @@ function displaySyncStamp(value){
   const stamp=new Date(value);
   if(Number.isNaN(stamp.getTime()))return false;
   $('syncTime').textContent=new Intl.DateTimeFormat('pl-PL',{
-    hour:'2-digit',minute:'2-digit',timeZone:'Europe/Warsaw'
+    hour:'2-digit',minute:'2-digit'
   }).format(stamp);
   $('syncDate').textContent=new Intl.DateTimeFormat('pl-PL',{
-    day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Warsaw'
+    day:'2-digit',month:'2-digit',year:'numeric'
   }).format(stamp);
   return true;
 }
@@ -1579,11 +1580,13 @@ function markSynced(){
     }catch{ /* Session storage is optional; server reads still work. */ }
   }
 }
-function restoreSyncStamp(){
+function restoreSyncStamp(user){
+  if(!user?.id)return;
   try{
     const saved=JSON.parse(sessionStorage.getItem(OFFICE_SYNC_STAMP_KEY)||'null');
-    if(saved&&Number.isFinite(saved.at)&&saved.at<=Date.now()&&
-       saved.at>Date.now()-24*60*60*1000)displaySyncStamp(saved.at);
+    if(saved?.userId===user.id&&Number.isFinite(saved.at)&&
+       saved.at<=Date.now()&&saved.at>Date.now()-24*60*60*1000)
+      displaySyncStamp(saved.at);
   }catch{ /* No saved timestamp is not an error. */ }
 }
 async function loadStocks(warehouseId){
@@ -4724,7 +4727,6 @@ $('installOffice').addEventListener('click',async()=>{
   }
 });
 updateOfficeInstallUI();
-restoreSyncStamp();
 (async()=>{try{setLoggedIn(await api('warehouses'));}catch{showLogin();}})();
 
 })();
