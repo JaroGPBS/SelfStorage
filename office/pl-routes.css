@@ -781,3 +781,35 @@
   .pl-routes-toolbar > .pl-routes-heading{flex:1 1 100%;min-width:0}
   .pl-routes-toolbar > .pl-route-icon-legend{margin-left:0}
 }
+
+/* Poland routes: single heading in top bar, full-width data below. */
+.app.view-pl-routes .breadcrumbs{flex:1 1 auto}
+.app.view-pl-routes .pl-routes-top-actions{
+  display:flex;
+  align-items:center;
+  flex:0 0 auto;
+  margin:0 22px 0 auto;
+}
+.app.view-pl-routes .pl-routes-top-actions .pl-route-export-button{
+  min-height:32px;
+}
+.app.view-pl-routes .content{
+  max-width:none;
+  margin:0;
+  padding:7px 9px 13px;
+}
+.app.view-pl-routes .office-pl-routes-view{
+  padding:10px 12px 12px;
+  border-radius:9px;
+  min-height:0;
+}
+.app.view-pl-routes .pl-routes-toolbar{margin-bottom:8px}
+.app.view-pl-routes .pl-routes-status{
+  margin-bottom:6px!important;
+  line-height:1.35;
+}
+@media(max-width:690px){
+  .app.view-pl-routes .pl-routes-top-actions{margin:0 9px 0 auto}
+  .app.view-pl-routes .content{padding:6px 5px 12px}
+  .app.view-pl-routes .office-pl-routes-view{padding:8px 6px}
+}
