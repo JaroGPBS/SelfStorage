@@ -564,12 +564,18 @@
       line.confirmedQuantity!=null&&line.verifiedQuantity==null&&
       Number(line.confirmedQuantity)!==Number(line.quantity)
     );
-    const cols=history
-      ?'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
-       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Po weryfikacji</th><th>Zakończono</th>'+
-       '<th>Zwrócono</th><th>Miejsce zwrotu</th>'
-      :'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
-       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Po weryfikacji</th><th>Zakończono</th>';
+    const completed=route.status==='COMPLETED';
+    // Show verification only when a discrepancy was reported, or a verified
+    // quantity was recorded. Ordinary agreed routes stay compact.
+    const showVerification=lines.some(line=>
+      line.verifiedQuantity!=null||
+      line.confirmedQuantity!=null&&Number(line.confirmedQuantity)!==Number(line.quantity)
+    );
+    const cols='<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
+      '<th>Wydano</th><th>Potwierdzono (ekipa)</th>'+
+      (showVerification?'<th>Po weryfikacji</th>':'')+
+      (completed?'<th>Wykorzystano</th><th>Zwrócono</th>':'<th>Zakończono</th>')+
+      (history?'<th>Miejsce zwrotu</th>':'');
     const rows=lines.map(line=>{
       const mismatch=line.confirmedQuantity!=null&&line.verifiedQuantity==null&&
         Number(line.confirmedQuantity)!==Number(line.quantity);
@@ -578,13 +584,22 @@
         '<td>'+html(line.partCode||'—')+'</td>'+
         '<td>'+html(line.partName||'—')+'</td>'+
         '<td>'+html(line.quantity)+'</td>'+
-        '<td>'+routeQuantity(line.confirmedQuantity)+'</td>'+
-        '<td>'+routeQuantity(line.verifiedQuantity)+'</td>'+
-        '<td>—</td>';
-      if(history){
-        row+='<td>'+routeQuantity(line.returnedQuantity)+'</td>'+
-          '<td>'+html(line.returnLocation||'—')+'</td>';
+        '<td>'+routeQuantity(line.confirmedQuantity)+'</td>';
+      if(showVerification)row+='<td>'+routeQuantity(line.verifiedQuantity)+'</td>';
+      if(completed){
+        // Used = actual confirmed/verified pieces minus returned pieces.
+        // Do not guess when either count is unknown or still disputed.
+        const actual=line.verifiedQuantity??line.confirmedQuantity;
+        const returned=line.returnedQuantity;
+        const valid=actual!=null&&returned!=null&&!mismatch&&
+          Number.isSafeInteger(Number(actual))&&Number.isSafeInteger(Number(returned))&&
+          Number(actual)>=Number(returned)&&Number(returned)>=0;
+        row+='<td>'+routeQuantity(valid?Number(actual)-Number(returned):null)+'</td>'+
+          '<td>'+routeQuantity(returned)+'</td>';
+      }else{
+        row+='<td>—</td>';
       }
+      if(history)row+='<td>'+html(line.returnLocation||'—')+'</td>';
       return row+'</tr>';
     }).join('');
     const warning=mismatches.length
