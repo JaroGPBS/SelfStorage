@@ -8312,48 +8312,109 @@
 }
 
 
-/* Final compact layout: date and time side by side, action underneath. */
-#sidebar .office-side-sync{padding:6px 5px 4px}
+/* Bottom Office controls: compact one-line refresh and clear logout action. */
+#sidebar .office-side-sync{padding:6px 0 5px}
 #sidebar .office-side-sync-button{
-  min-height:0;
-  padding:4px 10px 5px;
-  gap:2px;
-}
-#sidebar .office-side-sync-meta{
-  display:flex;
+  flex-direction:row;
   align-items:center;
   justify-content:space-between;
-  gap:9px;
-  width:100%;
+  gap:5px;
   min-width:0;
-  padding-inline:24px;
-  color:#c6d0db;
+  min-height:33px;
+  padding:6px 7px;
+  border-radius:8px;
+  border-color:rgba(218,230,242,.17);
+  background:rgba(255,255,255,.045);
+  text-align:left;
+}
+#sidebar .office-side-sync-heading{
+  flex:0 0 auto;
+  align-self:auto;
+  justify-content:flex-start;
+  gap:3px;
+  font-size:10px;
+  font-weight:650;
+  line-height:1.15;
+  letter-spacing:0;
+  white-space:nowrap;
+  color:#d9e0e8;
+}
+#sidebar .office-side-sync-heading > span{font-size:12px}
+#sidebar .office-side-sync-meta{
+  display:flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+  width:auto;
+  min-width:0;
+  padding:0;
   font-variant-numeric:tabular-nums;
 }
-#sidebar .office-side-sync-meta small{
-  display:block;
-  flex:0 1 auto;
-  color:#b2becc;
-  font-size:11px;
-  line-height:1.2;
-  font-weight:450;
-  white-space:nowrap;
-}
+#sidebar .office-side-sync-meta small,
 #sidebar .office-side-sync-meta strong{
   display:block;
   flex:0 0 auto;
-  color:#e4eaf1;
-  font-size:12px;
-  line-height:1.2;
+  margin:0;
+  font-size:10px;
+  line-height:1.15;
   font-weight:450;
+  letter-spacing:0;
   white-space:nowrap;
 }
-#sidebar .office-side-sync-heading{
-  align-self:center;
-  justify-content:center;
-  gap:6px;
-  font-size:12px;
-  line-height:1.15;
-  font-weight:700;
+#sidebar .office-side-sync-meta small{color:#aebbc9}
+#sidebar .office-side-sync-meta strong{color:#e4eaf1}
+
+#sidebar .office-side-footer{
+  display:block;
+  padding:11px 0 0;
+  margin-top:0;
 }
-#sidebar .office-side-sync-heading > span{font-size:13px}
+#sidebar .office-welcome{width:100%}
+#sidebar .office-footer-bottom{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+  margin-top:4px;
+}
+#sidebar .office-footer-bottom #userRole{
+  flex:1 1 auto;
+  min-width:0;
+  margin:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  text-align:left;
+  font-size:10px;
+}
+#sidebar .office-footer-bottom #logout.office-logout-button{
+  flex:0 0 58%;
+  width:58%;
+  height:28px;
+  border:1px solid rgba(218,230,242,.26);
+  border-radius:6px;
+  background:rgba(255,255,255,.075);
+  color:#fff;
+  font-size:12px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:.015em;
+  transition:background .18s,border-color .18s;
+}
+#sidebar .office-footer-bottom #logout.office-logout-button:hover{
+  background:rgba(255,255,255,.14);
+  border-color:rgba(218,230,242,.5);
+}
+#sidebar .office-footer-bottom #logout.office-logout-button:focus-visible{
+  outline:2px solid #ef7781;
+  outline-offset:2px;
+}
+@media (min-width:691px) and (max-width:950px){
+  #sidebar .office-side-sync-button{gap:3px;padding-inline:5px}
+  #sidebar .office-side-sync-heading{font-size:9px;gap:2px}
+  #sidebar .office-side-sync-heading > span{font-size:11px}
+  #sidebar .office-side-sync-meta{gap:4px}
+  #sidebar .office-side-sync-meta small,
+  #sidebar .office-side-sync-meta strong{font-size:9px}
+}
