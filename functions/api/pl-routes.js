@@ -703,7 +703,7 @@ export async function onRequestPost({request,env}){
   try{
     const lineColumns=await routeLineColumns(env.DB);
     if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB)||
-       !['confirmed_quantity','returned_quantity','return_location'].every(
+       !['confirmed_quantity','verified_quantity','returned_quantity','return_location'].every(
          col=>lineColumns.has(col)
        ))await ensureSchema(env.DB);
     const duplicate=await env.DB.prepare(
