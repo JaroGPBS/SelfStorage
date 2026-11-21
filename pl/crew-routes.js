@@ -219,7 +219,7 @@
 
       // Used quantity is read-only and always follows the entered return count.
       const used=el('output','crew-report-used',String(actual));
-      used.setAttribute('aria-label','Wykorzystano: '+partName);
+      used.setAttribute('aria-label','Zużyto: '+partName);
       const returned=quantityInput(line.returnedQuantity??0,
         'Zwrócono: '+partName,line.position,'returned');
       returned.max=String(actual);
@@ -256,7 +256,7 @@
       recalculate();
       const quantities=el('div','crew-report-quantities');
       const usedGroup=el('div','crew-report-quantity');
-      usedGroup.append(el('span','crew-report-quantity-label','Wykorzystano'),used);
+      usedGroup.append(el('span','crew-report-quantity-label','Zużyto'),used);
       const returnedGroup=el('label','crew-report-quantity');
       returnedGroup.append(el('span','crew-report-quantity-label','Zwrócono'),returned);
       quantities.append(usedGroup,returnedGroup);
@@ -282,7 +282,7 @@
       if(line.returnedQuantity!==null){
         const actual=line.verifiedQuantity??line.confirmedQuantity;
         if(actual!==null)
-          values.append(el('span','','Wykorzystano: '+(Number(actual)-Number(line.returnedQuantity))));
+          values.append(el('span','','Zużyto: '+(Number(actual)-Number(line.returnedQuantity))));
         values.append(el('span','','Zwrócono: '+line.returnedQuantity));
         if(line.returnLocation)values.append(el('span','','Zwrot: '+line.returnLocation));
       }
@@ -405,7 +405,7 @@
     const fields=[...reportLines.querySelectorAll('[data-field]')];
     const lines=payload(fields);
     if(!lines||lines.length!==current.lines.length){
-      error('Sprawdź ilości wykorzystane i zwrócone.');return;
+      error('Sprawdź ilości zużyte i zwrócone.');return;
     }
     for(const line of lines){
       const source=current.lines.find(x=>Number(x.position)===line.position);
