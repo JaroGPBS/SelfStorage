@@ -125,6 +125,22 @@ async function ensureSchema(db){
     }
   }
 }
+async function ensureReturnApprovalSchema(db){
+  // Independent acknowledgment per returned item. Never changes stock.
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS pl_route_return_approvals ('+
+      'route_id TEXT NOT NULL,position INTEGER NOT NULL,'+
+      'quantity INTEGER NOT NULL CHECK(quantity>0),location TEXT NOT NULL,'+
+      'approved_by TEXT NOT NULL,'+
+      'approved_at TEXT NOT NULL DEFAULT (strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')),'+
+      'PRIMARY KEY(route_id,position),'+
+      'FOREIGN KEY(route_id,position) REFERENCES pl_route_lines(route_id,position) ON DELETE CASCADE)'
+  ).run();
+}
+const returnApprovalMatches=(line,approval)=>
+  approval!=null&&
+  Number(approval.quantity)===Number(line.returnedQuantity)&&
+  String(approval.location||'')===String(line.returnLocation||'').trim();
 async function routeLineColumns(db){
   if(!await exists(db,'pl_route_lines'))return new Set();
   const schema=await db.prepare('PRAGMA table_info(pl_route_lines)').all();
@@ -177,7 +193,8 @@ const routeWeekRollover=routeDate=>{
 // Sort only WITHIN the same calendar week; the current week stays above older weeks.
 // A confirmed route moves automatically when its updated status is fetched.
 const activePriority=route=>{
-  const needsReview=Number(route.discrepancyCount)>0||
+  const needsReview=Number(route.pendingReturnApprovals)>0||
+    Number(route.discrepancyCount)>0||
     (route.status==='COMPLETED'&&Number(route.unconfirmedCount)>0)||
     ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
   if(needsReview)return 1;
@@ -311,8 +328,23 @@ export async function onRequestGet({request,env}){
         ...item,actor:item.actorId==='DEMO'
           ?'Przykład (demo)':shortCreatorName(actorName)
       }));
+      const approvedTable=await exists(env.DB,'pl_route_return_approvals');
+      const returnApprovals=approvedTable?(await env.DB.prepare(
+        'SELECT a.position,a.quantity,a.location,a.approved_by AS approvedById,'+
+        'a.approved_at AS approvedAt,'+
+        "COALESCE((SELECT u.name FROM users u WHERE u.id=a.approved_by LIMIT 1),'') AS approvedBy "+
+        'FROM pl_route_return_approvals a WHERE a.route_id=? ORDER BY a.position'
+      ).bind(id).all()).results||[]:[];
+      const approvalsByPosition=new Map(returnApprovals.map(item=>[Number(item.position),item]));
+      const positiveReturns=lines.filter(line=>Number(line.returnedQuantity)>0);
+      route.returnCount=positiveReturns.length;
+      route.pendingReturnApprovals=positiveReturns.filter(line=>
+        !returnApprovalMatches(line,approvalsByPosition.get(Number(line.position)))).length;
+      route.canApproveReturns=route.status==='COMPLETED'&&route.pendingReturnApprovals>0&&
+        ['COORDYNATOR','ADMIN'].includes(auth.user.role);
       route.canEdit=canEditRoute(route.status,lines);
-      return workerJson({ok:true,route,lines,documents,audit:history,storageReady:true});
+      return workerJson({ok:true,route,lines,documents,audit:history,
+        returnApprovals,storageReady:true});
     }
     const scope=url.searchParams.get('scope')||'active';
     if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
@@ -343,7 +375,18 @@ export async function onRequestGet({request,env}){
     // rule: archived only when completed, reconciled, and after week end.
     const eligible="(r.route_date>='2026-11-02' AND r.route_date<='2026-11-08') OR ("+
       "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<? "+
-      'AND '+mismatch+'=0 AND '+unconfirmed+'=0)';
+      'AND '+mismatch+'=0 AND '+unconfirmed+'=0 AND '+pendingReturns+'=0)';
+    const approvalTable=await exists(env.DB,'pl_route_return_approvals');
+    const pendingReturns=columns.has('returned_quantity')
+      ?'COALESCE(SUM(CASE WHEN l.returned_quantity>0 AND '+
+        (approvalTable
+          ?'NOT EXISTS (SELECT 1 FROM pl_route_return_approvals ap '+
+            'WHERE ap.route_id=l.route_id AND ap.position=l.position '+
+            'AND ap.quantity=l.returned_quantity '+
+            "AND ap.location=trim(COALESCE(l.return_location,'')))"
+          :'1=1')+
+        ' THEN 1 ELSE 0 END),0)'
+      :'0';
     const hasAudit=await exists(env.DB,'pl_route_audit');
     const everDifferent=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
@@ -362,6 +405,7 @@ export async function onRequestGet({request,env}){
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units,'+
       editableSql+
       mismatch+' AS discrepancyCount,'+unconfirmed+' AS unconfirmedCount,'+
+      pendingReturns+' AS pendingReturnApprovals,'+
       'CASE WHEN '+everDifferent+'>0 OR '+auditExplained+
         ' THEN 1 ELSE 0 END AS hadDiscrepancy,'+
       'CASE WHEN '+individuallyVerified+' OR '+auditExplained+
