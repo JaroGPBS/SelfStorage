@@ -960,6 +960,67 @@ export async function onRequestPost({request,env}){
       return send('Nie udało się usunąć sześciu tras demo.',503);
     }
   }
+  if(body?.action==='resetPlDemoData'){
+    // This is the explicit transition from presentation to real PL routes.
+    // It removes ONLY route-module data; warehouse_stock and the shared GPBS
+    // parts catalogue are not touched. Existing crews are removed separately.
+    if(!routeMode||auth.user.role!=='ADMIN')
+      return send('Reset danych testowych jest dostępny tylko administratorowi w trybie prezentacji.',403);
+    if(body.confirm!=='RESET TRAS PL')
+      return send('Wpisz dokładnie RESET TRAS PL, aby potwierdzić wyczyszczenie.',400);
+    try{
+      if(!await verifyCleanupPin(env.DB,env,auth.user.id,body.pin))
+        return send('Nieprawidłowy PIN administratora.',403);
+      const hasRoutes=await exists(env.DB,'pl_routes');
+      const hasDocs=await exists(env.DB,'pl_route_documents');
+      const documents=hasDocs&&hasRoutes?(await env.DB.prepare(
+        'SELECT d.object_key,d.size_bytes FROM pl_route_documents d '+ 
+        'JOIN pl_routes r ON r.id=d.route_id'
+      ).all()).results||[]:[];
+      if(documents.length){
+        if(!env.PART_PHOTOS||typeof env.PART_PHOTOS.delete!=='function')
+          return send('Zdjęcia R2 są niedostępne. Niczego nie usunięto.',503);
+        for(let i=0;i<documents.length;i+=1000)
+          await env.PART_PHOTOS.delete(documents.slice(i,i+1000).map(d=>d.object_key));
+      }
+      await env.DB.prepare(
+        'CREATE TABLE IF NOT EXISTS pl_route_settings ('+
+        'id INTEGER PRIMARY KEY CHECK(id=1),presentation_mode INTEGER NOT NULL CHECK(presentation_mode IN (0,1)))'
+      ).run();
+      const statements=[];
+      if(documents.length&&await exists(env.DB,'pl_r2_photo_quota')){
+        const bytes=documents.reduce((n,d)=>n+Number(d.size_bytes||0),0);
+        statements.push(env.DB.prepare(
+          'UPDATE pl_r2_photo_quota SET used_bytes=MAX(0,used_bytes-?) WHERE id=1'
+        ).bind(bytes));
+      }
+      if(hasDocs)statements.push(env.DB.prepare('DELETE FROM pl_route_documents'));
+      if(await exists(env.DB,'pl_route_return_approvals'))
+        statements.push(env.DB.prepare('DELETE FROM pl_route_return_approvals'));
+      if(await exists(env.DB,'pl_route_audit'))
+        statements.push(env.DB.prepare('DELETE FROM pl_route_audit'));
+      if(await exists(env.DB,'pl_route_lines'))
+        statements.push(env.DB.prepare('DELETE FROM pl_route_lines'));
+      const routeIndex=hasRoutes?statements.length:-1;
+      if(hasRoutes)statements.push(env.DB.prepare('DELETE FROM pl_routes'));
+      const hasCatalog=await exists(env.DB,'pl_route_part_catalog');
+      const catalogIndex=hasCatalog?statements.length:-1;
+      if(hasCatalog)statements.push(env.DB.prepare('DELETE FROM pl_route_part_catalog'));
+      statements.push(env.DB.prepare(
+        'INSERT INTO pl_route_settings(id,presentation_mode) VALUES(1,0) '+
+        'ON CONFLICT(id) DO UPDATE SET presentation_mode=0'
+      ));
+      const results=await env.DB.batch(statements);
+      return workerJson({ok:true,deletedRoutes:routeIndex<0?0:
+        Number(results[routeIndex]?.meta?.changes||0),
+        deletedParts:catalogIndex<0?0:
+        Number(results[catalogIndex]?.meta?.changes||0),
+        presentationMode:false});
+    }catch(error){
+      console.error('PL demo reset failed',error?.name||'Error');
+      return send('Nie udało się wyczyścić testowych danych tras PL. Zmiana trybu nie została potwierdzona.',503);
+    }
+  }
   if(body?.action==='deletePresentation'){
     if(!routeMode)return send('Tryb wprowadzania tras prezentacyjnych jest wyłączony.',403);
     // Cleanup is deliberately separate from ordinary route creation.
