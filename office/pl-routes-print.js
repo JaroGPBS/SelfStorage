@@ -11,7 +11,13 @@
   const week=params.get('week');
   const embedded=params.get('embed')==='1';
   const balance=params.get('balance')==='1';
-  if(balance)document.documentElement.classList.add('pl-route-balance-print');
+  if(balance){
+    document.documentElement.classList.add('pl-route-balance-print');
+    // Wider columns for the seven-column balance; route cards remain portrait.
+    const printPage=document.createElement('style');
+    printPage.textContent='@page{size:A4 landscape;margin:11mm}';
+    document.head.append(printPage);
+  }
   if(embedded)document.documentElement.classList.add('pl-route-print-embedded');
   const api=window.PlRouteExport;
   function notifyParent(type){
