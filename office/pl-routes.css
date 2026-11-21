@@ -813,3 +813,18 @@
   .app.view-pl-routes .content{padding:6px 5px 12px}
   .app.view-pl-routes .office-pl-routes-view{padding:8px 6px}
 }
+
+/* A small inline note before Dodaj trasę, only in Aktualne trasy.
+   The sole page title remains in the upper header. */
+.app.view-pl-routes .pl-routes-toolbar > .pl-routes-heading{
+  flex:0 1 auto;
+  min-width:0;
+  max-width:260px;
+}
+.app.view-pl-routes .pl-routes-toolbar .pl-routes-heading small{
+  display:block;
+  color:#778597;
+  font-size:11px;
+  line-height:1.3;
+  font-weight:500;
+}
