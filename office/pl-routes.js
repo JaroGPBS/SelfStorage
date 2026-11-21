@@ -562,22 +562,40 @@
           '<div class="pl-route-history-content hidden">'+listTable(group.routes)+'</div></section>';
       }).join('');
   }
+  function balanceTable(parts){
+    if(!parts.length)
+      return '<div class="pl-routes-empty">Brak części w zapisanych trasach.</div>';
+    const headings=['Indeks SAP','Nazwa części','Ilość pobrana',
+      'Ilość wykorzystana','Ilość zwrócona','Ilość na magazynie'];
+    const head='<table class="pl-route-balance-table"><thead><tr>'+
+      headings.map(name=>'<th scope="col">'+html(name)+'</th>').join('')+
+      '</tr></thead><tbody>';
+    const rows=parts.map(part=>{
+      const columns=[part.sap||'—',part.name||'—','—','—','—','—'];
+      return '<tr data-pl-route-balance-part="'+html(part.catalogPartId||'')+'">'+
+        columns.map(value=>'<td>'+html(value)+'</td>').join('')+'</tr>';
+    }).join('');
+    return head+rows+'</tbody></table>';
+  }
   window.renderPlRoutesList=async function(){
     const panel=byId('plRoutesListPanel');
     if(!panel)return;
     const context=routeContext();
     const selected=context?.view==='plRoutes'&&
-      (context.tab==='list'||context.tab==='history');
+      ['list','history','balance'].includes(context.tab);
     panel.classList.toggle('hidden',!selected);
     byId('officePlRoutesMessage').classList.toggle('hidden',selected);
     if(!selected)return;
     const history=context.tab==='history';
-    byId('plRoutesSectionTitle').textContent=history?'Historia tras':'Aktualne trasy';
-    byId('plRoutesSectionDescription').textContent=history
-      ?'Zakończone trasy według tygodnia realizacji.'
+    const balance=context.tab==='balance';
+    byId('plRoutesSectionTitle').textContent=balance?'Bilans części':
+      history?'Historia tras':'Aktualne trasy';
+    byId('plRoutesSectionDescription').textContent=balance
+      ?'Części ze wszystkich zapisanych tras. Ilości uzupełnimy w kolejnym etapie; „—” nie oznacza zera.'
+      :history?'Zakończone trasy według tygodnia realizacji.'
       :'Lista tras w trakcie realizacji.';
     const role=context?.role;
-    byId('plRouteAdd').classList.toggle('hidden',history||
+    byId('plRouteAdd').classList.toggle('hidden',balance||history||
       !['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role));
     byId('plRoutesClearPresentation').classList.toggle('hidden',true);
     byId('plRoutesSeedDemo48').classList.add('hidden');
@@ -589,8 +607,18 @@
     const status=byId('plRoutesListStatus');
     const table=byId('plRoutesTable');
     status.classList.remove('is-error');
-    status.textContent='Pobieranie tras…';
+    status.textContent=balance?'Pobieranie części z tras…':'Pobieranie tras…';
     try{
+      if(balance){
+        const result=await jsonResponse(await fetch('/api/pl-route-balance',{
+          credentials:'same-origin',cache:'no-store'
+        }));
+        if(seq!==loadSeq)return;
+        routeAuditCache.clear();
+        table.innerHTML=balanceTable(result.parts||[]);
+        status.textContent='';
+        return;
+      }
       const result=await jsonResponse(await fetch(
         endpoint+'?scope='+(history?'history':'active'),{
           credentials:'same-origin',cache:'no-store'
