@@ -641,6 +641,9 @@
       ?'<button type="button" class="pl-route-delete-single-button" '+
         'data-pl-route-delete-demo03="'+html(route.id)+'">Usuń demo 48PL-03</button>'
       :'';
+    const exportButton='<button type="button" class="pl-route-export-button" '+
+      'data-pl-route-export="'+html(route.id)+'" '+
+      'data-pl-route-export-number="'+html(route.routeNumber)+'">Eksportuj</button>';
     const audit=(result.audit||[]).map(event=>{
       routeAuditCache.set(event.id,event);
       return '<button type="button" class="pl-route-audit-event" '+
@@ -657,6 +660,7 @@
       '<div class="pl-route-detail-head">'+
         '<strong>'+caption+html(route.routeNumber)+
           (Number(route.isPresentation)===1?' *':'')+'</strong>'+
+        exportButton+
       '</div>'+
       warning+
       '<div class="pl-route-detail-content">'+
@@ -1248,7 +1252,60 @@
     if(event.target===byId('plRouteDocumentDialog'))
       byId('plRouteDocumentDialog').close();
   });
+  let routeExportBusy=false;
+  function openRouteExport(button){
+    if(routeExportBusy)return;
+    const id=String(button.dataset.plRouteExport||'');
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))return;
+    const dialog=byId('plRouteExportDialog');
+    dialog.dataset.routeId=id;
+    byId('plRouteExportTitle').textContent='Eksportuj – '+
+      (button.dataset.plRouteExportNumber||'trasa');
+    byId('plRouteExportError').hidden=true;
+    dialog.showModal();
+  }
+  function closeRouteExport(){
+    if(!routeExportBusy)byId('plRouteExportDialog').close();
+  }
+  byId('plRouteExportClose').addEventListener('click',closeRouteExport);
+  byId('plRouteExportDialog').addEventListener('cancel',event=>{
+    if(routeExportBusy)event.preventDefault();
+  });
+  byId('plRouteExportPdf').addEventListener('click',()=>{
+    const id=byId('plRouteExportDialog').dataset.routeId;
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))return;
+    // The print-ready A4 document is generated from the live authenticated API.
+    // Browser print dialog lets the user choose printer or "Save as PDF".
+    window.open('/office/pl-routes-print.html?id='+encodeURIComponent(id),
+      '_blank','noopener');
+    closeRouteExport();
+  });
+  byId('plRouteExportExcel').addEventListener('click',async()=>{
+    if(routeExportBusy)return;
+    const id=byId('plRouteExportDialog').dataset.routeId;
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))return;
+    const error=byId('plRouteExportError');
+    const button=byId('plRouteExportExcel');
+    routeExportBusy=true;
+    button.disabled=true;
+    error.hidden=true;
+    try{
+      if(!window.PlRouteExport)throw Error('Moduł Excel nie został załadowany.');
+      const data=await window.PlRouteExport.getRoute(id);
+      window.PlRouteExport.saveXlsx([data],'GPBS-Trasa-'+
+        (data.route.routeNumber||'Raport'));
+      byId('plRouteExportDialog').close();
+    }catch(ex){
+      error.textContent=ex.message||'Nie udało się zapisać pliku Excel.';
+      error.hidden=false;
+    }finally{
+      routeExportBusy=false;
+      button.disabled=false;
+    }
+  });
   byId('plRoutesTable').addEventListener('click',e=>{
+    const exportButton=e.target.closest('[data-pl-route-export]');
+    if(exportButton){openRouteExport(exportButton);return;}
     const deleteButton=e.target.closest('[data-pl-route-delete-demo03]');
     if(deleteButton){openDeleteDemo03(deleteButton);return;}
     const auditButton=e.target.closest('[data-pl-route-audit]');
