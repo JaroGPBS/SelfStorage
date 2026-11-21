@@ -1906,7 +1906,7 @@
     if(!resolve)return;
     returnApprovalResolve=null;
     const value=approved?returnApprovalComment.value.trim():null;
-    if(returnApprovalDialog.open)returnApprovalDialog.close(),resolve(value);
+    if(returnApprovalDialog.open)returnApprovalDialog.close();
     resolve(value);
   }
   function confirmReturnApproval(message){
@@ -1986,7 +1986,7 @@
       const status=byId('plRoutesListStatus');
       status.classList.remove('is-error');
       status.textContent=Number(response.approved)>0
-        ?'Zatwierdzono '+response.approved+' pozycje zwrotu. Zapisano osobę i czas.'
+        ?'Zatwierdzono '+response.approved+' pozycje zwrotu. Zapisano osobę, czas i komentarz.'
         :'Wszystkie zwroty w tej trasie są już zatwierdzone.';
     }catch(error){
       const status=byId('plRoutesListStatus');
