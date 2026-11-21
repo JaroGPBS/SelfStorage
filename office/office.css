@@ -8056,6 +8056,46 @@
 .office-market-list .office-pl-routes-entries .office-pl-routes-tab.active{color:#fff;background:rgba(230,63,68,.13);box-shadow:inset 3px 0 #e63f44;font-weight:750}
 .office-market-list .office-pl-routes-toggle.active{color:#fff}
 
+/* Sidebar routes: restrained outline pictograms with aligned labels. */
+.office-market-list .office-pl-routes-caption .office-operation-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 20px;
+  width:20px;
+  color:#cbd5df;
+}
+.office-market-list .office-pl-routes-toggle:hover .office-operation-icon,
+.office-market-list .office-pl-routes-toggle.active .office-operation-icon{color:#f0f4f8}
+.office-market-list .office-pl-routes-entries .office-pl-routes-tab{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:9px;
+}
+.office-market-list .office-pl-routes-tab-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 17px;
+  width:17px;
+  height:17px;
+  color:#aebac8;
+}
+.office-market-list .office-pl-routes-tab-icon svg{
+  display:block;
+  width:16px;
+  height:16px;
+  stroke:currentColor;
+}
+.office-market-list .office-pl-routes-entries .office-pl-routes-tab:hover .office-pl-routes-tab-icon{
+  color:#e4ebf3;
+}
+.office-market-list .office-pl-routes-entries .office-pl-routes-tab.active .office-pl-routes-tab-icon{
+  color:#f2b4b7;
+}
+
+
 /* Polska: minimalistyczny, ciemny pulpit. Lewe menu pozostaje główną nawigacją. */
 .app.view-pl-home .main{
   background:radial-gradient(ellipse at 48% 33%,#2b3644 0%,#19232f 46%,#101821 100%);
