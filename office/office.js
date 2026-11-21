@@ -460,6 +460,11 @@ function frenchStockKind(warehouseId,preview=null){
 }
 
 const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+// Read-only route-screen context for the separate PL routes script.
+// The Office state remains private; the API independently enforces permissions.
+window.getPlRoutesContext=()=>({
+  view:state.view,tab:state.plRoutesTab,role:state.user?.role||''
+});
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
