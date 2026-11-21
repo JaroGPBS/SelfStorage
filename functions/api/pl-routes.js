@@ -384,7 +384,9 @@ export async function onRequestGet({request,env}){
           :'1=1')+
         ' THEN 1 ELSE 0 END),0)'
       :'0';
-    const eligible="(r.route_date>='2026-11-02' AND r.route_date<='2026-11-08') OR ("+
+    // Even the special week-45 display archive must wait for return approval.
+    const eligible="(r.route_date>='2026-11-02' AND r.route_date<='2026-11-08' AND "+
+      pendingReturns+"=0) OR ("+
       "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<? "+
       'AND '+mismatch+'=0 AND '+unconfirmed+'=0 AND '+pendingReturns+'=0)';
     const hasAudit=await exists(env.DB,'pl_route_audit');
