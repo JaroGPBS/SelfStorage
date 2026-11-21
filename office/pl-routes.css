@@ -115,7 +115,10 @@
   background:#fff;color:#275c82;font-size:11px;font-weight:750;
   cursor:pointer;white-space:nowrap
 }
-.pl-route-document-button:hover{background:#eff5f9;border-color:#94b3c9}
+.pl-route-document-button:hover:not(:disabled){background:#eff5f9;border-color:#94b3c9}
+.pl-route-document-button:disabled{
+  opacity:.5;cursor:not-allowed;background:#f0f3f6;color:#76889a
+}
 .pl-route-document-button:focus-visible{outline:2px solid #266d9b;outline-offset:2px}
 /* Preview is opened only on demand. Never render the saved photo in a route row. */
 .pl-route-document-dialog{
