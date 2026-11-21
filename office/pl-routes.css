@@ -39,6 +39,11 @@
 .pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(8){width:8%}
 .pl-routes-table table.pl-route-list-table > thead > tr > th{text-align:center}
 .pl-routes-table table.pl-route-list-table > tbody > tr:not(.pl-route-expanded) > td{text-align:center}
+/* A clear but restrained divider whenever the displayed ISO week changes. */
+.pl-routes-table table.pl-route-list-table > tbody > tr.pl-route-week-separator > td{
+  border-top:3px solid #8396aa;
+  padding-top:16px;
+}
  .pl-routes-table th{padding:11px 12px;text-align:center;background:#f2f5f8;color:#627488;font-weight:800;white-space:nowrap;border-bottom:1px solid #dce4ed}
  .pl-routes-table td{padding:13px 12px;text-align:center;border-bottom:1px solid #e5ebf0;color:#2a3a4c;vertical-align:middle}
 .pl-routes-table .pl-route-status-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:750;padding:5px 9px;border-radius:16px;background:#f0e9d7;color:#7f601a;white-space:nowrap}
