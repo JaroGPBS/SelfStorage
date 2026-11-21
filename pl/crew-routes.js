@@ -221,7 +221,7 @@
       const used=el('output','crew-report-used',String(actual));
       used.setAttribute('aria-label','Zużyto: '+partName);
       const returned=quantityInput(line.returnedQuantity??0,
-        'Zwrócono: '+partName,line.position,'returned');
+        'Zwrot: '+partName,line.position,'returned');
       returned.max=String(actual);
       returned.classList.add('crew-report-returned');
 
@@ -254,13 +254,11 @@
       }
       returned.addEventListener('input',recalculate);
       recalculate();
-      const quantities=el('div','crew-report-quantities');
       const usedGroup=el('div','crew-report-quantity');
       usedGroup.append(el('span','crew-report-quantity-label','Zużyto'),used);
       const returnedGroup=el('label','crew-report-quantity');
-      returnedGroup.append(el('span','crew-report-quantity-label','Zwrócono'),returned);
-      quantities.append(usedGroup,returnedGroup);
-      row.append(head,quantities,placeLabel);
+      returnedGroup.append(el('span','crew-report-quantity-label','Zwrot'),returned);
+      row.append(head,usedGroup,returnedGroup,placeLabel);
       reportLines.append(row);
     }
     reportForm.hidden=false;
