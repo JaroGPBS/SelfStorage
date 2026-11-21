@@ -226,10 +226,13 @@ export async function onRequestGet({request,env}){
         ?'edit_revision AS editRevision,':'0 AS editRevision,';
       const route=await env.DB.prepare(
         'SELECT id,route_number AS routeNumber,route_date AS routeDate,'+
-        'crew_symbol AS crewSymbol,status,created_at AS createdAt,'+revisionColumn+flag+' '+
+        'crew_symbol AS crewSymbol,status,created_at AS createdAt,'+revisionColumn+flag+','+
+        "COALESCE((SELECT u.name FROM users u WHERE u.id=pl_routes.created_by LIMIT 1),'') AS creatorFullName "+
         'FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
+      route.enteredBy=shortCreatorName(route.creatorFullName);
+      delete route.creatorFullName;
       const columns=await routeLineColumns(env.DB);
       const optional=[
         columns.has('confirmed_quantity')
@@ -292,11 +295,13 @@ export async function onRequestGet({request,env}){
       ?'COALESCE(SUM(CASE WHEN l.position IS NOT NULL '+
        'AND l.confirmed_quantity IS NULL THEN 1 ELSE 0 END),0)'
       :'COUNT(l.position)';
-    // Archive only after Saturday -> Sunday midnight (Poland time), and only
-    // explicitly COMPLETED routes with no unresolved quantities.
-    // Open/exception routes remain current and are never archived by age alone.
-    const eligible="r.status='COMPLETED' AND date(r.route_date,'weekday 0')<=? "+
-      'AND '+mismatch+'=0 AND '+unconfirmed+'=0';
+    // One-time display archive for ISO week 45/2026 at the user's request.
+    // Keep original statuses and recorded quantities: no fake "COMPLETED"
+    // confirmations and no D1 mutations. All other weeks keep the existing
+    // rule: archived only when completed, reconciled, and after week end.
+    const eligible="(r.route_date>='2026-11-02' AND r.route_date<='2026-11-08') OR ("+
+      "r.status='COMPLETED' AND date(r.route_date,'weekday 0')<=? "+
+      'AND '+mismatch+'=0 AND '+unconfirmed+'=0)';
     const hasAudit=await exists(env.DB,'pl_route_audit');
     const everDifferent=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
