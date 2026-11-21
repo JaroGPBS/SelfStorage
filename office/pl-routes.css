@@ -509,3 +509,23 @@
   .pl-route-export-dialog .pl-route-small-actions{gap:6px;padding:9px}
   .pl-route-export-dialog .pl-route-small-actions button{min-width:0;flex:1}
 }
+
+/* Separate return acknowledgement, only for non-zero returns. */
+.pl-route-return-approve-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:#f1f5f2;border:1px solid #bbd4c3;border-radius:5px;
+  padding:7px 8px;color:#345943;font:inherit;font-size:10.5px;
+  font-weight:750;cursor:pointer
+}
+.pl-route-return-approve-button:hover{background:#e6f0e8}
+.pl-route-return-approve-button:disabled{opacity:.6;cursor:wait}
+.pl-route-return-approvals{
+  display:flex;flex:1 1 210px;min-width:190px;
+  flex-direction:column;gap:6px;padding:9px 11px;
+  border:1px solid #dbe2e8;border-radius:5px;background:#fbfcfd;
+  font-size:11px;color:#415468
+}
+.pl-route-return-approvals>strong{font-size:11px;font-weight:750}
+.pl-route-return-approval-item{display:flex;flex-direction:column;gap:2px}
+.pl-route-return-approval-item span{font-weight:650}
+.pl-route-return-approval-item small{font-size:10px;color:#6b7d8c}
