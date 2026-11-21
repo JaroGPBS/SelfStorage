@@ -2,6 +2,7 @@
 import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worker-auth.js';
 import {verifyRememberSession} from '../../lib/pl-office-remember.js';
 import {routeEditablePredicate,canEditRoute,ROUTE_SETTLEMENT_COLUMNS} from '../../lib/pl-route-editability.js';
+import {ensureRouteAuditSchema,auditEntry} from '../../lib/pl-route-audit.js';
 
 const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
 // TEMPORARY: true during initial presentation-data entry.
@@ -160,7 +161,7 @@ const routeWeekRollover=routeDate=>{
   return day.toISOString().slice(0,10);
 };
 const needsReview=route=>
-  Number(route.discrepancyCount)>0||
+  route.status!=='REVIEW_EXPLAINED'&&Number(route.discrepancyCount)>0||
   Number(route.unconfirmedCount)>0&&route.status==='COMPLETED'||
   ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
 const activePriority=route=>{
@@ -201,9 +202,12 @@ export async function onRequestGet({request,env}){
     const id=url.searchParams.get('id');
     if(id!==null){
       if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))return send('Nieprawidłowa trasa.',400);
+      const routeColumns=(await env.DB.prepare('PRAGMA table_info(pl_routes)').all()).results||[];
+      const revisionColumn=routeColumns.some(col=>col.name==='edit_revision')
+        ?'edit_revision AS editRevision,':'0 AS editRevision,';
       const route=await env.DB.prepare(
         'SELECT id,route_number AS routeNumber,route_date AS routeDate,'+
-        'crew_symbol AS crewSymbol,status,created_at AS createdAt,'+flag+' '+
+        'crew_symbol AS crewSymbol,status,created_at AS createdAt,'+revisionColumn+flag+' '+
         'FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
@@ -228,8 +232,20 @@ export async function onRequestGet({request,env}){
           'WHERE route_id=? ORDER BY uploaded_at DESC,id DESC LIMIT 10'
         ).bind(id).all()).results||[]
         :[];
+      const audit=await exists(env.DB,'pl_route_audit')
+        ?(await env.DB.prepare(
+          'SELECT a.id,a.action,a.actor_id AS actorId,a.details_json AS detailsJson,'+
+          'a.created_at AS createdAt,'+
+          "COALESCE((SELECT u.name FROM users u WHERE u.id=a.actor_id LIMIT 1),'') AS actorName "+
+          'FROM pl_route_audit a WHERE a.route_id=? '+
+          'ORDER BY a.created_at DESC,a.id DESC LIMIT 30'
+        ).bind(id).all()).results||[]
+        :[];
+      const history=audit.map(({actorName,...item})=>({
+        ...item,actor:shortCreatorName(actorName)
+      }));
       route.canEdit=canEditRoute(route.status,lines);
-      return workerJson({ok:true,route,lines,documents,storageReady:true});
+      return workerJson({ok:true,route,lines,documents,audit:history,storageReady:true});
     }
     const scope=url.searchParams.get('scope')||'active';
     if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
@@ -468,48 +484,140 @@ export async function onRequestPost({request,env}){
   }
   if(body?.action==='update'){
     const id=String(body.id||'');
-    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))
-      return send('Nieprawidłowy identyfikator trasy.',400);
+    const revision=Number(body.baseRevision);
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id)||
+       !Number.isSafeInteger(revision)||revision<0)
+      return send('Nieprawidłowy identyfikator lub wersja trasy.',400);
     const updated=parseRoute(body);
     if(!updated)return send('Uzupełnij numer, datę, symbol ekipy i prawidłowe części.',400);
     try{
       if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines'))
         return send('Nie znaleziono trasy.',404);
+      await ensureRouteAuditSchema(env.DB);
       const current=await env.DB.prepare(
-        'SELECT id,status FROM pl_routes WHERE id=?'
+        'SELECT id,status,route_number AS routeNumber,route_date AS routeDate,'+
+        'crew_symbol AS crewSymbol,edit_revision AS revision FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!current)return send('Nie znaleziono trasy.',404);
       if(current.status!=='AWAITING_CONFIRMATION')
         return send('Trasa została już potwierdzona lub zakończona. Edycja jest zablokowana.',409);
+      if(Number(current.revision)!==revision)
+        return send('Trasa została zmieniona w innym oknie. Otwórz edycję ponownie.',409);
+      const before=(await env.DB.prepare(
+        'SELECT position,part_code AS partCode,part_name AS partName,quantity '+
+        'FROM pl_route_lines WHERE route_id=? ORDER BY position'
+      ).bind(id).all()).results||[];
       const predicate=await routeEditablePredicate(env.DB,'pl_routes');
-      // The update, replacement of lines, and lock checks are in one D1 batch.
-      // Every write uses the same guard so an in-flight crew confirmation
-      // cannot be overwritten by a stale Office form.
-      const guard='EXISTS (SELECT 1 FROM pl_routes WHERE id=? AND '+predicate+')';
+      const guard='EXISTS (SELECT 1 FROM pl_routes WHERE id=? AND edit_revision=? AND '+predicate+')';
       const statements=[
         env.DB.prepare(
-          'UPDATE pl_routes SET route_number=?,route_date=?,crew_symbol=? '+
-          'WHERE id=? AND '+predicate
-        ).bind(updated.routeNumber,updated.routeDate,updated.crewSymbol,id),
+          'UPDATE pl_routes SET route_number=?,route_date=?,crew_symbol=?,'+
+          'edit_revision=edit_revision+1 '+
+          'WHERE id=? AND edit_revision=? AND '+predicate
+        ).bind(updated.routeNumber,updated.routeDate,updated.crewSymbol,id,revision),
         env.DB.prepare(
           'DELETE FROM pl_route_lines WHERE route_id=? AND '+guard
-        ).bind(id,id)
+        ).bind(id,id,revision+1)
       ];
       updated.lines.forEach((line,index)=>{
         statements.push(env.DB.prepare(
           'INSERT INTO pl_route_lines (route_id,position,part_code,part_name,quantity) '+
           'SELECT ?,?,?,?,? WHERE '+guard
-        ).bind(id,index+1,line.partCode,line.partName,line.quantity,id));
+        ).bind(id,index+1,line.partCode,line.partName,line.quantity,id,revision+1));
       });
+      statements.push(auditEntry(env.DB,{
+        id:crypto.randomUUID(),routeId:id,action:'EDIT',
+        actorId:auth.user.id,revision:revision+1,
+        details:{
+          before:{routeNumber:current.routeNumber,routeDate:current.routeDate,
+            crewSymbol:current.crewSymbol,lines:before},
+          after:{routeNumber:updated.routeNumber,routeDate:updated.routeDate,
+            crewSymbol:updated.crewSymbol,lines:updated.lines}
+        }
+      }));
       const result=await env.DB.batch(statements);
       if(Number(result[0]?.meta?.changes||0)!==1)
-        return send('Trasa została w międzyczasie potwierdzona przez ekipę. Zmiany nie zostały zapisane.',409);
+        return send('Trasa została w międzyczasie zmieniona albo potwierdzona. Zmiany nie zostały zapisane.',409);
       return workerJson({ok:true,id,updated:true});
     }catch(error){
       console.error('PL route update failed',error?.name||'Error');
       if(/UNIQUE constraint failed/i.test(String(error?.message||'')))
         return send('Trasa z tym numerem i datą już istnieje.',409);
       return send('Nie udało się edytować trasy. Spróbuj ponownie.',503);
+    }
+  }
+  if(body?.action==='explainDiscrepancy'){
+    const id=String(body.id||'');
+    const comment=String(body.comment||'').trim();
+    const revision=Number(body.baseRevision);
+    const corrections=body.corrections;
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id)||
+       !Number.isSafeInteger(revision)||revision<0||
+       comment.length<15||comment.length>2000||!Array.isArray(corrections)||corrections.length>150)
+      return send('Podaj prawidłową trasę, korekty i komentarz (minimum 15 znaków).',400);
+    if(corrections.some(x=>!x||!Number.isSafeInteger(x.position)||
+       x.position<1||!Number.isSafeInteger(x.quantity)||x.quantity<1||
+       x.quantity>999999)||new Set(corrections.map(x=>x.position)).size!==corrections.length)
+      return send('Nieprawidłowe ilości w korekcie.',400);
+    try{
+      if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines'))
+        return send('Nie znaleziono trasy.',404);
+      await ensureRouteAuditSchema(env.DB);
+      const route=await env.DB.prepare(
+        'SELECT id,status,edit_revision AS revision FROM pl_routes WHERE id=?'
+      ).bind(id).first();
+      if(!route)return send('Nie znaleziono trasy.',404);
+      if(!['REVIEW_REQUIRED','DISCREPANCY','CONFIRMED'].includes(route.status))
+        return send('Trasa nie wymaga już wyjaśnienia lub została zakończona.',409);
+      if(Number(route.revision)!==revision)
+        return send('Dane trasy zmieniły się. Otwórz wyjaśnienie ponownie.',409);
+      const lines=(await env.DB.prepare(
+        'SELECT position,part_name AS partName,quantity,confirmed_quantity AS confirmedQuantity '+
+        'FROM pl_route_lines WHERE route_id=? ORDER BY position'
+      ).bind(id).all()).results||[];
+      const wrong=lines.filter(line=>line.confirmedQuantity!==null&&
+        Number(line.quantity)!==Number(line.confirmedQuantity));
+      if(!wrong.length)return send('W tej trasie nie ma już niezgodności.',409);
+      const wrongPositions=new Set(wrong.map(line=>Number(line.position)));
+      if(corrections.some(x=>!wrongPositions.has(x.position)))
+        return send('Nie można korygować części bez niezgodności.',400);
+      const correctionsByPosition=new Map(corrections.map(x=>[x.position,x.quantity]));
+      const corrected=wrong.map(line=>({
+        position:Number(line.position),partName:line.partName,
+        before:Number(line.quantity),confirmed:Number(line.confirmedQuantity),
+        after:correctionsByPosition.get(Number(line.position))??Number(line.quantity)
+      }));
+      const discrepanciesRemain=corrected.some(line=>line.after!==line.confirmed);
+      const unconfirmed=lines.some(line=>line.confirmedQuantity===null);
+      const newStatus=!discrepanciesRemain&&!unconfirmed?'CONFIRMED':'REVIEW_EXPLAINED';
+      const statements=[
+        env.DB.prepare(
+          "UPDATE pl_routes SET status=?,edit_revision=edit_revision+1 "+
+          "WHERE id=? AND edit_revision=? AND status IN ('REVIEW_REQUIRED','DISCREPANCY','CONFIRMED') "+
+          'AND EXISTS (SELECT 1 FROM pl_route_lines l WHERE l.route_id=pl_routes.id '+
+          'AND l.confirmed_quantity IS NOT NULL AND l.confirmed_quantity<>l.quantity)'
+        ).bind(newStatus,id,revision)
+      ];
+      for(const line of corrected){
+        if(line.after===line.before)continue;
+        statements.push(env.DB.prepare(
+          'UPDATE pl_route_lines SET quantity=? WHERE route_id=? AND position=? '+
+          'AND quantity=? AND confirmed_quantity=? '+
+          'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? AND r.edit_revision=? )'
+        ).bind(line.after,id,line.position,line.before,line.confirmed,id,revision+1));
+      }
+      statements.push(auditEntry(env.DB,{
+        id:crypto.randomUUID(),routeId:id,action:'EXPLAIN',
+        actorId:auth.user.id,revision:revision+1,
+        details:{comment,positions:corrected,statusBefore:route.status,statusAfter:newStatus}
+      }));
+      const result=await env.DB.batch(statements);
+      if(Number(result[0]?.meta?.changes||0)!==1)
+        return send('Niezgodność została w międzyczasie zmieniona. Spróbuj ponownie.',409);
+      return workerJson({ok:true,id,status:newStatus});
+    }catch(error){
+      console.error('PL route discrepancy explanation failed',error?.name||'Error');
+      return send('Nie udało się zatwierdzić wyjaśnienia.',503);
     }
   }
   if(body?.action!=='create')return send('Nieznana operacja.',400);
