@@ -8,7 +8,7 @@ const POLISH_SCRIPTS = [
   '/pl/inventory-scanner.js?v=2',
   '/pl/inventory-flow.js?v=6',
   '/pl/warehouse-operations.js?v=19',
-  '/pl/crew-routes.js?v=5',
+  '/pl/crew-routes.js?v=6',
   '/pl/pl.js?v=27'
 ];
 
@@ -94,7 +94,7 @@ async function buildPolishWorkspace() {
   const link = document.createElement('link');
   link.id = 'gpbsPolandStyles';
   link.rel = 'stylesheet';
-  link.href = '/pl/pl.css?v=53';
+  link.href = '/pl/pl.css?v=54';
   document.head.append(link);
 
   // Existing Polish modules bind their handlers to the newly inserted DOM.
