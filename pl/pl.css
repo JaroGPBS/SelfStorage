@@ -1848,3 +1848,79 @@ body.gpbs-market-pl:has(#crewRouteScreen.is-report:not([hidden]))
     height:42px;min-height:42px;max-width:58px;font-size:18px
   }
 }
+
+/* Tychy PZ/WZ: typeahead results above the search field, clear on selection. */
+#operationDirectionPanel .operation-search-anchor{
+  position:relative;min-width:0;
+}
+#operationDirectionPanel .operation-search-suggestions{
+  position:absolute;left:0;right:0;bottom:calc(100% + 8px);
+  z-index:15;display:flex;flex-direction:column;gap:0;
+  max-height:min(43dvh,330px);min-height:0;overflow:hidden;
+  border:1px solid #697b8d;border-radius:10px;
+  background:#19232e;box-shadow:0 -7px 27px #050a1099;
+}
+#operationDirectionPanel .operation-search-suggestions[hidden]{
+  display:none!important;
+}
+#operationDirectionPanel .operation-search-suggestions .operation-task-results{
+  min-height:0;max-height:min(37dvh,275px);
+  overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+  display:flex;flex-direction:column;gap:2px;
+  padding:5px;margin:0;
+}
+#operationDirectionPanel .operation-search-suggestions .operation-result{
+  flex:0 0 auto;padding:9px 10px;margin:0;
+  font-size:12px;line-height:1.35;
+}
+#operationDirectionPanel .operation-search-suggestions .operation-result:focus-visible{
+  outline:2px solid #ff838a;outline-offset:-2px;
+}
+#operationDirectionPanel .operation-search-suggestions #operationMore{
+  flex:0 0 auto;min-height:36px;padding:6px 8px;margin:0;
+  border-radius:0;font-size:12px;
+}
+#operationDirectionPanel .operation-search-suggestions .operation-search-empty{
+  margin:0;padding:11px 9px;color:#b8c7d7;font-size:12px;
+}
+#operationDirectionPanel .operation-scan-finish-row{
+  display:grid;grid-template-columns:minmax(0,3fr) minmax(0,7fr);
+  gap:8px;align-items:stretch;min-width:0;
+}
+#operationDirectionPanel .operation-scan-finish-row .operation-task-scan{
+  width:100%;min-width:0;min-height:60px;height:60px;
+}
+#operationDirectionPanel .operation-task-finish-stage{
+  width:100%;min-width:0;min-height:60px;height:60px;
+  margin:0;padding:8px 5px;
+  border:1px solid #8e9eae;border-radius:10px;
+  background:#2d3945;color:#fff;
+  font-size:14px;font-weight:850;
+}
+#operationDirectionPanel .operation-task-finish-stage:hover:not(:disabled){
+  background:#3b4c5d;
+}
+.operation-stage-finish-dialog{width:min(calc(100% - 26px),460px)}
+.operation-stage-finish-dialog .inventory-dialog-inner{padding:22px 20px}
+.operation-stage-finish-dialog h2{font-size:19px;margin:0 0 10px}
+.operation-stage-finish-dialog p{
+  margin:0 0 10px;font-size:13px;line-height:1.5;
+}
+.operation-stage-finish-dialog .operation-stage-finish-summary{
+  color:#a9b9c9;font-size:12px;margin:0 0 15px;
+}
+.operation-stage-finish-actions{display:flex;flex-direction:column;gap:10px}
+.operation-stage-finish-actions .btn{
+  min-height:73px;padding:12px 13px;align-items:flex-start;
+  flex-direction:column;gap:5px;white-space:normal;text-align:left;
+  line-height:1.3;font-size:13px;
+}
+.operation-stage-finish-actions .btn strong{font-size:14px}
+.operation-stage-finish-actions .btn small{
+  font-size:11px;line-height:1.35;font-weight:500;
+}
+.operation-stage-finish-cancel{
+  display:block;margin:13px auto 0;text-align:center;
+  padding:7px 8px;font-size:12px;
+}
