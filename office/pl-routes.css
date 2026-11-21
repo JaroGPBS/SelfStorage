@@ -2,11 +2,20 @@
 .office-pl-routes-view{padding:20px 22px;min-height:230px}
 .office-pl-routes-view #officePlRoutesMessage{font-size:13px;color:#657585;max-width:none}
 .pl-routes-list-panel{width:100%}
-.pl-routes-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.pl-routes-toolbar{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:14px 22px;margin-bottom:18px}
 .pl-routes-toolbar>div{display:flex;flex-direction:column;gap:5px;min-width:0}
 .pl-routes-toolbar strong{font-size:17px;font-weight:800;color:#25313d}
 .pl-routes-toolbar small{font-size:12px;color:#728092}
 .pl-routes-toolbar button{white-space:nowrap}
+.pl-routes-toolbar #plRouteAdd{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:47px;padding:11px 23px;border-radius:9px;
+  background:#c92832;border:1px solid #b51e2b;color:#fff;
+  font-size:14px;font-weight:800;line-height:1.2;
+  box-shadow:0 5px 13px rgba(180,27,43,.17);
+}
+.pl-routes-toolbar #plRouteAdd:hover{background:#ae1e29;border-color:#9d1723;color:#fff}
+.pl-routes-toolbar #plRouteAdd:focus-visible{outline:3px solid rgba(201,40,50,.32);outline-offset:3px}
 .pl-routes-status{font-size:12px!important;color:#627386!important;max-width:none!important;margin-bottom:10px!important}
 .pl-routes-status:empty{display:none}
 .pl-routes-status.is-error{color:#b52135!important}
@@ -21,7 +30,7 @@
 .pl-route-detail-lines{width:100%;max-width:780px}
 .pl-route-detail-lines strong{display:block;margin-bottom:10px;font-size:12px}
 .pl-routes-empty{padding:32px 16px;text-align:center;border:1px dashed #dce3eb;border-radius:10px;color:#728092;font-size:13px}
-.pl-route-dialog{box-sizing:border-box;width:min(96vw,920px);max-width:920px;max-height:min(92dvh,950px);margin:auto;padding:0;border:1px solid #d9e1ea;border-radius:15px;background:#fff;color:#233043;box-shadow:0 32px 90px rgba(0,0,0,.35);overflow:hidden}
+.pl-route-dialog{box-sizing:border-box;width:min(96vw,840px);max-width:840px;max-height:min(92dvh,950px);margin:auto;padding:0;border:1px solid #d9e1ea;border-radius:15px;background:#fff;color:#233043;box-shadow:0 32px 90px rgba(0,0,0,.35);overflow:hidden}
 .pl-route-dialog::backdrop{background:rgba(6,13,22,.72)}
 .pl-route-form{display:flex;flex-direction:column;max-height:min(92dvh,950px);min-width:0}
 .pl-route-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex:0 0 auto;padding:21px 26px 15px;border-bottom:1px solid #e2e8ef}
@@ -37,7 +46,7 @@
 #plRoutePhoto{display:none}
 .pl-route-photo-preview{grid-column:1/-1;display:block;width:auto;max-width:100%;max-height:180px;object-fit:contain;border-radius:6px;background:#e6ebef}
 .pl-route-photo-preview[hidden]{display:none}
-.pl-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 20px;margin-bottom:26px}
+.pl-route-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr);gap:16px;margin-bottom:26px}
 .pl-route-form label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:800;color:#43566c;min-width:0}
 .pl-route-form label span{color:#be2635}
 .pl-route-form input:not([type=file]){width:100%;min-height:41px;padding:9px 11px;font-size:13px;font-weight:500;color:#24354b;background:#fff;border:1px solid #cbd7e1;border-radius:8px;outline:none}
