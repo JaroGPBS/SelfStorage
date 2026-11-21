@@ -8419,17 +8419,28 @@
   #sidebar .office-side-sync-meta strong{font-size:9px}
 }
 
-/* Footer layout: left-aligned greeting, role and wish; centered logout below. */
-#sidebar .office-welcome > #userRole{
-  display:block;
-  margin:4px 0 0;
-  text-align:left;
-  color:#aeb8c5;
-  font-size:11px;
+/* Office footer: greeting, personal role, wish; centered logout button. */
+#sidebar .office-welcome .welcome-line{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  justify-content:flex-start;
+  column-gap:5px;
+  row-gap:2px;
+  white-space:normal;
+}
+#sidebar .office-welcome .welcome-line #userRole{
+  display:inline;
+  flex:0 0 auto;
+  margin:0;
+  font-size:10px;
   line-height:1.3;
+  font-weight:500;
+  color:#aeb8c5;
+  text-align:left;
 }
 #sidebar .office-welcome .welcome-wish{
-  margin-top:4px;
+  margin-top:5px;
   text-align:left;
   font-size:14px;
 }
@@ -8442,4 +8453,7 @@
   width:132px;
   max-width:100%;
   margin-inline:auto;
+}
+@media(max-width:950px){
+  #sidebar .office-welcome .welcome-line{column-gap:4px}
 }
