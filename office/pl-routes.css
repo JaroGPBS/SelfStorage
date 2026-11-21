@@ -187,7 +187,6 @@
 .pl-routes-table tr.pl-route-needs-review > td{
   background:#fae9e7!important;
   color:#59373a;
-  font-weight:750;
   border-bottom:1px solid #e9cbc8;
 }
 .pl-routes-table tr.pl-route-needs-review > td:first-child{
@@ -196,6 +195,7 @@
 .pl-routes-table tr.pl-route-needs-review:hover > td{background:#f6dfdc!important}
 .pl-routes-table .pl-route-status-badge.is-discrepancy{background:#fde8e7;color:#ac2937}
 .pl-routes-table .pl-route-status-badge.is-confirmed{background:#e8f1e8;color:#376746}
+.pl-routes-table .pl-route-status-badge.is-explained{background:#eceff3;color:#54677a}
 .pl-routes-table .pl-route-status-badge.is-completed{background:#e9edf2;color:#44586f}
 .pl-route-history-group{margin:0 0 10px;border:1px solid #dce4ec;border-radius:9px;overflow:hidden}
 .pl-route-history-toggle{
