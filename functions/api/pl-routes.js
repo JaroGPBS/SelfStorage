@@ -574,7 +574,7 @@ export async function onRequestPost({request,env}){
         'SELECT id,status,edit_revision AS revision FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
-      if(!['REVIEW_REQUIRED','DISCREPANCY','CONFIRMED'].includes(route.status))
+      if(!['REVIEW_REQUIRED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION'].includes(route.status))
         return send('Trasa nie wymaga już wyjaśnienia lub została zakończona.',409);
       if(Number(route.revision)!==revision)
         return send('Dane trasy zmieniły się. Otwórz wyjaśnienie ponownie.',409);
@@ -600,7 +600,7 @@ export async function onRequestPost({request,env}){
       const statements=[
         env.DB.prepare(
           "UPDATE pl_routes SET status=?,edit_revision=edit_revision+1 "+
-          "WHERE id=? AND edit_revision=? AND status IN ('REVIEW_REQUIRED','DISCREPANCY','CONFIRMED') "+
+          "WHERE id=? AND edit_revision=? AND status IN ('REVIEW_REQUIRED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION') "+
           'AND EXISTS (SELECT 1 FROM pl_route_lines l WHERE l.route_id=pl_routes.id '+
           'AND l.confirmed_quantity IS NOT NULL AND l.confirmed_quantity<>l.quantity)'
         ).bind(newStatus,id,revision)
