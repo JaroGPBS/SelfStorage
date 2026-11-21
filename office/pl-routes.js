@@ -16,6 +16,26 @@
   let loadSeq=0;
   let demo47Routes=[];
   const partSuggestionsEndpoint='/api/pl-route-parts';
+  // Shared Office cache: the same five-minute rule as warehouse views.
+  async function cachedRouteRead(key,loader){
+    const cache=window.GPBSOfficeCache;
+    if(!cache?.read)return loader();
+    return cache.read('pl-routes:'+key,async()=>{
+      const response=await loader();
+      cache.markRead?.();
+      return response;
+    });
+  }
+  // A Monday rollover changes route eligibility without mutating the records.
+  function routeCacheWeek(){
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+      timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'
+    }).formatToParts(new Date()).filter(x=>
+      ['year','month','day'].includes(x.type)).map(x=>[x.type,x.value]));
+    const monday=new Date(Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day)));
+    monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7);
+    return monday.toISOString().slice(0,10);
+  }
   const routeContext=()=>typeof window.getPlRoutesContext==='function'
     ?window.getPlRoutesContext():null;
   function errorMessage(message=''){
@@ -279,7 +299,7 @@
         }
       ));
       if(!result.route?.canEdit){
-        await window.renderPlRoutesList();
+        await window.renderPlRoutesList({force:true});
         status.classList.add('is-error');
         status.textContent='Edycja jest zablokowana: trasa została potwierdzona przez ekipę.';
         return;
@@ -480,6 +500,7 @@
           body:JSON.stringify(payload)
         }));
         savedRouteId=result.id;
+        window.GPBSOfficeCache?.invalidate();
         lockSavedRouteFields(true);
       }
       const file=byId('plRoutePhoto').files?.[0];
@@ -489,7 +510,7 @@
       editingRouteId=null;
       editingRouteRevision=0;
       byId('plRouteDialog').close();
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       byId('plRoutesListStatus').textContent=(wasEdit?'Zapisano zmiany trasy.':'Trasa zapisana w D1.')+
         (file?' Dodano zdjęcie dokumentu do R2.':'');
     }catch(error){
@@ -633,7 +654,8 @@
     }).join('');
     return head+rows+'</tbody></table>';
   }
-  window.renderPlRoutesList=async function(){
+  window.renderPlRoutesList=async function({force=false}={}){
+    if(force)window.GPBSOfficeCache?.invalidate();
     const panel=byId('plRoutesListPanel');
     if(!panel)return;
     const context=routeContext();
@@ -668,9 +690,11 @@
     status.textContent=balance?'Pobieranie części z tras…':'Pobieranie tras…';
     try{
       if(balance){
-        const result=await jsonResponse(await fetch('/api/pl-route-balance',{
-          credentials:'same-origin',cache:'no-store'
-        }));
+        const result=await cachedRouteRead('balance:'+routeCacheWeek(),async()=>
+          jsonResponse(await fetch('/api/pl-route-balance',{
+            credentials:'same-origin',cache:'no-store'
+          }))
+        );
         if(seq!==loadSeq)return;
         routeAuditCache.clear(); crewCommentsCache.clear();
         const period=result.period||{};
@@ -687,11 +711,14 @@
           ' Stan magazynu Tychy: do powiązania z ewidencją.';
         return;
       }
-      const result=await jsonResponse(await fetch(
-        endpoint+'?scope='+(history?'history':'active'),{
-          credentials:'same-origin',cache:'no-store'
-        }
-      ));
+      const result=await cachedRouteRead(
+        (history?'history':'active')+':'+routeCacheWeek(),async()=>
+        jsonResponse(await fetch(
+          endpoint+'?scope='+(history?'history':'active'),{
+            credentials:'same-origin',cache:'no-store'
+          }
+        ))
+      );
       if(seq!==loadSeq)return;
       byId('plRoutesClearPresentation').classList.toggle('hidden',
         history||role!=='ADMIN'||result.presentationMode!==true);
@@ -1049,7 +1076,7 @@
         })
       }));
       byId('plRouteExplainDialog').close();
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       const status=byId('plRoutesListStatus');
       status.classList.remove('is-error');
       status.textContent='Weryfikacja i komentarz zapisane w historii trasy.';
@@ -1299,7 +1326,7 @@
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'resetPlDemoData',confirm:confirmation,pin})
       }));
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       status.classList.remove('is-error');
       status.textContent='Reset zakończony: usunięto '+Number(result.deletedRoutes||0)+
         ' tras i '+Number(result.deletedParts||0)+
@@ -1327,7 +1354,7 @@
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'seedDemoWeek48',confirm:'DODAJ DEMO 48'})
       }));
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       status.classList.remove('is-error');
       status.textContent='Wstawiono '+Number(result.added||0)+
         ' tras demo (tydzień 48). '+
@@ -1372,7 +1399,7 @@
         })
       }));
       byId('plRouteDeleteDemo03Dialog').close();
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       const status=byId('plRoutesListStatus');
       status.classList.remove('is-error');
       status.textContent=Number(result.deleted)>0
@@ -1409,7 +1436,7 @@
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'deleteDemoWeek48',confirm:'USUŃ DEMO 48',pin})
       }));
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       status.classList.remove('is-error');
       status.textContent='Usunięto '+Number(result.deleted||0)+
         ' tras demo z tygodnia 48. Pozostałe trasy zachowano.';
@@ -1460,7 +1487,7 @@
           pin,completeIds:[one.id,two.id],confirmedId:three.id
         })
       }));
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       status.classList.remove('is-error');
       status.textContent=Number(result.updated)>0
         ?'Tydzień 47 przygotowany: 2 trasy zakończone, 1 potwierdzona. '+
@@ -1498,7 +1525,7 @@
         body:JSON.stringify({action:'completeDemoWeek45',
           confirm:'ROZLICZ DEMO 45',pin})
       }));
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       status.classList.remove('is-error');
       status.textContent=Number(result.updated)>0
         ?'Rozliczono '+Number(result.updated)+' trasy pokazowe tygodnia 45. '+
@@ -1825,7 +1852,7 @@
           action:'approveReturns',id,baseRevision:detail.route.editRevision
         })
       }));
-      await window.renderPlRoutesList();
+      await window.renderPlRoutesList({force:true});
       const status=byId('plRoutesListStatus');
       status.classList.remove('is-error');
       status.textContent=Number(response.approved)>0
