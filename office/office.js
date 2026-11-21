@@ -4114,7 +4114,7 @@ document.addEventListener('click',e=>{
     const market=toggle.dataset.marketToggle;
     if(market==='PL'||market==='FR'){
       if(market==='PL'){
-        showPolandHome(!state.warehouseMenus.PL);
+        showPolandHome(state.view==='plMarketHome'?!state.warehouseMenus.PL:true);
         return;
       }
       // France: every click returns JJ to the welcome page and toggles
