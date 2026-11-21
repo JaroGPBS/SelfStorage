@@ -124,12 +124,16 @@
       panel.style.removeProperty('bottom');
       panel.style.removeProperty('height');
       panel.style.removeProperty('max-height');
+      panel.style.removeProperty('--operation-search-max-height');
       return;
     }
     panel.style.top=Math.round(view.offsetTop)+'px';
     panel.style.bottom='auto';
     panel.style.height=Math.floor(view.height)+'px';
     panel.style.maxHeight=Math.floor(view.height)+'px';
+    // Fit the suggestion list between the fixed heading and the search field.
+    panel.style.setProperty('--operation-search-max-height',
+      Math.max(90,Math.min(320,Math.floor(view.height-215)))+'px');
   }
 
   function closeQuantity(){
