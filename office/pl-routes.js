@@ -588,10 +588,16 @@
     const rows=parts.map(part=>{
       const columns=[part.sap||'—',part.name||'—',
         balanceAmount(part.issued),balanceAmount(part.used),
-        balanceAmount(part.returned),balanceAmount(part.warehouse),
-        balanceAmount(part.inRoute)];
+        balanceAmount(part.returned),balanceAmount(part.warehouse)];
+      const current='<td class="pl-route-balance-current">'+
+        '<strong>'+balanceAmount(part.inRoute)+'</strong>'+
+        (Number(part.currentWeekIssued)>0
+          ?'<small>Pobrano w tygodniu: '+
+            balanceAmount(part.currentWeekIssued)+'</small>'
+          :'')+'</td>';
       return '<tr data-pl-route-balance-part="'+html(part.catalogPartId||'')+'">'+
-        columns.map(value=>'<td>'+html(value)+'</td>').join('')+'</tr>';
+        columns.map(value=>'<td>'+html(value)+'</td>').join('')+
+        current+'</tr>';
     }).join('');
     return head+rows+'</tbody></table>';
   }
