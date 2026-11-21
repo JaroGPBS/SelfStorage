@@ -1717,40 +1717,44 @@ body.operation-task-open {overflow:hidden}
   overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
   scrollbar-width:thin;scrollbar-color:#667687 transparent;
 }
-#crewRouteScreen .crew-report-column-head,
-#crewRouteScreen .crew-report-line{
-  display:grid;grid-template-columns:minmax(0,1fr) 76px 76px;
-  align-items:center;column-gap:8px;min-width:0;
-}
-#crewRouteScreen .crew-report-column-head{
-  position:sticky;top:0;z-index:2;min-height:35px;
-  background:#202833;border-bottom:1px solid #536170;
-  padding:8px 3px;color:#d7e1eb;font-size:11px;
-  font-weight:850;line-height:1.25;letter-spacing:0;
-  overflow-wrap:anywhere;
-}
-#crewRouteScreen .crew-report-column-head span:not(:first-child){text-align:center}
 #crewRouteScreen .crew-report-lines{display:block;margin:0}
 #crewRouteScreen .crew-report-line{
-  padding:12px 3px;row-gap:8px;border-bottom:1px solid #3b4653;
+  display:flex;flex-direction:column;min-width:0;gap:11px;
+  padding:14px 3px 16px;border-bottom:1px solid #3b4653;
 }
 #crewRouteScreen .crew-report-part{
-  min-width:0;display:flex;flex-direction:column;align-items:flex-start;
-  gap:4px;overflow-wrap:anywhere;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  align-items:baseline;column-gap:10px;row-gap:4px;
+  width:100%;min-width:0;
 }
 #crewRouteScreen .crew-report-part strong{
+  min-width:0;overflow-wrap:anywhere;
   color:#f3f5f8;font-size:16px;font-weight:800;line-height:1.3;
 }
-#crewRouteScreen .crew-report-part small{
-  font-size:12.5px;color:#c3cfdb;line-height:1.35;
+#crewRouteScreen .crew-report-part .crew-report-received{
+  white-space:nowrap;text-align:right;
+  font-size:13px;font-weight:700;color:#c3cfdb;line-height:1.35;
 }
 #crewRouteScreen .crew-report-part .crew-report-part-code{
-  color:#9aaab9;font-size:11px;
+  grid-column:1/-1;color:#9aaab9;font-size:11px;line-height:1.3;
+}
+#crewRouteScreen .crew-report-quantities{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;gap:14px;min-width:0;
+}
+#crewRouteScreen .crew-report-quantity{
+  display:flex;flex-direction:column;align-items:center;
+  gap:7px;min-width:0;
+}
+#crewRouteScreen .crew-report-quantity-label{
+  color:#d6e1ed;font-size:13px;font-weight:800;
+  line-height:1.3;text-align:center;
 }
 #crewRouteScreen .crew-report-used,
 #crewRouteScreen .crew-report-returned{
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;
-  width:100%;min-width:0;height:42px;min-height:42px;margin:0;padding:6px 3px;
+  width:100%;max-width:132px;min-width:0;height:42px;min-height:42px;
+  margin:0;padding:6px 6px;
   border-radius:9px;text-align:center;font-size:18px;font-weight:800;
   line-height:1.2;font-variant-numeric:tabular-nums;
 }
@@ -1771,7 +1775,7 @@ body.operation-task-open {overflow:hidden}
 }
 #crewRouteScreen .crew-report-returned:invalid{border-color:#e66a73}
 #crewRouteScreen .crew-report-place{
-  grid-column:1/-1;display:flex;flex-direction:column;gap:5px;
+  display:flex;flex-direction:column;gap:5px;
   margin:1px 0 2px;color:#d4dfe9;font-size:12.5px;font-weight:750;
 }
 #crewRouteScreen .crew-report-place select{
@@ -1831,14 +1835,13 @@ body.gpbs-market-pl:has(#crewRouteScreen.is-report:not([hidden]))
   display:flex;flex-direction:column;flex:1 1 auto;min-height:0;
 }
 @media(max-width:360px){
-  #crewRouteScreen .crew-report-column-head,
-  #crewRouteScreen .crew-report-line{
-    grid-template-columns:minmax(0,1fr) 70px 70px;
-    column-gap:6px;
-  }
-  #crewRouteScreen .crew-report-column-head{font-size:10px}
+  #crewRouteScreen .crew-report-part{column-gap:7px}
   #crewRouteScreen .crew-report-part strong{font-size:15px}
-  #crewRouteScreen .crew-report-part small{font-size:12px}
+  #crewRouteScreen .crew-report-part .crew-report-received{font-size:12px}
+  #crewRouteScreen .crew-report-quantities{gap:10px}
+  #crewRouteScreen .crew-report-quantity-label{font-size:12.5px}
   #crewRouteScreen .crew-report-used,
-  #crewRouteScreen .crew-report-returned{height:42px;min-height:42px;font-size:18px}
+  #crewRouteScreen .crew-report-returned{
+    height:42px;min-height:42px;max-width:118px;font-size:18px
+  }
 }
