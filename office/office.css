@@ -8199,3 +8199,82 @@
     padding:18px 14px 30px;
   }
 }
+
+
+/* One manual Office synchronization action, anchored above the sidebar greeting. */
+#sidebar .office-side-sync{
+  flex:0 0 auto;
+  margin-top:auto;
+  padding:12px 5px 8px;
+}
+#sidebar .office-side-footer{margin-top:0}
+#sidebar .office-side-sync-button{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  width:100%;
+  min-height:100px;
+  padding:11px 10px 12px;
+  border:1px solid rgba(218,230,242,.24);
+  border-radius:10px;
+  background:rgba(255,255,255,.075);
+  color:#f6f8fb;
+  cursor:pointer;
+  text-align:center;
+  transition:background .18s,border-color .18s;
+}
+#sidebar .office-side-sync-button:hover:not(:disabled){
+  background:rgba(255,255,255,.14);
+  border-color:rgba(218,230,242,.43);
+}
+#sidebar .office-side-sync-button:focus-visible{
+  outline:2px solid #ef7781;
+  outline-offset:2px;
+}
+#sidebar .office-side-sync-heading{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  font-weight:750;
+  letter-spacing:.015em;
+  white-space:nowrap;
+  color:#e3eaf2;
+}
+#sidebar .office-side-sync-heading > span{
+  font-size:18px;
+  line-height:1;
+  color:#f3a1a9;
+}
+#sidebar .office-side-sync-button strong{
+  display:block;
+  font-size:22px;
+  line-height:1.2;
+  font-weight:850;
+  letter-spacing:.02em;
+  color:#fff;
+  font-variant-numeric:tabular-nums;
+}
+#sidebar .office-side-sync-button small{
+  display:block;
+  font-size:11px;
+  font-weight:550;
+  line-height:1.3;
+  color:#b7c4d0;
+  font-variant-numeric:tabular-nums;
+}
+#sidebar .office-side-sync-button:disabled{
+  opacity:.65;
+  cursor:wait;
+}
+#sidebar .office-side-sync-button[aria-busy="true"] .office-side-sync-heading > span{
+  animation:office-sync-spin 1.2s linear infinite;
+}
+@keyframes office-sync-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+  #sidebar .office-side-sync-button[aria-busy="true"] .office-side-sync-heading > span{
+    animation:none;
+  }
+}
