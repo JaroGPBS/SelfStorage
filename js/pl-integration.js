@@ -74,7 +74,7 @@ async function buildPolishWorkspace() {
   if (!workspace) throw new Error('Brak kontenera polskiej części aplikacji.');
 
   // Load the internal PL workspace template into the single main application.
-  const response = await fetch('/pl/workspace.txt?v=10', {
+  const response = await fetch('/pl/workspace.txt?v=11', {
     credentials: 'same-origin',
     cache: 'no-store'
   });
@@ -94,7 +94,7 @@ async function buildPolishWorkspace() {
   const link = document.createElement('link');
   link.id = 'gpbsPolandStyles';
   link.rel = 'stylesheet';
-  link.href = '/pl/pl.css?v=52';
+  link.href = '/pl/pl.css?v=53';
   document.head.append(link);
 
   // Existing Polish modules bind their handlers to the newly inserted DOM.
