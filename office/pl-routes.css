@@ -344,9 +344,10 @@
   .pl-route-grid{grid-template-columns:1fr;gap:12px;margin-bottom:20px}
   .pl-route-calendar{width:100%;justify-self:stretch}
   .pl-route-part-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px}
-  .pl-route-part-row .pl-route-part-name{grid-column:1/3}
-  .pl-route-part-row .pl-route-part-code{grid-column:1}
-  .pl-route-part-row .pl-route-part-quantity{grid-column:2}
+  .pl-route-part-row .pl-route-part-name-wrap{grid-column:1/3;grid-row:1}
+  .pl-route-part-row .pl-route-part-name{width:100%}
+  .pl-route-part-row .pl-route-part-code{grid-column:1;grid-row:2}
+  .pl-route-part-row .pl-route-part-quantity{grid-column:2;grid-row:2}
   .pl-route-part-row .pl-route-remove-part{grid-column:3;grid-row:2}
   .pl-route-parts-head{align-items:flex-start}
   .pl-route-parts-head button{font-size:11px}
