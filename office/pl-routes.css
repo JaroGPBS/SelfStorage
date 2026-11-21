@@ -51,12 +51,12 @@
 /* A clear but restrained divider whenever the displayed ISO week changes. */
 .pl-routes-table table.pl-route-list-table > tbody > tr.pl-route-week-separator > td{
   border-top:3px solid #8396aa;
-  padding-top:16px;
+  padding-top:11px;
 }
  .pl-routes-table th{padding:11px 12px;text-align:center;background:#f2f5f8;color:#627488;font-weight:800;white-space:nowrap;border-bottom:1px solid #dce4ed}
- .pl-routes-table td{padding:13px 12px;text-align:center;border-bottom:1px solid #e5ebf0;color:#2a3a4c;vertical-align:middle}
-.pl-routes-table .pl-route-status-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:750;padding:5px 9px;border-radius:16px;background:#f0e9d7;color:#7f601a;white-space:nowrap}
-.pl-routes-table .pl-route-details-button{border:1px solid #cfd9e3;border-radius:7px;background:#fff;padding:6px 10px;font-size:12px;cursor:pointer;color:#344a61}
+ .pl-routes-table td{padding:8px 12px;text-align:center;border-bottom:1px solid #e5ebf0;color:#2a3a4c;vertical-align:middle}
+.pl-routes-table .pl-route-status-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:750;padding:3px 9px;border-radius:16px;background:#f0e9d7;color:#7f601a;white-space:nowrap}
+.pl-routes-table .pl-route-details-button{border:1px solid #cfd9e3;border-radius:7px;background:#fff;padding:4px 10px;font-size:12px;cursor:pointer;color:#344a61}
 .pl-routes-table .pl-route-details-button:hover{background:#f0f4f8}
 .pl-routes-table .pl-route-expanded > td{padding:10px 13px;background:#f8fafc;text-align:left}
 .pl-route-detail-layout{
