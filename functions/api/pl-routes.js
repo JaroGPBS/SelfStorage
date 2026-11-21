@@ -296,8 +296,8 @@ export async function onRequestGet({request,env}){
       route.enteredBy=shortCreatorName(route.creatorFullName);
       delete route.creatorFullName;
       const columns=await routeLineColumns(env.DB);
-      const canonicalPartNames=await routePartsLineColumnExists(env.DB)&&
-        await routePartsTableExists(env.DB);
+      const hasCataloguePartColumn=await routePartsLineColumnExists(env.DB);
+      const canonicalPartNames=hasCataloguePartColumn&&await routePartsTableExists(env.DB);
       const optional=[
         columns.has('confirmed_quantity')
           ?'confirmed_quantity AS confirmedQuantity':'NULL AS confirmedQuantity',
@@ -307,7 +307,7 @@ export async function onRequestGet({request,env}){
           ?'return_location AS returnLocation':'NULL AS returnLocation',
         columns.has('verified_quantity')
           ?'verified_quantity AS verifiedQuantity':'NULL AS verifiedQuantity',
-        await routePartsLineColumnExists(env.DB)
+        hasCataloguePartColumn
           ?'catalog_part_id AS catalogPartId':'NULL AS catalogPartId'
       ].join(',');
       const lines=(await env.DB.prepare(
