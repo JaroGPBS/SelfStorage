@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=138">
-  <link rel="stylesheet" href="./pl-routes.css?v=48">
+  <link rel="stylesheet" href="./pl-routes.css?v=49">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -121,11 +121,11 @@
     }
   </style>
   <script defer src="./qrcode.min.js?v=1"></script>
-  <script defer src="./office-labels.js?v=5"></script>
+  <script defer src="./office-labels.js?v=6"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=173"></script>
+  <script defer src="./office.js?v=174"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
-  <script defer src="./pl-routes.js?v=53"></script>
+  <script defer src="./pl-routes.js?v=54"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -179,8 +179,8 @@
           title="Pobierz aktualne dane bieżącej zakładki"
           aria-label="Synchronizuj aktualnie otwartą zakładkę">
           <span class="office-side-sync-heading"><span aria-hidden="true">↻</span> Synchronizacja</span>
-          <strong id="syncTime">--:--</strong>
-          <small id="syncDate">Brak aktualizacji</small>
+          <strong id="syncTime">Łączenie…</strong>
+          <small id="syncDate">Pobieranie danych</small>
         </button>
       </div>
       <div class="side-footer office-side-footer">
