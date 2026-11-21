@@ -839,31 +839,51 @@
   .app.view-pl-routes .office-pl-routes-view{padding:8px 6px}
 }
 
-/* A small inline note before Dodaj trasę, only in Aktualne trasy.
-   The sole page title remains in the upper header. */
-.app.view-pl-routes .pl-routes-toolbar > .pl-routes-heading{
-  flex:0 1 auto;
-  min-width:0;
-  max-width:260px;
-  min-height:47px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
+/* Actual routes: move the title out of the top breadcrumb and align
+   title/note with the top/bottom edges of the Add route button. */
+.app.view-pl-routes-list .breadcrumbs > span:first-of-type,
+.app.view-pl-routes-list .breadcrumbs #crumb{
+  display:none;
+}
+.app.view-pl-routes-list .pl-routes-toolbar{
   align-items:flex-start;
+}
+.app.view-pl-routes-list .pl-routes-toolbar > .pl-routes-heading{
+  display:flex;
+  flex:0 0 205px;
+  width:205px;
+  max-width:205px;
+  height:47px;
+  min-height:47px;
+  min-width:0;
+  padding:0;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:space-between;
   gap:0;
 }
-.app.view-pl-routes .pl-routes-heading #plRoutesSectionTitle{
+.app.view-pl-routes-list .pl-routes-heading #plRoutesSectionTitle{
   display:block;
+  margin:0;
   color:#25313d;
   font-size:19px;
   font-weight:850;
   line-height:1.2;
   white-space:nowrap;
 }
-.app.view-pl-routes .pl-routes-toolbar .pl-routes-heading small{
+.app.view-pl-routes-list .pl-routes-toolbar .pl-routes-heading small{
   display:block;
+  margin:0;
   color:#778597;
   font-size:11px;
   line-height:1.3;
   font-weight:500;
+  white-space:nowrap;
+}
+@media(max-width:690px){
+  .app.view-pl-routes-list .pl-routes-toolbar > .pl-routes-heading{
+    flex:1 1 100%;
+    width:100%;
+    max-width:none;
+  }
 }
