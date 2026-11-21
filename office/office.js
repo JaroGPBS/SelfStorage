@@ -1123,8 +1123,9 @@ function renderMenu(){
         ?state.view==='preview'&&state.preview?.type==='operation'&&
           state.preview?.key===el.dataset.view
         :false;
+    // Generic view matching must not mark another warehouse's submenu active.
     const isView=!el.dataset.marketView&&!el.dataset.frOperation&&
-      state.view!=='preview'&&el.dataset.view===state.view;
+      !el.dataset.plWarehouse&&state.view!=='preview'&&el.dataset.view===state.view;
     const isFrStock=Boolean(el.dataset.frStock)&&state.view==='stocks'&&(
       state.preview?.type==='warehouse'
         ?state.preview.key===el.dataset.frStock
