@@ -565,74 +565,107 @@ export async function onRequestPost({request,env}){
   }
   if(body?.action==='explainDiscrepancy'){
     const id=String(body.id||'');
-    const comment=String(body.comment||'').trim();
     const revision=Number(body.baseRevision);
+    const summary=String(body.comment||'').trim();
     const corrections=body.corrections;
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id)||
        !Number.isSafeInteger(revision)||revision<0||
-       comment.length<15||comment.length>2000||!Array.isArray(corrections)||corrections.length>150)
-      return send('Podaj prawidłową trasę, korekty i komentarz (minimum 15 znaków).',400);
-    if(corrections.some(x=>!x||!Number.isSafeInteger(x.position)||
-       x.position<1||!Number.isSafeInteger(x.quantity)||x.quantity<1||
-       x.quantity>999999)||new Set(corrections.map(x=>x.position)).size!==corrections.length)
-      return send('Nieprawidłowe ilości w korekcie.',400);
+       summary.length>2000||!Array.isArray(corrections)||
+       corrections.length<1||corrections.length>150)
+      return send('Podaj prawidłowe dane weryfikacji.',400);
+    const validCorrections=corrections.every(item=>
+      item&&Number.isSafeInteger(item.position)&&item.position>=1&&
+      ['MATCH_CREW','LEAVE_OPEN'].includes(item.decision)&&
+      typeof item.note==='string'&&item.note.trim().length>=12&&
+      item.note.trim().length<=1000);
+    if(!validCorrections||
+       new Set(corrections.map(item=>item.position)).size!==corrections.length)
+      return send('Każda niezgodna część wymaga decyzji i własnego komentarza (min. 12 znaków).',400);
     try{
       if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines'))
         return send('Nie znaleziono trasy.',404);
+      if(!(await routeLineColumns(env.DB)).has('verified_quantity'))
+        await ensureSchema(env.DB);
       await ensureRouteAuditSchema(env.DB);
       const route=await env.DB.prepare(
         'SELECT id,status,edit_revision AS revision FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
-      if(!['REVIEW_REQUIRED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION'].includes(route.status))
-        return send('Trasa nie wymaga już wyjaśnienia lub została zakończona.',409);
+      if(!['REVIEW_REQUIRED','REVIEW_EXPLAINED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION'].includes(route.status))
+        return send('Trasa jest zakończona lub nie pozwala na korekty.',409);
       if(Number(route.revision)!==revision)
-        return send('Dane trasy zmieniły się. Otwórz wyjaśnienie ponownie.',409);
+        return send('Dane trasy zmieniły się. Otwórz weryfikację ponownie.',409);
       const lines=(await env.DB.prepare(
-        'SELECT position,part_name AS partName,quantity,confirmed_quantity AS confirmedQuantity '+
+        'SELECT position,part_name AS partName,quantity,'+
+        'confirmed_quantity AS confirmedQuantity,verified_quantity AS verifiedQuantity '+
         'FROM pl_route_lines WHERE route_id=? ORDER BY position'
       ).bind(id).all()).results||[];
       const wrong=lines.filter(line=>line.confirmedQuantity!==null&&
-        Number(line.quantity)!==Number(line.confirmedQuantity));
+        line.confirmedQuantity!==undefined&&
+        Number(line.confirmedQuantity)!==
+          Number(line.verifiedQuantity??line.quantity));
       if(!wrong.length)return send('W tej trasie nie ma już niezgodności.',409);
-      const wrongPositions=new Set(wrong.map(line=>Number(line.position)));
-      if(corrections.some(x=>!wrongPositions.has(x.position)))
-        return send('Nie można korygować części bez niezgodności.',400);
-      const correctionsByPosition=new Map(corrections.map(x=>[x.position,x.quantity]));
+      const byPosition=new Map(corrections.map(item=>[item.position,item]));
+      if(byPosition.size!==wrong.length||
+         wrong.some(line=>!byPosition.has(Number(line.position))))
+        return send('Wyjaśnij każdą aktualną niezgodność. Odśwież formularz.',409);
       const operationToken=crypto.randomUUID();
-      const corrected=wrong.map(line=>({
-        position:Number(line.position),partName:line.partName,
-        before:Number(line.quantity),confirmed:Number(line.confirmedQuantity),
-        after:correctionsByPosition.get(Number(line.position))??Number(line.quantity)
-      }));
-      const discrepanciesRemain=corrected.some(line=>line.after!==line.confirmed);
-      const unconfirmed=lines.some(line=>line.confirmedQuantity===null);
-      const newStatus=!discrepanciesRemain&&!unconfirmed?'CONFIRMED':'REVIEW_EXPLAINED';
+      const explanation=wrong.map(line=>{
+        const decision=byPosition.get(Number(line.position));
+        const issued=Number(line.quantity);
+        const confirmed=Number(line.confirmedQuantity);
+        const effective=Number(line.verifiedQuantity??line.quantity);
+        return {
+          position:Number(line.position),partName:line.partName,
+          before:issued,confirmed,
+          verifiedBefore:line.verifiedQuantity===null?null:Number(line.verifiedQuantity),
+          after:decision.decision==='MATCH_CREW'?confirmed:null,
+          decision:decision.decision,note:decision.note.trim(),
+          unresolved:decision.decision==='LEAVE_OPEN',
+          // Preserve the current issued record when the office has not
+          // established agreement with the crew. Do not invent a new count.
+          effectiveBefore:effective
+        };
+      });
+      const unresolved=explanation.some(item=>item.unresolved);
+      const unconfirmed=lines.some(line=>line.confirmedQuantity===null||
+        line.confirmedQuantity===undefined);
+      const newStatus=unresolved?'REVIEW_REQUIRED':
+        unconfirmed?'AWAITING_CONFIRMATION':'CONFIRMED';
       const statements=[
         env.DB.prepare(
-          "UPDATE pl_routes SET status=?,edit_revision=edit_revision+1,edit_token=? "+
-          "WHERE id=? AND edit_revision=? AND status IN ('REVIEW_REQUIRED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION') "+
+          'UPDATE pl_routes SET status=?,edit_revision=edit_revision+1,edit_token=? '+
+          "WHERE id=? AND edit_revision=? AND status IN ("+
+          "'REVIEW_REQUIRED','REVIEW_EXPLAINED','DISCREPANCY','CONFIRMED','AWAITING_CONFIRMATION') "+
           'AND EXISTS (SELECT 1 FROM pl_route_lines l WHERE l.route_id=pl_routes.id '+
-          'AND l.confirmed_quantity IS NOT NULL AND l.confirmed_quantity<>l.quantity)'
+          'AND l.confirmed_quantity IS NOT NULL AND '+
+          'l.confirmed_quantity<>COALESCE(l.verified_quantity,l.quantity))'
         ).bind(newStatus,operationToken,id,revision)
       ];
-      for(const line of corrected){
-        if(line.after===line.before)continue;
+      for(const item of explanation){
+        if(item.decision!=='MATCH_CREW')continue;
         statements.push(env.DB.prepare(
-          'UPDATE pl_route_lines SET quantity=? WHERE route_id=? AND position=? '+
-          'AND quantity=? AND confirmed_quantity=? '+
-          'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? AND r.edit_revision=? AND r.edit_token=?)'
-        ).bind(line.after,id,line.position,line.before,line.confirmed,id,revision+1,operationToken));
+          'UPDATE pl_route_lines SET verified_quantity=? '+
+          'WHERE route_id=? AND position=? AND quantity=? AND confirmed_quantity=? '+
+          'AND COALESCE(verified_quantity,quantity)=? '+
+          'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? '+
+          'AND r.edit_revision=? AND r.edit_token=?)'
+        ).bind(item.confirmed,id,item.position,item.before,item.confirmed,
+          item.effectiveBefore,id,revision+1,operationToken));
       }
       statements.push(auditEntry(env.DB,{
         id:crypto.randomUUID(),routeId:id,action:'EXPLAIN',
         actorId:auth.user.id,revision:revision+1,token:operationToken,
-        details:{comment,positions:corrected,statusBefore:route.status,statusAfter:newStatus}
+        details:{
+          comment:summary,positions:explanation,
+          statusBefore:route.status,statusAfter:newStatus
+        }
       }));
       const result=await env.DB.batch(statements);
       if(Number(result[0]?.meta?.changes||0)!==1)
-        return send('Niezgodność została w międzyczasie zmieniona. Spróbuj ponownie.',409);
-      return workerJson({ok:true,id,status:newStatus});
+        return send('Trasa została w międzyczasie zmieniona. Otwórz weryfikację ponownie.',409);
+      return workerJson({ok:true,id,status:newStatus,
+        unresolvedCount:explanation.filter(item=>item.unresolved).length});
     }catch(error){
       console.error('PL route discrepancy explanation failed',error?.name||'Error');
       return send('Nie udało się zatwierdzić wyjaśnienia.',503);
