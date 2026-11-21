@@ -520,12 +520,12 @@
       return {label:'Do weryfikacji',className:'is-discrepancy'};
     const hadDiscrepancy=Number(route.hadDiscrepancy)>0;
     const hadVerification=Number(route.hadVerification)>0;
-    const note=hadVerification?' – wyjaśniona':hadDiscrepancy?' – była niezgodność':'';
+    const note=hadVerification?' – po weryfikacji':hadDiscrepancy?' – były różnice':'';
     if(route.status==='COMPLETED')
       return {label:'Trasa zakończona'+note,className:'is-completed'};
     if(route.status==='CONFIRMED'||route.status==='REVIEW_EXPLAINED'&&
        Number(route.unconfirmedCount)===0)
-      return {label:'Potwierdzona'+note,className:'is-confirmed'};
+      return {label:'Potwierdzony odbiór'+note,className:'is-confirmed'};
     return {label:'Oczekuje na potwierdzenie',className:'is-pending'};
   }
   function routeWeekYear(dateText){
@@ -810,11 +810,15 @@
       route.status!=='COMPLETED';
     const crewComments=(result.crewComments||[]).filter(item=>String(item.comment||'').trim());
     crewCommentsCache.set(route.id,crewComments);
-    const crewCommentsButton=crewComments.length
-      ?'<button type="button" class="pl-route-crew-comment-button" '+
-          'data-pl-route-crew-comment="'+html(route.id)+'">Komentarz ekipy</button>'
-      :'<button type="button" class="pl-route-crew-comment-button" disabled '+
-          'title="Brak komentarza ekipy">Komentarz ekipy</button>';
+    const crewNotes=crewComments.map(note=>
+      '<button type="button" class="pl-route-crew-comment-preview" '+
+        'data-pl-route-crew-comment="'+html(route.id)+'" '+
+        'title="Kliknij, aby wyświetlić cały komentarz ekipy">'+
+        '<strong>Komentarz ekipy · '+html(note.stage==='PICKUP'?'Odbiór':'Raport końcowy')+'</strong>'+
+        '<small>'+html(note.actor||'Ekipa')+' · '+html(auditTime(note.createdAt))+'</small>'+
+        '<span class="pl-route-crew-comment-text">'+html(note.comment)+'</span>'+
+      '</button>'
+    ).join('');
     const photoButtons=(result.documents||[]).length
       ?result.documents.map((doc,index)=>
         '<button type="button" class="pl-route-document-button" '+
@@ -869,16 +873,44 @@
     const exportButton='<button type="button" class="pl-route-export-button" '+
       'data-pl-route-export="'+html(route.id)+'" '+
       'data-pl-route-export-number="'+html(route.routeNumber)+'">Eksportuj</button>';
-    const audit=(result.audit||[]).map(event=>{
-      routeAuditCache.set(event.id,event);
-      return '<button type="button" class="pl-route-audit-event" '+
-          'data-pl-route-audit="'+html(event.id)+'" '+
-          'title="Otwórz szczegóły zapisanej operacji">'+
-          '<span>'+html(event.action==='EXPLAIN'?'Weryfikacja':'Edycja')+
-            ' · '+html(event.actor||'Użytkownik')+'</span>'+
-          '<small>'+html(auditTime(event.createdAt))+'</small>'+
-        '</button>';
+    // Operational log appears first, comments immediately below it.
+    // Only real database receipts/approvals are listed; no inferred confirmations.
+    const activityEvents=[
+      ...(result.audit||[]).map(event=>({...event,kind:'AUDIT'})),
+      ...(result.crewActivity||[]).map(event=>({...event,kind:'CREW'})),
+      ...(result.returnApprovals||[]).map(event=>({
+        kind:'RETURN',actor:event.approvedBy||'Użytkownik',
+        createdAt:event.approvedAt,position:event.position,
+        quantity:event.quantity
+      }))
+    ].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    const activity=activityEvents.map(event=>{
+      if(event.kind==='AUDIT'){
+        routeAuditCache.set(event.id,event);
+        return '<button type="button" class="pl-route-audit-event" '+
+            'data-pl-route-audit="'+html(event.id)+'" '+
+            'title="Otwórz szczegóły zapisanej operacji">'+
+            '<span>'+html(event.action==='EXPLAIN'?'Weryfikacja':'Edycja')+
+              ' · '+html(event.actor||'Użytkownik')+'</span>'+
+            '<small>'+html(auditTime(event.createdAt))+'</small>'+
+          '</button>';
+      }
+      const label=event.kind==='RETURN'
+        ?'Zwrot zatwierdzony (poz. '+event.position+', '+event.quantity+' szt.)'
+        :event.action==='PICKUP'?'Potwierdzony odbiór':'Raport końcowy';
+      return '<div class="pl-route-audit-event pl-route-audit-static">'+
+        '<span>'+html(label)+' · '+html(event.actor||'Ekipa')+'</span>'+
+        '<small>'+html(auditTime(event.createdAt))+'</small>'+
+      '</div>';
     }).join('');
+    const activityPanel=activity||crewNotes
+      ?'<div class="pl-route-detail-feed">'+
+        (activity?'<div class="pl-route-audit-history" role="log" '+
+          'aria-label="Historia operacji trasy">'+activity+'</div>':'')+
+        (crewNotes?'<div class="pl-route-crew-comments-inline" '+
+          'aria-label="Komentarze ekipy">'+crewNotes+'</div>':'')+
+        '</div>'
+      :'';
     // All three sections start on the exact table-heading line.
     // Audit history is to the RIGHT of the vertical button stack.
     return '<div class="pl-route-detail-layout">'+
@@ -896,8 +928,8 @@
         '</div>'+
         '<div class="pl-route-detail-side">'+
           '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+
-            returnApprovalButton+crewCommentsButton+deleteDemoButton+'</div>'+
-          (audit?'<div class="pl-route-audit-history">'+audit+'</div>':'')+
+            returnApprovalButton+deleteDemoButton+'</div>'+
+          activityPanel+
           returnApprovalDetails+
         '</div>'+
       '</div>'+
@@ -1092,7 +1124,7 @@
       ])addChange(name,prev[key],next[key]);
       if(prev.status!==undefined&&next.status!==undefined){
         const friendlyStatus=status=>({
-          COMPLETED:'Trasa zakończona',CONFIRMED:'Potwierdzona',
+          COMPLETED:'Trasa zakończona',CONFIRMED:'Potwierdzony odbiór',
           AWAITING_CONFIRMATION:'Oczekuje na potwierdzenie',
           REVIEW_REQUIRED:'Do weryfikacji – niezgodność'
         }[status]||status);
