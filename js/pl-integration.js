@@ -94,7 +94,7 @@ async function buildPolishWorkspace() {
   const link = document.createElement('link');
   link.id = 'gpbsPolandStyles';
   link.rel = 'stylesheet';
-  link.href = '/pl/pl.css?v=50';
+  link.href = '/pl/pl.css?v=51';
   document.head.append(link);
 
   // Existing Polish modules bind their handlers to the newly inserted DOM.
