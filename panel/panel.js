@@ -458,6 +458,12 @@
       const arrow=document.createElement('span');arrow.className='user-expand-arrow';
       arrow.textContent=open?'▴':'▾';arrow.setAttribute('aria-hidden','true');
       button.append(arrow);name.append(button);
+      if(user.is_pl_test){
+        const note=document.createElement('small');
+        note.style.cssText='display:block;font-size:10px;font-weight:700;color:#6b7890';
+        note.textContent='TEST PL · dane demonstracyjne';
+        name.append(note);
+      }
       if(user.role_code==='EKIPA'){
         const car=document.createElement('small');
         car.style.cssText='display:block;font-size:11px;line-height:1.4;color:var(--mute)';
@@ -1498,6 +1504,7 @@
     $('superAdminView').classList.toggle('hidden',view!=='superAdmin');
     document.querySelector('.admin-user-toolbar').classList.toggle('hidden',view!=='users');
     $('addUserBtn').classList.toggle('hidden',view!=='users'||state.showArchives);
+    $('addPlTestCrewBtn').classList.toggle('hidden',view!=='users'||state.showArchives);
     $('showArchivedUsers').classList.toggle('hidden',view!=='users');
     $('showArchivedUsers').textContent=state.showArchives?'Wróć do użytkowników':'Pokaż archiwum';
     $('generateMissingPins').classList.toggle('hidden',view!=='users'||state.showArchives);
@@ -1908,6 +1915,27 @@
     }catch(error){message(error.message,'error');}
   }
 
+  async function addPlTestCrew(){
+    const button=$('addPlTestCrewBtn');
+    if(!await confirmAction({
+      title:'Utworzyć testową ekipę TEST (PL)?',
+      description:'Konto będzie wyłącznie polskie, bez dostępu do magazynów i bez PIN-u. Po testach użyjesz Usuń, aby skasować ekipę razem z jej trasami demonstracyjnymi.',
+      confirmLabel:'Utwórz'
+    }))return;
+    busy(button,true);
+    try{
+      const result=await post({
+        action:'createStaff',nickname:'TEST',firstName:'',lastName:'',phone:'',
+        role:'EKIPA',crewMarket:'PL',warehouses:[],testCrew:true
+      });
+      state.records=await api('users');
+      if(state.view==='users')renderList();
+      message('Utworzono TEST PL bez PIN-u. Nadaj PIN przy ekipie, aby zalogować się na telefonie.','info');
+    }catch(error){
+      message(error.message||'Nie udało się utworzyć testowej ekipy.','error');
+    }finally{busy(button,false);}
+  }
+
   async function saveUser(event) {
     event.preventDefault();
     const button=$('saveUser');busy(button,true);
@@ -1988,7 +2016,9 @@
     if(!user?.id||user.role_code!=='EKIPA'||user.owner_protected)return;
     if(!await confirmAction({
       title:'Trwale usunąć ekipę '+user.name+'?',
-      description:String(user.name||'').trim().toUpperCase()==='AA'
+      description:user.is_pl_test
+        ?'Usuniemy konto TEST PL, PIN oraz przypisane do niej trasy demonstracyjne z historią i zdjęciami. Prawdziwe trasy i stany magazynowe pozostaną bez zmian. Pozostałe fikcyjne trasy i katalog wyczyścisz oddzielnie.'
+        :String(user.name||'').trim().toUpperCase()==='AA'
         ?'Usuniemy konto AA, PIN, wizyty, ruchy i inwentaryzacje. Stany magazynowe pozostaną bez zmian, nawet jeśli test je zmienił. Potem porównamy Box Toulouse z arkuszem Stock FR GPBS.'
         :'Konto, PIN i przypisania zostaną usunięte. Jeśli ekipa ma operacje zmieniające stany, usuwanie zostanie zablokowane. Stany magazynowe pozostają bez zmian.',
       confirmLabel:'Usuń',danger:true
@@ -2344,6 +2374,7 @@
     $('boxQrDownload').addEventListener('click',downloadBoxQr);
     $('boxQrPrintButton').addEventListener('click',()=>window.print());
     $('addUserBtn').addEventListener('click',()=>openUserDialog());
+    $('addPlTestCrewBtn').addEventListener('click',addPlTestCrew);
     $('showArchivedUsers').addEventListener('click',async()=>{
       state.showArchives=!state.showArchives;
       state.expandedUserId=null;
