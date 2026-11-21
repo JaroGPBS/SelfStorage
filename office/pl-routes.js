@@ -541,10 +541,14 @@
   function routeQuantity(value){
     return value===null||value===undefined?'—':html(value);
   }
+  function auditTime(stamp){
+    const date=new Date(stamp||'');
+    return Number.isNaN(date.getTime())?'—':new Intl.DateTimeFormat('pl-PL',{
+      dateStyle:'short',timeStyle:'short',timeZone:'Europe/Warsaw'
+    }).format(date);
+  }
   function routeDetailsMarkup(result){
     const route=result.route;
-    // A completed route stays in "Aktualne trasy" until the weekly rollover.
-    // Show return columns only in actual history, not based on status alone.
     const history=routeContext()?.tab==='history';
     const lines=result.lines||[];
     const mismatches=lines.filter(line=>
@@ -566,7 +570,7 @@
         '<td>'+html(line.partName||'—')+'</td>'+
         '<td>'+html(line.quantity)+'</td>'+
         '<td>'+routeQuantity(line.confirmedQuantity)+'</td>'+
-        '<td>—</td>'; // completion details will be filled by the future team workflow
+        '<td>—</td>';
       if(history){
         row+='<td>'+routeQuantity(line.returnedQuantity)+'</td>'+
           '<td>'+html(line.returnLocation||'—')+'</td>';
@@ -574,12 +578,19 @@
       return row+'</tr>';
     }).join('');
     const warning=mismatches.length
-      ?'<p class="pl-route-detail-warning">Rozbieżność w '+mismatches.length+
-        ' pozycjach: ilość potwierdzona przez ekipę różni się od wydanej.</p>':'';
+      ?'<p class="pl-route-detail-warning">'+
+       (route.status==='REVIEW_EXPLAINED'
+         ?'Wyjaśniono różnice w '+mismatches.length+' pozycjach (bez pełnej korekty ilości).'
+         :'Rozbieżność w '+mismatches.length+
+          ' pozycjach: ilość potwierdzona przez ekipę różni się od wydanej.')+
+       '</p>':'';
     const caption=history
       ?'Rozliczenie zakończonej trasy ':'Wydane i potwierdzone części dla trasy ';
-    const editable=!history&&route.canEdit===true&&
-      ['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(routeContext()?.role);
+    const role=routeContext()?.role;
+    const canWork=['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role);
+    const editable=!history&&route.canEdit===true&&canWork;
+    const explainable=!history&&canWork&&mismatches.length>0&&
+      !['COMPLETED','REVIEW_EXPLAINED'].includes(route.status);
     const photoButtons=(result.documents||[]).length
       ?result.documents.map((doc,index)=>
         '<button type="button" class="pl-route-document-button" '+
@@ -595,23 +606,40 @@
       ?'<button type="button" class="pl-route-edit-button" '+
         'data-pl-route-edit="'+html(route.id)+'">Edytuj</button>'
       :'';
+    const explainButton=explainable
+      ?'<button type="button" class="pl-route-explain-button" '+
+        'data-pl-route-explain="'+html(route.id)+'">Wyjaśnij niezgodność</button>'
+      :'';
+    const audit=(result.audit||[]).map(event=>{
+      routeAuditCache.set(event.id,event);
+      return '<button type="button" class="pl-route-audit-event" '+
+          'data-pl-route-audit="'+html(event.id)+'" '+
+          'title="Otwórz szczegóły zapisanej operacji">'+
+          '<span>'+html(event.action==='EXPLAIN'?'Weryfikacja':'Edycja')+
+            ' · '+html(event.actor||'Użytkownik')+'</span>'+
+          '<small>'+html(auditTime(event.createdAt))+'</small>'+
+        '</button>';
+    }).join('');
+    // All three sections start on the exact table-heading line.
+    // Audit history is to the RIGHT of the vertical button stack.
     return '<div class="pl-route-detail-layout">'+
-      '<div class="pl-route-detail-lines">'+
-        '<div class="pl-route-detail-head">'+
-          '<strong>'+caption+html(route.routeNumber)+
-            (Number(route.isPresentation)===1?' *':'')+'</strong>'+
-        '</div>'+
-        warning+
-        '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
-          rows+'</tbody></table>'+
-        (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
+      '<div class="pl-route-detail-head">'+
+        '<strong>'+caption+html(route.routeNumber)+
+          (Number(route.isPresentation)===1?' *':'')+'</strong>'+
       '</div>'+
-      (photoButtons||editButton
-        ?'<div class="pl-route-detail-side">'+
-           '<div class="pl-route-detail-actions">'+photoButtons+editButton+'</div>'+
-         '</div>'
-        :'')+
-      '</div>';
+      warning+
+      '<div class="pl-route-detail-content">'+
+        '<div class="pl-route-detail-lines">'+
+          '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
+            rows+'</tbody></table>'+
+          (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
+        '</div>'+
+        '<div class="pl-route-detail-side">'+
+          '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+'</div>'+
+          (audit?'<div class="pl-route-audit-history">'+audit+'</div>':'')+
+        '</div>'+
+      '</div>'+
+    '</div>';
   }
   let viewedDocumentUrl=null;
   let photoLoadId=0;
