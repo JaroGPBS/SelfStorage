@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=149">
-  <link rel="stylesheet" href="./pl-routes.css?v=56">
+  <link rel="stylesheet" href="./pl-routes.css?v=57">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -572,6 +572,27 @@
       <button type="button" id="plRouteConfirmCancel" class="btn outline" autofocus>Anuluj</button>
       <button type="button" id="plRouteConfirmApprove" class="btn dark">Zatwierdź</button>
     </div>
+  </dialog>
+  <dialog id="plRouteReturnApprovalDialog" class="pl-route-small-dialog pl-route-return-approval-dialog"
+          aria-labelledby="plRouteReturnApprovalTitle">
+    <form id="plRouteReturnApprovalForm">
+      <div class="pl-route-small-head">
+        <strong id="plRouteReturnApprovalTitle">Potwierdzenie zwrotu</strong>
+      </div>
+      <div class="pl-route-small-body">
+        <p class="pl-route-return-approval-description" id="plRouteReturnApprovalDescription"></p>
+        <label class="pl-route-comment-label" for="plRouteReturnApprovalComment">
+          Komentarz – wymagany
+          <textarea id="plRouteReturnApprovalComment" minlength="15" maxlength="1000"
+                    rows="4" required
+                    placeholder="Opisz, co zrobiono ze zwróconymi częściami: czy zwrot uzgodniono z magazynem, gdzie części trafiły lub komu je przekazano."></textarea>
+        </label>
+      </div>
+      <div class="pl-route-small-actions">
+        <button type="button" id="plRouteReturnApprovalCancel" class="btn outline">Anuluj</button>
+        <button type="submit" id="plRouteReturnApprovalSave" class="btn dark">Zatwierdź zwrot</button>
+      </div>
+    </form>
   </dialog>
   <dialog id="plRouteDeleteDemo03Dialog" class="pl-route-small-dialog pl-route-delete-dialog"
           aria-labelledby="plRouteDeleteDemo03Title">
