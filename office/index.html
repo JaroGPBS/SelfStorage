@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=168"></script>
-  <script defer src="./pl-routes.js?v=13"></script>
+  <script defer src="./pl-routes.js?v=14"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -431,10 +431,10 @@
         </div>
         <div class="pl-route-grid">
           <label>Numer trasy
-            <input id="plRouteNumber" type="text" required maxlength="80" autocomplete="off" placeholder="Wpisz numer trasy">
+            <input id="plRouteNumber" type="text" required maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Wpisz numer trasy">
           </label>
           <label>Symbol ekipy
-            <input id="plRouteCrewSymbol" type="text" required maxlength="20" autocomplete="off" autocapitalize="characters" placeholder="Np. GW">
+            <input id="plRouteCrewSymbol" type="text" required maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Np. GW">
           </label>
           <div class="pl-route-date-field">
             <label for="plRouteDate">Data trasy</label>
