@@ -188,7 +188,8 @@ export async function onRequestPost({request,env}){
   const route=parseRoute(body);
   if(!route)return send('Uzupełnij numer i datę trasy, ekipę oraz prawidłową listę części.',400);
   try{
-    await ensureSchema(env.DB);
+    if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines')||
+       !await hasPresentationFlag(env.DB))await ensureSchema(env.DB);
     const duplicate=await env.DB.prepare(
       'SELECT id FROM pl_routes WHERE route_number=? AND route_date=? LIMIT 1'
     ).bind(route.routeNumber,route.routeDate).first();
