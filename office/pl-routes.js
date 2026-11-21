@@ -233,22 +233,28 @@
       setBusy(false);
     }
   }
+  function routeWeekNumber(dateText){
+    // Interpret the stored route date in UTC, independent of the browser timezone.
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dateText||'')))return '—';
+    const date=new Date(dateText+'T00:00:00Z');
+    return Number.isNaN(date.getTime())?'—':isoWeekNumber(date);
+  }
   function listTable(routes){
     if(!routes.length)
       return '<div class="pl-routes-empty">Brak zapisanych tras. Kliknij „Dodaj trasę”, aby wprowadzić pierwszą.</div>';
     const header='<table><thead><tr>'+
-      '<th>Numer trasy</th><th>Symbol ekipy</th><th>Data</th>'+
-      '<th>Pozycje</th><th>Sztuki</th><th>Status</th><th></th>'+
+      '<th>Numer tygodnia</th><th>Numer trasy</th><th>Symbol ekipy</th><th>Data</th>'+
+      '<th>Pozycje</th><th>Status</th><th></th>'+
       '</tr></thead><tbody>';
     const rows=routes.map(item=>
-      '<tr><td><strong>'+html(item.routeNumber)+'</strong>'+
+      '<tr><td><strong>'+html(routeWeekNumber(item.routeDate))+'</strong></td>'+ 
+      '<td><strong>'+html(item.routeNumber)+'</strong>'+
         (Number(item.isPresentation)===1
           ?'<sup class="pl-route-presentation-star" title="Trasa prezentacyjna" aria-label="Trasa prezentacyjna">*</sup>'
           :'')+'</td>'+
       '<td>'+html(item.crewSymbol)+'</td>'+
       '<td>'+html(item.routeDate)+'</td>'+
       '<td>'+html(item.positions)+'</td>'+
-      '<td>'+html(item.units)+'</td>'+
       '<td><span class="pl-route-status-badge">Oczekuje na potwierdzenie</span></td>'+
       '<td><button type="button" class="pl-route-details-button" data-pl-route-details="'+
        html(item.id)+'">Szczegóły</button></td></tr>'
