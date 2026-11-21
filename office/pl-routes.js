@@ -922,10 +922,11 @@
     const partByPosition=new Map(lines.map(part=>[Number(part.position),part]));
     for(const event of (result.returnApprovals||[]).slice()
       .sort((a,b)=>String(b.approvedAt||'').localeCompare(String(a.approvedAt||'')))){
-      const key=String(event.approvedById||event.approvedBy||'')+'|'+String(event.approvedAt||'').slice(0,19);
+      const key=String(event.approvedById||event.approvedBy||'')+'|'+String(event.approvedAt||'').slice(0,19)+'|'+String(event.comment||'');
       let group=groupsByKey.get(key);
       if(!group){
-        group={actor:event.approvedBy||'Użytkownik',approvedAt:event.approvedAt,items:[]};
+        group={actor:event.approvedBy||'Użytkownik',approvedAt:event.approvedAt,
+          comment:String(event.comment||'').trim(),items:[]};
         groupsByKey.set(key,group);
         approvalGroups.push(group);
       }
@@ -1177,7 +1178,10 @@
             '<span>'+html(item.quantity)+' szt. · '+html(item.location||'—')+'</span>'+
           '</div>'
         ).join('')+
-      '</div>';
+      '</div>'+
+      '<h3>Komentarz zatwierdzającego</h3>'+
+      '<p class="pl-route-audit-comment">'+html(group.comment||
+        'Brak komentarza – zatwierdzenie sprzed wprowadzenia tego wymogu.')+'</p>';
     byId('plRouteAuditDialog').showModal();
   }
   function openRouteAudit(button){
@@ -1894,6 +1898,52 @@
       setRoutePreviewReady(routePreviewReady);
     }
   });
+  let returnApprovalResolve=null;
+  const returnApprovalDialog=byId('plRouteReturnApprovalDialog');
+  const returnApprovalComment=byId('plRouteReturnApprovalComment');
+  function finishReturnApproval(approved){
+    const resolve=returnApprovalResolve;
+    if(!resolve)return;
+    returnApprovalResolve=null;
+    const value=approved?returnApprovalComment.value.trim():null;
+    if(returnApprovalDialog.open)returnApprovalDialog.close(),resolve(value);
+    resolve(value);
+  }
+  function confirmReturnApproval(message){
+    if(returnApprovalResolve)return Promise.resolve(null);
+    return new Promise(resolve=>{
+      returnApprovalResolve=resolve;
+      returnApprovalComment.value='';
+      returnApprovalComment.setCustomValidity('');
+      byId('plRouteReturnApprovalDescription').textContent=message;
+      try{
+        returnApprovalDialog.showModal();
+        returnApprovalComment.focus();
+      }catch{
+        finishReturnApproval(false);
+      }
+    });
+  }
+  byId('plRouteReturnApprovalForm').addEventListener('submit',event=>{
+    event.preventDefault();
+    const comment=returnApprovalComment.value.trim();
+    returnApprovalComment.setCustomValidity(
+      comment.length<15?'Wpisz komentarz (minimum 15 znaków).':''
+    );
+    if(!returnApprovalComment.reportValidity())return;
+    finishReturnApproval(true);
+  });
+  returnApprovalComment.addEventListener('input',()=>{
+    returnApprovalComment.setCustomValidity('');
+  });
+  byId('plRouteReturnApprovalCancel').addEventListener('click',()=>{
+    finishReturnApproval(false);
+  });
+  returnApprovalDialog.addEventListener('cancel',event=>{
+    event.preventDefault();
+    finishReturnApproval(false);
+  });
+  returnApprovalDialog.addEventListener('close',()=>finishReturnApproval(false));
   let approvingReturns=false;
   async function approveRouteReturns(button){
     if(approvingReturns||!['KOORDYNATOR','ADMIN'].includes(routeContext()?.role))return;
@@ -1921,14 +1971,15 @@
       const message='Potwierdź, że wymienione części zostały rzeczywiście zwrócone:\n\n'+
         returns.map(x=>(x.partName||x.partCode||'Poz. '+x.position)+
           ': '+x.returnedQuantity+' szt. → '+(x.returnLocation||'BRAK MIEJSCA')
-        ).join('\n')+'\n\nSystem zapisze Twoje konto i godzinę zatwierdzenia.';
-      const accepted=await confirmRouteAction(message);
-      if(!accepted)return;
+        ).join('\n')+'\n\nKomentarz jest wymagany. Opisz, czy zwrot był uzgodniony '+
+        'z magazynem, gdzie trafiły części lub komu je przekazano.';
+      const comment=await confirmReturnApproval(message);
+      if(!comment)return;
       const response=await jsonResponse(await fetch(endpoint,{
         method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          action:'approveReturns',id,baseRevision:detail.route.editRevision
+          action:'approveReturns',id,baseRevision:detail.route.editRevision,comment
         })
       }));
       await window.renderPlRoutesList({force:true});
