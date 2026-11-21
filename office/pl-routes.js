@@ -562,16 +562,34 @@
           '<div class="pl-route-history-content hidden">'+listTable(group.routes)+'</div></section>';
       }).join('');
   }
-  function balanceTable(parts){
+  function balanceAmount(value){
+    if(value===null||value===undefined||value==='')return '—';
+    const amount=Number(value);
+    return Number.isSafeInteger(amount)&&amount>=0
+      ?new Intl.NumberFormat('pl-PL').format(amount):'—';
+  }
+  function balanceDate(value){
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(value||'')))return '—';
+    const [year,month,day]=value.split('-');
+    return day+'.'+month+'.'+year;
+  }
+  function balanceTable(parts,period={}){
     if(!parts.length)
       return '<div class="pl-routes-empty">Brak części w zapisanych trasach.</div>';
     const headings=['Indeks SAP','Nazwa części','Ilość pobrana',
-      'Ilość wykorzystana','Ilość zwrócona','Ilość na magazynie'];
+      'Ilość wykorzystana','Ilość zwrócona','Stan Tychy'];
+    const currentWeek='W trasach · tydzień '+
+      (period.week||'—')+' / '+(period.year||'—');
     const head='<table class="pl-route-balance-table"><thead><tr>'+
       headings.map(name=>'<th scope="col">'+html(name)+'</th>').join('')+
+      '<th scope="col" class="pl-route-balance-current-head">'+
+        html(currentWeek)+'<small>Poza bilansem</small></th>'+
       '</tr></thead><tbody>';
     const rows=parts.map(part=>{
-      const columns=[part.sap||'—',part.name||'—','—','—','—','—'];
+      const columns=[part.sap||'—',part.name||'—',
+        balanceAmount(part.issued),balanceAmount(part.used),
+        balanceAmount(part.returned),balanceAmount(part.warehouse),
+        balanceAmount(part.inRoute)];
       return '<tr data-pl-route-balance-part="'+html(part.catalogPartId||'')+'">'+
         columns.map(value=>'<td>'+html(value)+'</td>').join('')+'</tr>';
     }).join('');
@@ -591,7 +609,7 @@
     byId('plRoutesSectionTitle').textContent=balance?'Bilans części':
       history?'Historia tras':'Aktualne trasy';
     byId('plRoutesSectionDescription').textContent=balance
-      ?'Części ze wszystkich zapisanych tras. Ilości uzupełnimy w kolejnym etapie; „—” nie oznacza zera.'
+      ?'Bilans od pierwszego dokumentu do końca poprzedniego tygodnia. Bieżący tydzień osobno.'
       :history?'Zakończone trasy według tygodnia realizacji.'
       :'Lista tras w trakcie realizacji.';
     const role=context?.role;
@@ -615,8 +633,17 @@
         }));
         if(seq!==loadSeq)return;
         routeAuditCache.clear();
-        table.innerHTML=balanceTable(result.parts||[]);
-        status.textContent='';
+        const period=result.period||{};
+        table.innerHTML=balanceTable(result.parts||[],period);
+        status.textContent='Bilans '+balanceDate(period.firstDocumentDate)+
+          ' – '+balanceDate(period.closedThrough)+
+          '. Bieżący tydzień: pobrano '+balanceAmount(period.currentWeekIssued)+
+          ' szt. (poza bilansem).'+
+          (Number(period.unsettledHistoricalUnits)>0
+            ?' Starsze nierozliczone pozycje: '+
+              balanceAmount(period.unsettledHistoricalUnits)+' szt.'
+            :'')+
+          ' Stan magazynu Tychy: do powiązania z ewidencją.';
         return;
       }
       const result=await jsonResponse(await fetch(
