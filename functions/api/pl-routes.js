@@ -481,8 +481,10 @@ export async function onRequestPost({request,env}){
             :line.returnedQuantity==null)&&
           !line.returnLocation
         );
-        if(route.status==='COMPLETED'&&!already)
-          return send('Trasa '+route.routeNumber+' została już zakończona z innymi danymi. Niczego nie nadpisano.',409);
+        // A demo already marked COMPLETED may still lack settlement amounts;
+        // fill those blanks, but never downgrade a completed route to confirmed.
+        if(route.status==='COMPLETED'&&targetStatus!=='COMPLETED')
+          return send('Trasa '+route.routeNumber+' została już zakończona. Nie można jej cofnąć do potwierdzonej.',409);
         if(!already)staged.push({route,lines,updates,targetStatus});
       }
       if(!staged.length)return workerJson({ok:true,updated:0,alreadyPrepared:true});
