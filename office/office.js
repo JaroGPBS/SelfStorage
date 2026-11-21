@@ -1402,6 +1402,7 @@ function setHead(title,kicker,desc){
   const isBovisOverview=state.view==='bovisOverview';
   const isPlRoutes=state.view==='plRoutes';
   $('app').classList.toggle('view-pl-routes',isPlRoutes);
+  $('app').classList.toggle('view-pl-routes-list',isPlRoutes&&state.plRoutesTab==='list');
   $('plRoutesTopDescription').classList.toggle('hidden',!isPlRoutes);
   $('plRoutesTopActions').classList.toggle('hidden',
     !isPlRoutes||state.plRoutesTab!=='balance');
