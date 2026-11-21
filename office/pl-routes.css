@@ -191,6 +191,13 @@
 .pl-route-document-dialog-body #plRouteDocumentStatus{
   color:#63768c;font-size:13px;text-align:center
 }
+/* Subtle emphasis only for completed routes with returns awaiting approval. */
+.pl-routes-table tr.pl-route-awaiting-returns > td{
+  background:#e9eef3!important;
+}
+.pl-routes-table tr.pl-route-awaiting-returns:hover > td{
+  background:#dfe7ef!important;
+}
 .pl-routes-table tr.pl-route-needs-review > td{
   background:#fae9e7!important;
   color:#59373a;
