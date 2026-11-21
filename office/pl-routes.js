@@ -239,64 +239,156 @@
     const date=new Date(dateText+'T00:00:00Z');
     return Number.isNaN(date.getTime())?'—':isoWeekNumber(date);
   }
+  function statusInfo(route){
+    if(route.status==='COMPLETED')return {label:'Zakończona',className:'is-completed'};
+    if(Number(route.discrepancyCount)>0)return {label:'Rozbieżność',className:'is-discrepancy'};
+    if(route.status==='CONFIRMED')return {label:'Potwierdzona',className:'is-confirmed'};
+    return {label:'Oczekuje na potwierdzenie',className:''};
+  }
+  function routeWeekYear(dateText){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dateText||'')))return null;
+    const date=new Date(dateText+'T00:00:00Z');
+    if(Number.isNaN(date.getTime()))return null;
+    const thursday=new Date(date.getTime());
+    thursday.setUTCDate(thursday.getUTCDate()+4-(thursday.getUTCDay()||7));
+    return thursday.getUTCFullYear();
+  }
   function listTable(routes){
     if(!routes.length)
-      return '<div class="pl-routes-empty">Brak zapisanych tras. Kliknij „Dodaj trasę”, aby wprowadzić pierwszą.</div>';
-    const header='<table><thead><tr>'+
+      return '<div class="pl-routes-empty">Brak tras do wyświetlenia.</div>';
+    const header='<table class="pl-route-list-table"><thead><tr>'+
       '<th>Numer tygodnia</th><th>Numer trasy</th><th>Symbol ekipy</th><th>Data</th>'+
       '<th>Pozycje</th><th>Status</th><th>Wprowadził</th><th></th>'+
       '</tr></thead><tbody>';
-    const rows=routes.map(item=>
-      '<tr><td><strong>'+html(routeWeekNumber(item.routeDate))+'</strong></td>'+ 
-      '<td><strong>'+html(item.routeNumber)+'</strong>'+
+    const rows=routes.map(item=>{
+      const status=statusInfo(item);
+      return '<tr><td><strong>'+html(routeWeekNumber(item.routeDate))+'</strong></td>'+
+        '<td><strong>'+html(item.routeNumber)+'</strong>'+
         (Number(item.isPresentation)===1
           ?'<sup class="pl-route-presentation-star" title="Trasa prezentacyjna" aria-label="Trasa prezentacyjna">*</sup>'
           :'')+'</td>'+
-      '<td>'+html(item.crewSymbol)+'</td>'+
-      '<td>'+html(item.routeDate)+'</td>'+
-      '<td>'+html(item.positions)+'</td>'+
-      '<td><span class="pl-route-status-badge">Oczekuje na potwierdzenie</span></td>'+ 
-      '<td>'+html(item.enteredBy||'—')+'</td>'+
-      '<td><button type="button" class="pl-route-details-button" data-pl-route-details="'+
-       html(item.id)+'">Szczegóły</button></td></tr>'
-    ).join('');
+        '<td>'+html(item.crewSymbol)+'</td>'+
+        '<td>'+html(item.routeDate)+'</td>'+
+        '<td>'+html(item.positions)+'</td>'+
+        '<td><span class="pl-route-status-badge '+status.className+'">'+status.label+'</span></td>'+
+        '<td>'+html(item.enteredBy||'—')+'</td>'+
+        '<td><button type="button" class="pl-route-details-button" data-pl-route-details="'+
+        html(item.id)+'">Szczegóły</button></td></tr>';
+    }).join('');
     return header+rows+'</tbody></table>';
+  }
+  function historyTable(routes){
+    if(!routes.length){
+      return '<div class="pl-routes-empty">Brak zakończonych tras. Trasy pojawią się tutaj po zakończeniu i rozliczeniu przez ekipę.</div>';
+    }
+    const groups=new Map();
+    for(const route of routes){
+      const year=routeWeekYear(route.routeDate);
+      const week=routeWeekNumber(route.routeDate);
+      const key=String(year||'—')+'-'+String(week).padStart(2,'0');
+      if(!groups.has(key))groups.set(key,{year,week,routes:[]});
+      groups.get(key).routes.push(route);
+    }
+    return [...groups.values()]
+      .sort((a,b)=>(b.year||0)-(a.year||0)||Number(b.week||0)-Number(a.week||0))
+      .map(group=>{
+        const year=group.year===null?'—':group.year;
+        const key=String(year)+'-'+String(group.week).padStart(2,'0');
+        return '<section class="pl-route-history-group">'+
+          '<button type="button" class="pl-route-history-toggle" data-pl-route-week="'+html(key)+
+          '" aria-expanded="false"><span>Tydzień '+html(group.week)+' / '+html(year)+'</span>'+
+          '<span>'+html(group.routes.length)+' tras</span>'+
+          '<span aria-hidden="true">⌄</span></button>'+
+          '<div class="pl-route-history-content hidden">'+listTable(group.routes)+'</div></section>';
+      }).join('');
   }
   window.renderPlRoutesList=async function(){
     const panel=byId('plRoutesListPanel');
     if(!panel)return;
     const context=routeContext();
-    const selected=context?.view==='plRoutes'&&context.tab==='list';
+    const selected=context?.view==='plRoutes'&&
+      (context.tab==='list'||context.tab==='history');
     panel.classList.toggle('hidden',!selected);
     byId('officePlRoutesMessage').classList.toggle('hidden',selected);
     if(!selected)return;
+    const history=context.tab==='history';
+    byId('plRoutesSectionTitle').textContent=history?'Historia tras':'Aktualne trasy';
+    byId('plRoutesSectionDescription').textContent=history
+      ?'Zakończone trasy według tygodnia realizacji.'
+      :'Lista tras w trakcie realizacji.';
     const role=context?.role;
-    byId('plRouteAdd').classList.toggle('hidden',
+    byId('plRouteAdd').classList.toggle('hidden',history||
       !['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(role));
-    byId('plRoutesClearPresentation').classList.toggle('hidden',role!=='ADMIN');
+    byId('plRoutesClearPresentation').classList.toggle('hidden',true);
     const seq=++loadSeq;
     const status=byId('plRoutesListStatus');
     const table=byId('plRoutesTable');
     status.classList.remove('is-error');
     status.textContent='Pobieranie tras…';
     try{
-      const result=await jsonResponse(await fetch(endpoint,{
-        credentials:'same-origin',cache:'no-store'
-      }));
+      const result=await jsonResponse(await fetch(
+        endpoint+'?scope='+(history?'history':'active'),{
+          credentials:'same-origin',cache:'no-store'
+        }
+      ));
       if(seq!==loadSeq)return;
-      // The one server-side presentation switch also controls the temporary
-      // cleanup button; the normal route form/list remain unchanged.
       byId('plRoutesClearPresentation').classList.toggle('hidden',
-        role!=='ADMIN'||result.presentationMode!==true);
-      table.innerHTML=listTable(result.routes||[]);
+        history||role!=='ADMIN'||result.presentationMode!==true);
+      table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
       status.textContent='';
-    }catch(e){
+    }catch(error){
       if(seq!==loadSeq)return;
       table.replaceChildren();
       status.classList.add('is-error');
-      status.textContent=e.message||'Nie udało się pobrać listy tras.';
+      status.textContent=error.message||'Nie udało się pobrać tras.';
     }
   };
+  function routeQuantity(value){
+    return value===null||value===undefined?'—':html(value);
+  }
+  function routeDetailsMarkup(result){
+    const route=result.route;
+    const history=route.status==='COMPLETED';
+    const lines=result.lines||[];
+    const mismatches=lines.filter(line=>
+      line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
+      Number(line.confirmedQuantity)!==Number(line.quantity)
+    );
+    const cols=history
+      ?'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
+       '<th>Wydano (biuro)</th><th>Potwierdzono (ekipa)</th>'+
+       '<th>Zwrócono</th><th>Miejsce zwrotu</th>'
+      :'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
+       '<th>Wydano (biuro)</th><th>Potwierdzono (ekipa)</th>';
+    const rows=lines.map(line=>{
+      const mismatch=line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
+        Number(line.confirmedQuantity)!==Number(line.quantity);
+      let row='<tr'+(mismatch?' class="pl-route-detail-mismatch"':'')+'>'+
+        '<td>'+html(line.position)+'</td>'+
+        '<td>'+html(line.partCode||'—')+'</td>'+
+        '<td>'+html(line.partName||'—')+'</td>'+
+        '<td>'+html(line.quantity)+'</td>'+
+        '<td>'+routeQuantity(line.confirmedQuantity)+'</td>';
+      if(history){
+        row+='<td>'+routeQuantity(line.returnedQuantity)+'</td>'+
+          '<td>'+html(line.returnLocation||'—')+'</td>';
+      }
+      return row+'</tr>';
+    }).join('');
+    const warning=mismatches.length
+      ?'<p class="pl-route-detail-warning">Rozbieżność w '+mismatches.length+
+        ' pozycjach: ilość potwierdzona przez ekipę różni się od wydanej.</p>':'';
+    const caption=history
+      ?'Rozliczenie zakończonej trasy ':'Wydane i potwierdzone części dla trasy ';
+    return '<div class="pl-route-detail-lines">'+
+      '<strong>'+caption+html(route.routeNumber)+
+        (Number(route.isPresentation)===1?' *':'')+'</strong>'+
+      warning+
+      '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
+        rows+'</tbody></table>'+
+      (history?'':'<p class="pl-route-detail-note">„—” oznacza brak potwierdzenia ekipy, a nie zero sztuk.</p>')+
+      '</div>';
+  }
   async function showDetails(button){
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(button.dataset.plRouteDetails||''))return;
     const row=button.closest('tr');
@@ -318,21 +410,13 @@
         }
       ));
       if(!detail.isConnected)return;
-      detail.innerHTML='<td colspan="8"><div class="pl-route-detail-lines">'+
-        '<strong>Lista części dla trasy '+html(result.route.routeNumber)+
-          (Number(result.route.isPresentation)===1?' *':'')+'</strong>'+
-        '<table><thead><tr><th>#</th><th>Indeks</th><th>Nazwa</th><th>Ilość</th></tr></thead><tbody>'+
-        (result.lines||[]).map(line=>'<tr><td>'+html(line.position)+'</td>'+
-          '<td>'+html(line.partCode||'—')+'</td>'+
-          '<td>'+html(line.partName||'—')+'</td>'+
-          '<td>'+html(line.quantity)+'</td></tr>').join('')+
-        '</tbody></table></div></td>';
-    }catch(e){
+      detail.innerHTML='<td colspan="8">'+routeDetailsMarkup(result)+'</td>';
+    }catch(error){
       if(detail.isConnected)detail.firstElementChild.textContent=
-        e.message||'Nie udało się odczytać pozycji.';
+        error.message||'Nie udało się odczytać pozycji.';
     }
   }
-  async function clearPresentationRoutes(){
+    async function clearPresentationRoutes(){
     if(busy||routeContext()?.role!=='ADMIN')return;
     if(!window.confirm(
       'Usunąć wszystkie trasy oznaczone gwiazdką (*) oraz ich listy części? '+
@@ -416,6 +500,14 @@
     if(!busy)errorMessage();
   });
   byId('plRoutesTable').addEventListener('click',e=>{
+    const week=e.target.closest('[data-pl-route-week]');
+    if(week){
+      const container=week.nextElementSibling;
+      const expanded=week.getAttribute('aria-expanded')==='true';
+      week.setAttribute('aria-expanded',String(!expanded));
+      container.classList.toggle('hidden',expanded);
+      return;
+    }
     const button=e.target.closest('[data-pl-route-details]');
     if(button)showDetails(button);
   });
