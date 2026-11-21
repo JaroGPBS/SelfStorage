@@ -188,6 +188,48 @@ const activePriority=route=>{
   // Awaiting team confirmation always appears at the top of its week.
   return 0;
 };
+// One-off week-45 demonstration settlement. Never adjusts inventory stocks.
+function demo45Settlement(number,lines){
+  if(!Array.isArray(lines)||!lines.length)
+    return {error:'Brakuje pozycji trasy '+number+'.'};
+  const norm=value=>String(value||'').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  let pole=null,anchor=null;
+  if(number==='02HP'){
+    const poles=lines.filter(x=>/\bslup(?:ek|k)/.test(norm(x.partName)));
+    const anchors=lines.filter(x=>/\bkotw/.test(norm(x.partName)));
+    if(poles.length!==1||anchors.length!==1||poles[0].position===anchors[0].position)
+      return {error:'W 02HP nie można jednoznacznie wskazać słupków i kotew. Niczego nie zmieniono.'};
+    pole=Number(poles[0].position);
+    anchor=Number(anchors[0].position);
+  }
+  const updates=[];
+  for(const line of lines){
+    const quantity=Number(line.quantity);
+    const position=Number(line.position);
+    if(!Number.isSafeInteger(quantity)||quantity<1||
+       !Number.isSafeInteger(position)||position<1)
+      return {error:'Nieprawidłowe ilości lub pozycje w '+number+'.'};
+    if(line.confirmedQuantity!=null&&Number(line.confirmedQuantity)!==quantity||
+       line.verifiedQuantity!=null&&Number(line.verifiedQuantity)!==quantity)
+      return {error:'W '+number+' istnieją inne potwierdzenia lub weryfikacje. Niczego nie nadpisano.'};
+    let returned=0,location=null;
+    if(number==='02HP'&&position===pole){returned=5;location='InPost';}
+    if(number==='02HP'&&position===anchor){returned=2;location='Magazyn Tychy';}
+    if(returned>quantity)return {error:'W '+number+' pozycja '+position+
+      ' ma za mało sztuk na zaplanowany zwrot '+returned+'. Niczego nie zmieniono.'};
+    const oldReturn=line.returnedQuantity;
+    const oldPlace=String(line.returnLocation||'').trim();
+    if(oldReturn!=null&&Number(oldReturn)!==returned||
+       oldPlace&&oldPlace!==String(location||''))
+      return {error:'W '+number+' istnieją inne rozliczenia zwrotów. Niczego nie nadpisano.'};
+    updates.push({position,quantity,confirmedQuantity:quantity,
+      verifiedQuantity:line.verifiedQuantity??null,
+      returnedQuantity:returned,returnLocation:location,
+      partCode:line.partCode||'',partName:line.partName||''});
+  }
+  return {updates};
+}
 function parseRoute(body){
   if(!body||typeof body!=='object'||Array.isArray(body))return null;
   const routeNumber=String(body.routeNumber||'').trim().toUpperCase();
@@ -370,6 +412,97 @@ export async function onRequestPost({request,env}){
   if(raw.length>40000)return send('Zbyt duży formularz trasy.',413);
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
+  if(body?.action==='completeDemoWeek45'){
+    // Only the two specifically requested presentation routes, never real stock.
+    if(auth.user.role!=='ADMIN')return send('Tylko administrator może rozliczyć trasy pokazowe.',403);
+    if(body.confirm!=='ROZLICZ DEMO 45')return send('Potwierdź rozliczenie tras demo 45.',400);
+    try{
+      if(!await verifyCleanupPin(env.DB,env,auth.user.id,body.pin))
+        return send('Nieprawidłowy PIN administratora.',403);
+      if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines')||
+         !await hasPresentationFlag(env.DB))
+        return send('Nie znaleziono tras pokazowych.',404);
+      const required=['confirmed_quantity','verified_quantity','returned_quantity','return_location'];
+      if(!required.every(c=>([]).includes(c))){
+        const columns=await routeLineColumns(env.DB);
+        if(!required.every(col=>columns.has(col)))
+          return send('Dane rozliczenia tras nie są jeszcze dostępne.',409);
+      }
+      await ensureRouteAuditSchema(env.DB);
+      const routes=(await env.DB.prepare(
+        "SELECT id,route_number AS routeNumber,route_date AS routeDate,"+
+        "crew_symbol AS crewSymbol,status,edit_revision AS revision "+
+        "FROM pl_routes WHERE is_presentation=1 "+
+        "AND route_number IN ('02HH','02HP') "+
+        "AND route_date BETWEEN '2026-11-02' AND '2026-11-08' "+
+        "ORDER BY route_number"
+      ).all()).results||[];
+      if(routes.length!==2||routes[0].routeNumber!=='02HH'||routes[1].routeNumber!=='02HP')
+        return send('Brakuje jednej z dwóch tras pokazowych 02HH i 02HP z tygodnia 45.',409);
+      const prepared=[];
+      for(const route of routes){
+        const lines=(await env.DB.prepare(
+          'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
+          'confirmed_quantity AS confirmedQuantity,verified_quantity AS verifiedQuantity,'+
+          'returned_quantity AS returnedQuantity,return_location AS returnLocation '+
+          'FROM pl_route_lines WHERE route_id=? ORDER BY position'
+        ).bind(route.id).all()).results||[];
+        const settlement=demo45Settlement(route.routeNumber,lines);
+        if(settlement.error)return send(settlement.error,409);
+        const updates=settlement.updates;
+        const matching=route.status==='COMPLETED'&&updates.every((x,index)=>
+          Number(lines[index].confirmedQuantity)===x.quantity&&
+          Number(lines[index].returnedQuantity)===x.returnedQuantity&&
+          String(lines[index].returnLocation||'')===String(x.returnLocation||''));
+        if(route.status==='COMPLETED'&&!matching)
+          return send('Trasa '+route.routeNumber+' jest już zakończona z innym rozliczeniem.',409);
+        if(!matching)prepared.push({route,lines,updates});
+      }
+      if(!prepared.length)return workerJson({ok:true,updated:0,alreadyComplete:true});
+      const statements=[];
+      for(const {route,lines,updates} of prepared){
+        const token=crypto.randomUUID();
+        statements.push(env.DB.prepare(
+          "UPDATE pl_routes SET status='COMPLETED',edit_revision=edit_revision+1,edit_token=? "+
+          "WHERE id=? AND is_presentation=1 AND edit_revision=? "+
+          "AND route_number=? AND route_date BETWEEN '2026-11-02' AND '2026-11-08' "+
+          "AND status<>'COMPLETED'"
+        ).bind(token,route.id,route.revision,route.routeNumber));
+        for(const item of updates){
+          statements.push(env.DB.prepare(
+            'UPDATE pl_route_lines SET confirmed_quantity=quantity,'+
+            'returned_quantity=?,return_location=? '+
+            'WHERE route_id=? AND position=? AND quantity=? '+
+            'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? '+
+            'AND r.edit_revision=? AND r.edit_token=?)'
+          ).bind(item.returnedQuantity,item.returnLocation,
+            route.id,item.position,item.quantity,route.id,route.revision+1,token));
+        }
+        statements.push(auditEntry(env.DB,{
+          id:crypto.randomUUID(),routeId:route.id,action:'EDIT',
+          actorId:auth.user.id,revision:route.revision+1,token,
+          details:{
+            demo:true,comment:'Rozliczenie demonstracyjne tygodnia 45.',
+            before:{
+              routeNumber:route.routeNumber,routeDate:route.routeDate,
+              crewSymbol:route.crewSymbol,status:route.status,lines
+            },
+            after:{
+              routeNumber:route.routeNumber,routeDate:route.routeDate,
+              crewSymbol:route.crewSymbol,status:'COMPLETED',lines:updates
+            }
+          }
+        }));
+      }
+      const result=await env.DB.batch(statements);
+      if(result.some(x=>Number(x?.meta?.changes||0)!==1))
+        return send('Trasy zostały w międzyczasie zmienione. Odśwież historię.',409);
+      return workerJson({ok:true,updated:prepared.length,routeNumbers:prepared.map(x=>x.route.routeNumber)});
+    }catch(error){
+      console.error('PL demo week45 settlement failed',error?.name||'Error');
+      return send('Nie udało się rozliczyć pokazowych tras tygodnia 45.',503);
+    }
+  }
   if(body?.action==='seedDemoWeek48'){
     // One deliberate, ADMIN-authenticated POST; never seed on GET or page load.
     if(!ROUTE_PRESENTATION_MODE||auth.user.role!=='ADMIN')
