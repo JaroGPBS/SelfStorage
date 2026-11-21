@@ -1587,3 +1587,16 @@ tr:hover td{background:#ffffff04}
   white-space:nowrap;
   min-height:36px;
 }
+
+/* Separate Polish route catalogue — minimalist Admin editor. */
+.route-parts-catalog-table td:last-child,
+.route-parts-catalog-table th:last-child{text-align:right;width:110px}
+.route-part-dialog{width:min(calc(100% - 30px),560px)}
+.route-part-dialog h2{font-size:20px;margin:8px 0}
+.route-part-dialog label{display:block;color:#cbd5df;font-size:12px;font-weight:700;margin:14px 0 7px}
+.route-part-dialog input,.route-part-dialog select{width:100%;min-height:40px}
+.route-part-dialog .dialog-actions{margin-top:20px}
+.route-part-merge{border-top:1px solid var(--edge);margin-top:24px;padding-top:17px}
+.route-part-merge strong{font-size:13px}
+.route-part-merge .hint{margin:9px 0 14px}
+.route-part-merge .btn{margin-top:12px}
