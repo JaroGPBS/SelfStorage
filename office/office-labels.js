@@ -231,6 +231,9 @@
       });
       const result=await response.json().catch(()=>({}));
       if(!response.ok||!result.ok)throw Error(result.error||'Nie zapisano daty wydruku.');
+      // Printing is a real write. The updated print date must not be read
+      // from the five-minute snapshot on this or another Office tab.
+      window.GPBSOfficeCache?.invalidate?.();
       if(model.warehouse===job.warehouse){
         model.queue.clear();
         await load();
