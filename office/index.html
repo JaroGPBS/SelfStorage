@@ -10,6 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=135">
+  <link rel="stylesheet" href="./pl-routes.css?v=1">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -122,7 +123,8 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=163"></script>
+  <script defer src="./office.js?v=163"
+  <script defer src="./pl-routes.js?v=1"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -337,6 +339,17 @@
           </div>
         </section>
         <section id="officePlRoutesView" class="office-pl-routes-view hidden" aria-label="Trasy – Polska">
+          <div id="plRoutesListPanel" class="pl-routes-list-panel hidden">
+            <div class="pl-routes-toolbar">
+              <div>
+                <strong>Trasy montażowe</strong>
+                <small>Lista tras wprowadzonych przez biuro.</small>
+              </div>
+              <button type="button" id="plRouteAdd" class="btn dark">+ Dodaj trasę</button>
+            </div>
+            <p id="plRoutesListStatus" class="pl-routes-status" role="status" aria-live="polite"></p>
+            <div id="plRoutesTable" class="pl-routes-table"></div>
+          </div>
           <p id="officePlRoutesMessage">Tutaj pojawi się lista tras, wprowadzanych przez koordynatorów.</p>
         </section>
         <section id="officePreview" class="office-placeholder hidden" aria-live="polite" aria-label="Projekt układu Office">
@@ -393,6 +406,57 @@
       <div id="modalBody"></div>
     </div>
   </div>
+  <dialog id="plRouteDialog" class="pl-route-dialog" aria-labelledby="plRouteTitle">
+    <form id="plRouteForm" class="pl-route-form">
+      <div class="pl-route-dialog-head">
+        <div>
+          <p class="pl-route-eyebrow">POLSKA / TRASY</p>
+          <h2 id="plRouteTitle">Dodaj trasę</h2>
+        </div>
+        <button type="button" id="plRouteClose" class="pl-route-close" aria-label="Zamknij formularz">×</button>
+      </div>
+      <div class="pl-route-form-body">
+        <div class="pl-route-photo">
+          <div>
+            <strong>Zdjęcie dokumentu trasy</strong>
+            <p>Wgraj czytelne zdjęcie dokumentu trasy. Zadbaj o ostrość, dobre oświetlenie i widoczne wszystkie pozycje.</p>
+          </div>
+          <button type="button" id="plRoutePhotoPick" class="btn outline">Załaduj ze zdjęcia</button>
+          <input type="file" id="plRoutePhoto" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif">
+          <div class="pl-route-photo-file" id="plRoutePhotoFile" role="status">Nie wybrano zdjęcia.</div>
+          <img id="plRoutePhotoPreview" class="pl-route-photo-preview" alt="Podgląd dokumentu trasy" hidden>
+          <small>Odczyt AI dodamy w późniejszym etapie. Teraz zdjęcie służy tylko do podglądu i nie jest wysyłane na serwer.</small>
+        </div>
+        <div class="pl-route-grid">
+          <label>Numer trasy <span>*</span>
+            <input id="plRouteNumber" type="text" required maxlength="80" autocomplete="off" placeholder="Wpisz numer trasy">
+          </label>
+          <label>Data trasy <span>*</span>
+            <input id="plRouteDate" type="date" required>
+          </label>
+          <label>Numer ekipy <span>*</span>
+            <input id="plRouteCrewNumber" type="text" required maxlength="60" autocomplete="off" placeholder="Wpisz numer ekipy">
+          </label>
+          <label>Symbol ekipy <span>*</span>
+            <input id="plRouteCrewSymbol" type="text" required maxlength="20" autocomplete="off" autocapitalize="characters" placeholder="Np. GW">
+          </label>
+        </div>
+        <div class="pl-route-parts-head">
+          <div>
+            <h3>Lista części</h3>
+            <p>Wpisz części przypisane do trasy i ich ilości.</p>
+          </div>
+          <button type="button" class="btn outline" id="plRouteAddPart">+ Dodaj część</button>
+        </div>
+        <div class="pl-route-parts" id="plRouteParts"></div>
+      </div>
+      <p id="plRouteError" class="pl-route-error" role="alert" hidden></p>
+      <div class="pl-route-actions">
+        <button type="button" id="plRouteCancel" class="btn outline">Anuluj</button>
+        <button type="submit" id="plRouteSubmit" class="btn dark">Zapisz trasę</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="officeNewPartDialog" class="office-new-part-dialog" aria-labelledby="officeNewPartTitle">
     <form id="officeNewPartForm" class="office-new-part-form">
       <h2 id="officeNewPartTitle">Dodaj nową część</h2>
