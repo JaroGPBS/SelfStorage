@@ -687,6 +687,7 @@
     const history=context.tab==='history';
     const balance=context.tab==='balance';
     panel.querySelector('.pl-routes-toolbar').classList.toggle('hidden',balance);
+    panel.querySelector('.pl-routes-heading').classList.toggle('hidden',history||balance);
     byId('plRoutesTopActions').classList.toggle('hidden',!balance);
     byId('plRoutesSectionTitle').textContent=balance?'Bilans części':
       history?'Historia tras':'Aktualne trasy';
