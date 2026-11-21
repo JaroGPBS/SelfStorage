@@ -1768,6 +1768,9 @@ async function route(request,env) {
           Object.keys(body.markets).sort().join(',')!=='FR,PL'||
           typeof body.markets.PL!=='boolean'||typeof body.markets.FR!=='boolean')
           return fail('Nieprawidłowe uprawnienia rynków.',400);
+        if(await isPlTestCrew(env.DB,userId)&&
+          (!body.markets.PL||body.markets.FR))
+          return fail('Testowa ekipa PL nie może uzyskać dostępu do rynku FR.',409);
         markets={PL:body.markets.PL,FR:body.markets.FR};
       }else if(body.action==='setUserPermissions'){
         if(!validExtraPermissions(body.permissions))
