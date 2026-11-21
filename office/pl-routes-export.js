@@ -51,11 +51,14 @@
       mismatch
     };
   };
-  const reportStatus=(route,rows)=>{
-    if(route.status==='COMPLETED')return 'Trasa zakończona';
+  const reportStatus=(route,rows,history)=>{
     if(rows.some(x=>x.mismatch))return 'Do weryfikacji – niezgodność';
+    const verified=rows.some(x=>x.verified!=='—')||
+      history.some(x=>x.type==='Weryfikacja');
+    if(route.status==='COMPLETED')
+      return 'Trasa zakończona'+(verified?' – wyjaśniona':'');
     if(route.status==='CONFIRMED'||route.status==='REVIEW_EXPLAINED')
-      return 'Potwierdzona';
+      return 'Potwierdzona'+(verified?' – wyjaśniona':'');
     return 'Oczekuje na potwierdzenie';
   };
   const normalized=detail=>{
@@ -73,7 +76,7 @@
         details:extra
       };
     });
-    return {route,rows,week,history,status:reportStatus(route,rows)};
+    return {route,rows,week,history,status:reportStatus(route,rows,history)};
   };
   async function getRoute(id){
     if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(String(id||'')))throw Error('Nieprawidłowy identyfikator trasy.');
@@ -122,7 +125,7 @@
     const statusSuffix=Number(route.isPresentation)===1?' (dane pokazowe)':'';
     return '<section class="route-sheet">'+
       '<div class="report-head"><div><div class="report-logo">GPBS STORAGE</div>'+
-        '<h1 class="report-name">Karta rozliczenia trasy</h1>'+
+        '<h1 class="report-name">'+safe(isCompleted?'Karta rozliczenia trasy':'Karta trasy')+'</h1>'+
         '<div class="report-subhead">Dokument magazynowy · bez załączników fotograficznych</div></div>'+
         '<div><div class="report-week">Tydzień '+safe(week?.week??'—')+'</div>'+
         '<div class="report-year">Rok '+safe(week?.year??'—')+'</div></div></div>'+
