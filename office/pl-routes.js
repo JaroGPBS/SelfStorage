@@ -13,6 +13,7 @@
   const routeAuditCache=new Map();
   let busy=false;
   let loadSeq=0;
+  let demo47Routes=[];
   const routeContext=()=>typeof window.getPlRoutesContext==='function'
     ?window.getPlRoutesContext():null;
   function errorMessage(message=''){
@@ -520,6 +521,8 @@
     byId('plRoutesSeedDemo48').classList.add('hidden');
     byId('plRoutesDeleteDemo48').classList.add('hidden');
     byId('plRoutesCompleteDemo45').classList.add('hidden');
+    byId('plRoutesPrepareDemo47').classList.add('hidden');
+    demo47Routes=[];
     const seq=++loadSeq;
     const status=byId('plRoutesListStatus');
     const table=byId('plRoutesTable');
@@ -538,6 +541,17 @@
       const demoCount=Number(result.demoWeek48Count||0);
       byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount>=8);
       byId('plRoutesDeleteDemo48').classList.toggle('hidden',!showDemo||demoCount===0);
+      // Display only for the three exact presentation routes of ISO week 47.
+      demo47Routes=(!history&&role==='ADMIN'?(result.routes||[]):[])
+        .filter(route=>Number(route.isPresentation)===1&&
+          route.routeDate>='2026-11-16'&&route.routeDate<='2026-11-22'
+        ).sort((a,b)=>String(a.routeNumber).localeCompare(String(b.routeNumber),'pl',{numeric:true})||
+          String(a.id).localeCompare(String(b.id)));
+      const eligibleDemo47=demo47Routes.length===3&&
+        demo47Routes.every(route=>['AWAITING_CONFIRMATION','CONFIRMED','COMPLETED'].includes(route.status))&&
+        !(demo47Routes[0].status==='COMPLETED'&&
+          demo47Routes[1].status==='COMPLETED'&&demo47Routes[2].status==='CONFIRMED');
+      byId('plRoutesPrepareDemo47').classList.toggle('hidden',!eligibleDemo47);
       const demo45=(result.routes||[]).filter(route=>
         Number(route.isPresentation)===1&&
         ['02HH','02HP'].includes(route.routeNumber)&&
@@ -1160,6 +1174,50 @@
   byId('plRouteDeleteDemo03Dialog').addEventListener('cancel',event=>{
     if(deletingDemo03)event.preventDefault();
   });
+  async function prepareDemoWeek47(){
+    if(busy||routeContext()?.role!=='ADMIN'||routeContext()?.tab!=='list'||
+       demo47Routes.length!==3)return;
+    const [one,two,three]=demo47Routes;
+    const confirmText='Przygotować TEST tygodnia 47?\n\n'+
+      one.routeNumber+' – Trasa zakończona (wszystkie części wykorzystane)\n'+
+      two.routeNumber+' – Trasa zakończona (wszystkie części wykorzystane)\n'+
+      three.routeNumber+' – Potwierdzona (bez zakończenia)\n\n'+
+      'Nie przenosi to tras do historii ani nie zmienia stanów magazynowych. '+
+      'Zakończone trasy przejdą do historii dopiero po północy z niedzieli na poniedziałek.';
+    if(!window.confirm(confirmText))return;
+    const pin=window.prompt('Wpisz 4-cyfrowy PIN administratora:');
+    if(pin===null)return;
+    const status=byId('plRoutesListStatus');
+    if(!/^\d{4}$/.test(pin)){
+      status.classList.add('is-error');
+      status.textContent='Wpisz prawidłowy PIN administratora.';
+      return;
+    }
+    const button=byId('plRoutesPrepareDemo47');
+    button.disabled=true;
+    try{
+      const result=await jsonResponse(await fetch(endpoint,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          action:'prepareDemoWeek47',confirm:'PRZYGOTUJ DEMO 47',
+          pin,completeIds:[one.id,two.id],confirmedId:three.id
+        })
+      }));
+      await window.renderPlRoutesList();
+      status.classList.remove('is-error');
+      status.textContent=Number(result.updated)>0
+        ?'Tydzień 47 przygotowany: 2 trasy zakończone, 1 potwierdzona. '+
+          'Nic nie zostało przeniesione do historii.'
+        :'Tydzień 47 był już przygotowany.';
+    }catch(error){
+      status.classList.add('is-error');
+      status.textContent=error.message||'Nie udało się przygotować tygodnia 47.';
+    }finally{
+      button.disabled=false;
+    }
+  }
+  byId('plRoutesPrepareDemo47').addEventListener('click',prepareDemoWeek47);
   async function completeDemoWeek45(){
     if(busy||routeContext()?.role!=='ADMIN'||routeContext()?.tab!=='history')return;
     if(!window.confirm(
