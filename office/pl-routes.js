@@ -1181,10 +1181,19 @@
     async function clearPresentationRoutes(){
     if(busy||routeContext()?.role!=='ADMIN')return;
     if(!window.confirm(
-      'Usunąć wszystkie trasy oznaczone gwiazdką (*) oraz ich listy części? '+
-      'Prawdziwe trasy i stany magazynowe nie zostaną zmienione.'
+      'RESET TESTÓW PL\\n\\nUsunąć WSZYSTKIE zapisane trasy PL (również historyczne), '+
+      'ich rozliczenia, dokumenty i cały katalog części TRAS PL?\\n\\n'+
+      'Po usunięciu nowe trasy będą już rzeczywiste. '+
+      'Stany magazynu Tychy i główny katalog GPBS pozostaną bez zmian.\\n\\n'+
+      'Tej operacji nie można cofnąć.'
     ))return;
-    const pin=window.prompt('Potwierdź usunięcie 4-cyfrowym PIN-em administratora:');
+    const confirmation=window.prompt('Wpisz dokładnie RESET TRAS PL, aby potwierdzić:');
+    if(confirmation===null)return;
+    if(confirmation!=='RESET TRAS PL'){
+      byId('plRoutesListStatus').textContent='Nieprawidłowe potwierdzenie resetu.';
+      return;
+    }
+    const pin=window.prompt('Potwierdź reset 4-cyfrowym PIN-em administratora:');
     if(pin===null)return;
     const status=byId('plRoutesListStatus');
     status.classList.remove('is-error');
@@ -1199,12 +1208,13 @@
       const result=await jsonResponse(await fetch(endpoint,{
         method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'deletePresentation',confirm:'USUŃ TRASY',pin})
+        body:JSON.stringify({action:'resetPlDemoData',confirm:confirmation,pin})
       }));
       await window.renderPlRoutesList();
       status.classList.remove('is-error');
-      status.textContent='Usunięto '+Number(result.deleted||0)+
-        ' tras prezentacyjnych. Prawdziwe trasy pozostały bez zmian.';
+      status.textContent='Reset zakończony: usunięto '+Number(result.deletedRoutes||0)+
+        ' tras i '+Number(result.deletedParts||0)+
+        ' pozycji katalogu tras PL. Tryb rzeczywisty aktywny. Stany Tychy pozostawiono bez zmian.';
     }catch(error){
       status.classList.add('is-error');
       status.textContent=error.message||'Nie udało się wyczyścić tras.';
