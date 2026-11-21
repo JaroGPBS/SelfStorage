@@ -878,7 +878,6 @@ function renderMenu(){
     const tabs=[
       {id:'list',label:'Aktualne trasy'},
       {id:'balance',label:'Bilans części'},
-      {id:'remnants',label:'Pozostałości tras'},
       {id:'history',label:'Historia tras'}
     ];
     return '<div class="office-pl-routes-group">'+
@@ -1322,7 +1321,6 @@ function setHead(title,kicker,desc){
     const detail={
       list:'Aktualne trasy montażowe, wprowadzane przez biuro.',
       balance:'Lista części z wprowadzonych tras PL. Rozliczenia ilości uzupełnimy później.',
-      remnants:'Tutaj pojawią się pozostałości części zgłoszone po zakończeniu tras.',
       history:'Historia tras zakończonych, pogrupowana według tygodni.'
     };
     $('officePlRoutesMessage').textContent=detail[state.plRoutesTab]||detail.list;
@@ -1499,7 +1497,7 @@ function selectView(view,warehouse,focusDocument=null){
   const descriptions={nok:'Oddzielne stany części niekompletnych (NOK).',aggregate:'Porównanie stanów części pomiędzy magazynami.',pz:'Historia przyjęć i dostaw magazynowych.',wz:'Historia wydań magazynowych.',inventories:'Historia inwentaryzacji i bilanse.',vehicles:'Ewidencja części na samochodach serwisowych.',labels:'Wybierz części i wydrukuj dwie etykiety na kartce A4.',plRoutes:'Rozliczenia tras montażowych – Polska.'};
   const market=view==='aggregate'?'FR':realWarehouse(state.warehouse)?.country_code;
   const marketName=market==='FR'?'FRANCJA':'POLSKA';
-  const routeTitles={list:'Aktualne trasy',balance:'Bilans części',remnants:'Pozostałości tras',history:'Historia tras'};
+  const routeTitles={list:'Aktualne trasy',balance:'Bilans części',history:'Historia tras'};
   const title=view==='plRoutes'?(routeTitles[state.plRoutesTab]||'Aktualne trasy'):
     view==='aggregate'?'Zestawienie zbiorcze — '+(market==='FR'?'FR':'PL'):
     (titles[view]||'Stany magazynowe');
@@ -4248,7 +4246,7 @@ document.addEventListener('click',e=>{
   const plRoutesTab=e.target.closest('[data-pl-routes-tab]');
   if(plRoutesTab){
     const selected=plRoutesTab.dataset.plRoutesTab;
-    if(!['list','balance','remnants','history'].includes(selected))return;
+    if(!['list','balance','history'].includes(selected))return;
     const warehouse=state.warehouses.find(w=>w.country_code==='PL'&&w.id===state.warehouse)||
       state.warehouses.find(w=>w.country_code==='PL');
     if(warehouse){
