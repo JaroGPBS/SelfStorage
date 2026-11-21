@@ -604,12 +604,12 @@
         '<button type="button" class="pl-route-document-button" '+
           'data-pl-route-document="'+html(doc.id)+'" '+
           'data-pl-route-document-route="'+html(route.id)+'" '+
-          'title="Otwórz zapisane zdjęcie dokumentu trasy">'+
-          (result.documents.length===1?'Zdjęcie':'Zdjęcie '+(index+1))+
+          'title="Otwórz zapisane zdjęcie WZ">'+
+          (result.documents.length===1?'Zdjęcie WZ':'Zdjęcie WZ '+(index+1))+
         '</button>'
       ).join('')
       :'<button type="button" class="pl-route-document-button" disabled '+
-        'title="Do tej trasy nie dołączono zdjęcia dokumentu">Zdjęcie</button>';
+        'title="Do tej trasy nie dołączono zdjęcia WZ">Zdjęcie WZ</button>';
     const editButton=editable
       ?'<button type="button" class="pl-route-edit-button" '+
         'data-pl-route-edit="'+html(route.id)+'">Edytuj</button>'
