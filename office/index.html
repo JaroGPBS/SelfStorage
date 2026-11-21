@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=135">
-  <link rel="stylesheet" href="./pl-routes.css?v=29">
+  <link rel="stylesheet" href="./pl-routes.css?v=30">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=168"></script>
-  <script defer src="./pl-routes.js?v=29"></script>
+  <script defer src="./pl-routes.js?v=30"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -545,11 +545,11 @@
         <button type="button" id="plRouteExplainClose" aria-label="Zamknij">×</button>
       </div>
       <div class="pl-route-small-body">
-        <p class="pl-route-explain-guide">Dla każdej części wybierz: skoryguj do ilości potwierdzonej przez ekipę lub pozostaw niezgodność otwartą. Każda decyzja wymaga osobnego komentarza. Pierwotna ilość magazynu zostanie zachowana w historii.</p>
+        <p class="pl-route-explain-guide">Sprawdź ilość każdej części. Zostaw liczbę potwierdzoną przez ekipę albo wpisz ilość ustaloną po wyjaśnieniu.</p>
         <div id="plRouteExplainLines" class="pl-route-explain-lines"></div>
-        <label class="pl-route-comment-label" for="plRouteExplainComment">Podsumowanie całej weryfikacji (opcjonalnie)
-          <textarea id="plRouteExplainComment" maxlength="2000" rows="2"
-            placeholder="Dodatkowe ustalenia dotyczące całej trasy…"></textarea>
+        <label class="pl-route-comment-label" for="plRouteExplainComment">Komentarz – wymagany
+          <textarea id="plRouteExplainComment" minlength="15" maxlength="2000" rows="4" required
+            placeholder="Wyjaśnij, skąd wynikały różnice. Podaj, jakie ilości ustalono i dlaczego; czy potwierdzono je z magazynem, czy ekipa dobrała brakujące części lub co zrobi z nadmiarem."></textarea>
         </label>
         <p id="plRouteExplainError" class="pl-route-explain-error" role="alert" hidden></p>
       </div>
