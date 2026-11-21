@@ -501,8 +501,7 @@ export async function onRequestPost({request,env}){
             'AND (confirmed_quantity IS NULL OR confirmed_quantity=quantity) '+
             'AND (verified_quantity IS NULL OR verified_quantity=quantity) '+
             'AND (returned_quantity IS NULL OR returned_quantity=0) '+
-            '(AND_REPLACE_ME) '
-          .replace('(AND_REPLACE_ME) ','AND (return_location IS NULL OR trim(return_location)=\'\') ')+
+            "AND (return_location IS NULL OR trim(return_location)='') "+
             'AND EXISTS (SELECT 1 FROM pl_routes r WHERE r.id=? '+
             'AND r.edit_revision=? AND r.edit_token=?)'
           ).bind(item.returnedQuantity,route.id,item.position,item.quantity,
