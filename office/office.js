@@ -1098,7 +1098,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     $('pageActions').classList.remove('hidden');
     setHead('Stany magazynowe','', '');
     $('warehouseCrumb').textContent=label.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
-    $('syncTime').textContent='';
+    
     renderMenu();
     render();
     return;
@@ -1119,7 +1119,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     $('warehouseCrumb').textContent=warehouseContext.warehouseName.toLocaleUpperCase('pl');
     $('warehouseCrumb').classList.remove('hidden');
   }
-  $('syncTime').textContent='';
+  
   renderMenu();
   render();
 }
@@ -1237,7 +1237,7 @@ function showBovisOverview(){
   $('pageActions').classList.remove('hidden');
   setHead('Bovis – Zestawienie zbiorcze','GPBS STORAGE / FRANCJA','');
   $('warehouseCrumb').classList.add('hidden');
-  $('syncTime').textContent='';
+  
   renderMenu();
   render();
 }
@@ -1267,7 +1267,7 @@ function showFrBoxMovements(key,realId,warehouseName){
     'Wizyty ekip w magazynie: pobrania i zwroty w jednym zestawieniu.');
   $('warehouseCrumb').textContent=label.toLocaleUpperCase('pl');
   $('warehouseCrumb').classList.remove('hidden');
-  $('syncTime').textContent='';
+  
   renderMenu();
   render();
 }
@@ -1383,18 +1383,8 @@ function setHead(title,kicker,desc){
       :state.view==='nok'?'Oddzielna ewidencja NOK — nie powiększa stanu pełnowartościowego.'
       :state.view==='pz'?'Historia przyjęć i dostaw magazynowych.':'Historia wydań magazynowych.';
   }
-  // Reuse the existing synchronization control in the compact toolbar.
-  if(vehicleView||isBovisOverview){
-    // Keep manual synchronization beside the compact topbar heading.
-    $('vehicleTopExportHost').append($('syncTime'),$('refresh'));
-  }else if(compactView){
-    $('receiptToolbarActions').append($('syncTime'),$('refresh'));
-  }else if(state.view==='labels'){
-    $('labelToolbarActions').append($('syncTime'),$('refresh'));
-  }else{
-    $('pageActions').insertBefore($('syncTime'),$('newPart'));
-    $('pageActions').insertBefore($('refresh'),$('newPart'));
-  }
+  // One manual synchronization control is permanently placed in the sidebar.
+  // Changing views must never move it back into a page toolbar.
   const frBoxDocuments=!state.preview&&documentsView&&
     ['FR-TOULOUSE','FR-PARIS'].includes(state.warehouse);
   $('warehouseCrumb').classList.toggle('hidden',!stockView&&!frBoxDocuments&&
@@ -1402,15 +1392,10 @@ function setHead(title,kicker,desc){
   $('warehouseCrumb').textContent=name.replace(/^magazyn\s+/i,'').toLocaleUpperCase('pl');
   $('tableCaption').classList.toggle('hidden',!stockView);
   if(stockView){$('pageKicker').textContent=name.toUpperCase();$('pageDesc').textContent='Aktualne stany części w magazynie.';}
-  // Keep the synchronization control on every Office screen, including fleet
-  // and French catalogues; it refreshes the current view without reloading.
-  $('refresh').classList.toggle('hidden',state.view==='frMovements');
-  $('syncTime').classList.toggle('hidden',state.view==='frMovements'||Boolean(frEmpty)&&!vehicleView);
-  if(frEmpty&&!vehicleView)$('syncTime').textContent='';
-  $('refresh').disabled=false;
+  // The sidebar action always refreshes just the currently selected view.
   $('refresh').title=isBovisOverview
-    ?'Odśwież listę magazynów. Ilości na tym ekranie są pokazowe.'
-    :'Pobierz aktualne dane';
+    ?'Odśwież listę magazynów (dane na ekranie Bovis są pokazowe)'
+    :'Pobierz aktualne dane bieżącej zakładki';
   // French catalogue views can add shared parts, without creating stock.
 }
 function syncStockTabUI(){
@@ -1505,7 +1490,15 @@ function selectView(view,warehouse,focusDocument=null){
   render();
 }
 function setLoading(){errorBanner('');$('tableArea').innerHTML='<div class="loading">Wczytywanie danych...</div>';$('tableFooter').textContent='';$('searchNote').classList.add('hidden');}
-function markSynced(){state.lastSync=new Date();$('syncTime').textContent='Aktualizacja: '+new Intl.DateTimeFormat('pl-PL',{hour:'2-digit',minute:'2-digit'}).format(state.lastSync);}
+function markSynced(){
+  state.lastSync=new Date();
+  $('syncTime').textContent=new Intl.DateTimeFormat('pl-PL',{
+    hour:'2-digit',minute:'2-digit',timeZone:'Europe/Warsaw'
+  }).format(state.lastSync);
+  $('syncDate').textContent=new Intl.DateTimeFormat('pl-PL',{
+    day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Warsaw'
+  }).format(state.lastSync);
+}
 async function loadStocks(warehouseId){
   if(!state.partsCache.has(warehouseId)){
     const payload=await api('stocks',{warehouse:warehouseId});state.partsCache.set(warehouseId,payload.parts);
@@ -4462,6 +4455,7 @@ async function synchronizeOffice(){
       if(user!==state.user)return;
       state.warehouses=data.warehouses||[];
       renderMenu();
+      markSynced();
       if(state.view==='home'){
         const status=$('homeSyncError');
         status.classList.remove('is-error');
@@ -4470,8 +4464,6 @@ async function synchronizeOffice(){
         }).format(new Date());
       }else{
         if(state.view==='bovisOverview')drawBovisOverview();
-        markSynced();
-        $('syncTime').textContent=$('syncTime').textContent.replace('Aktualizacja:','Menu:');
       }
     }else if(state.view==='labels'){
       // The label component keeps the user's pending print queue intact.
