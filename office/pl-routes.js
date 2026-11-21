@@ -40,7 +40,7 @@
     }
     const row=document.createElement('div');
     row.className='pl-route-part-row';
-    row.innerHTML='<label class="pl-route-part-code">Indeks SAP / GPBS'+
+    row.innerHTML='<label class="pl-route-part-code">Indeks SAP / GPBS (opcjonalnie)'+
       '<input type="text" data-pl-route-part-code maxlength="100" autocomplete="off" placeholder="Indeks części"></label>'+
       '<label class="pl-route-part-name">Nazwa części'+
       '<input type="text" data-pl-route-part-name maxlength="180" autocomplete="off" placeholder="Nazwa części"></label>'+
@@ -106,7 +106,6 @@
   function routeData(){
     const routeNumber=byId('plRouteNumber').value.trim();
     const routeDate=byId('plRouteDate').value;
-    const crewNumber=byId('plRouteCrewNumber').value.trim();
     const crewSymbol=byId('plRouteCrewSymbol').value.trim().toUpperCase();
     const lines=[];
     for(const row of byId('plRouteParts').children){
@@ -122,7 +121,7 @@
       lines.push({partCode,partName,quantity});
     }
     if(!lines.length)throw Error('Dodaj co najmniej jedną część do trasy.');
-    return {action:'create',routeNumber,routeDate,crewNumber,crewSymbol,lines};
+    return {action:'create',routeNumber,routeDate,crewSymbol,lines};
   }
   async function jsonResponse(response){
     const data=await response.json().catch(()=>({}));
@@ -157,14 +156,13 @@
     if(!routes.length)
       return '<div class="pl-routes-empty">Brak zapisanych tras. Kliknij „Dodaj trasę”, aby wprowadzić pierwszą.</div>';
     const header='<table><thead><tr>'+
-      '<th>Numer trasy</th><th>Data</th><th>Symbol ekipy</th><th>Numer ekipy</th>'+
+      '<th>Numer trasy</th><th>Symbol ekipy</th><th>Data</th>'+
       '<th>Pozycje</th><th>Sztuki</th><th>Status</th><th></th>'+
       '</tr></thead><tbody>';
     const rows=routes.map(item=>
       '<tr><td><strong>'+html(item.routeNumber)+'</strong></td>'+
-      '<td>'+html(item.routeDate)+'</td>'+
       '<td>'+html(item.crewSymbol)+'</td>'+
-      '<td>'+html(item.crewNumber)+'</td>'+
+      '<td>'+html(item.routeDate)+'</td>'+
       '<td>'+html(item.positions)+'</td>'+
       '<td>'+html(item.units)+'</td>'+
       '<td><span class="pl-route-status-badge">Oczekuje na potwierdzenie</span></td>'+
@@ -214,7 +212,7 @@
     }
     const detail=document.createElement('tr');
     detail.className='pl-route-expanded';
-    detail.innerHTML='<td colspan="8">Pobieranie pozycji…</td>';
+    detail.innerHTML='<td colspan="7">Pobieranie pozycji…</td>';
     row.after(detail);
     button.textContent='Zwiń';
     try{
@@ -224,7 +222,7 @@
         }
       ));
       if(!detail.isConnected)return;
-      detail.innerHTML='<td colspan="8"><div class="pl-route-detail-lines">'+
+      detail.innerHTML='<td colspan="7"><div class="pl-route-detail-lines">'+
         '<strong>Lista części dla trasy '+html(result.route.routeNumber)+'</strong>'+
         '<table><thead><tr><th>#</th><th>Indeks</th><th>Nazwa</th><th>Ilość</th></tr></thead><tbody>'+
         (result.lines||[]).map(line=>'<tr><td>'+html(line.position)+'</td>'+
