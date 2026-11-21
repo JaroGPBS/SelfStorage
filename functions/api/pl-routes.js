@@ -171,14 +171,19 @@ const routeWeekRollover=routeDate=>{
   day.setUTCDate(day.getUTCDate()+(7-day.getUTCDay())%7);
   return day.toISOString().slice(0,10);
 };
-const needsReview=route=>
-  Number(route.discrepancyCount)>0||
-  Number(route.unconfirmedCount)>0&&route.status==='COMPLETED'||
-  ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
+// Sort only WITHIN the same calendar week; the current week stays above older weeks.
+// A confirmed route moves automatically when its updated status is fetched.
 const activePriority=route=>{
-  if(needsReview(route))return 0;
-  if(route.status==='COMPLETED')return 2;
-  return 1;
+  const needsReview=Number(route.discrepancyCount)>0||
+    (route.status==='COMPLETED'&&Number(route.unconfirmedCount)>0)||
+    ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status);
+  if(needsReview)return 1;
+  if(route.status==='COMPLETED')return 4;
+  if(route.status==='CONFIRMED'||route.status==='REVIEW_EXPLAINED'&&
+     Number(route.unconfirmedCount)===0)
+    return Number(route.hadVerification)>0?2:3;
+  // Awaiting team confirmation always appears at the top of its week.
+  return 0;
 };
 function parseRoute(body){
   if(!body||typeof body!=='object'||Array.isArray(body))return null;
@@ -322,9 +327,9 @@ export async function onRequestGet({request,env}){
       ...route,enteredBy:shortCreatorName(creatorFullName)
     }));
     if(scope==='active'){
-      // Group by calendar week first (Sunday of the ISO Monday-Sunday week).
-      // Inside each week: discrepancies at top, completed routes at bottom.
-      // Do not push a completed route below routes from older weeks.
+      // Newest calendar week first; within each week:
+      // Awaiting -> Needs review -> Confirmed/verified -> Confirmed -> Completed.
+      // Moving a route to another status group never moves it across weeks.
       routes.sort((a,b)=>
         routeWeekRollover(b.routeDate).localeCompare(routeWeekRollover(a.routeDate))||
         activePriority(a)-activePriority(b)||
