@@ -38,6 +38,23 @@
 .pl-routes-status.is-error{color:#b52135!important}
 .pl-routes-table{width:100%;overflow-x:auto}
 .pl-routes-table table.pl-route-list-table{width:100%;min-width:1050px;table-layout:fixed;border-collapse:collapse;font-size:12.5px}
+/* Bilans części: compact read-only catalogue sourced directly from route lines. */
+.pl-routes-table table.pl-route-balance-table{
+  width:100%;min-width:950px;table-layout:fixed;border-collapse:collapse;font-size:12.5px
+}
+.pl-routes-table .pl-route-balance-table th:nth-child(1){width:16%}
+.pl-routes-table .pl-route-balance-table th:nth-child(2){width:30%}
+.pl-routes-table .pl-route-balance-table th:nth-child(3){width:13.5%}
+.pl-routes-table .pl-route-balance-table th:nth-child(4){width:13.5%}
+.pl-routes-table .pl-route-balance-table th:nth-child(5){width:13.5%}
+.pl-routes-table .pl-route-balance-table th:nth-child(6){width:13.5%}
+.pl-routes-table .pl-route-balance-table th,
+.pl-routes-table .pl-route-balance-table td{padding:10px 9px;white-space:nowrap;text-align:center}
+.pl-routes-table .pl-route-balance-table th:nth-child(2),
+.pl-routes-table .pl-route-balance-table td:nth-child(2){text-align:left}
+.pl-routes-table .pl-route-balance-table td:nth-child(n+3){color:#8996a5}
+.pl-routes-table .pl-route-balance-table tbody tr:hover td{background:#f5f8fb}
+
 .pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(1){width:8%}
 .pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(2){width:15%}
 .pl-routes-table table.pl-route-list-table > thead > tr > th:nth-child(3){width:9%}
