@@ -423,11 +423,9 @@ export async function onRequestPost({request,env}){
          !await hasPresentationFlag(env.DB))
         return send('Nie znaleziono tras pokazowych.',404);
       const required=['confirmed_quantity','verified_quantity','returned_quantity','return_location'];
-      if(!required.every(c=>([]).includes(c))){
-        const columns=await routeLineColumns(env.DB);
-        if(!required.every(col=>columns.has(col)))
-          return send('Dane rozliczenia tras nie są jeszcze dostępne.',409);
-      }
+      const columns=await routeLineColumns(env.DB);
+      if(!required.every(col=>columns.has(col)))
+        return send('Dane rozliczenia tras nie są jeszcze dostępne.',409);
       await ensureRouteAuditSchema(env.DB);
       const routes=(await env.DB.prepare(
         "SELECT id,route_number AS routeNumber,route_date AS routeDate,"+
