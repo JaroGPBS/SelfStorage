@@ -1,6 +1,7 @@
 // GPBS Storage — PL Office route creation. Does not mutate stock or vehicle balances.
 import {verifyWorkerSession,workerAuthReady,workerJson} from '../../lib/pl-worker-auth.js';
 import {verifyRememberSession} from '../../lib/pl-office-remember.js';
+import {routeEditablePredicate,canEditRoute,ROUTE_SETTLEMENT_COLUMNS} from '../../lib/pl-route-editability.js';
 
 const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
 // TEMPORARY: true during initial presentation-data entry.
@@ -29,7 +30,7 @@ async function authorize(request,env,write=false){
   if(!user.apps?.office||!user.markets?.PL)
     return {response:send('Brak dostępu do tras w Polsce.',403)};
   if(write&&!CAN_CREATE.has(user.role))
-    return {response:send('Brak uprawnień do dodawania tras.',403)};
+    return {response:send('Brak uprawnień do tworzenia i edytowania tras.',403)};
   return {user};
 }
 async function exists(db,name){
@@ -207,12 +208,22 @@ export async function onRequestGet({request,env}){
           'WHERE route_id=? ORDER BY uploaded_at DESC,id DESC LIMIT 10'
         ).bind(id).all()).results||[]
         :[];
+      route.canEdit=canEditRoute(route.status,lines);
       return workerJson({ok:true,route,lines,documents,storageReady:true});
     }
     const scope=url.searchParams.get('scope')||'active';
     if(scope!=='active'&&scope!=='history')return send('Nieprawidłowy widok tras.',400);
     const today=polandToday();
-    const hasConfirmations=(await routeLineColumns(env.DB)).has('confirmed_quantity');
+    const columns=await routeLineColumns(env.DB);
+    const hasConfirmations=columns.has('confirmed_quantity');
+    const blockedExpression=ROUTE_SETTLEMENT_COLUMNS.filter(col=>columns.has(col))
+      .map(col=>'l.'+col+' IS NOT NULL').join(' OR ');
+    const editableSql='CASE WHEN r.status=\'AWAITING_CONFIRMATION\' '+
+      (blockedExpression
+        ?'AND COALESCE(SUM(CASE WHEN '+blockedExpression+
+          ' THEN 1 ELSE 0 END),0)=0 '
+        :'')+
+      'THEN 1 ELSE 0 END AS canEdit,';
     const mismatch=hasConfirmations
       ?'COALESCE(SUM(CASE WHEN l.confirmed_quantity IS NOT NULL '+
        'AND l.confirmed_quantity<>l.quantity THEN 1 ELSE 0 END),0)'
@@ -231,6 +242,7 @@ export async function onRequestGet({request,env}){
       'r.crew_symbol AS crewSymbol,r.status,'+
       (presentationColumn?'r.is_presentation AS isPresentation,':'0 AS isPresentation,')+
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units,'+
+      editableSql+
       mismatch+' AS discrepancyCount,'+unconfirmed+' AS unconfirmedCount,'+
       "COALESCE((SELECT u.name FROM users u WHERE u.id=r.created_by LIMIT 1),'') AS creatorFullName "+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
@@ -314,6 +326,52 @@ export async function onRequestPost({request,env}){
     }catch(error){
       console.error('PL route presentation cleanup failed',error?.name||'Error');
       return send('Nie udało się wyczyścić tras prezentacyjnych.',503);
+    }
+  }
+  if(body?.action==='update'){
+    const id=String(body.id||'');
+    if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))
+      return send('Nieprawidłowy identyfikator trasy.',400);
+    const updated=parseRoute(body);
+    if(!updated)return send('Uzupełnij numer, datę, symbol ekipy i prawidłowe części.',400);
+    try{
+      if(!await exists(env.DB,'pl_routes')||!await exists(env.DB,'pl_route_lines'))
+        return send('Nie znaleziono trasy.',404);
+      const current=await env.DB.prepare(
+        'SELECT id,status FROM pl_routes WHERE id=?'
+      ).bind(id).first();
+      if(!current)return send('Nie znaleziono trasy.',404);
+      if(current.status!=='AWAITING_CONFIRMATION')
+        return send('Trasa została już potwierdzona lub zakończona. Edycja jest zablokowana.',409);
+      const predicate=await routeEditablePredicate(env.DB,'pl_routes');
+      // The update, replacement of lines, and lock checks are in one D1 batch.
+      // Every write uses the same guard so an in-flight crew confirmation
+      // cannot be overwritten by a stale Office form.
+      const guard='EXISTS (SELECT 1 FROM pl_routes WHERE id=? AND '+predicate+')';
+      const statements=[
+        env.DB.prepare(
+          'UPDATE pl_routes SET route_number=?,route_date=?,crew_symbol=? '+
+          'WHERE id=? AND '+predicate
+        ).bind(updated.routeNumber,updated.routeDate,updated.crewSymbol,id),
+        env.DB.prepare(
+          'DELETE FROM pl_route_lines WHERE route_id=? AND '+guard
+        ).bind(id,id)
+      ];
+      updated.lines.forEach((line,index)=>{
+        statements.push(env.DB.prepare(
+          'INSERT INTO pl_route_lines (route_id,position,part_code,part_name,quantity) '+
+          'SELECT ?,?,?,?,? WHERE '+guard
+        ).bind(id,index+1,line.partCode,line.partName,line.quantity,id));
+      });
+      const result=await env.DB.batch(statements);
+      if(Number(result[0]?.meta?.changes||0)!==1)
+        return send('Trasa została w międzyczasie potwierdzona przez ekipę. Zmiany nie zostały zapisane.',409);
+      return workerJson({ok:true,id,updated:true});
+    }catch(error){
+      console.error('PL route update failed',error?.name||'Error');
+      if(/UNIQUE constraint failed/i.test(String(error?.message||'')))
+        return send('Trasa z tym numerem i datą już istnieje.',409);
+      return send('Nie udało się edytować trasy. Spróbuj ponownie.',503);
     }
   }
   if(body?.action!=='create')return send('Nieznana operacja.',400);
