@@ -698,6 +698,7 @@
             '<span>'+html(line.confirmedQuantity)+'</span>'+
             '<select required data-pl-route-explain-decision '+
               'aria-label="Decyzja dla części '+html(line.partName||line.partCode||line.position)+'">'+
+              '<option value="" disabled selected>Wybierz decyzję…</option>'+
               '<option value="MATCH_CREW">Skoryguj do '+html(line.confirmedQuantity)+' szt.</option>'+
               '<option value="LEAVE_OPEN">Nie koryguj – nadal niezgodne</option>'+
             '</select>'+
