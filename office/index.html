@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=135">
-  <link rel="stylesheet" href="./pl-routes.css?v=4">
+  <link rel="stylesheet" href="./pl-routes.css?v=5">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=165"></script>
-  <script defer src="./pl-routes.js?v=7"></script>
+  <script defer src="./pl-routes.js?v=8"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -436,9 +436,26 @@
           <label>Symbol ekipy
             <input id="plRouteCrewSymbol" type="text" required maxlength="20" autocomplete="off" autocapitalize="characters" placeholder="Np. GW">
           </label>
-          <label>Data trasy
-            <input id="plRouteDate" type="date" required>
-          </label>
+          <div class="pl-route-date-field">
+            <label for="plRouteDate">Data trasy</label>
+            <div class="pl-route-date-control">
+              <input id="plRouteDate" type="text" required readonly autocomplete="off"
+                placeholder="Wybierz datę" aria-controls="plRouteCalendar">
+              <button id="plRouteCalendarToggle" type="button" aria-label="Otwórz kalendarz"
+                aria-controls="plRouteCalendar" aria-expanded="false">▦</button>
+            </div>
+          </div>
+          <div id="plRouteCalendar" class="pl-route-calendar hidden"
+            aria-label="Kalendarz daty trasy z numerami tygodni">
+            <div class="pl-route-calendar-head">
+              <button id="plRouteCalendarPrev" type="button" aria-label="Poprzedni miesiąc">‹</button>
+              <strong id="plRouteCalendarMonth"></strong>
+              <button id="plRouteCalendarNext" type="button" aria-label="Następny miesiąc">›</button>
+            </div>
+            <div id="plRouteCalendarDays" class="pl-route-calendar-days"
+              aria-label="Tygodnie od poniedziałku do niedzieli"></div>
+            <p class="pl-route-calendar-note">Numery tygodni według ISO (poniedziałek–niedziela).</p>
+          </div>
         </div>
         <div class="pl-route-parts-head">
           <div>
