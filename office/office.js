@@ -677,6 +677,8 @@ async function saveOfficeNewPart(event){
 }
 function errorBanner(message){$('errorBanner').textContent=message||'';$('errorBanner').classList.toggle('hidden',!message);}
 function showLogin(message=''){
+  invalidateOfficeReadCache();
+  state.user=null;
   $('app').classList.add('hidden');$('loginScreen').classList.remove('hidden');
   $('loginError').textContent=message;$('loginError').classList.toggle('hidden',!message);
   $('pin').value='';if(!message)$('pin').focus();
@@ -3800,7 +3802,6 @@ async function render({silent=false}={}){
       state.inventories=(await api('inventories',params)).inventories;
       if(ticket!==state.requestId)return;drawInventories();
     }
-    markSynced();
     if(state.rememberWarning){errorBanner(state.rememberWarning);state.rememberWarning='';}
   }catch(ex){
     if(ticket!==state.requestId)return;
@@ -4529,7 +4530,7 @@ async function synchronizeOffice(){
   }
   try{
     invalidateOfficeReadCache(); // Current view reloads now; others on demand.
-    if(state.view==='home'||state.view==='bovisOverview'||
+    if(['home','plMarketHome','frMarketHome','bovisOverview'].includes(state.view)||
        state.preview?.type==='module'||
        (state.preview?.type==='operation'&&state.view!=='vehicles')){
       // Welcome and not-yet-connected sections: update warehouse navigation,
@@ -4596,7 +4597,8 @@ $('logout').addEventListener('click',async()=>{
     const worker=await fetch('/api/pl/auth',{method:'POST',credentials:'same-origin',
       headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'logout'})});
     if(!worker.ok)throw Error('Nie udało się wylogować. Spróbuj ponownie.');
-    state.user=null;state.partsCache.clear();state.detailCache.clear();state.rememberWarning='';
+    invalidateOfficeReadCache();
+    state.user=null;state.rememberWarning='';
     $('rememberMe').checked=false;showLogin();
   }catch(ex){errorBanner(ex.message||'Nie udało się wylogować.');}
 });
