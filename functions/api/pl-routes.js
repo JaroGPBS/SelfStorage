@@ -9,6 +9,27 @@ const CAN_CREATE=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
 // The route schema, form and normal D1 writes remain unchanged.
 const ROUTE_PRESENTATION_MODE=true;
 const send=(message,status=400)=>workerJson({ok:false,error:message},status);
+
+const DEMO_WEEK48=[
+  {no:'48PL-01',date:'2026-11-23',crew:'GW',status:'AWAITING_CONFIRMATION',
+    parts:[['Słupek',4],['Separator',6],['Kotwa trójkątna',8],['Dach uniwersalny',2]]},
+  {no:'48PL-02',date:'2026-11-24',crew:'AB',status:'CONFIRMED',
+    parts:[['Dzielenie dołem',5],['Dzielenie górą',5],['Osłona przyłącza',3],['Rynna + uszczelka',4]]},
+  {no:'48PL-03',date:'2026-11-25',crew:'MK',status:'REVIEW_REQUIRED',
+    parts:[['Słupek',7],['Separator',8,7],['Kotwa trójkątna',12],['Osłona przyłącza',3,2]]},
+  {no:'48PL-04',date:'2026-11-26',crew:'PW',status:'CONFIRMED',
+    parts:[['Dach uniwersalny',3],['Dzielenie górą',6],['Dzielenie dołem',6],
+      ['Rynna + uszczelka',3],['Kotwa trójkątna',10]]},
+  {no:'48PL-05',date:'2026-11-27',crew:'KT',status:'COMPLETED',
+    parts:[['Słupek',4],['Dach uniwersalny',2],['Osłona przyłącza',2],['Separator',5]]},
+  {no:'48PL-06',date:'2026-11-28',crew:'DL',status:'AWAITING_CONFIRMATION',
+    parts:[['Rynna + uszczelka',6],['Dzielenie dołem',4],['Słupek',6],['Kotwa trójkątna',12],
+      ['Separator',8]]}
+];
+const demoWeek48Id=i=>'PL-ROUTE-48de0000-0000-4000-8000-'+
+  String(i+1).padStart(12,'0');
+const demoWeek48Ids=DEMO_WEEK48.map((_,i)=>demoWeek48Id(i));
+
 // Send a shortened display label, never a full staff surname, to the route list.
 function shortCreatorName(name){
   const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
@@ -277,6 +298,111 @@ export async function onRequestPost({request,env}){
   if(raw.length>40000)return send('Zbyt duży formularz trasy.',413);
   let body;
   try{body=JSON.parse(raw);}catch{return send('Nieprawidłowy JSON.',400);}
+  if(body?.action==='seedDemoWeek48'){
+    // One deliberate, ADMIN-authenticated POST; never seed on GET or page load.
+    if(!ROUTE_PRESENTATION_MODE||auth.user.role!=='ADMIN')
+      return send('Tylko administrator może dodawać trasy pokazowe.',403);
+    if(body.confirm!=='DODAJ DEMO 48')
+      return send('Potwierdź dodanie tras prezentacyjnych.',400);
+    try{
+      const columns=await routeLineColumns(env.DB);
+      if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB)||
+         !['confirmed_quantity','returned_quantity','return_location'].every(c=>columns.has(c)))
+        await ensureSchema(env.DB);
+      const placeholders=demoWeek48Ids.map(()=>'?').join(',');
+      const existing=(await env.DB.prepare(
+        'SELECT id,is_presentation FROM pl_routes WHERE id IN ('+placeholders+')'
+      ).bind(...demoWeek48Ids).all()).results||[];
+      if(existing.some(row=>Number(row.is_presentation)!==1))
+        return send('Identyfikator demo jest zajęty przez zwykłą trasę. Niczego nie zmieniono.',409);
+      const present=new Set(existing.map(row=>row.id));
+      const statements=[];
+      let added=0;
+      for(let i=0;i<DEMO_WEEK48.length;i++){
+        const item=DEMO_WEEK48[i],id=demoWeek48Id(i);
+        if(present.has(id))continue; // repeat click never duplicates or rewrites a demo
+        const occupied=await env.DB.prepare(
+          'SELECT id FROM pl_routes WHERE route_number=? AND route_date=? LIMIT 1'
+        ).bind(item.no,item.date).first();
+        if(occupied)return send('Numer '+item.no+' w tej dacie jest już zajęty. Niczego nie dodano.',409);
+        statements.push(env.DB.prepare(
+          'INSERT INTO pl_routes '+
+          '(id,route_number,route_date,crew_number,crew_symbol,status,created_by,is_presentation) '+
+          'VALUES (?,?,?,?,?,?,?,1)'
+        ).bind(id,item.no,item.date,'',item.crew,item.status,auth.user.id));
+        item.parts.forEach(([name,quantity,confirmedOverride],position)=>{
+          const confirmed=item.status==='AWAITING_CONFIRMATION'
+            ?null:confirmedOverride===undefined?quantity:confirmedOverride;
+          const returned=item.status==='COMPLETED'?0:null;
+          statements.push(env.DB.prepare(
+            'INSERT INTO pl_route_lines '+
+            '(route_id,position,part_code,part_name,quantity,confirmed_quantity,returned_quantity) '+
+            'VALUES (?,?,?,?,?,?,?)'
+          ).bind(id,position+1,'',name,quantity,confirmed,returned));
+        });
+        added++;
+      }
+      if(statements.length)await env.DB.batch(statements);
+      return workerJson({ok:true,added,alreadyPresent:DEMO_WEEK48.length-added,
+        demoWeek:48,year:2026});
+    }catch(error){
+      console.error('PL week48 demo seed failed',error?.name||'Error');
+      if(/UNIQUE constraint failed/i.test(String(error?.message||'')))
+        return send('Jedna z przykładowych tras już istnieje. Nie nadpisano żadnych danych.',409);
+      return send('Nie udało się wstawić tras demo do D1.',503);
+    }
+  }
+  if(body?.action==='deleteDemoWeek48'){
+    if(auth.user.role!=='ADMIN')return send('Tylko administrator może usuwać demo 48.',403);
+    if(body.confirm!=='USUŃ DEMO 48')return send('Brak potwierdzenia usunięcia.',400);
+    try{
+      if(!await verifyCleanupPin(env.DB,env,auth.user.id,body.pin))
+        return send('Nieprawidłowy PIN administratora.',403);
+      if(!await exists(env.DB,'pl_routes')||!await hasPresentationFlag(env.DB))
+        return workerJson({ok:true,deleted:0});
+      const ids=demoWeek48Ids;
+      const placeholders=ids.map(()=>'?').join(',');
+      const existing=(await env.DB.prepare(
+        'SELECT id,is_presentation FROM pl_routes WHERE id IN ('+placeholders+')'
+      ).bind(...ids).all()).results||[];
+      if(existing.some(row=>Number(row.is_presentation)!==1))
+        return send('Jedna z tras ma już status rzeczywistej. Usuwanie przerwano.',409);
+      const remove=existing.map(row=>row.id);
+      if(!remove.length)return workerJson({ok:true,deleted:0});
+      const marks=remove.map(()=>'?').join(',');
+      const hasDocuments=await exists(env.DB,'pl_route_documents');
+      const docs=hasDocuments?(await env.DB.prepare(
+        'SELECT object_key,size_bytes FROM pl_route_documents WHERE route_id IN ('+marks+')'
+      ).bind(...remove).all()).results||[]:[];
+      if(docs.length){
+        if(!env.PART_PHOTOS||typeof env.PART_PHOTOS.delete!=='function')
+          return send('Nie można usunąć demo ze zdjęciami: R2 jest niedostępne.',503);
+        for(let i=0;i<docs.length;i+=1000)
+          await env.PART_PHOTOS.delete(docs.slice(i,i+1000).map(doc=>doc.object_key));
+      }
+      const statements=[];
+      if(docs.length&&await exists(env.DB,'pl_r2_photo_quota')){
+        const bytes=docs.reduce((acc,doc)=>acc+Number(doc.size_bytes||0),0);
+        statements.push(env.DB.prepare(
+          'UPDATE pl_r2_photo_quota SET used_bytes=MAX(0,used_bytes-?) WHERE id=1'
+        ).bind(bytes));
+      }
+      if(hasDocuments)statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_documents WHERE route_id IN ('+marks+')'
+      ).bind(...remove));
+      statements.push(env.DB.prepare(
+        'DELETE FROM pl_route_lines WHERE route_id IN ('+marks+')'
+      ).bind(...remove));
+      statements.push(env.DB.prepare(
+        'DELETE FROM pl_routes WHERE id IN ('+marks+') AND is_presentation=1'
+      ).bind(...remove));
+      const result=await env.DB.batch(statements);
+      return workerJson({ok:true,deleted:Number(result[result.length-1]?.meta?.changes||0)});
+    }catch(error){
+      console.error('PL week48 demo cleanup failed',error?.name||'Error');
+      return send('Nie udało się usunąć sześciu tras demo.',503);
+    }
+  }
   if(body?.action==='deletePresentation'){
     if(!ROUTE_PRESENTATION_MODE)return send('Tryb wprowadzania tras prezentacyjnych jest wyłączony.',403);
     // Cleanup is deliberately separate from ordinary route creation.
