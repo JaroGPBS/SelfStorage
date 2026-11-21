@@ -8497,3 +8497,16 @@
 @media(max-width:950px){
   #sidebar .office-welcome .welcome-line{column-gap:4px}
 }
+
+/* One page heading in the upper Office bar; no repeated titles in data toolbars.
+   Keep functional tabs, search, filters, actions and data-status messages intact. */
+.app.view-stocks .table-toolbar .table-caption{display:none!important}
+.app.view-stocks:not(.view-modules) .table-toolbar{
+  grid-template-columns:minmax(230px,1fr) auto;
+}
+.app.view-receipts .table-toolbar .receipt-toolbar-info{display:none!important}
+.app.view-receipts .table-toolbar{padding-top:8px;padding-bottom:8px}
+.app.view-stocks .content,
+.app.view-receipts:not(.view-vehicles):not(.view-aggregate) .content{
+  padding-top:7px;
+}
