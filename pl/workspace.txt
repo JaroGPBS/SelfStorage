@@ -268,11 +268,6 @@
               <small>Wpisz tylko ilości zwrócone. Wykorzystane części zostaną obliczone automatycznie.</small>
             </div>
             <div class="crew-report-scroll">
-              <div class="crew-report-column-head" aria-hidden="true">
-                <span>CZĘŚĆ / ODEBRANO</span>
-                <span>WYKORZYSTANO</span>
-                <span>ZWRÓCONO</span>
-              </div>
               <div id="plCrewReportLines" class="crew-report-lines"></div>
               <div class="crew-report-comment">
                 <label class="crew-comment-label" for="plCrewReportComment">Komentarz ekipy (opcjonalnie)</label>
