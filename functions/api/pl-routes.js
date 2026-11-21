@@ -27,6 +27,7 @@ async function exists(db,name){
 }
 async function ensureSchema(db){
   // Created on the first authorized save. Reading an empty module never writes D1.
+  // crew_number stays as a legacy NOT NULL column for existing D1 schemas.
   await db.batch([
     db.prepare(
       'CREATE TABLE IF NOT EXISTS pl_routes ('+
@@ -83,7 +84,7 @@ export async function onRequestGet({request,env}){
       if(!/^PL-ROUTE-[a-f0-9-]{36}$/.test(id))return send('Nieprawidłowa trasa.',400);
       const route=await env.DB.prepare(
         'SELECT id,route_number AS routeNumber,route_date AS routeDate,'+
-        'crew_number AS crewNumber,crew_symbol AS crewSymbol,status,created_at AS createdAt '+
+        'crew_symbol AS crewSymbol,status,created_at AS createdAt '+
         'FROM pl_routes WHERE id=?'
       ).bind(id).first();
       if(!route)return send('Nie znaleziono trasy.',404);
@@ -95,7 +96,7 @@ export async function onRequestGet({request,env}){
     }
     const routes=(await env.DB.prepare(
       'SELECT r.id,r.route_number AS routeNumber,r.route_date AS routeDate,'+
-      'r.crew_number AS crewNumber,r.crew_symbol AS crewSymbol,r.status,'+
+      'r.crew_symbol AS crewSymbol,r.status,'+
       'COUNT(l.position) AS positions,COALESCE(SUM(l.quantity),0) AS units '+
       'FROM pl_routes r LEFT JOIN pl_route_lines l ON l.route_id=r.id '+
       'GROUP BY r.id ORDER BY r.route_date DESC,r.created_at DESC,r.id DESC LIMIT 200'
