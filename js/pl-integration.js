@@ -8,7 +8,8 @@ const POLISH_SCRIPTS = [
   '/pl/inventory-scanner.js?v=2',
   '/pl/inventory-flow.js?v=6',
   '/pl/warehouse-operations.js?v=19',
-  '/pl/pl.js?v=25'
+  '/pl/crew-routes.js?v=1',
+  '/pl/pl.js?v=26'
 ];
 
 let workspacePromise = null;
@@ -73,7 +74,7 @@ async function buildPolishWorkspace() {
   if (!workspace) throw new Error('Brak kontenera polskiej części aplikacji.');
 
   // Load the internal PL workspace template into the single main application.
-  const response = await fetch('/pl/workspace.txt?v=6', {
+  const response = await fetch('/pl/workspace.txt?v=7', {
     credentials: 'same-origin',
     cache: 'no-store'
   });
@@ -93,7 +94,7 @@ async function buildPolishWorkspace() {
   const link = document.createElement('link');
   link.id = 'gpbsPolandStyles';
   link.rel = 'stylesheet';
-  link.href = '/pl/pl.css?v=47';
+  link.href = '/pl/pl.css?v=48';
   document.head.append(link);
 
   // Existing Polish modules bind their handlers to the newly inserted DOM.
