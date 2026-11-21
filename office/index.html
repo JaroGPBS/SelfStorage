@@ -9,8 +9,8 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=146">
-  <link rel="stylesheet" href="./pl-routes.css?v=51">
+  <link rel="stylesheet" href="./office.css?v=147">
+  <link rel="stylesheet" href="./pl-routes.css?v=52">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -208,6 +208,9 @@
           </div>
         </div>
         <div id="vehicleTopExportHost" class="vehicle-top-export-host hidden"></div>
+        <div id="plRoutesTopActions" class="pl-routes-top-actions hidden">
+          <button type="button" id="plRouteBalanceExport" class="pl-route-export-button hidden" disabled>Eksportuj</button>
+        </div>
         <div class="top-status"><span class="status-dot"></span><span>Online</span></div>
       </header>
       <div class="content">
@@ -352,12 +355,11 @@
         <section id="officePlRoutesView" class="office-pl-routes-view hidden" aria-label="Trasy – Polska">
           <div id="plRoutesListPanel" class="pl-routes-list-panel hidden">
             <div class="pl-routes-toolbar">
-              <div class="pl-routes-heading">
+              <div class="pl-routes-heading hidden" aria-hidden="true">
                 <strong id="plRoutesSectionTitle">Aktualne trasy</strong>
                 <small id="plRoutesSectionDescription">Lista tras w trakcie realizacji.</small>
               </div>
               <button type="button" id="plRouteAdd" class="btn pl-route-add-primary">+ Dodaj trasę</button>
-              <button type="button" id="plRouteBalanceExport" class="pl-route-export-button hidden" disabled>Eksportuj</button>
               <button type="button" id="plRoutesPrepareDemo47" class="btn outline pl-route-demo-action hidden"
                 title="Test tygodnia 47: zakończ 2 trasy demonstracyjne, potwierdź trzecią">Przygotuj demo 47</button>
               <button type="button" id="plRoutesCompleteDemo45" class="btn outline pl-route-demo-action hidden"
