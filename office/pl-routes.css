@@ -72,6 +72,14 @@
   font-size:11px;color:#a42636;margin:0 0 8px;
 }
 .pl-route-detail-note{font-size:10.5px;color:#78889a;margin:8px 0 0}
+.pl-routes-table tr.pl-route-needs-review > td{
+  background:#fff3f3!important;
+  border-bottom:1px solid #efd0d3;
+}
+.pl-routes-table tr.pl-route-needs-review > td:first-child{
+  box-shadow:inset 3px 0 0 #c83949;
+}
+.pl-routes-table tr.pl-route-needs-review:hover > td{background:#ffe9ea!important}
 .pl-routes-table .pl-route-status-badge.is-discrepancy{background:#fde8e7;color:#ac2937}
 .pl-routes-table .pl-route-status-badge.is-confirmed{background:#e8f1e8;color:#376746}
 .pl-routes-table .pl-route-status-badge.is-completed{background:#e9edf2;color:#44586f}
