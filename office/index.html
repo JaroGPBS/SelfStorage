@@ -125,7 +125,7 @@
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=168"></script>
   <script defer src="./pl-routes-export.js?v=1"></script>
-  <script defer src="./pl-routes.js?v=36"></script>
+  <script defer src="./pl-routes.js?v=37"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -587,16 +587,20 @@
   <dialog id="plRouteExportDialog" class="pl-route-small-dialog pl-route-export-dialog"
           aria-labelledby="plRouteExportTitle">
     <div class="pl-route-small-head">
-      <strong id="plRouteExportTitle">Eksportuj trasę</strong>
+      <strong id="plRouteExportTitle">Podgląd karty trasy</strong>
       <button type="button" id="plRouteExportClose" aria-label="Zamknij">×</button>
     </div>
-    <div class="pl-route-small-body">
-      <p class="pl-route-export-description">Wybierz format karty trasy. Dokument zawiera wszystkie zapisane ilości i ustalenia, bez zdjęć.</p>
-      <p id="plRouteExportError" class="pl-route-explain-error" role="alert" hidden></p>
+    <div class="pl-route-export-preview-area">
+      <p id="plRouteExportLoading" class="pl-route-export-loading" role="status">Wczytywanie podglądu…</p>
+      <iframe id="plRouteExportPreview" title="Podgląd karty trasy do eksportu"
+              referrerpolicy="same-origin"></iframe>
     </div>
+    <p class="pl-route-export-hint">PDF: w oknie drukowania wybierz „Zapisz jako PDF”. Zdjęcia nie są dołączane.</p>
+    <p id="plRouteExportError" class="pl-route-explain-error" role="alert" hidden></p>
     <div class="pl-route-small-actions">
-      <button type="button" id="plRouteExportPdf" class="btn outline">PDF / Drukuj</button>
-      <button type="button" id="plRouteExportExcel" class="btn dark">Excel (.xlsx)</button>
+      <button type="button" id="plRouteExportPdf" class="btn outline" disabled>PDF</button>
+      <button type="button" id="plRouteExportExcel" class="btn outline" disabled>Excel</button>
+      <button type="button" id="plRouteExportPrint" class="btn dark" disabled>Drukuj</button>
     </div>
   </dialog>
   <dialog id="plRouteAuditDialog" class="pl-route-small-dialog" aria-labelledby="plRouteAuditTitle">
