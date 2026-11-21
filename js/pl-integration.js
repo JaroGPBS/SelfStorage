@@ -8,7 +8,7 @@ const POLISH_SCRIPTS = [
   '/pl/inventory-scanner.js?v=2',
   '/pl/inventory-flow.js?v=6',
   '/pl/warehouse-operations.js?v=19',
-  '/pl/crew-routes.js?v=4',
+  '/pl/crew-routes.js?v=5',
   '/pl/pl.js?v=27'
 ];
 
