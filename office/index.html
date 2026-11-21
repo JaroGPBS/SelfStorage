@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=132">
+  <link rel="stylesheet" href="./office.css?v=133">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -122,7 +122,7 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=161"></script>
+  <script defer src="./office.js?v=162"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -229,6 +229,12 @@
                 <p id="homeSyncError" class="office-home-sync-error" role="status" aria-live="polite"></p>
               </div>
             </div>
+          </div>
+        </section>
+        <section id="officePolandHome" class="office-poland-home hidden" aria-labelledby="polandHomeTitle">
+          <div class="office-poland-heading">
+            <img src="./gpbs-logo-sharp.svg?v=1" alt="Logo GPBS" class="office-poland-logo">
+            <h1 id="polandHomeTitle">Polska</h1>
           </div>
         </section>
         <section id="officeFranceHome" class="office-france-home hidden" aria-labelledby="franceHomeTitle">
