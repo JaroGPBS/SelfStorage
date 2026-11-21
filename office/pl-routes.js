@@ -529,7 +529,7 @@
         history||role!=='ADMIN'||result.presentationMode!==true);
       const showDemo=!history&&role==='ADMIN'&&result.presentationMode===true;
       const demoCount=Number(result.demoWeek48Count||0);
-      byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount===6);
+      byId('plRoutesSeedDemo48').classList.toggle('hidden',!showDemo||demoCount>=7);
       byId('plRoutesDeleteDemo48').classList.toggle('hidden',!showDemo||demoCount===0);
       routeAuditCache.clear();
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
@@ -686,8 +686,9 @@
       byId('plRouteExplainForm').reset();
       byId('plRouteExplainError').hidden=true;
       byId('plRouteExplainLines').innerHTML=
-        '<div class="pl-route-explain-head"><span>Część</span><span>Wydano</span>'+
-          '<span>Ekipa</span><span>Korekta wydania</span></div>'+
+        '<div class="pl-route-explain-head"><span>Część</span>'+
+          '<span>Magazyn wydał</span><span>Ekipa potwierdziła</span>'+
+          '<span>Wydano po korekcie</span></div>'+
         wrong.map(line=>
           '<div class="pl-route-explain-line">'+
             '<strong>'+html(line.partName||line.partCode||'Poz. '+line.position)+'</strong>'+
@@ -775,15 +776,26 @@
     let content='<p class="pl-route-audit-meta">'+html(entry.actor||'Użytkownik')+
       ' · '+html(auditTime(entry.createdAt))+'</p>';
     if(isExplain){
-      content+='<h3>Wyjaśnienie</h3>'+
+      content+='<h3>Wyjaśnienie osoby weryfikującej</h3>'+
         '<p class="pl-route-audit-comment">'+html(details.comment||'—')+'</p>'+
-        '<h3>Porównanie ilości</h3><div class="pl-route-audit-diff">';
+        '<h3>Sprawdzone ilości</h3>'+
+        '<div class="pl-route-audit-table-wrap"><table class="pl-route-audit-quantity-table">'+
+        '<thead><tr><th>Część</th><th>Magazyn wydał<br>(pierwotnie)</th>'+
+        '<th>Ekipa potwierdziła</th><th>Wydano po weryfikacji</th>'+
+        '<th>Zmiana</th></tr></thead><tbody>';
       for(const item of details.positions||[]){
-        content+='<div><strong>'+html(item.partName||'Pozycja '+item.position)+'</strong>'+
-          '<span>Wydano: '+html(item.before)+' → '+html(item.after)+
-            ' · Ekipa: '+html(item.confirmed)+'</span></div>';
+        const changed=Number(item.after)!==Number(item.before);
+        content+='<tr'+(changed?' class="pl-route-audit-corrected"':'')+'>'+
+          '<td>'+html(item.partName||'Pozycja '+item.position)+'</td>'+
+          '<td>'+html(item.before)+'</td>'+
+          '<td>'+html(item.confirmed)+'</td>'+
+          '<td>'+html(item.after)+'</td>'+
+          '<td><span class="pl-route-audit-change '+(changed?'is-corrected':'')+'">'+
+            (changed?'Skorygowano':'Bez zmiany')+'</span></td></tr>';
       }
-      content+='</div>';
+      content+='</tbody></table></div>'+
+        '<p class="pl-route-audit-help">„Bez zmiany” oznacza, że zachowano pierwotną ilość. '+
+        'Powód rozbieżności opisano w komentarzu powyżej.</p>';
     }else{
       const prev=details.before||{},next=details.after||{};
       const descriptions=[['Numer trasy','routeNumber'],['Data','routeDate'],
@@ -942,8 +954,8 @@
   async function seedDemoWeek48(){
     if(busy||routeContext()?.role!=='ADMIN')return;
     if(!window.confirm(
-      'Dodać sześć fikcyjnych tras na tydzień 48 (23–28.11.2026)? '+
-      'Będą oznaczone gwiazdką (*) i nie zmienią żadnych stanów magazynowych.'
+      'Dodać brakujące przykładowe trasy z tygodnia 48? '+
+      'Już zapisane trasy pozostaną bez zmian; nowe będą oznaczone gwiazdką (*).'
     ))return;
     const button=byId('plRoutesSeedDemo48');
     const status=byId('plRoutesListStatus');
@@ -970,7 +982,7 @@
   async function deleteDemoWeek48(){
     if(busy||routeContext()?.role!=='ADMIN')return;
     if(!window.confirm(
-      'Usunąć TYLKO sześć tras demo tygodnia 48 i ich przykładowe ilości? '+
+      'Usunąć TYLKO trasy demo tygodnia 48 i ich przykładowe ilości? '+
       'Pozostałe trasy (w tym wcześniejsze prezentacyjne) pozostaną bez zmian.'
     ))return;
     const pin=window.prompt('Potwierdź usunięcie PIN-em administratora:');
