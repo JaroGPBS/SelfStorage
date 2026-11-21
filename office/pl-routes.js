@@ -11,6 +11,7 @@
   let editingRouteId=null; // Existing route opened for corrections before team confirmation.
   let editingRouteRevision=0;
   const routeAuditCache=new Map();
+  const crewCommentsCache=new Map();
   let busy=false;
   let loadSeq=0;
   let demo47Routes=[];
@@ -636,7 +637,7 @@
           credentials:'same-origin',cache:'no-store'
         }));
         if(seq!==loadSeq)return;
-        routeAuditCache.clear();
+        routeAuditCache.clear(); crewCommentsCache.clear();
         const period=result.period||{};
         table.innerHTML=balanceTable(result.parts||[],period);
         byId('plRouteBalanceExport').disabled=!(result.parts||[]).length;
@@ -683,7 +684,7 @@
         demo45.length===2&&
         demo45.some(route=>route.status!=='COMPLETED');
       byId('plRoutesCompleteDemo45').classList.toggle('hidden',!demo45Ready);
-      routeAuditCache.clear();
+      routeAuditCache.clear(); crewCommentsCache.clear();
       table.innerHTML=history?historyTable(result.routes||[]):listTable(result.routes||[]);
       status.textContent='';
     }catch(error){
@@ -772,6 +773,13 @@
     const editable=!history&&route.canEdit===true&&canWork;
     const explainable=!history&&canWork&&mismatches.length>0&&
       route.status!=='COMPLETED';
+    const crewComments=(result.crewComments||[]).filter(item=>String(item.comment||'').trim());
+    crewCommentsCache.set(route.id,crewComments);
+    const crewCommentsButton=crewComments.length
+      ?'<button type="button" class="pl-route-crew-comment-button" '+
+          'data-pl-route-crew-comment="'+html(route.id)+'">Komentarz ekipy</button>'
+      :'<button type="button" class="pl-route-crew-comment-button" disabled '+
+          'title="Brak komentarza ekipy">Komentarz ekipy</button>';
     const photoButtons=(result.documents||[]).length
       ?result.documents.map((doc,index)=>
         '<button type="button" class="pl-route-document-button" '+
@@ -853,7 +861,7 @@
         '</div>'+
         '<div class="pl-route-detail-side">'+
           '<div class="pl-route-detail-actions">'+photoButtons+editButton+explainButton+
-            returnApprovalButton+deleteDemoButton+'</div>'+
+            returnApprovalButton+crewCommentsButton+deleteDemoButton+'</div>'+
           (audit?'<div class="pl-route-audit-history">'+audit+'</div>':'')+
           returnApprovalDetails+
         '</div>'+
@@ -985,6 +993,20 @@
       explainSaving=false;
       byId('plRouteExplainSave').disabled=false;
     }
+  }
+  function openCrewComments(button){
+    const notes=crewCommentsCache.get(button.dataset.plRouteCrewComment||'')||[];
+    if(!notes.length)return;
+    const content=notes.map(note=>
+      '<section class="pl-route-crew-comment-entry">'+
+        '<strong>'+html(note.stage==='PICKUP'?'Potwierdzenie odbioru':'Raport końcowy')+'</strong>'+
+        '<small>'+html(note.actor||'Ekipa')+' · '+html(auditTime(note.createdAt))+'</small>'+
+        '<p>'+html(note.comment)+'</p>'+
+      '</section>'
+    ).join('');
+    byId('plRouteAuditTitle').textContent='Komentarz ekipy';
+    byId('plRouteAuditContent').innerHTML=content;
+    byId('plRouteAuditDialog').showModal();
   }
   function openRouteAudit(button){
     const entry=routeAuditCache.get(button.dataset.plRouteAudit||'');
@@ -1748,6 +1770,8 @@
     if(exportButton){openRouteExport(exportButton);return;}
     const deleteButton=e.target.closest('[data-pl-route-delete-demo03]');
     if(deleteButton){openDeleteDemo03(deleteButton);return;}
+    const commentButton=e.target.closest('[data-pl-route-crew-comment]');
+    if(commentButton){openCrewComments(commentButton);return;}
     const auditButton=e.target.closest('[data-pl-route-audit]');
     if(auditButton){openRouteAudit(auditButton);return;}
     const explainButton=e.target.closest('[data-pl-route-explain]');
