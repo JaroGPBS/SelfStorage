@@ -57,7 +57,7 @@
  .pl-routes-table td{padding:8px 12px;text-align:center;border-bottom:1px solid #e5ebf0;color:#2a3a4c;vertical-align:middle}
 .pl-routes-table .pl-route-status-group{
   display:inline-flex;align-items:center;justify-content:center;gap:5px;
-  flex-wrap:wrap;max-width:100%
+  flex-wrap:nowrap;white-space:nowrap
 }
 .pl-routes-table .pl-route-status-badge{
   display:inline-flex;align-items:center;white-space:nowrap;
