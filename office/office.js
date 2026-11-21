@@ -3627,7 +3627,6 @@ async function render({silent=false}={}){
       state.frBoxVisits=normalizeFrBoxVisits(response.visits);
       errorBanner('');
       drawFrBoxMovements();
-      markSynced();
     }catch(ex){
       if(ticket!==state.requestId)return;
       state.frBoxVisits=[];
@@ -3661,7 +3660,6 @@ async function render({silent=false}={}){
           drawFrenchVehicleFleet(state.frVehicleData.parts,state.frVehicleData.crews,state.frVehicleData.history);
           loadFrenchVehicleInventories();
         }else drawVehicles();
-        markSynced();
       }catch(ex){
         if(ticket!==state.requestId)return;
         errorBanner(ex.message||'Nie udało się pobrać katalogu samochodowego.');
@@ -3697,7 +3695,6 @@ async function render({silent=false}={}){
       }
       if(ticket!==state.requestId)return;
       drawStocks(state.partsCache.get(cacheKey)||[],null);
-      markSynced();
     }catch(ex){
       if(ticket!==state.requestId)return;
       errorBanner(ex.message||'Nie można pobrać katalogu części.');
@@ -4555,7 +4552,6 @@ async function synchronizeOffice(){
     }else if(state.view==='labels'){
       // The label component keeps the user's pending print queue intact.
       await window.GPBSOfficeLabels?.refresh();
-      if(user===state.user)markSynced();
     }else{
       const scroll=$('tableArea');
       const top=scroll.scrollTop,left=scroll.scrollLeft;
