@@ -878,7 +878,12 @@
   byId('switchWarehouseButton').addEventListener('click',showWarehousePicker);
   byId('plCrewRoutesButton').addEventListener('click',()=>{
     if(state.user?.role!=='EKIPA')return;
-    window.GPBSPlCrewRoutes?.open(state.user,
+    window.GPBSPlCrewRoutes?.openHistory(state.user,
+      ()=>subview('crewRouteScreen'),()=>subview('crewHome'));
+  });
+  byId('plCrewActiveRouteButton').addEventListener('click',()=>{
+    if(state.user?.role!=='EKIPA')return;
+    window.GPBSPlCrewRoutes?.openAction(state.user,
       ()=>subview('crewRouteScreen'),()=>subview('crewHome'));
   });
   byId('openInventoryButton').addEventListener('click',openInventory);
