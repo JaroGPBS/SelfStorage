@@ -254,7 +254,8 @@
     if(busy)event.preventDefault();
   });
   byId('plRouteDialog').addEventListener('close',()=>{
-    if(!busy){clearPhoto();errorMessage();}
+    clearPhoto();
+    if(!busy)errorMessage();
   });
   byId('plRoutesTable').addEventListener('click',e=>{
     const button=e.target.closest('[data-pl-route-details]');
