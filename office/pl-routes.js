@@ -240,8 +240,12 @@
     return Number.isNaN(date.getTime())?'—':isoWeekNumber(date);
   }
   function statusInfo(route){
-    if(route.status==='COMPLETED')return {label:'Zakończona',className:'is-completed'};
-    if(Number(route.discrepancyCount)>0)return {label:'Rozbieżność',className:'is-discrepancy'};
+    if(Number(route.discrepancyCount)>0||
+       ['REVIEW_REQUIRED','DISCREPANCY'].includes(route.status))
+      return {label:'Do weryfikacji – niezgodność',className:'is-discrepancy'};
+    if(route.status==='COMPLETED'&&Number(route.unconfirmedCount)>0)
+      return {label:'Do weryfikacji',className:'is-discrepancy'};
+    if(route.status==='COMPLETED')return {label:'Trasa zakończona',className:'is-completed'};
     if(route.status==='CONFIRMED')return {label:'Potwierdzona',className:'is-confirmed'};
     return {label:'Oczekuje na potwierdzenie',className:''};
   }
@@ -262,7 +266,9 @@
       '</tr></thead><tbody>';
     const rows=routes.map(item=>{
       const status=statusInfo(item);
-      return '<tr><td><strong>'+html(routeWeekNumber(item.routeDate))+'</strong></td>'+
+      return '<tr'+(status.className==='is-discrepancy'
+        ?' class="pl-route-needs-review"':'')+
+        '><td><strong>'+html(routeWeekNumber(item.routeDate))+'</strong></td>'+
         '<td><strong>'+html(item.routeNumber)+'</strong>'+
         (Number(item.isPresentation)===1
           ?'<sup class="pl-route-presentation-star" title="Trasa prezentacyjna" aria-label="Trasa prezentacyjna">*</sup>'
@@ -348,7 +354,9 @@
   }
   function routeDetailsMarkup(result){
     const route=result.route;
-    const history=route.status==='COMPLETED';
+    // A completed route stays in "Aktualne trasy" until the weekly rollover.
+    // Show return columns only in actual history, not based on status alone.
+    const history=routeContext()?.tab==='history';
     const lines=result.lines||[];
     const mismatches=lines.filter(line=>
       line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
@@ -356,10 +364,10 @@
     );
     const cols=history
       ?'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
-       '<th>Wydano (biuro)</th><th>Potwierdzono (ekipa)</th>'+
+       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Zakończono</th>'+
        '<th>Zwrócono</th><th>Miejsce zwrotu</th>'
       :'<th>#</th><th>Indeks</th><th>Nazwa części</th>'+
-       '<th>Wydano (biuro)</th><th>Potwierdzono (ekipa)</th>';
+       '<th>Wydano</th><th>Potwierdzono (ekipa)</th><th>Zakończono</th>';
     const rows=lines.map(line=>{
       const mismatch=line.confirmedQuantity!==null&&line.confirmedQuantity!==undefined&&
         Number(line.confirmedQuantity)!==Number(line.quantity);
@@ -368,7 +376,8 @@
         '<td>'+html(line.partCode||'—')+'</td>'+
         '<td>'+html(line.partName||'—')+'</td>'+
         '<td>'+html(line.quantity)+'</td>'+
-        '<td>'+routeQuantity(line.confirmedQuantity)+'</td>';
+        '<td>'+routeQuantity(line.confirmedQuantity)+'</td>'+
+        '<td>—</td>'; // completion details will be filled by the future team workflow
       if(history){
         row+='<td>'+routeQuantity(line.returnedQuantity)+'</td>'+
           '<td>'+html(line.returnLocation||'—')+'</td>';
@@ -386,7 +395,7 @@
       warning+
       '<table><thead><tr>'+cols+'</tr></thead><tbody>'+
         rows+'</tbody></table>'+
-      (history?'':'<p class="pl-route-detail-note">„—” oznacza brak potwierdzenia ekipy, a nie zero sztuk.</p>')+
+      (history?'':'<p class="pl-route-detail-note">„—” oznacza brak danych o potwierdzeniu lub zakończeniu, nie zero sztuk.</p>')+
       '</div>';
   }
   async function showDetails(button){
