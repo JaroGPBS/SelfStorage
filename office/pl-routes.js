@@ -52,6 +52,86 @@
     row.querySelector('[data-pl-route-part-quantity]').value=data.quantity||'';
     target.append(row);
   }
+
+  // ISO 8601: weeks begin on Monday and week 1 contains January 4.
+  let calendarMonth=null;
+  const formatIsoUTC=d=>d.getUTCFullYear()+'-'+
+    String(d.getUTCMonth()+1).padStart(2,'0')+'-'+
+    String(d.getUTCDate()).padStart(2,'0');
+  function isoWeekNumber(day){
+    const thursday=new Date(Date.UTC(
+      day.getUTCFullYear(),day.getUTCMonth(),day.getUTCDate()
+    ));
+    thursday.setUTCDate(thursday.getUTCDate()+4-(thursday.getUTCDay()||7));
+    const yearStart=Date.UTC(thursday.getUTCFullYear(),0,1);
+    return Math.ceil(((thursday.getTime()-yearStart)/86400000+1)/7);
+  }
+  function routeDateObject(){
+    const value=byId('plRouteDate').value;
+    const valid=/^\d{4}-\d{2}-\d{2}$/.test(value);
+    const date=valid?new Date(value+'T00:00:00Z'):new Date();
+    return Number.isNaN(date.getTime())?new Date():date;
+  }
+  function drawRouteCalendar(){
+    if(!calendarMonth)calendarMonth=routeDateObject();
+    const y=calendarMonth.getUTCFullYear();
+    const m=calendarMonth.getUTCMonth();
+    byId('plRouteCalendarMonth').textContent=
+      new Intl.DateTimeFormat('pl-PL',{month:'long',year:'numeric',timeZone:'UTC'})
+        .format(new Date(Date.UTC(y,m,1)));
+    const firstDayOfMonth=new Date(Date.UTC(y,m,1));
+    const back=(firstDayOfMonth.getUTCDay()+6)%7;
+    const daysInMonth=new Date(Date.UTC(y,m+1,0)).getUTCDate();
+    const numberOfWeeks=Math.ceil((back+daysInMonth)/7);
+    const selected=byId('plRouteDate').value;
+    const now=new Date();
+    const todayParts=new Intl.DateTimeFormat('en-US',{
+      timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'
+    }).formatToParts(now);
+    const tp=Object.fromEntries(todayParts.filter(p=>
+      ['year','month','day'].includes(p.type)).map(p=>[p.type,p.value]));
+    const today=tp.year+'-'+tp.month+'-'+tp.day;
+    let markup='<span class="pl-route-calendar-week-header">Tydz.</span>'+
+      ['Pn','Wt','Śr','Cz','Pt','So','Nd'].map(x=>
+        '<span class="pl-route-calendar-day-header">'+x+'</span>').join('');
+    for(let week=0;week<numberOfWeeks;week++){
+      const monday=new Date(Date.UTC(y,m,1-back+week*7));
+      const number=isoWeekNumber(monday);
+      markup+='<span class="pl-route-calendar-week" title="Tydzień '+number+
+        '" aria-label="Tydzień '+number+'">'+String(number).padStart(2,'0')+'</span>';
+      for(let d=0;d<7;d++){
+        const current=new Date(Date.UTC(y,m,1-back+week*7+d));
+        const value=formatIsoUTC(current);
+        const classes=['pl-route-calendar-day'];
+        if(current.getUTCMonth()!==m)classes.push('is-outside');
+        if(value===selected)classes.push('is-selected');
+        else if(value===today)classes.push('is-today');
+        markup+='<button type="button" class="'+classes.join(' ')+
+          '" data-pl-route-day="'+value+'" aria-label="'+value+
+          '"'+(value===selected?' aria-pressed="true"':'')+'>'+
+          current.getUTCDate()+'</button>';
+      }
+    }
+    byId('plRouteCalendarDays').innerHTML=markup;
+  }
+  function setRouteCalendarOpen(open){
+    const calendar=byId('plRouteCalendar');
+    calendar.classList.toggle('hidden',!open);
+    byId('plRouteCalendarToggle').setAttribute('aria-expanded',String(open));
+    if(open){
+      const date=routeDateObject();
+      calendarMonth=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),1));
+      drawRouteCalendar();
+    }
+  }
+  function changeRouteCalendarMonth(offset){
+    if(!calendarMonth)calendarMonth=routeDateObject();
+    calendarMonth=new Date(Date.UTC(
+      calendarMonth.getUTCFullYear(),calendarMonth.getUTCMonth()+offset,1
+    ));
+    drawRouteCalendar();
+  }
+
   function openForm(){
     if(busy)return;
     const allowed=['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(routeContext()?.role);
@@ -67,6 +147,7 @@
       timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'
     }).format(new Date());
     byId('plRouteDate').value=date;
+    setRouteCalendarOpen(false);
     dialog.showModal();
     byId('plRouteNumber').focus();
   }
@@ -279,6 +360,29 @@
     }
   }
   byId('plRoutesClearPresentation').addEventListener('click',clearPresentationRoutes);
+
+  byId('plRouteCalendarToggle').addEventListener('click',()=>{
+    setRouteCalendarOpen(byId('plRouteCalendar').classList.contains('hidden'));
+  });
+  byId('plRouteDate').addEventListener('click',()=>setRouteCalendarOpen(true));
+  byId('plRouteCalendarPrev').addEventListener('click',()=>changeRouteCalendarMonth(-1));
+  byId('plRouteCalendarNext').addEventListener('click',()=>changeRouteCalendarMonth(1));
+  byId('plRouteCalendarDays').addEventListener('click',event=>{
+    const day=event.target.closest('button[data-pl-route-day]');
+    if(!day)return;
+    byId('plRouteDate').value=day.dataset.plRouteDay;
+    setRouteCalendarOpen(false);
+    byId('plRouteDate').focus();
+  });
+  document.addEventListener('click',event=>{
+    const calendar=byId('plRouteCalendar');
+    if(calendar.classList.contains('hidden'))return;
+    if(calendar.contains(event.target)||
+       byId('plRouteDate').contains(event.target)||
+       byId('plRouteCalendarToggle').contains(event.target))return;
+    setRouteCalendarOpen(false);
+  });
+
   byId('plRouteAdd').addEventListener('click',openForm);
   byId('plRouteClose').addEventListener('click',closeForm);
   byId('plRouteCancel').addEventListener('click',closeForm);
@@ -294,7 +398,11 @@
   byId('plRoutePhoto').addEventListener('change',selectedPhoto);
   byId('plRouteForm').addEventListener('submit',saveRoute);
   byId('plRouteDialog').addEventListener('cancel',event=>{
-    if(busy)event.preventDefault();
+    if(busy){event.preventDefault();return;}
+    if(!byId('plRouteCalendar').classList.contains('hidden')){
+      event.preventDefault();
+      setRouteCalendarOpen(false);
+    }
   });
   byId('plRouteDialog').addEventListener('close',()=>{
     clearPhoto();
