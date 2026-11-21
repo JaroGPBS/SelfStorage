@@ -6,6 +6,7 @@ import {
   r2Ready,ensurePhotoTables,readValidatedPhoto,
   reservePhotoWrite,releasePhotoBytes,readPhotoResponse
 } from '../../lib/pl-r2-photos.js';
+import {routeEditablePredicate} from '../../lib/pl-route-editability.js';
 
 const CAN_UPLOAD=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR']);
 const ROUTE_ID=/^PL-ROUTE-[a-f0-9-]{36}$/;
@@ -92,8 +93,15 @@ export async function onRequestPost({request,env}){
   const objectKey='routes/pl/'+routeId+'/'+crypto.randomUUID()+'.jpg';
   let reserved=false,uploaded=false,stored=false;
   try{
-    const route=await env.DB.prepare('SELECT id FROM pl_routes WHERE id=?').bind(routeId).first();
+    const predicate=await routeEditablePredicate(env.DB,'r');
+    const route=await env.DB.prepare(
+      'SELECT r.id,r.status FROM pl_routes r WHERE r.id=?'
+    ).bind(routeId).first();
     if(!route)return fail('Trasa nie istnieje.',404);
+    const unlocked=await env.DB.prepare(
+      'SELECT r.id FROM pl_routes r WHERE r.id=? AND '+predicate
+    ).bind(routeId).first();
+    if(!unlocked)return fail('Trasa jest już potwierdzona przez ekipę. Nie można zmieniać dokumentów.',409);
     await ensureRouteDocuments(env.DB);
     const count=await env.DB.prepare(
       'SELECT COUNT(*) AS total FROM pl_route_documents WHERE route_id=?'
@@ -107,10 +115,15 @@ export async function onRequestPost({request,env}){
     });
     if(!upload)throw Error('R2 nie potwierdziło zapisu zdjęcia.');
     uploaded=true;
-    await env.DB.prepare(
+    // Conditional insertion closes the race where the crew confirms during R2 upload.
+    const outcome=await env.DB.prepare(
       'INSERT INTO pl_route_documents '+
-      '(id,route_id,object_key,mime_type,size_bytes,uploaded_by) VALUES (?,?,?,?,?,?)'
-    ).bind(documentId,routeId,objectKey,'image/jpeg',photo.bytes.byteLength,access.user.id).run();
+      '(id,route_id,object_key,mime_type,size_bytes,uploaded_by) '+
+      'SELECT ?,r.id,?,?,?,? FROM pl_routes r WHERE r.id=? AND '+predicate
+    ).bind(documentId,objectKey,'image/jpeg',photo.bytes.byteLength,
+      access.user.id,routeId).run();
+    if(Number(outcome?.meta?.changes||0)!==1)
+      throw Object.assign(Error('Trasa została potwierdzona przed zapisem zdjęcia.'),{status:409});
     stored=true;
     return workerJson({ok:true,documentId,sizeBytes:photo.bytes.byteLength},201);
   }catch(error){
