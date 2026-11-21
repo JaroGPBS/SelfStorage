@@ -1114,8 +1114,7 @@ function renderMenu(){
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
       el.dataset.frModule===state.preview?.key&&state.preview?.type==='module');
     const isAggregate=state.view==='aggregate'&&el.dataset.aggregateMarket==='FR';
-    const isBovis=el.hasAttribute('data-bovis-toggle')&&state.view==='bovisOverview';
-    const isPolishScoped=Boolean(el.dataset.plWarehouse)&&!state.preview&&
+     const isPolishScoped=Boolean(el.dataset.plWarehouse)&&!state.preview&&
       el.dataset.plWarehouse===state.warehouse&&state.view===el.dataset.view;
     const isMarketView=el.dataset.marketView==='PL'
       ?!state.preview&&state.view===el.dataset.view&&state.view!=='preview'&&
@@ -1151,11 +1150,24 @@ function renderMenu(){
       :el.dataset.marketVehicles==='PL'
         ?!state.preview&&state.view==='vehicles'&&
           realWarehouse(state.warehouse)?.country_code==='PL':false;
-    const isPlRoutes=el.hasAttribute('data-pl-routes-toggle')&&state.view==='plRoutes';
-    const isPlRoutesTab=el.hasAttribute('data-pl-routes-tab')&&
+     const isPlRoutesTab=el.hasAttribute('data-pl-routes-tab')&&
       state.view==='plRoutes'&&el.dataset.plRoutesTab===state.plRoutesTab;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isBovis||isPlRoutes||isPlRoutesTab));
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isPlRoutesTab));
     if(el.dataset.frWarehouseToggle)el.classList.toggle('is-expanded',isFrWarehouseExpanded);
+  }
+  // Parent section shows an understated white selection while its active child
+  // keeps the usual red accent. Use DOM ancestry so PL, FR and Bovis stay in sync.
+  for(const group of document.querySelectorAll(
+    '#sidebar .office-pl-routes-group, #sidebar .office-pl-warehouse-group, '+
+    '#sidebar .office-fr-warehouse, #sidebar .office-bovis-group')){
+    const parent=group.querySelector(':scope > button');
+    if(!parent)continue;
+    const activeChild=Array.from(group.querySelectorAll('.subnav-btn.active'))
+      .some(child=>child!==parent);
+    const sectionPage=(parent.hasAttribute('data-pl-routes-toggle')&&
+      state.view==='plRoutes')||
+      (parent.hasAttribute('data-bovis-toggle')&&state.view==='bovisOverview');
+    parent.classList.toggle('active-parent',activeChild||sectionPage);
   }
 }
 function showOfficePreview(type,key,label,warehouseContext=null){
@@ -4194,9 +4206,20 @@ document.addEventListener('click',e=>{
     const id=plWarehouseToggle.dataset.plWarehouseToggle;
     const warehouse=realWarehouse(id);
     if(warehouse?.country_code==='PL'){
+      if(state.plExpanded===id){
+        state.plExpanded=null;
+        renderMenu();
+        return;
+      }
       state.warehouseMenus.PL=true;
       state.plExpanded=id;
-      selectView('stocks',id);
+      // Reopening an active section must not reset its selected subpage.
+      if(!state.preview&&state.warehouse===id&&
+        ['stocks','pz','wz','inventories','labels'].includes(state.view)){
+        renderMenu();
+      }else{
+        selectView('stocks',id);
+      }
     }
     return;
   }
@@ -4211,7 +4234,25 @@ document.addEventListener('click',e=>{
     const market=toggle.dataset.marketToggle;
     if(market==='PL'||market==='FR'){
       if(market==='PL'){
-        showPolandHome(state.view==='plMarketHome'?!state.warehouseMenus.PL:true);
+        const opening=!state.warehouseMenus.PL;
+        if(!opening){
+          // Collapse the sidebar section without replacing the current page.
+          state.warehouseMenus.PL=false;
+          renderMenu();
+          return;
+        }
+        const onPolishPage=state.view==='plMarketHome'||
+          (!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL'&&
+            ['stocks','pz','wz','inventories','labels','vehicles','plRoutes']
+              .includes(state.view));
+        if(onPolishPage){
+          // Expand in place; do not throw the user back to the Poland dashboard.
+          state.warehouseMenus.PL=true;
+          state.warehouseMenus.FR=false;
+          renderMenu();
+        }else{
+          showPolandHome(true);
+        }
         return;
       }
       // France: every click returns JJ to the welcome page and toggles
@@ -4321,13 +4362,23 @@ document.addEventListener('click',e=>{
   }
   const plRoutesToggle=e.target.closest('[data-pl-routes-toggle]');
   if(plRoutesToggle){
+    if(state.plRoutesExpanded){
+      state.plRoutesExpanded=false;
+      renderMenu();
+      return;
+    }
     const warehouse=state.warehouses.find(w=>w.country_code==='PL'&&w.id===state.warehouse)||
       state.warehouses.find(w=>w.country_code==='PL');
     if(warehouse){
       state.plRoutesExpanded=true;
-      state.plRoutesTab='list';
       state.warehouseMenus.PL=true;
-      selectView('plRoutes',warehouse.id);
+      if(state.view==='plRoutes'){
+        // Opening the group again preserves Bilans / Historia if selected.
+        renderMenu();
+      }else{
+        state.plRoutesTab='list';
+        selectView('plRoutes',warehouse.id);
+      }
     }
     return;
   }
