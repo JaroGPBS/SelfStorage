@@ -124,7 +124,7 @@
   <script defer src="./office-labels.js?v=4"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=168"></script>
-  <script defer src="./pl-routes.js?v=23"></script>
+  <script defer src="./pl-routes.js?v=24"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -527,6 +527,34 @@
     <button type="button" class="photo-viewer-close" id="photoViewerClose" data-photo-close="1" aria-label="Zamknij zdjęcie">×</button>
     <img id="photoViewerImage" alt="Antena meduza — powiększone zdjęcie">
   </div>
+  <dialog id="plRouteExplainDialog" class="pl-route-small-dialog" aria-labelledby="plRouteExplainTitle">
+    <form id="plRouteExplainForm">
+      <div class="pl-route-small-head">
+        <strong id="plRouteExplainTitle">Wyjaśnij niezgodność</strong>
+        <button type="button" id="plRouteExplainClose" aria-label="Zamknij">×</button>
+      </div>
+      <div class="pl-route-small-body">
+        <p class="pl-route-explain-guide">Sprawdź ilości i ewentualnie popraw „Wydano”. Oryginalne wartości zostaną zachowane w historii.</p>
+        <div id="plRouteExplainLines" class="pl-route-explain-lines"></div>
+        <label class="pl-route-comment-label" for="plRouteExplainComment">Wyjaśnienie — wymagane
+          <textarea id="plRouteExplainComment" minlength="15" maxlength="2000" rows="4" required
+            placeholder="Np. Po kontakcie z magazynem potwierdzono wydanie mniejszej ilości…"></textarea>
+        </label>
+        <p id="plRouteExplainError" class="pl-route-explain-error" role="alert" hidden></p>
+      </div>
+      <div class="pl-route-small-actions">
+        <button type="button" id="plRouteExplainCancel" class="btn outline">Anuluj</button>
+        <button type="submit" id="plRouteExplainSave" class="btn dark">Zatwierdź wyjaśnienie</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="plRouteAuditDialog" class="pl-route-small-dialog" aria-labelledby="plRouteAuditTitle">
+    <div class="pl-route-small-head">
+      <strong id="plRouteAuditTitle">Historia operacji</strong>
+      <button type="button" id="plRouteAuditClose" aria-label="Zamknij">×</button>
+    </div>
+    <div id="plRouteAuditContent" class="pl-route-small-body pl-route-audit-content"></div>
+  </dialog>
   <dialog id="plRouteDocumentDialog" class="pl-route-document-dialog"
           aria-labelledby="plRouteDocumentTitle">
     <div class="pl-route-document-dialog-head">
