@@ -231,24 +231,47 @@
 
       <div id="crewHome" hidden>
         <h2 id="plCrewTitle" class="section-title">Ekipa</h2>
-        <div class="action-grid">
-          <button id="plCrewRoutesButton" type="button" class="action-tile action-available crew-routes-tile">
-            <span class="action-icon" aria-hidden="true">▤</span>
-            <strong>Trasy</strong>
-            <span id="plCrewRoutesAlert" class="crew-routes-alert" hidden></span>
-          </button>
-        </div>
+        <button id="plCrewActiveRouteButton" type="button"
+          class="crew-active-route" hidden>
+          <span id="plCrewActiveRouteLabel"></span>
+        </button>
+        <button id="plCrewRoutesButton" type="button" class="crew-history-button">
+          <span>Trasy</span><span aria-hidden="true">›</span>
+        </button>
       </div>
 
       <div id="crewRouteScreen" hidden>
         <button id="plCrewRoutesBack" class="text-button back-button" type="button">← Wróć</button>
         <h2 id="plCrewRouteTitle" class="section-title">Trasy</h2>
         <p id="plCrewRoutesError" class="error" role="alert" hidden></p>
+        <div id="plCrewHistorySearchWrap" hidden>
+          <label class="visually-hidden" for="plCrewHistorySearch">Szukaj trasy</label>
+          <input id="plCrewHistorySearch" class="crew-history-search"
+            type="search" placeholder="Szukaj po numerze trasy" autocomplete="off">
+        </div>
         <div id="plCrewRoutesList" class="crew-routes-list"></div>
-        <form id="plCrewPickupForm" hidden>
-          <div id="plCrewPickupLines" class="crew-pickup-lines"></div>
-          <button id="plCrewConfirmPickup" class="btn btn-primary" type="submit">Potwierdź odbiór części</button>
-        </form>
+        <button id="plCrewHistoryMore" type="button" class="btn btn-outline" hidden>Pokaż starsze trasy</button>
+        <div id="plCrewRouteDetail" hidden>
+          <p id="plCrewRouteMeta" class="section-info"></p>
+          <form id="plCrewPickupForm" hidden>
+            <div id="plCrewPickupLines" class="crew-pickup-lines"></div>
+            <label class="crew-comment-label" for="plCrewPickupComment">Komentarz ekipy (opcjonalnie)</label>
+            <textarea id="plCrewPickupComment" maxlength="1000" rows="3"
+              placeholder="Komentarz do odbioru części"></textarea>
+            <button id="plCrewConfirmPickup" class="btn btn-primary" type="submit">Potwierdź odbiór części</button>
+          </form>
+          <form id="plCrewReportForm" hidden>
+            <div id="plCrewReportLines" class="crew-report-lines"></div>
+            <label class="crew-comment-label" for="plCrewReportComment">Komentarz ekipy (opcjonalnie)</label>
+            <textarea id="plCrewReportComment" maxlength="1000" rows="3"
+              placeholder="Komentarz do rozliczenia trasy"></textarea>
+            <button id="plCrewSubmitReport" class="btn btn-primary" type="submit">Zdaj raport z wykorzystanych części</button>
+          </form>
+          <section id="plCrewRouteReadOnly" hidden>
+            <div id="plCrewRouteSummary" class="crew-pickup-lines"></div>
+            <div id="plCrewRouteComments"></div>
+          </section>
+        </div>
       </div>
 
       <div id="officeHome" hidden>
