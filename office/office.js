@@ -674,13 +674,14 @@ function showOfficeHome(){
   $('officePageHead').classList.add('hidden');
   $('officeHome').classList.remove('hidden');
   $('officeFranceHome').classList.add('hidden');
+  $('officePolandHome').classList.add('hidden');
   $('app').classList.add('view-home');
   $('officeTableCard').classList.add('hidden');
   $('officeBovisDashboard').classList.add('hidden');
   $('officeLabelsView').classList.add('hidden');
   $('officePlRoutesView').classList.add('hidden');
   $('plRoutesTopDescription').classList.add('hidden');
-  $('app').classList.remove('view-pl-routes');
+  $('app').classList.remove('view-pl-routes','view-pl-home');
   $('officePreview').classList.add('hidden');
   $('errorBanner').classList.add('hidden');
   $('officeNewPartNotice').classList.add('hidden');
@@ -693,6 +694,39 @@ function showOfficeHome(){
   $('officeTableCard').querySelector('.fr-crew-toolbar')?.remove();
   renderMenu();
 }
+
+function showPolandHome(expandMenu=true){
+  // Presentation-only market homepage; no D1 reads or stock changes.
+  ++state.requestId;
+  state.view='plMarketHome';
+  state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
+  state.warehouseMenus.PL=expandMenu;state.warehouseMenus.FR=false;
+  state.search='';state.expanded=null;state.focusDocument=null;
+  $('sidebar').classList.remove('open');
+  $('app').classList.remove('view-home','view-stocks','view-receipts','view-vehicles',
+    'view-aggregate','view-labels','view-fr-empty','view-modules','view-fr-movements',
+    'view-fr-crew-history','view-bovis-overview','view-pl-routes');
+  $('app').classList.add('view-pl-home');
+  $('officeHome').classList.add('hidden');
+  $('officeFranceHome').classList.add('hidden');
+  $('officePolandHome').classList.remove('hidden');
+  $('officePageHead').classList.add('hidden');
+  $('officeTableCard').classList.add('hidden');
+  $('officeBovisDashboard').classList.add('hidden');
+  $('officePreview').classList.add('hidden');
+  $('officeLabelsView').classList.add('hidden');
+  $('officePlRoutesView').classList.add('hidden');
+  $('plRoutesTopDescription').classList.add('hidden');
+  $('errorBanner').classList.add('hidden');
+  $('officeNewPartNotice').classList.add('hidden');
+  $('vehicleTopContext').classList.add('hidden');
+  $('vehicleTopExportHost').classList.add('hidden');
+  $('bovisParisDemoNotice').classList.add('hidden');
+  $('bovisTopDescription').classList.add('hidden');
+  $('warehouseCrumb').classList.add('hidden');
+  $('crumb').textContent='Polska';
+  renderMenu();
+}
 function showFranceHome(expandMenu=true){
   ++state.requestId;
   state.view='frMarketHome';
@@ -702,6 +736,8 @@ function showFranceHome(expandMenu=true){
   $('app').classList.remove('view-home','view-stocks','view-bovis-overview',
     'view-aggregate','view-vehicles','view-fr-empty','view-pl-routes');
   $('officeHome').classList.add('hidden');
+  $('officePolandHome').classList.add('hidden');
+  $('app').classList.remove('view-pl-home');
   $('officePageHead').classList.add('hidden');
   $('officeFranceHome').classList.remove('hidden');
   $('officeTableCard').classList.add('hidden');
@@ -1248,9 +1284,10 @@ function syncAggregateTabControls(){
     :'Porównanie stanów części pomiędzy magazynami.';
 }
 function setHead(title,kicker,desc){
-  $('app').classList.remove('view-home');
+  $('app').classList.remove('view-home','view-pl-home');
   $('officeHome').classList.add('hidden');
   $('officeFranceHome').classList.add('hidden');
+  $('officePolandHome').classList.add('hidden');
   $('officePageHead').classList.toggle('hidden',state.view==='plRoutes');
   $('pageTitle').textContent=title;$('pageKicker').textContent=kicker;$('pageDesc').textContent=desc;
   $('crumb').textContent=title;
@@ -3514,7 +3551,7 @@ function drawFrenchEmptyView(){
   $('vehicleTopScroll').classList.add('hidden');
 }
 async function render({silent=false}={}){
-  if(state.view==='home'||state.view==='plRoutes')return;
+  if(state.view==='home'||state.view==='plMarketHome'||state.view==='plRoutes')return;
   if(isBovisStock()&&state.bovisParisProcess){drawBovisParisProcess();return;}
   if(state.view==='bovisOverview'){
     errorBanner('');drawBovisOverview();return;
@@ -4076,6 +4113,10 @@ document.addEventListener('click',e=>{
   if(toggle){
     const market=toggle.dataset.marketToggle;
     if(market==='PL'||market==='FR'){
+      if(market==='PL'){
+        showPolandHome(!state.warehouseMenus.PL);
+        return;
+      }
       // France: every click returns JJ to the welcome page and toggles
       // the submenu, preserving the original expand/collapse behavior.
       if(market==='FR'&&state.user?.role==='ADMIN'&&
