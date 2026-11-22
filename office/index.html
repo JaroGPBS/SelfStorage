@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=149">
-  <link rel="stylesheet" href="./pl-routes.css?v=57">
+  <link rel="stylesheet" href="./pl-routes.css?v=58">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -125,7 +125,7 @@
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=181"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
-  <script defer src="./pl-routes.js?v=61"></script>
+  <script defer src="./pl-routes.js?v=62"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -465,8 +465,18 @@
           <button type="button" id="plRoutePhotoPick" class="btn outline">Załaduj ze zdjęcia</button>
           <input type="file" id="plRoutePhoto" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif">
           <div class="pl-route-photo-file" id="plRoutePhotoFile" role="status">Nie wybrano zdjęcia.</div>
-          <small>Dozwolone: JPG, PNG, WEBP, HEIC/HEIF. Plik jest sprawdzany, a po zapisaniu trasy zamieniany na lekki JPEG w prywatnym R2. Odczyt AI dodamy później — na razie części wpisujesz ręcznie.</small>
+          <small>Dozwolone: JPG, PNG, WEBP, HEIC/HEIF. Plik jest sprawdzany, a po zapisaniu trasy zamieniany na lekki JPEG w prywatnym R2. AI automatycznie odczyta numer trasy, datę i części. Przed zapisaniem sprawdź oraz popraw wynik.</small>
         </div>
+        <div class="pl-route-edit-layout" id="plRouteEditLayout">
+          <aside class="pl-route-photo-stage hidden" id="plRoutePhotoStage" aria-label="Podgląd fotografii dokumentu">
+            <strong>Zdjęcie do porównania</strong>
+            <a id="plRoutePhotoOpen" target="_blank" rel="noopener noreferrer" href="#">
+              <img id="plRoutePhotoPreview" class="pl-route-ai-preview" alt="Wybrane zdjęcie WZ">
+              <small>Powiększ zdjęcie</small>
+            </a>
+            <p id="plRouteAiStatus" class="pl-route-ai-status" role="status" aria-live="polite"></p>
+          </aside>
+          <div class="pl-route-edit-fields">
         <div class="pl-route-grid">
           <label>Numer trasy
             <input id="plRouteNumber" type="text" required maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Wpisz numer trasy">
@@ -503,6 +513,8 @@
           <button type="button" class="btn outline" id="plRouteAddPart">+ Dodaj część</button>
         </div>
         <div class="pl-route-parts" id="plRouteParts"></div>
+          </div>
+        </div>
       </div>
       <p id="plRouteError" class="pl-route-error" role="alert" hidden></p>
       <div class="pl-route-actions">
