@@ -291,6 +291,48 @@ function demo45Settlement(number,lines){
   }
   return {updates};
 }
+// A verified WZ is extra route metadata, never an inventory transaction.
+// Keep the exact edited module/serial list after the flattened route parts are saved.
+function parseVerifiedWz(value){
+  if(value===undefined||value===null)return null;
+  if(!value||typeof value!=='object'||Array.isArray(value)||value.reviewed!==true||
+     !Array.isArray(value.rows)||value.rows.length<1||value.rows.length>60)
+    throw Error('Nieprawidłowe dane WZ.');
+  const source=JSON.stringify(value);
+  if(source.length>120000)throw Error('Zbyt dużo danych WZ.');
+  const cap=(x,n)=>String(x??'').trim().slice(0,n);
+  const rows=value.rows.map((row,i)=>{
+    if(!row||typeof row!=='object'||!Array.isArray(row.parts)||
+       row.parts.length>60||!Array.isArray(row.serial_numbers)||
+       row.serial_numbers.length>20)throw Error('Nieprawidłowe pozycje WZ.');
+    return {
+      lp:i+1,module_type:cap(row.module_type,220),location:cap(row.location,350),
+      location_code:cap(row.location_code,80),operation:cap(row.operation,120),
+      serial_numbers:row.serial_numbers.map(x=>cap(x,100)).filter(Boolean),
+      parts:row.parts.map(p=>{
+        const name_raw=cap(p?.name_raw,180),quantity=Number(p?.quantity);
+        if(!name_raw||!Number.isSafeInteger(quantity)||quantity<1||quantity>999999)
+          throw Error('Uzupełnij nazwy i ilości części WZ.');
+        return {name_raw,quantity};
+      })
+    };
+  });
+  return JSON.stringify({
+    reviewed:true,document_title:cap(value.document_title,180),
+    warehouse:cap(value.warehouse,180),issued_by:cap(value.issued_by,80),
+    route_number:cap(value.route_number,80),document_date:cap(value.document_date,24),
+    rows,remarks:cap(value.remarks,2500)
+  });
+}
+async function ensureWzSchema(db){
+  await db.prepare(
+    'CREATE TABLE IF NOT EXISTS pl_route_wz_details ('+
+    'route_id TEXT PRIMARY KEY,verified_json TEXT NOT NULL,reviewed_by TEXT NOT NULL,'+
+    'reviewed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,'+
+    'FOREIGN KEY(route_id) REFERENCES pl_routes(id) ON DELETE CASCADE)'
+  ).run();
+}
+
 function parseRoute(body){
   if(!body||typeof body!=='object'||Array.isArray(body))return null;
   const routeNumber=String(body.routeNumber||'').trim().toUpperCase();
@@ -311,7 +353,9 @@ function parseRoute(body){
     if(catalogPartId&&!/^PL-RPART-[a-f0-9-]{36}$/.test(catalogPartId))return null;
     lines.push({partCode,partName,quantity,catalogPartId});
   }
-  return {routeNumber,routeDate,crewSymbol,lines};
+  let wz=null;
+  try{wz=parseVerifiedWz(body.wz);}catch{return null;}
+  return {routeNumber,routeDate,crewSymbol,lines,wz};
 }
 export async function onRequestGet({request,env}){
   const auth=await authorize(request,env);
@@ -436,7 +480,14 @@ export async function onRequestGet({request,env}){
         ['KOORDYNATOR','ADMIN'].includes(auth.user.role);
       route.canEdit=canEditRoute(route.status,lines);
       const crewComments=await getPlRouteCrewNotes(env.DB,id);
-      return workerJson({ok:true,route,lines,documents,audit:history,
+      let wz=null;
+      if(await exists(env.DB,'pl_route_wz_details')){
+        const stored=await env.DB.prepare(
+          'SELECT verified_json AS data FROM pl_route_wz_details WHERE route_id=?'
+        ).bind(id).first();
+        if(stored?.data){try{wz=JSON.parse(stored.data);}catch{/* legacy data unavailable */}}
+      }
+      return workerJson({ok:true,route,lines,documents,audit:history,wz,
         crewComments,crewActivity,returnApprovals,storageReady:true});
     }
     const scope=url.searchParams.get('scope')||'active';
@@ -1198,6 +1249,7 @@ export async function onRequestPost({request,env}){
       if(Number(current.revision)!==revision)
         return send('Trasa została zmieniona w innym oknie. Otwórz edycję ponownie.',409);
       const catalogLines=await resolveRouteParts(env.DB,updated.lines);
+      if(updated.wz)await ensureWzSchema(env.DB);
       const operationToken=crypto.randomUUID();
       const before=(await env.DB.prepare(
         'SELECT position,part_code AS partCode,part_name AS partName,quantity,'+
@@ -1222,6 +1274,12 @@ export async function onRequestPost({request,env}){
         ).bind(id,index+1,line.partCode,line.partName,line.quantity,
           line.catalogPartId,id,revision+1,operationToken));
       });
+      if(updated.wz)statements.push(env.DB.prepare(
+        'INSERT INTO pl_route_wz_details (route_id,verified_json,reviewed_by) '+
+        'SELECT ?,?,? WHERE '+guard+' ON CONFLICT(route_id) DO UPDATE SET '+
+        'verified_json=excluded.verified_json,reviewed_by=excluded.reviewed_by,'+
+        'reviewed_at=CURRENT_TIMESTAMP'
+      ).bind(id,updated.wz,auth.user.id,id,revision+1,operationToken));
       statements.push(auditEntry(env.DB,{
         id:crypto.randomUUID(),routeId:id,action:'EDIT',
         actorId:auth.user.id,revision:revision+1,token:operationToken,
@@ -1343,6 +1401,7 @@ export async function onRequestPost({request,env}){
     ).bind(route.routeNumber,route.routeDate).first();
     if(duplicate)return send('Trasa z tym numerem i datą jest już zapisana.',409);
     const catalogLines=await resolveRouteParts(env.DB,route.lines);
+    if(route.wz)await ensureWzSchema(env.DB);
     const id='PL-ROUTE-'+crypto.randomUUID();
     const steps=[
       env.DB.prepare(
@@ -1358,6 +1417,9 @@ export async function onRequestPost({request,env}){
         'VALUES (?,?,?,?,?,?)'
       ).bind(id,i+1,line.partCode,line.partName,line.quantity,line.catalogPartId));
     });
+    if(route.wz)steps.push(env.DB.prepare(
+      'INSERT INTO pl_route_wz_details (route_id,verified_json,reviewed_by) VALUES (?,?,?)'
+    ).bind(id,route.wz,auth.user.id));
     await env.DB.batch(steps); // D1 batch is atomic: no partly-created route.
     return workerJson({ok:true,id},201);
   }catch(e){

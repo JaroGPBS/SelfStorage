@@ -8,6 +8,8 @@
   }[ch]));
   const endpoint='/api/pl-routes';
   let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
+  let verifiedWz=null; // Coordinator-verified WZ data stored with the route.
+  let approvedAiAutoSave=false;
   let editingRouteId=null; // Existing route opened for corrections before team confirmation.
   let editingRouteRevision=0;
   const routeAuditCache=new Map();
@@ -268,6 +270,8 @@
     const dialog=byId('plRouteDialog');
     byId('plRouteForm').reset();
     savedRouteId=null;
+    verifiedWz=null;
+    approvedAiAutoSave=false;
     editingRouteId=null;
     editingRouteRevision=0;
     byId('plRouteTitle').textContent='Dodaj trasę';
@@ -308,6 +312,7 @@
       openForm();
       editingRouteId=id;
       editingRouteRevision=Number(result.route.editRevision)||0;
+      verifiedWz=result.wz||null;
       byId('plRouteTitle').textContent='Edytuj trasę';
       byId('plRouteSubmit').textContent='Zapisz zmiany';
       byId('plRouteNumber').value=result.route.routeNumber||'';
@@ -360,6 +365,35 @@
       throw Error('Plik nie jest poprawnym zdjęciem lub jego format nie zgadza się z rozszerzeniem.');
     return detected;
   }
+  // Automatic mapping only for unambiguous, normalized catalogue names.
+  // Unmatched names stay editable and require an additional manual review.
+  async function matchWzParts(lines){
+    const normalize=value=>String(value||'').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'').replace(/[łŁ]/g,'l')
+      .replace(/[^a-z0-9]+/gi,'').toLowerCase();
+    const cached=new Map();
+    const missing=[];
+    for(const line of lines){
+      const source=line.partName||'';
+      const query=(source.match(/[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,}/)||[])[0]||source.slice(0,6);
+      let choices=cached.get(query);
+      if(!choices){
+        try{
+          const data=await jsonResponse(await fetch(partSuggestionsEndpoint+
+            '?q='+encodeURIComponent(query),{credentials:'same-origin',cache:'no-store'}));
+          choices=data.parts||[];
+        }catch{choices=[];}
+        cached.set(query,choices);
+      }
+      const matches=choices.filter(item=>normalize(item.name)===normalize(source));
+      if(matches.length===1){
+        line.partName=matches[0].name;
+        line.partCode=matches[0].code||'';
+        line.catalogPartId=matches[0].id;
+      }else missing.push(source);
+    }
+    return missing;
+  }
   async function selectedPhoto(){
     const file=byId('plRoutePhoto').files?.[0];
     if(!file){byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';return;}
@@ -373,9 +407,37 @@
       errorMessage(error.message);
       return;
     }
-    byId('plRoutePhotoFile').textContent='Wybrano: '+file.name+
-      ' (po zapisaniu trasy zdjęcie będzie pomniejszone i archiwizowane w R2)';
+    byId('plRoutePhotoFile').textContent='Wybrano: '+file.name+' — trwa odczyt AI…';
     errorMessage();
+    if(!window.GPBSRouteAi?.review){
+      errorMessage('Moduł odczytu AI nie załadował się. Możesz wpisać dane ręcznie.');
+      return;
+    }
+    const result=await window.GPBSRouteAi.review(
+      file,()=>compressRouteDocument(file),byId('plRouteCrewSymbol').value
+    );
+    if(byId('plRoutePhoto').files?.[0]!==file)return;
+    byId('plRoutePhotoFile').textContent='Wybrano: '+file.name+
+      ' (zdjęcie zostanie zapisane przy trasie w R2)';
+    if(!result)return; // User dismissed AI; manual route entry remains possible.
+    verifiedWz=result.wz;
+    byId('plRouteNumber').value=result.routeNumber;
+    byId('plRouteCrewSymbol').value=result.crewSymbol;
+    byId('plRouteDate').value=result.routeDate;
+    setRouteCalendarOpen(false);
+    const missing=await matchWzParts(result.lines);
+    const parts=byId('plRouteParts');
+    parts.replaceChildren();
+    result.lines.forEach(item=>addPartRow(item));
+    if(!parts.children.length)addPartRow();
+    if(missing.length){
+      errorMessage('Dane WZ zostały zweryfikowane. Sprawdź dopasowanie do katalogu '+
+        'tych części: '+[...new Set(missing)].join(', ')+
+        '. Wybierz poprawne pozycje i kliknij „Zapisz trasę”.');
+      return;
+    }
+    approvedAiAutoSave=true;
+    byId('plRouteForm').requestSubmit();
   }
   function routeData(){
     const routeNumber=byId('plRouteNumber').value.trim().toUpperCase();
@@ -396,7 +458,8 @@
         catalogPartId:row.dataset.catalogPartId||''});
     }
     if(!lines.length)throw Error('Dodaj co najmniej jedną część do trasy.');
-    return {action:'create',routeNumber,routeDate,crewSymbol,lines};
+    return {action:'create',routeNumber,routeDate,crewSymbol,lines,
+      ...(verifiedWz?{wz:verifiedWz}:{})};
   }
   async function jsonResponse(response){
     const data=await response.json().catch(()=>({}));
@@ -477,6 +540,8 @@
     event.preventDefault();
     if(busy)return;
     if(!byId('plRouteForm').reportValidity())return;
+    const skipConfirm=approvedAiAutoSave;
+    approvedAiAutoSave=false;
     let payload;
     if(!savedRouteId){
       try{
@@ -488,7 +553,7 @@
         }
       }catch(error){errorMessage(error.message);return;}
     }
-    if(!savedRouteId&&!await confirmRouteAction(editingRouteId
+    if(!savedRouteId&&!skipConfirm&&!await confirmRouteAction(editingRouteId
       ?'Czy na pewno wszystkie zmienione dane trasy są poprawne? Zapisać edycję?'
       :'Czy na pewno wszystkie dane trasy zostały wprowadzone poprawnie? Zapisać trasę?'))return;
     setBusy(true);
