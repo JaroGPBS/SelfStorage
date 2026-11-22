@@ -899,3 +899,58 @@
     max-width:none;
   }
 }
+
+
+/* WZ extraction: original document stays visible beside editable Office data. */
+.pl-route-dialog.has-photo{width:min(97vw,1310px);max-width:1310px}
+.pl-route-edit-layout{min-width:0}
+.pl-route-edit-layout.has-photo{
+  display:grid;grid-template-columns:minmax(300px,.95fr) minmax(0,1.25fr);
+  gap:21px;align-items:start
+}
+.pl-route-edit-fields{min-width:0}
+.pl-route-photo-stage{
+  min-width:0;position:sticky;top:0;box-sizing:border-box;
+  padding:13px;border:1px solid #d8e1e9;border-radius:10px;
+  background:#f7f9fb
+}
+.pl-route-photo-stage strong{font-size:13px;color:#30455b}
+.pl-route-photo-stage a{
+  display:flex;flex-direction:column;gap:6px;margin-top:10px;
+  text-align:center;text-decoration:none;color:#3f6282
+}
+.pl-route-photo-stage a small{font-size:11px}
+.pl-route-ai-preview{
+  display:block;max-width:100%;width:100%;max-height:58dvh;object-fit:contain;
+  background:#e6ebf0;border-radius:6px
+}
+.pl-route-ai-status{
+  margin:10px 0 0;font-size:12px;line-height:1.55;
+  white-space:pre-line;color:#395e78
+}
+.pl-route-ai-status.is-error{color:#a22f40}
+.pl-route-ai-status.is-success{color:#315b46}
+.pl-route-edit-layout.has-photo .pl-route-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,.8fr);
+  gap:11px;margin-bottom:19px
+}
+.pl-route-edit-layout.has-photo .pl-route-date-field{grid-column:1/-1}
+.pl-route-edit-layout.has-photo .pl-route-part-row{
+  grid-template-columns:minmax(100px,.95fr) minmax(150px,1.55fr) minmax(65px,.45fr) 32px;
+  gap:7px
+}
+.pl-route-part-row.ai-review{
+  border-left:3px solid #cc8c38;padding-left:7px;background:#fffaf2
+}
+@media(max-width:1050px){
+  .pl-route-edit-layout.has-photo{grid-template-columns:1fr}
+  .pl-route-photo-stage{position:static}
+  .pl-route-ai-preview{max-height:36dvh}
+  .pl-route-edit-layout.has-photo .pl-route-grid{grid-template-columns:1fr}
+  .pl-route-edit-layout.has-photo .pl-route-date-field{grid-column:auto}
+  .pl-route-edit-layout.has-photo .pl-route-part-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px}
+  .pl-route-edit-layout.has-photo .pl-route-part-name-wrap{grid-column:1/3;grid-row:1}
+  .pl-route-edit-layout.has-photo .pl-route-part-code{grid-column:1;grid-row:2}
+  .pl-route-edit-layout.has-photo .pl-route-part-quantity{grid-column:2;grid-row:2}
+  .pl-route-edit-layout.has-photo .pl-route-remove-part{grid-column:3;grid-row:2}
+}
