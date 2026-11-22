@@ -22,7 +22,7 @@
 .pl-route-ai-error,.pl-ai-alert{padding:11px 12px;border-radius:7px;background:#fff0f0;border:1px solid #e6b9be;color:#aa2637;font-size:12px;margin:12px 0}
 .pl-route-ai-error[hidden]{display:none}
 .pl-route-ai-editor label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;color:#536479;min-width:0}
-.pl-route-ai-editor input,.pl-route-ai-editor textarea{box-sizing:border-box;width:100%;min-width:0;border:1px solid #cbd7e2;border-radius:6px;background:white;padding:8px 9px;min-height:36px;font:500 12px/1.4 inherit;color:#23384a}
+.pl-route-ai-editor input,.pl-route-ai-editor textarea{box-sizing:border-box;width:100%;min-width:0;border:1px solid #cbd7e2;border-radius:6px;background:white;padding:8px 9px;min-height:36px;font-family:inherit;font-size:12px;font-weight:500;line-height:1.4;color:#23384a}
 .pl-route-ai-editor input:focus,.pl-route-ai-editor textarea:focus{outline:2px solid #9db8d3;outline-offset:0}
 .pl-ai-general{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-bottom:18px}
 .pl-ai-parts-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 10px}
