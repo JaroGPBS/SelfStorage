@@ -6,8 +6,11 @@ const clean=(v,n=500)=>String(v??'').slice(0,n);
 const esc=v=>clean(v,2000).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .replace(/[łŁ]/g,'l').replace(/[^a-z0-9]+/gi,'').toLowerCase();
-const validDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&
-  !Number.isNaN(new Date(d+'T00:00:00Z').getTime());
+const validDate=d=>{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;
+  const date=new Date(d+'T00:00:00Z');
+  return !Number.isNaN(date.getTime())&&date.toISOString().slice(0,10)===d;
+};
 const fromDate=d=>/^\d{2}\.\d{2}\.\d{4}$/.test(d)?
   d.slice(6)+'-'+d.slice(3,5)+'-'+d.slice(0,2):d;
 let dlg=null,resolveReview=null,previewUrl='',zoom=1,panX=0,panY=0,drag=null;
