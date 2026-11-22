@@ -1,5 +1,5 @@
 // GPBS Storage — Polish route editor and D1-backed route list.
-// The photo chooser is intentionally local-only until AI recognition is implemented.
+// Photo recognition is read-only until a worker confirms and saves the editable form.
 (()=>{
   'use strict';
   const byId=id=>document.getElementById(id);
@@ -8,6 +8,9 @@
   }[ch]));
   const endpoint='/api/pl-routes';
   let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
+  let photoPreviewUrl=null;
+  let recognitionSequence=0;
+  let photoRecognitionBusy=false;
   let editingRouteId=null; // Existing route opened for corrections before team confirmation.
   let editingRouteRevision=0;
   const routeAuditCache=new Map();
@@ -46,15 +49,27 @@
   }
   function setBusy(next){
     busy=next;
-    byId('plRouteSubmit').disabled=next;
+    byId('plRouteSubmit').disabled=next||photoRecognitionBusy;
     byId('plRouteCancel').disabled=next;
     byId('plRouteClose').disabled=next;
     byId('plRouteSubmit').textContent=next?'Zapisywanie…':
       (savedRouteId?'Ponów zapis zdjęcia':editingRouteId?'Zapisz zmiany':'Zapisz trasę');
   }
   function clearPhoto(){
+    recognitionSequence++;
+    photoRecognitionBusy=false;
+    if(photoPreviewUrl)URL.revokeObjectURL(photoPreviewUrl);
+    photoPreviewUrl=null;
     byId('plRoutePhoto').value='';
     byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';
+    byId('plRoutePhotoPreview').removeAttribute('src');
+    byId('plRoutePhotoOpen').href='#';
+    byId('plRouteAiStatus').textContent='';
+    byId('plRouteAiStatus').className='pl-route-ai-status';
+    byId('plRoutePhotoStage').classList.add('hidden');
+    byId('plRouteEditLayout').classList.remove('has-photo');
+    byId('plRouteDialog').classList.remove('has-photo');
+    byId('plRouteSubmit').disabled=busy;
   }
   function addPartRow(data={}){
     const target=byId('plRouteParts');
@@ -72,6 +87,7 @@
       '<label class="pl-route-part-quantity">Ilość'+
       '<input type="number" data-pl-route-part-quantity min="1" max="999999" step="1" inputmode="numeric" placeholder="0"></label>'+
       '<button type="button" class="pl-route-remove-part" data-pl-route-remove-part aria-label="Usuń pozycję">×</button>';
+    row.classList.toggle('ai-review',data.review===true);
     row.dataset.catalogPartId=data.catalogPartId||'';
     row.dataset.catalogSelectedName=data.partName||'';
     row.dataset.catalogSelectedCode=data.partCode||'';
@@ -360,22 +376,133 @@
       throw Error('Plik nie jest poprawnym zdjęciem lub jego format nie zgadza się z rozszerzeniem.');
     return detected;
   }
+  async function visionReadyPhoto(file){
+    const type=await validateRoutePhoto(file);
+    // Send the selected original when supported and under Clairic's 4 MiB limit.
+    // Larger/HEIC files need a high-resolution conversion BEFORE R2 compression.
+    if(['image/jpeg','image/png','image/webp'].includes(type)&&
+       file.size<=4*1024*1024)return file;
+    let bitmap=null,url=null;
+    try{
+      if(typeof createImageBitmap==='function'){
+        bitmap=await createImageBitmap(file);
+      }else{
+        url=URL.createObjectURL(file);
+        bitmap=await new Promise((resolve,reject)=>{
+          const image=new Image();
+          image.onload=()=>resolve(image);
+          image.onerror=()=>reject(Error('Przeglądarka nie może odczytać formatu zdjęcia.'));
+          image.src=url;
+        });
+      }
+      const width=bitmap.width||bitmap.naturalWidth;
+      const height=bitmap.height||bitmap.naturalHeight;
+      if(!width||!height||width*height>48000000)
+        throw Error('Zdjęcie ma nieobsługiwane wymiary.');
+      const canvas=document.createElement('canvas');
+      const context=canvas.getContext('2d');
+      if(!context)throw Error('Nie można przygotować zdjęcia.');
+      for(const [edge,quality] of [[3800,.92],[3800,.82],[3200,.85],[2800,.8],[2400,.75]]){
+        const scale=Math.min(1,edge/Math.max(width,height));
+        canvas.width=Math.max(1,Math.round(width*scale));
+        canvas.height=Math.max(1,Math.round(height*scale));
+        context.fillStyle='#fff';
+        context.fillRect(0,0,canvas.width,canvas.height);
+        context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+        const blob=await new Promise((resolve,reject)=>canvas.toBlob(
+          result=>result?resolve(result):reject(Error('Konwersja zdjęcia nie powiodła się.')),
+          'image/jpeg',quality
+        ));
+        if(blob.size<=4*1024*1024)
+          return new File([blob],'wz-do-odczytu.jpg',{type:'image/jpeg'});
+      }
+      throw Error('Zdjęcie jest zbyt duże do analizy AI.');
+    }finally{
+      if(url)URL.revokeObjectURL(url);
+      bitmap?.close?.();
+    }
+  }
+  function photoAiStatus(message,kind=''){
+    const target=byId('plRouteAiStatus');
+    target.textContent=message;
+    target.className='pl-route-ai-status'+(kind?' is-'+kind:'');
+  }
+  function applyRecognizedRoute(result){
+    // Existing manual work may be replaced only with an explicit confirmation.
+    const manuallyFilled=[...byId('plRouteParts').children].some(row=>
+      row.querySelector('[data-pl-route-part-name]').value.trim()||
+      row.querySelector('[data-pl-route-part-code]').value.trim()||
+      row.querySelector('[data-pl-route-part-quantity]').value.trim()
+    );
+    if(manuallyFilled&&!window.confirm(
+      'Odczyt AI zastąpi aktualną listę części i rozpoznane dane trasy. Kontynuować?'
+    ))return false;
+    if(result.routeNumber)byId('plRouteNumber').value=result.routeNumber;
+    if(result.routeDate)byId('plRouteDate').value=result.routeDate;
+    if(Array.isArray(result.lines)&&result.lines.length){
+      const target=byId('plRouteParts');
+      target.replaceChildren();
+      for(const item of result.lines)addPartRow(item);
+    }
+    return true;
+  }
+  async function recognizeRoutePhoto(file,seq){
+    photoRecognitionBusy=true;
+    byId('plRouteSubmit').disabled=true;
+    photoAiStatus('Odczytywanie danych ze zdjęcia…');
+    try{
+      const visionFile=await visionReadyPhoto(file);
+      if(recognitionSequence!==seq)return;
+      const form=new FormData();
+      form.append('photo',visionFile);
+      const result=await jsonResponse(await fetch('/api/pl-routes-recognize',{
+        method:'POST',credentials:'same-origin',body:form
+      }));
+      if(recognitionSequence!==seq||!byId('plRouteDialog').open)return;
+      const applied=savedRouteId?false:applyRecognizedRoute(result);
+      photoAiStatus(applied
+        ?'Odczyt AI gotowy. Porównaj każde pole ze zdjęciem i popraw błędy.'+
+          (result.warnings?.length?'\n'+result.warnings.join('\n'):'')
+        :'Zdjęcie wybrane. Dotychczasowe dane formularza pozostawiono bez zmian.',
+        applied?'success':'');
+      errorMessage();
+    }catch(error){
+      if(recognitionSequence!==seq)return;
+      photoAiStatus((error.message||'Nie udało się odczytać zdjęcia.')+
+        ' Możesz nadal wpisać dane ręcznie.','error');
+    }finally{
+      if(recognitionSequence===seq){
+        photoRecognitionBusy=false;
+        byId('plRouteSubmit').disabled=busy;
+      }
+    }
+  }
   async function selectedPhoto(){
     const file=byId('plRoutePhoto').files?.[0];
-    if(!file){byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';return;}
+    const seq=++recognitionSequence;
+    if(photoPreviewUrl)URL.revokeObjectURL(photoPreviewUrl);
+    photoPreviewUrl=null;
+    if(!file){clearPhoto();return;}
     try{
       await validateRoutePhoto(file);
-      if(byId('plRoutePhoto').files?.[0]!==file)return;
+      if(recognitionSequence!==seq||byId('plRoutePhoto').files?.[0]!==file)return;
     }catch(error){
-      if(byId('plRoutePhoto').files?.[0]!==file)return;
-      byId('plRoutePhoto').value='';
+      if(recognitionSequence!==seq)return;
+      clearPhoto();
       byId('plRoutePhotoFile').textContent=error.message;
       errorMessage(error.message);
       return;
     }
+    photoPreviewUrl=URL.createObjectURL(file);
+    byId('plRoutePhotoPreview').src=photoPreviewUrl;
+    byId('plRoutePhotoOpen').href=photoPreviewUrl;
+    byId('plRoutePhotoStage').classList.remove('hidden');
+    byId('plRouteEditLayout').classList.add('has-photo');
+    byId('plRouteDialog').classList.add('has-photo');
     byId('plRoutePhotoFile').textContent='Wybrano: '+file.name+
-      ' (po zapisaniu trasy zdjęcie będzie pomniejszone i archiwizowane w R2)';
+      ' (po zatwierdzeniu zdjęcie będzie archiwizowane w R2)';
     errorMessage();
+    await recognizeRoutePhoto(file,seq);
   }
   function routeData(){
     const routeNumber=byId('plRouteNumber').value.trim().toUpperCase();
@@ -476,6 +603,7 @@
   async function saveRoute(event){
     event.preventDefault();
     if(busy)return;
+    if(photoRecognitionBusy){errorMessage('Poczekaj na zakończenie odczytu AI.');return;}
     if(!byId('plRouteForm').reportValidity())return;
     let payload;
     if(!savedRouteId){
@@ -1755,6 +1883,7 @@
   byId('plRoutePhotoPick').addEventListener('click',()=>byId('plRoutePhoto').click());
   byId('plRoutePhoto').addEventListener('change',selectedPhoto);
   byId('plRouteForm').addEventListener('submit',saveRoute);
+  byId('plRouteDialog').addEventListener('close',clearPhoto);
   byId('plRouteDialog').addEventListener('cancel',event=>{
     if(busy){event.preventDefault();return;}
     if(!byId('plRouteCalendar').classList.contains('hidden')){
