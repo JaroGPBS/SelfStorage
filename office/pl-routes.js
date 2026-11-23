@@ -578,14 +578,31 @@
     const lines=[];
     for(const row of byId('plRouteParts').children){
       const partCode=row.querySelector('[data-pl-route-part-code]').value.trim();
-      const partName=row.querySelector('[data-pl-route-part-name]').value.trim();
-      const rawQty=row.querySelector('[data-pl-route-part-quantity]').value.trim();
-      if(!partCode&&!partName&&!rawQty)continue;
+      const nameInput=row.querySelector('[data-pl-route-part-name]');
+      const qtyInput=row.querySelector('[data-pl-route-part-quantity]');
+      const partName=nameInput.value.trim();
+      const rawQty=qtyInput.value.trim();
+      const prefix=row.dataset.aiPosition?'Lp. '+row.dataset.aiPosition+': ':'';
+      if(!partCode&&!partName&&!rawQty){
+        if(row.dataset.aiMissing==='true'){
+          nameInput.focus();
+          throw Error(prefix+'nieodczytana pozycja. Uzupełnij ją ze zdjęcia lub usuń wiersz.');
+        }
+        continue;
+      }
+      if(!partCode&&!partName){
+        nameInput.focus();
+        throw Error(prefix+'wpisz indeks lub nazwę części.');
+      }
+      if(!rawQty){
+        qtyInput.focus();
+        throw Error(prefix+'ilość jest nieczytelna — wpisz ją ręcznie ze zdjęcia.');
+      }
       const quantity=Number(rawQty);
-      if((!partCode&&!partName)||!Number.isSafeInteger(quantity)||
-         quantity<1||quantity>999999)throw Error(
-        'Każda pozycja musi mieć indeks lub nazwę części oraz dodatnią ilość.'
-      );
+      if(!Number.isSafeInteger(quantity)||quantity<1||quantity>999999){
+        qtyInput.focus();
+        throw Error(prefix+'wpisz prawidłową dodatnią ilość.');
+      }
       lines.push({partCode,partName,quantity,
         catalogPartId:row.dataset.catalogPartId||''});
     }
@@ -1869,8 +1886,20 @@
   // The selected catalogue ID is invalidated whenever the user edits its name/index.
   byId('plRouteParts').addEventListener('input',event=>{
     const field=event.target;
-    if(!field.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
     const row=field.closest('.pl-route-part-row');
+    if(row?.dataset.aiPosition){
+      const hasPart=Boolean(row.querySelector('[data-pl-route-part-name]').value.trim()||
+        row.querySelector('[data-pl-route-part-code]').value.trim());
+      const amount=row.querySelector('[data-pl-route-part-quantity]').value.trim();
+      const validQty=amount!==''&&Number.isSafeInteger(Number(amount))&&Number(amount)>0;
+      if(hasPart&&validQty){
+        row.dataset.aiMissing='false';
+        row.classList.remove('ai-review','ai-missing');
+        const info=row.querySelector('.pl-route-ai-row-label');
+        if(info)info.textContent='Lp. '+row.dataset.aiPosition;
+      }
+    }
+    if(!field.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
     if(row)queuePartSuggestions(row);
   });
   // Keep the floating list aligned when the user scrolls or resizes Office.
