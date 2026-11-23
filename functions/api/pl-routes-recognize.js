@@ -86,13 +86,21 @@ function parseTableAnswer(tableAnswer,expectedRows,parts){
   const unknown=[];
   const items=extractValue(tableAnswer,'items');
   const entries=Array.isArray(items)?items.slice(0,MAX_ROWS):[];
+  const tableCount=readCount(tableAnswer,'printed_positions');
+  const anchored=Math.max(expectedRows||0,tableCount||0);
+  // Guard against an OCR mistake reading an SAP index (e.g. 99) as Lp.
+  // Permit a few adjacent numbers when the two count passes disagree.
+  const plausibleLast=anchored
+    ?Math.min(MAX_ROWS,anchored+Math.max(3,Math.ceil(anchored*.1)))
+    :Math.min(MAX_ROWS,Math.max(50,entries.length+10));
   const rowConfidence=Number(tableAnswer?.answers?.items?.confidence??1);
   for(const item of entries){
     const row=normalizedRow(item);
     if(!row)continue;
-    if(row.position){
+    if(row.position&&row.position<=plausibleLast){
       byPosition.set(row.position,reconcileRow(byPosition.get(row.position),row));
     }else if(row.partName||row.partCode){
+      row.position=null;
       row.review=true;
       unknown.push(row);
     }
@@ -108,13 +116,11 @@ function parseTableAnswer(tableAnswer,expectedRows,parts){
   }
   const numbered=extractValue(tableAnswer,'row_numbers');
   const detectedNums=(Array.isArray(numbered)?numbered:[])
-    .map(validRowNumber).filter(Boolean);
+    .map(validRowNumber).filter(position=>position&&position<=plausibleLast);
   const maxEnumerated=detectedNums.length?Math.max(...detectedNums):0;
   const lastFound=Math.max(0,...byPosition.keys());
-  const tableCount=readCount(tableAnswer,'printed_positions');
-  // Use strong independent row count signals; do not treat part indices as Lp.
-  const count=Math.max(expectedRows||0,tableCount||0,maxEnumerated,lastFound);
-  const bounded=Math.min(MAX_ROWS,Math.max(count,byPosition.size+unknown.length));
+  const count=Math.max(anchored,maxEnumerated,lastFound);
+  const bounded=Math.min(plausibleLast,Math.max(count,byPosition.size+unknown.length));
   for(const row of unknown){
     for(let position=1;position<=bounded;position++){
       if(!byPosition.has(position)){row.position=position;byPosition.set(position,row);break;}
