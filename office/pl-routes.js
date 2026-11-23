@@ -497,7 +497,8 @@
       'Odczyt AI zastąpi aktualną listę części i rozpoznane dane trasy. Kontynuować?'
     ))return false;
     if(result.routeNumber)byId('plRouteNumber').value=result.routeNumber;
-    if(result.routeDate)byId('plRouteDate').value=result.routeDate;
+    // Do not silently keep today's default when the WZ date is unreadable.
+    byId('plRouteDate').value=result.routeDate||'';
     if(Array.isArray(result.lines)&&result.lines.length){
       const target=byId('plRouteParts');
       target.replaceChildren();
