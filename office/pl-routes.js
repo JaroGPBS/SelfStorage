@@ -598,9 +598,15 @@
       const form=new FormData();
       form.append('photo',visionFile);
       form.append('tablePhoto',tableFile);
-      const result=await jsonResponse(await fetch('/api/pl-routes-recognize',{
+      const response=await fetch('/api/pl-routes-recognize',{
         method:'POST',credentials:'same-origin',body:form
-      }));
+      });
+      const data=await response.json().catch(()=>null);
+      if(!response.ok||!data?.ok){
+        throw Error(data?.error||'Odczyt AI zakończył się błędem HTTP '+response.status+
+          '. Sprawdź szczegóły w Cloudflare.');
+      }
+      const result=data;
       if(recognitionSequence!==seq||!byId('plRouteDialog').open)return;
       setRawAiCopy(result.rawAiText);
       const applied=savedRouteId?false:applyRecognizedRoute(result);
@@ -617,8 +623,7 @@
       errorMessage();
     }catch(error){
       if(recognitionSequence!==seq)return;
-      photoAiStatus((error.message||'Nie udało się odczytać zdjęcia.')+
-        ' Możesz nadal wpisać dane ręcznie.','error');
+      photoAiStatus(error.message||'Nie udało się odczytać zdjęcia. Dane możesz wpisać ręcznie.','error');
     }finally{
       if(recognitionSequence===seq){
         photoRecognitionBusy=false;

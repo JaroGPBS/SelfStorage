@@ -377,11 +377,47 @@ function formatRawAiOutput(headerAnswer,tableAnswer){
   if(!tableAnswer)lines.push('Uwaga: odczyt tabeli nie powiódł się.');
   return lines.join('\n');
 }
+function aiFailureKind(error){
+  // AI errors contain account-specific API messages: classify them rather
+  // than returning internal provider strings to a browser.
+  const code=String(error?.code??error?.cause?.code??'');
+  const status=Number(error?.status??error?.cause?.status??0);
+  const description=String(error?.message??'')+' '+String(error?.cause?.message??'')+' '+code;
+  if(/4006|neurons?|free allocation|daily.{0,20}limit|quota|credit|billing/i.test(description))
+    return {id:'quota',status:429,message:'Wyczerpany limit Workers AI. Sprawdź wykorzystanie Neurons w Cloudflare.'};
+  if(status===429||/rate.?limit|too many requests|429/i.test(description))
+    return {id:'rate',status:429,message:'Workers AI ogranicza liczbę żądań. Spróbuj ponownie później.'};
+  if(status===400||status===422||/invalid.{0,24}(schema|field|request)|validation|422|schema/i.test(description))
+    return {id:'schema',status:503,message:'Cloudflare odrzucił format zapytania AI. Wymagana poprawka integracji.'};
+  if(status===401||status===403||/unauthorized|forbidden|not enabled/i.test(description))
+    return {id:'access',status:503,message:'Cloudflare odrzucił dostęp do modelu Workers AI.'};
+  if(status===504||status===524||/timeout|timed.?out|deadline|504|524/i.test(description))
+    return {id:'timeout',status:503,message:'Workers AI przekroczył czas odpowiedzi.'};
+  if(/unavailable|overloaded|capacity|502|503/i.test(description)||status===502||status===503)
+    return {id:'unavailable',status:503,message:'Model Workers AI jest chwilowo niedostępny.'};
+  return {id:'unknown',status:503,message:'Przetwarzanie AI zakończyło się błędem.'};
+}
+function aiFailureCode(error){
+  const code=String(error?.code??error?.cause?.code??'').slice(0,24);
+  const status=Number(error?.status??error?.cause?.status??0);
+  return {code:/^[a-z0-9_-]{1,24}$/i.test(code)?code:null,
+    httpStatus:Number.isInteger(status)&&status>=400&&status<=599?status:null};
+}
 async function aiRead(env,photo,fields,state){
-  return env.AI.run(AI_MODEL,{
+  const response=await env.AI.run(AI_MODEL,{
     model:'clairic',state,fields,
     images:[{content_type:photo.type,base64:base64Image(photo.bytes)}]
   });
+  if(!response?.answers||typeof response.answers!=='object'){
+    // In case the provider returned a structured error object rather than
+    // throwing, treat it as a failed inference (not a blank WZ).
+    const failure=response?.errors?.[0]||response?.error||{};
+    const code=String(failure.code??'');
+    const error=Error(String(failure.message||'Invalid Workers AI response'));
+    if(code)error.code=code;
+    throw error;
+  }
+  return response;
 }
 async function checkedPhoto(file){
   if(!(file instanceof Blob)||file.size<100||file.size>MAX_AI_BYTES)
@@ -426,12 +462,16 @@ export async function onRequestPost({request,env}){
         'Liczba ostatniego Lp. w ciągłej numeracji od 1, nie suma sztuk ani liczba innych wpisów.'}
     };
     let headerAnswer=null,tableAnswer=null;
+    let headerFailure=null,tableFailure=null;
     try{
       headerAnswer=await aiRead(env,full,headerFields,
         'Polski dokument WZ dla trasy montażowej. Przeczytaj nagłówek i stopkę. '+
         'Nie zgaduj brakujących danych. Nie zwracaj podpisów, nazwisk ani numerów seryjnych.');
     }catch(error){
-      console.error('PL route AI metadata pass failed',error?.name||'Error');
+      headerFailure=error;
+      console.error('PL route AI metadata pass failed',{
+        category:aiFailureKind(error).id,...aiFailureCode(error)
+      });
     }
     const headerCount=readCount(headerAnswer,'printed_positions');
     const tableFields={
@@ -487,16 +527,38 @@ export async function onRequestPost({request,env}){
         'Nie łącz modelu, adresu i akcesoriów w jedną nazwę! Lokalizacje i sklepy pomiń. '+
         'Nie traktuj numerów seryjnych, kodów modelu ani indeksów jako ilości.');
     }catch(error){
-      console.error('PL route AI table pass failed',error?.name||'Error');
+      tableFailure=error;
+      console.error('PL route AI table pass failed',{
+        category:aiFailureKind(error).id,...aiFailureCode(error)
+      });
     }
-    if(!headerAnswer&&!tableAnswer)
-      throw Error('Oba przebiegi AI zakończyły się błędem.');
+    if(!headerAnswer&&!tableAnswer){
+      const problem=aiFailureKind(tableFailure||headerFailure);
+      return workerJson({ok:false,error:problem.message+
+        ' Etap: odczyt nagłówka i tabeli. (AI: '+problem.id+')',
+        diagnostic:{stage:'both',reason:problem.id,
+          ...aiFailureCode(tableFailure||headerFailure)}},problem.status);
+    }
     const routeNumber=clean(extractValue(headerAnswer,'route_number'),80).toUpperCase();
     const rawDate=clean(extractValue(headerAnswer,'loading_date'),20);
     const routeDate=validISODate(rawDate)?rawDate:'';
-    const catalogue=await listRouteParts(env.DB,'',3000);
-    const parsed=parseTableAnswer(tableAnswer,headerCount,catalogue);
+    // The raw model output must remain copyable even when the catalogue is
+    // temporarily unreachable or postprocessing fails.
+    const rawAiText=formatRawAiOutput(headerAnswer,tableAnswer);
     const warnings=[];
+    let catalogue=[];
+    try{catalogue=await listRouteParts(env.DB,'',3000);}
+    catch(error){
+      console.error('PL route AI catalogue read failed',error?.name||'Error');
+      warnings.push('Katalog części jest chwilowo niedostępny. Dane AI możesz skopiować i poprawić ręcznie.');
+    }
+    let parsed={lines:[],expected:headerCount||0,recognized:0,
+      missingPositions:[],missingQuantities:0,unmatched:0,splitFallbacks:0,overflow:false};
+    try{parsed=parseTableAnswer(tableAnswer,headerCount,catalogue);}
+    catch(error){
+      console.error('PL route AI component parsing failed',error?.name||'Error');
+      warnings.push('Nie udało się rozdzielić części. Surowy odczyt nadal możesz skopiować.');
+    }
     if(headerAnswer?.truncated||tableAnswer?.truncated)
       warnings.push('Odpowiedź AI może być niekompletna; sprawdź wszystkie pozycje.');
     if(!headerAnswer)
@@ -521,13 +583,23 @@ export async function onRequestPost({request,env}){
     if(headerCount&&parsed.expected!==headerCount)
       warnings.push('Różne odczyty liczby pozycji ('+headerCount+' i '+
         parsed.expected+'). Sprawdź tabelę.');
-    const rawAiText=formatRawAiOutput(headerAnswer,tableAnswer);
+    if(headerFailure||tableFailure){
+      const failedStage=headerFailure?'nagłówka':'tabeli';
+      const reason=aiFailureKind(headerFailure||tableFailure);
+      warnings.push('Nie udało się odczytać '+failedStage+': '+reason.message+
+        ' (AI: '+reason.id+'). Dostępny jest częściowy wynik.');
+    }
     return workerJson({ok:true,routeNumber,routeDate,lines:parsed.lines,
       expectedPositions:parsed.expected,recognizedPositions:parsed.recognized,
       componentCount:parsed.lines.filter(item=>!item.missing).length,
       warnings,rawAiText,needsReview:parsed.lines.some(line=>line.review)||Boolean(warnings.length)});
   }catch(error){
-    console.error('PL route AI recognition failed',error?.name||'Error');
-    return fail('Odczyt AI nie powiódł się. Zdjęcie pozostaje wybrane; dane możesz wpisać ręcznie.',503);
+    console.error('PL route AI recognition failed',{
+      type:error?.name||'Error',category:aiFailureKind(error).id,
+      ...aiFailureCode(error)
+    });
+    return workerJson({ok:false,error:
+      'Nie udało się przygotować wyniku rozpoznania. Zdjęcie pozostaje wybrane. (Etap: przetwarzanie)',
+      diagnostic:{stage:'processing',reason:'processing'}},503);
   }
 }
