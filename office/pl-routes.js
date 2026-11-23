@@ -56,15 +56,54 @@
     byId('plRouteSubmit').textContent=next?'Zapisywanie…':
       (savedRouteId?'Ponów zapis zdjęcia':editingRouteId?'Zapisz zmiany':'Zapisz trasę');
   }
+  function photoZoomOpen(){return !byId('plRoutePhotoLightbox').hidden;}
+  function setPhotoZoom(){
+    if(!photoZoomOpen())return;
+    const viewport=byId('plRoutePhotoZoomViewport'),img=byId('plRoutePhotoZoomImage');
+    if(!img.naturalWidth||!img.naturalHeight)return;
+    const maxW=Math.max(180,viewport.clientWidth-30);
+    const maxH=Math.max(180,viewport.clientHeight-30);
+    const fit=Math.min(img.naturalWidth,maxW,maxH*img.naturalWidth/img.naturalHeight);
+    img.style.width=Math.round(fit*photoZoomFactor)+'px';
+    img.style.height='auto';
+    byId('plRouteZoomReset').textContent=Math.round(photoZoomFactor*100)+'%';
+    byId('plRouteZoomOut').disabled=photoZoomFactor<=1;
+    byId('plRouteZoomIn').disabled=photoZoomFactor>=6;
+  }
+  function changePhotoZoom(change){
+    if(!photoZoomOpen())return;
+    const v=byId('plRoutePhotoZoomViewport'),w=v.scrollWidth,h=v.scrollHeight;
+    const cx=v.scrollLeft+v.clientWidth/2,cy=v.scrollTop+v.clientHeight/2;
+    photoZoomFactor=Math.max(1,Math.min(6,Math.round((photoZoomFactor+change)*100)/100));
+    setPhotoZoom();
+    v.scrollLeft=cx*v.scrollWidth/Math.max(1,w)-v.clientWidth/2;
+    v.scrollTop=cy*v.scrollHeight/Math.max(1,h)-v.clientHeight/2;
+  }
+  function openPhotoZoom(){
+    if(!photoPreviewUrl)return;
+    byId('plRoutePhotoLightbox').hidden=false;
+    photoZoomFactor=1;
+    const img=byId('plRoutePhotoZoomImage');
+    img.src=photoPreviewUrl;
+    if(img.complete)setPhotoZoom();
+    byId('plRouteZoomClose').focus();
+  }
+  function closePhotoZoom(refocus=true){
+    if(!photoZoomOpen())return;
+    byId('plRoutePhotoLightbox').hidden=true;
+    photoZoomFactor=1;
+    if(refocus&&byId('plRouteDialog').open)byId('plRoutePhotoOpen').focus();
+  }
   function clearPhoto(){
     recognitionSequence++;
     photoRecognitionBusy=false;
+    closePhotoZoom(false);
     if(photoPreviewUrl)URL.revokeObjectURL(photoPreviewUrl);
     photoPreviewUrl=null;
     byId('plRoutePhoto').value='';
     byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';
     byId('plRoutePhotoPreview').removeAttribute('src');
-    byId('plRoutePhotoOpen').href='#';
+    byId('plRoutePhotoZoomImage').removeAttribute('src');
     byId('plRouteAiStatus').textContent='';
     byId('plRouteAiStatus').className='pl-route-ai-status';
     byId('plRoutePhotoStage').classList.add('hidden');
@@ -544,6 +583,7 @@
   async function selectedPhoto(){
     const file=byId('plRoutePhoto').files?.[0];
     const seq=++recognitionSequence;
+    closePhotoZoom(false);
     if(photoPreviewUrl)URL.revokeObjectURL(photoPreviewUrl);
     photoPreviewUrl=null;
     if(!file){clearPhoto();return;}
@@ -1976,11 +2016,27 @@
       hidePartSuggestions(row);
     }
   });
+  byId('plRoutePhotoOpen').addEventListener('click',openPhotoZoom);
+  byId('plRoutePhotoZoomImage').addEventListener('load',setPhotoZoom);
+  byId('plRouteZoomClose').addEventListener('click',()=>closePhotoZoom());
+  byId('plRouteZoomOut').addEventListener('click',()=>changePhotoZoom(-.5));
+  byId('plRouteZoomIn').addEventListener('click',()=>changePhotoZoom(.5));
+  byId('plRouteZoomReset').addEventListener('click',()=>{
+    photoZoomFactor=1;setPhotoZoom();
+    const v=byId('plRoutePhotoZoomViewport');
+    v.scrollLeft=0;v.scrollTop=0;
+  });
+  byId('plRoutePhotoZoomViewport').addEventListener('wheel',event=>{
+    if(!event.ctrlKey&&!event.metaKey)return;
+    event.preventDefault();changePhotoZoom(event.deltaY<0?.25:-.25);
+  },{passive:false});
+  window.addEventListener('resize',setPhotoZoom);
   byId('plRoutePhotoPick').addEventListener('click',()=>byId('plRoutePhoto').click());
   byId('plRoutePhoto').addEventListener('change',selectedPhoto);
   byId('plRouteForm').addEventListener('submit',saveRoute);
   byId('plRouteDialog').addEventListener('close',clearPhoto);
   byId('plRouteDialog').addEventListener('cancel',event=>{
+    if(photoZoomOpen()){event.preventDefault();closePhotoZoom();return;}
     if(busy){event.preventDefault();return;}
     if(!byId('plRouteCalendar').classList.contains('hidden')){
       event.preventDefault();
