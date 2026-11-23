@@ -88,12 +88,23 @@
       '<input type="number" data-pl-route-part-quantity min="1" max="999999" step="1" inputmode="numeric" placeholder="0"></label>'+
       '<button type="button" class="pl-route-remove-part" data-pl-route-remove-part aria-label="Usuń pozycję">×</button>';
     row.classList.toggle('ai-review',data.review===true);
+    row.classList.toggle('ai-missing',data.missing===true);
+    row.dataset.aiMissing=data.missing===true?'true':'false';
+    row.dataset.aiPosition=data.position||'';
+    if(data.position){
+      const info=document.createElement('small');
+      info.className='pl-route-ai-row-label';
+      info.textContent='Lp. '+data.position+
+        (data.missing?' — nieodczytana pozycja, uzupełnij ręcznie':
+          data.review?' — sprawdź ze zdjęciem':'');
+      row.prepend(info);
+    }
     row.dataset.catalogPartId=data.catalogPartId||'';
     row.dataset.catalogSelectedName=data.partName||'';
     row.dataset.catalogSelectedCode=data.partCode||'';
     row.querySelector('[data-pl-route-part-code]').value=data.partCode||'';
     row.querySelector('[data-pl-route-part-name]').value=data.partName||'';
-    row.querySelector('[data-pl-route-part-quantity]').value=data.quantity||'';
+    row.querySelector('[data-pl-route-part-quantity]').value=data.quantity??'';
     target.append(row);
     return row;
   }
@@ -422,6 +433,54 @@
       bitmap?.close?.();
     }
   }
+  async function prepareTableCrop(file){
+    // Read the table in an enlarged central crop of the selected image.
+    // No R2 copy is involved; this JPEG is used only for AI.
+    let bitmap=null,url=null;
+    try{
+      if(typeof createImageBitmap==='function'){
+        bitmap=await createImageBitmap(file);
+      }else{
+        url=URL.createObjectURL(file);
+        bitmap=await new Promise((resolve,reject)=>{
+          const image=new Image();
+          image.onload=()=>resolve(image);
+          image.onerror=()=>reject(Error('Nie można otworzyć zdjęcia tabeli.'));
+          image.src=url;
+        });
+      }
+      const width=bitmap.width||bitmap.naturalWidth;
+      const height=bitmap.height||bitmap.naturalHeight;
+      if(!width||!height||width*height>48000000)
+        throw Error('Nieprawidłowe wymiary zdjęcia tabeli.');
+      const sx=Math.round(width*.025);
+      const sy=Math.round(height*.18);
+      const sw=Math.min(width-sx,Math.round(width*.95));
+      const sh=Math.min(height-sy,Math.round(height*.70));
+      if(sw<180||sh<180)throw Error('Zdjęcie za małe do powiększenia tabeli.');
+      const canvas=document.createElement('canvas');
+      const context=canvas.getContext('2d',{alpha:false});
+      if(!context)throw Error('Nie można przygotować tabeli do AI.');
+      for(const [edge,quality] of [[3400,.92],[3400,.82],[3000,.8],[2600,.76]]){
+        const scale=Math.min(1,edge/Math.max(sw,sh));
+        canvas.width=Math.max(1,Math.round(sw*scale));
+        canvas.height=Math.max(1,Math.round(sh*scale));
+        context.fillStyle='#fff';
+        context.fillRect(0,0,canvas.width,canvas.height);
+        context.drawImage(bitmap,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+        const blob=await new Promise((resolve,reject)=>canvas.toBlob(
+          result=>result?resolve(result):reject(Error('Nie udało się przygotować tabeli.')),
+          'image/jpeg',quality
+        ));
+        if(blob.size<=4*1024*1024)
+          return new File([blob],'tabela-wz.jpg',{type:'image/jpeg'});
+      }
+      throw Error('Powiększona tabela jest zbyt duża do przesłania.');
+    }finally{
+      if(url)URL.revokeObjectURL(url);
+      bitmap?.close?.();
+    }
+  }
   function photoAiStatus(message,kind=''){
     const target=byId('plRouteAiStatus');
     target.textContent=message;
@@ -438,7 +497,8 @@
       'Odczyt AI zastąpi aktualną listę części i rozpoznane dane trasy. Kontynuować?'
     ))return false;
     if(result.routeNumber)byId('plRouteNumber').value=result.routeNumber;
-    if(result.routeDate)byId('plRouteDate').value=result.routeDate;
+    // Do not silently keep today's default when the WZ date is unreadable.
+    byId('plRouteDate').value=result.routeDate||'';
     if(Array.isArray(result.lines)&&result.lines.length){
       const target=byId('plRouteParts');
       target.replaceChildren();
@@ -449,22 +509,30 @@
   async function recognizeRoutePhoto(file,seq){
     photoRecognitionBusy=true;
     byId('plRouteSubmit').disabled=true;
-    photoAiStatus('Odczytywanie danych ze zdjęcia…');
+    photoAiStatus('Odczytuję dokument i powiększam tabelę części…');
     try{
       const visionFile=await visionReadyPhoto(file);
       if(recognitionSequence!==seq)return;
+      let tableFile=visionFile;
+      try{tableFile=await prepareTableCrop(visionFile);}
+      catch(error){console.warn('PL WZ table crop fallback',error?.name||'Error');}
+      if(recognitionSequence!==seq)return;
       const form=new FormData();
       form.append('photo',visionFile);
+      form.append('tablePhoto',tableFile);
       const result=await jsonResponse(await fetch('/api/pl-routes-recognize',{
         method:'POST',credentials:'same-origin',body:form
       }));
       if(recognitionSequence!==seq||!byId('plRouteDialog').open)return;
       const applied=savedRouteId?false:applyRecognizedRoute(result);
+      const count=Number(result.expectedPositions)||0;
+      const found=Number(result.recognizedPositions)||0;
       photoAiStatus(applied
-        ?'Odczyt AI gotowy. Porównaj każde pole ze zdjęciem i popraw błędy.'+
+        ?'Odczyt AI zakończony. '+(count?'Rozpoznano '+found+' z '+count+
+          ' pozycji. ':'')+'Porównaj wszystkie wiersze ze zdjęciem i popraw dane.'+
           (result.warnings?.length?'\n'+result.warnings.join('\n'):'')
         :'Zdjęcie wybrane. Dotychczasowe dane formularza pozostawiono bez zmian.',
-        applied?'success':'');
+        applied?(result.needsReview?'warning':'success'):'');
       errorMessage();
     }catch(error){
       if(recognitionSequence!==seq)return;
@@ -508,17 +576,38 @@
     const routeNumber=byId('plRouteNumber').value.trim().toUpperCase();
     const routeDate=byId('plRouteDate').value;
     const crewSymbol=byId('plRouteCrewSymbol').value.trim().toUpperCase();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(routeDate)){
+      byId('plRouteDate').focus();
+      throw Error('Nie odczytano daty załadunku. Wybierz prawidłową datę w kalendarzu.');
+    }
     const lines=[];
     for(const row of byId('plRouteParts').children){
       const partCode=row.querySelector('[data-pl-route-part-code]').value.trim();
-      const partName=row.querySelector('[data-pl-route-part-name]').value.trim();
-      const rawQty=row.querySelector('[data-pl-route-part-quantity]').value.trim();
-      if(!partCode&&!partName&&!rawQty)continue;
+      const nameInput=row.querySelector('[data-pl-route-part-name]');
+      const qtyInput=row.querySelector('[data-pl-route-part-quantity]');
+      const partName=nameInput.value.trim();
+      const rawQty=qtyInput.value.trim();
+      const prefix=row.dataset.aiPosition?'Lp. '+row.dataset.aiPosition+': ':'';
+      if(!partCode&&!partName&&!rawQty){
+        if(row.dataset.aiMissing==='true'){
+          nameInput.focus();
+          throw Error(prefix+'nieodczytana pozycja. Uzupełnij ją ze zdjęcia lub usuń wiersz.');
+        }
+        continue;
+      }
+      if(!partCode&&!partName){
+        nameInput.focus();
+        throw Error(prefix+'wpisz indeks lub nazwę części.');
+      }
+      if(!rawQty){
+        qtyInput.focus();
+        throw Error(prefix+'ilość jest nieczytelna — wpisz ją ręcznie ze zdjęcia.');
+      }
       const quantity=Number(rawQty);
-      if((!partCode&&!partName)||!Number.isSafeInteger(quantity)||
-         quantity<1||quantity>999999)throw Error(
-        'Każda pozycja musi mieć indeks lub nazwę części oraz dodatnią ilość.'
-      );
+      if(!Number.isSafeInteger(quantity)||quantity<1||quantity>999999){
+        qtyInput.focus();
+        throw Error(prefix+'wpisz prawidłową dodatnią ilość.');
+      }
       lines.push({partCode,partName,quantity,
         catalogPartId:row.dataset.catalogPartId||''});
     }
@@ -1802,8 +1891,20 @@
   // The selected catalogue ID is invalidated whenever the user edits its name/index.
   byId('plRouteParts').addEventListener('input',event=>{
     const field=event.target;
-    if(!field.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
     const row=field.closest('.pl-route-part-row');
+    if(row?.dataset.aiPosition){
+      const hasPart=Boolean(row.querySelector('[data-pl-route-part-name]').value.trim()||
+        row.querySelector('[data-pl-route-part-code]').value.trim());
+      const amount=row.querySelector('[data-pl-route-part-quantity]').value.trim();
+      const validQty=amount!==''&&Number.isSafeInteger(Number(amount))&&Number(amount)>0;
+      if(hasPart&&validQty){
+        row.dataset.aiMissing='false';
+        row.classList.remove('ai-review','ai-missing');
+        const info=row.querySelector('.pl-route-ai-row-label');
+        if(info)info.textContent='Lp. '+row.dataset.aiPosition;
+      }
+    }
+    if(!field.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
     if(row)queuePartSuggestions(row);
   });
   // Keep the floating list aligned when the user scrolls or resizes Office.

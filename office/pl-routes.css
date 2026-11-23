@@ -954,3 +954,16 @@
   .pl-route-edit-layout.has-photo .pl-route-part-quantity{grid-column:2;grid-row:2}
   .pl-route-edit-layout.has-photo .pl-route-remove-part{grid-column:3;grid-row:2}
 }
+
+
+/* Per-number WZ review: never hide rows or guess missing quantities. */
+.pl-route-ai-row-label{
+  grid-column:1/-1;display:block;min-width:0;
+  margin:1px 0 -2px;color:#607388;
+  font-size:10px;font-weight:750;line-height:1.3
+}
+.pl-route-part-row.ai-missing{
+  background:#fff4e8;border-left:3px solid #b96324;padding-left:7px
+}
+.pl-route-part-row.ai-missing .pl-route-ai-row-label{color:#924b21}
+.pl-route-ai-status.is-warning{color:#8b5b20}
