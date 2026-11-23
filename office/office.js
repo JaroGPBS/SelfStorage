@@ -2194,7 +2194,72 @@ function drawBovisParisSerials(group,search){
     :bovisDisplayWarehouse()+' · '+group.name+' · szablon gotowy, brak numerów seryjnych.';
   noteSearch(columns.length,group.types.length,'typach modułów');
 }
+// Belleville is layout-only until its real serial-number inventory is connected.
+// No sample quantities or serial numbers are borrowed from the Bovis demonstration.
+function drawBellevilleModules(){
+  const summary=state.bellevilleModuleStatus==='sum';
+  const search=state.search.trim().toLocaleLowerCase('pl');
+  const groups=MODULE_GROUPS.filter(group=>
+    state.moduleCategory==='all'||group.id===state.moduleCategory
+  ).map(group=>({
+    ...group,
+    types:group.types.filter(type=>!search||
+      (group.name+' '+type).toLocaleLowerCase('pl').includes(search))
+  })).filter(group=>group.types.length);
+  const count=groups.reduce((sum,group)=>sum+group.types.length,0);
+  const missing='<span class="belleville-module-unknown" title="Brak rzeczywistych danych magazynowych">—</span>';
+  if(summary){
+    const rows=groups.map(group=>'<tr class="module-group-row"><th colspan="4" scope="rowgroup">'+
+      escapeHtml(group.name)+'</th></tr>'+
+      (state.sortReverse?[...group.types].reverse():group.types).map(type=>
+        '<tr><th scope="row" class="module-type">'+escapeHtml(type)+'</th>'+
+        '<td class="num">'+missing+'</td><td class="num">'+missing+'</td>'+
+        '<td class="num module-count-total">'+missing+'</td></tr>').join('')
+    ).join('');
+    const noResults='<tr><td colspan="4" class="module-no-results">'+
+      'Brak pasujących typów modułów.</td></tr>';
+    const footer=groups.length?'<tr class="module-grand-total">'+
+      '<th scope="row">ŁĄCZNIE</th><td class="num">'+missing+'</td>'+
+      '<td class="num">'+missing+'</td><td class="num">'+missing+'</td></tr>':'';
+    $('tableArea').innerHTML='<div class="belleville-module-note">'+
+      'Układ zestawienia modułów · ilości pojawią się po podłączeniu ewidencji Belleville.'+
+      '</div><div class="belleville-module-table-scroll">'+
+      '<table class="table module-summary-table belleville-module-summary">'+
+      '<thead><tr><th scope="col">Typ modułu</th>'+
+      '<th scope="col" class="num">OK</th>'+
+      '<th scope="col" class="num">NOK</th>'+
+      '<th scope="col" class="num">SUMA</th></tr></thead>'+
+      '<tbody>'+(rows||noResults)+footer+'</tbody></table></div>';
+    $('tableFooter').textContent='Belleville · — oznacza brak danych o ilości, nie stan zerowy.';
+  }else{
+    const status=state.bellevilleModuleStatus.toUpperCase();
+    const statusClass=state.bellevilleModuleStatus==='ok'?'module-ok':'module-nok';
+    const rows=groups.map(group=>
+      '<tr class="module-group-row"><th colspan="3" scope="rowgroup">'+
+        escapeHtml(group.name)+'</th></tr>'+
+      (state.sortReverse?[...group.types].reverse():group.types).map(type=>
+        '<tr class="belleville-module-empty-row"><td class="module-type">'+
+          escapeHtml(type)+'</td><td>'+missing+'</td>'+
+          '<td class="belleville-module-empty-status">Brak ewidencji</td></tr>'
+      ).join('')
+    ).join('');
+    const noResults='<tr><td colspan="3" class="module-no-results">'+
+      'Brak pasujących typów modułów.</td></tr>';
+    $('tableArea').innerHTML='<div class="belleville-module-note">'+
+      'Moduły '+status+' · nie ma jeszcze podłączonych rzeczywistych numerów seryjnych.'+
+      '</div><div class="belleville-module-table-scroll">'+
+      '<table class="table belleville-module-serial-table">'+
+      '<thead><tr><th scope="col">Typ modułu</th>'+
+      '<th scope="col">Numer seryjny</th>'+
+      '<th scope="col">Ewidencja '+status+'</th></tr></thead>'+
+      '<tbody>'+(rows||noResults)+'</tbody></table></div>';
+    $('tableFooter').textContent='Belleville · '+status+
+      ' · lista typów modułów (bez zapisanych numerów seryjnych).';
+  }
+  noteSearch(count,MODULE_GROUPS.reduce((sum,g)=>sum+g.types.length,0),'typach modułów');
+}
 function drawModules(){
+  if(isBellevilleStock()){drawBellevilleModules();return;}
   if(!isBovisStock()){
     $('tableArea').innerHTML='<div class="empty">Brak danych modułów. Ewidencja modułów nie jest jeszcze dostępna.</div>';
     $('tableFooter').textContent='Brak zapisanych modułów';
