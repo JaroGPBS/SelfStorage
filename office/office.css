@@ -8572,3 +8572,62 @@
   padding-top:6px;
   padding-bottom:6px;
 }
+
+
+/* Belleville stock-layout trial. Does not affect Bovis, the Boxes or Poland. */
+.app.view-stocks.view-belleville-stock .stock-tabs{
+  gap:7px;flex-wrap:wrap;
+}
+.app.view-stocks.view-belleville-stock .stock-tab.belleville-tab{
+  min-width:112px;height:38px;padding:8px 14px;white-space:nowrap;
+}
+.app.view-stocks.view-belleville-stock .stock-tab.belleville-tab:nth-of-type(4),
+.app.view-stocks.view-belleville-stock .stock-tab.belleville-tab:nth-of-type(5){
+  min-width:130px;
+}
+.app.view-stocks.view-belleville-stock.view-modules .module-categories{
+  flex:0 1 auto;
+}
+.app.view-stocks.view-belleville-stock.view-modules .module-summary-table{
+  width:620px;min-width:550px;max-width:620px;table-layout:fixed;
+}
+.app.view-stocks.view-belleville-stock.view-modules .module-summary-table th:nth-child(1){
+  width:210px;
+}
+.app.view-stocks.view-belleville-stock.view-modules .module-summary-table thead th:nth-child(n+2){
+  width:136px;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-note{
+  color:#687380;font-size:12px;line-height:1.45;
+  background:#f7f8fa;border-bottom:1px solid #e5e8ec;
+  padding:13px 17px;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-table-scroll{
+  width:100%;overflow-x:auto;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-unknown{
+  color:#8793a0;font-weight:600;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-serial-table{
+  width:min(100%,850px);min-width:550px;table-layout:fixed;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-serial-table thead th{
+  background:#f3f5f7;font-size:11px;color:#657180;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-serial-table thead th:nth-child(1){
+  width:180px;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-serial-table thead th:nth-child(2){
+  width:410px;
+}
+.app.view-stocks.view-belleville-stock .belleville-module-empty-status{
+  color:#8a95a1;font-style:italic;
+}
+@media(max-width:760px){
+  .app.view-stocks.view-belleville-stock .stock-tabs{
+    width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .app.view-stocks.view-belleville-stock .stock-tab.belleville-tab{
+    min-width:0;max-width:none;width:100%;font-size:11px;padding:8px 9px;
+  }
+}
