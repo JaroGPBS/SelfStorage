@@ -459,13 +459,24 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={bellevilleModuleStatus:'sum',user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 // Read-only route-screen context for the separate PL routes script.
 // The Office state remains private; the API independently enforces permissions.
 window.getPlRoutesContext=()=>({
   view:state.view,tab:state.plRoutesTab,role:state.user?.role||''
 });
 function realWarehouse(id){return state.warehouses.find(w=>w.id===id);}
+function isBellevilleWarehouse(warehouseId){
+  const warehouse=realWarehouse(warehouseId);
+  const belle=FR_LAYOUT_WAREHOUSES.find(entry=>entry.key==='belleville');
+  return Boolean(warehouse?.country_code==='FR'&&belle&&matchesFrenchWarehouse(warehouse,belle));
+}
+function isBellevilleStock(){
+  if(state.view!=='stocks')return false;
+  if(state.preview?.type==='warehouse')return state.preview.key==='belleville';
+  return !state.preview&&isBellevilleWarehouse(state.warehouse);
+}
+
 function partCreationTarget(){
   if(state.view!=='stocks'||state.stockTab!=='parts')return null;
   if(state.preview?.type==='warehouse'){
@@ -1178,7 +1189,8 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     ++state.requestId;
     state.bovisParisProcess=null;
     state.view='stocks';state.preview={type,key,label};
-    state.stockTab=frenchStockKind('',state.preview)==='bovis'?'modules':'parts';
+    state.stockTab=(frenchStockKind('',state.preview)==='bovis'||key==='belleville')?'modules':'parts';
+    state.bellevilleModuleStatus='sum';
     state.moduleCategory='all';state.search='';state.focusDocument=null;
     $('sidebar').classList.remove('open');
     $('officePreview').classList.add('hidden');
@@ -1493,8 +1505,24 @@ function syncStockTabUI(){
   const modules=state.view==='stocks'&&state.stockTab==='modules'&&!process;
   const nok=state.view==='stocks'&&state.stockTab==='nok'&&!process;
   const secondary=modules||nok;
+  const belleville=isBellevilleStock();
+  $('app').classList.toggle('view-belleville-stock',belleville);
+  $('stockTabs').classList.toggle('belleville-stock-tabs',belleville);
   $('app').classList.toggle('view-modules',modules);
   $('moduleCategories').classList.toggle('hidden',!modules);
+  $('moduleCategories').querySelector('[data-module-category="all"]')
+    .classList.toggle('hidden',belleville);
+  $('partsTab').classList.toggle('hidden',belleville);
+  $('modulesTab').classList.toggle('hidden',belleville||
+    (state.view==='stocks'&&frenchStockKind(state.warehouse,state.preview)==='box'));
+  for(const tab of ['sum','ok','nok','parts']){
+    const button=$('belleville'+(tab==='sum'?'Sum':tab==='ok'?'Ok':tab==='nok'?'Nok':'Parts')+'Tab');
+    button.classList.toggle('hidden',!belleville);
+    const active=belleville&&(tab==='parts'?state.stockTab==='parts':
+      state.stockTab==='modules'&&state.bellevilleModuleStatus===tab);
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-selected',String(active));
+  }
   for(const [id,active] of [['partsTab',!secondary&&!process],['modulesTab',secondary&&!process]]){
     $(id).classList.toggle('active',active);
     $(id).setAttribute('aria-selected',String(active));
@@ -1515,14 +1543,34 @@ function syncStockTabUI(){
   $('newPart').classList.toggle('hidden',!canAdd);
   $('newPart').title=canAdd?'Dodaj nową część do centralnego katalogu':
     modules?'Dodawanie modułów nie jest jeszcze dostępne':'Brak aktywnego magazynu';
-  $('tableCaption').querySelector('strong').textContent=process?(process==='pz'?'PZ — Przyjęcia magazynowe':'WZ — Wydania magazynowe'):modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
-  $('search').placeholder=modules?(isBovisParisStock()?'Szukaj typu lub numeru seryjnego':'Szukaj typu modułu'):'Szukaj po SAP lub nazwie części';
+  $('tableCaption').querySelector('strong').textContent=process?(process==='pz'?'PZ — Przyjęcia magazynowe':'WZ — Wydania magazynowe'):
+    belleville&&modules?(state.bellevilleModuleStatus==='sum'?'Zestawienie modułów OK / NOK':
+      'Numery seryjne modułów '+state.bellevilleModuleStatus.toUpperCase()):
+    modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
+  $('search').placeholder=modules?(isBovisParisStock()?'Szukaj typu lub numeru seryjnego':
+    belleville&&state.bellevilleModuleStatus!=='sum'?'Szukaj typu lub numeru seryjnego':
+    'Szukaj typu modułu'):'Szukaj po SAP lub nazwie części';
   $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   document.querySelectorAll('[data-module-category]').forEach(btn=>{
     const selected=btn.dataset.moduleCategory===state.moduleCategory;
     btn.classList.toggle('active',selected);
     btn.setAttribute('aria-pressed',String(selected));
   });
+}
+function setBellevilleStockTab(tab){
+  if(!isBellevilleStock()||!['sum','ok','nok','parts'].includes(tab))return;
+  const next=tab==='parts'?'parts':'modules';
+  if(state.stockTab===next&&(tab==='parts'||state.bellevilleModuleStatus===tab))return;
+  // Invalidate a pending parts request when switching to a module view.
+  ++state.requestId;
+  state.stockTab=next;
+  state.bellevilleModuleStatus=tab;
+  state.moduleCategory='all';
+  state.search='';
+  state.expanded=null;
+  $('search').value='';
+  syncStockTabUI();
+  render();
 }
 function setStockTab(tab){
   const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
@@ -1560,7 +1608,8 @@ function selectView(view,warehouse,focusDocument=null){
   $('pageActions').classList.remove('hidden');
   state.bovisParisProcess=null;
   state.view=view;state.stockTab=view==='stocks'&&
-    frenchStockKind(targetWarehouse)==='bovis'?'modules':'parts';
+    (frenchStockKind(targetWarehouse)==='bovis'||isBellevilleWarehouse(targetWarehouse))?'modules':'parts';
+  state.bellevilleModuleStatus='sum';
   state.moduleCategory='all';state.search='';
   if(view==='aggregate'){state.aggregateTab='parts';state.frAggregateSets=null;}
   if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
@@ -4129,6 +4178,8 @@ document.addEventListener('click',e=>{
   }
   const parisProcess=e.target.closest('[data-bovis-paris-process]');
   if(parisProcess){setBovisParisProcess(parisProcess.dataset.bovisParisProcess);return;}
+  const belleTab=e.target.closest('[data-belleville-stock]');
+  if(belleTab){setBellevilleStockTab(belleTab.dataset.bellevilleStock);return;}
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
   if(e.target.closest('[data-label-add-current]')){
     const part=state.labelPart;
