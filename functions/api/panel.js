@@ -1,5 +1,6 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
+import {listModulePrefixes,saveModulePrefix,deleteModulePrefix} from '../../lib/module-prefix-registry.js';
 import {listRouteParts,createRoutePart,updateRoutePart,mergeRouteParts,importPreviousRouteParts} from '../../lib/pl-route-parts.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {readFrBoxSharedCatalog,removeBoxCataloguePart,addBoxCataloguePart} from '../../lib/fr-box-office-stock.js';
@@ -501,6 +502,7 @@ async function rotateBoxQr(env,body,actor) {
 }
 
 async function queryPanel(env,view,url) {
+  if(view==='modulePrefixes')return listModulePrefixes(env.DB);
   if(view==='frWeeklySettings')return readFrWeeklySettings(env.DB);
   if(view==='boxQr')return boxQrRows(env.DB);
   if(view==='usage')return adminUsage(env,url);
@@ -1701,6 +1703,21 @@ async function route(request,env) {
     }catch(error){
       console.error('Super Admin credential change failed',error?.name||'Error');
       return fail('Nie udało się zapisać zmiany danych logowania.',503);
+    }
+  }
+  if(['modulePrefixSave','modulePrefixDelete'].includes(body?.action)){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień do konfiguracji prefiksów.',403);
+    try{
+      const result=body.action==='modulePrefixSave'
+        ?await saveModulePrefix(env.DB,body,session.id)
+        :await deleteModulePrefix(env.DB,body,session.id);
+      if(result.error)return fail(result.error,result.status||400);
+      return respond({ok:true,prefix:result.prefix,moduleType:result.moduleType||null});
+    }catch(error){
+      console.error('Module prefix registry update failed',error?.name||'Error');
+      if(/UNIQUE constraint failed/i.test(String(error?.message||'')))
+        return fail('Ten prefiks został już przypisany. Odśwież listę.',409);
+      return fail('Nie udało się zapisać prefiksu modułu.',503);
     }
   }
   if(body?.action==='setFrWeeklySettings'){
