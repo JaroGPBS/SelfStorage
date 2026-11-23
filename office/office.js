@@ -1524,8 +1524,8 @@ function syncStockTabUI(){
     button.setAttribute('aria-selected',String(active));
   }
   for(const [id,active] of [['partsTab',!secondary&&!process],['modulesTab',secondary&&!process]]){
-    $(id).classList.toggle('active',active);
-    $(id).setAttribute('aria-selected',String(active));
+    $(id).classList.toggle('active',active&&!belleville);
+    $(id).setAttribute('aria-selected',String(active&&!belleville));
   }
   for(const [id,view] of [['bovisParisPzTab','pz'],['bovisParisWzTab','wz']]){
     $(id).classList.toggle('active',process===view);
@@ -1560,7 +1560,8 @@ function syncStockTabUI(){
 function setBellevilleStockTab(tab){
   if(!isBellevilleStock()||!['sum','ok','nok','parts'].includes(tab))return;
   const next=tab==='parts'?'parts':'modules';
-  if(state.stockTab===next&&(tab==='parts'||state.bellevilleModuleStatus===tab))return;
+  if(state.stockTab===next&&(tab==='parts'||state.bellevilleModuleStatus===tab)&&
+    state.moduleCategory==='all')return;
   // Invalidate a pending parts request when switching to a module view.
   ++state.requestId;
   state.stockTab=next;
