@@ -2322,6 +2322,7 @@
       module.classList.add('module-prefix-type');
       const code=td(item.prefix);
       code.classList.add('module-prefix-code');
+      tr.append(module,code);
       const actions=tr.insertCell();
       actions.className='module-prefix-actions';
       const edit=document.createElement('button');
@@ -2337,7 +2338,6 @@
       remove.setAttribute('aria-label','Usuń prefiks '+item.prefix);
       remove.addEventListener('click',()=>removeModulePrefix(item,remove));
       actions.append(edit,remove);
-      tr.append(module,code);
     }
     $('modulePrefixStatus').textContent='Typy modułów: '+types.length+
       ' · Zapisane prefiksy: '+rows.length;
