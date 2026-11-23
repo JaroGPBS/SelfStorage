@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=149">
-  <link rel="stylesheet" href="./pl-routes.css?v=60">
+  <link rel="stylesheet" href="./pl-routes.css?v=61">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -125,7 +125,7 @@
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=181"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
-  <script defer src="./pl-routes.js?v=64"></script>
+  <script defer src="./pl-routes.js?v=65"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -454,7 +454,12 @@
           <p class="pl-route-eyebrow">POLSKA / TRASY</p>
           <h2 id="plRouteTitle">Dodaj trasę</h2>
         </div>
-        <button type="button" id="plRouteClose" class="pl-route-close" aria-label="Zamknij formularz">×</button>
+        <div class="pl-route-dialog-tools">
+          <button type="button" id="plRouteCopyAi" class="btn outline pl-route-copy-ai"
+            title="Skopiuj surowy odczyt AI sprzed łączenia części i dopasowywania do katalogu"
+            aria-label="Kopiuj wynik AI — surowy odczyt" hidden disabled>Kopiuj wynik AI</button>
+          <button type="button" id="plRouteClose" class="pl-route-close" aria-label="Zamknij formularz">×</button>
+        </div>
       </div>
       <div class="pl-route-form-body">
         <div class="pl-route-photo">
