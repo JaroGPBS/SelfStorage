@@ -16,15 +16,15 @@ Nie jest wymagany osobny klucz API w JavaScript przeglądarki. Serwer wywołuje 
 
 - Wybierany jest jeden plik zdjęcia JPG/PNG/WEBP/HEIC/HEIF do 15 MB; aplikacja weryfikuje rzeczywisty typ.
 - Oryginał obsługiwanego formatu do 4 MiB trafia do AI przed kompresją archiwalną. Większe zdjęcia i HEIC/HEIF są konwertowane w przeglądarce na czytelną wersję JPEG do 4 MiB tylko na potrzeby AI.
-- Endpoint /api/pl-routes-recognize wymaga sesji Office PL z rolą Admin/Kierownik/Koordynator. Z dokumentu wydobywa numer trasy, datę załadunku, nazwy/indeksy części oraz ilości. Nie odczytuje numerów seryjnych i podpisów.
-- API dopasowuje pozycje jednoznacznie do katalogu PL w D1, sumuje powtórzenia, brak ilości przyjmuje jako 1 i oznacza niepewne wiersze.
-- Zdjęcie jest wyświetlane obok edytowalnych danych. W przypadku aktualnie wpisanych części aplikacja pyta przed zastąpieniem listy. Użytkownik weryfikuje dane i dopiero potem klika „Zapisz trasę”.
+- Endpoint /api/pl-routes-recognize wymaga sesji Office PL z rolą Admin/Kierownik/Koordynator. Dwa przebiegi Workers AI czytają osobno pełną fotografię (numer trasy, data, liczba wierszy Lp.) oraz powiększony środkowy fragment z tabelą części (numer Lp., pełna nazwa, indeks i ilość). Dla tabel do 20 pozycji wykonuje się dodatkowe rozpoznawanie każdego numerowanego wiersza w ramach przebiegu tabeli. Nie odczytuje numerów seryjnych i podpisów.
+- API dopasowuje pozycje jednoznacznie do katalogu PL w D1, **nie łączy** numerowanych wierszy nawet dla identycznych nazw, wykrywa przerwy w numeracji oraz wstawia puste wiersze do ręcznego uzupełnienia. Nieczytelne ilości pozostają puste. Nie zgaduje brakujących ilości ani nie pozwala zapisać trasy z pustymi pozycjami/ilościami.
+- Zdjęcie jest wyświetlane obok edytowalnych danych (etykiety Lp.). W przypadku aktualnie wpisanych części aplikacja pyta przed zastąpieniem listy. Jeśli data nie zostanie odczytana, nie pozostaje domyślna dzisiejsza. Użytkownik weryfikuje dane i dopiero potem klika „Zapisz trasę”.
 - Rozpoznanie nie zapisuje nic do D1 ani R2. Dotychczasowe zapisanie trasy do D1 i archiwizacja skompresowanego JPEG do prywatnego R2 działają bez zmian.
 
 ## Testy przed użyciem produkcyjnym
 
-- Zdjęcie WZ z kilkoma poprawnymi częściami; sprawdź datę, numer trasy, sumowanie powtórzeń i dopasowanie katalogu.
-- Zdjęcie niewyraźne, nieczytelna ilość, nieznana nazwa i brak daty; sprawdź ostrzeżenia i możliwość ręcznych poprawek.
+- Zdjęcie WZ z sześcioma wierszami; sprawdź numer trasy, datę, sześć oddzielnych wierszy Lp. i dopasowanie katalogu. Identyczne nazwy w różnych wierszach nie mogą być sumowane.
+- Zdjęcie niewyraźne, nieczytelna ilość, nieznana nazwa i brak daty; sprawdź ostrzeżenia, puste ilości i datę, numerowane puste wiersze oraz możliwość ręcznych poprawek. Próba zapisu bez uzupełnienia ma zostać zablokowana.
 - Wybór niepoprawnego pliku/PDF; musi zostać odrzucony.
 - Niedostępny binding AI; ręczny zapis nadal powinien działać, bez utraty zdjęcia.
 - Zweryfikuj, że zdjęcie pojawia się w Szczegółach trasy dopiero po zapisaniu, a AI nie tworzy zapisów bez zatwierdzenia.
