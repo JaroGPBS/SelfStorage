@@ -131,7 +131,7 @@ function componentItems(raw,position){
     const item=namedComponent(candidate,position);
     if(!item)continue;
     const split=splitRecognizableParts(item,position);
-    if(split.length>1)items.push(...split);
+    if(split.length)items.push(...split);
     else items.push(item);
   }
   return items;
@@ -344,6 +344,22 @@ export async function onRequestPost({request,env}){
     }
     const headerCount=readCount(headerAnswer,'printed_positions');
     const tableFields={
+      components_all:{
+        type:'list',max_items:MAX_ROWS,
+        instructions:'Zwróć PŁASKĄ LISTĘ wszystkich osobnych fizycznych części i akcesoriów '+
+          'wydanych w głównej tabeli dokumentu WZ. Jedna część = jeden rekord, nie cały wiersz. '+
+          'Każda pozycja Lp. może mieć wiele rekordów z TYM SAMYM numerem Lp. '+
+          'Przykład: Lp.1: STANDARD CFM-Q / Dino Bógucin / dach uniwersalny / 4x kotwa trójkątna '+
+          '=> trzy rekordy: STANDARD CFM-Q, dach uniwersalny, kotwa trójkątna (ilość 4). '+
+          'Adresy sklepów, nazwy miejscowości, słowa montaż i numery seryjne nie są częściami. '+
+          'Nie zgaduj ilości, brak czytelnej ilości = null.',
+        items:{type:'object',properties:{
+          position:{type:'number',integer:true,instructions:'Numer Lp. z lewej kolumny, do którego należy część.'},
+          partName:{type:'text',instructions:'Jedna fizyczna część lub moduł bez adresu, nie cały wieloczłonowy opis.'},
+          partCode:{type:'text',instructions:'Indeks SAP/GPBS tej części, ale nie numer seryjny.'},
+          quantity:{type:'number',integer:true,instructions:'Sztuk tej części, null gdy nie podano.'}
+        }}
+      },
       printed_positions:{type:'number',integer:true,instructions:
         'Liczba numerowanych wierszy w głównej tabeli Wydane paczkomaty. '+
         'Zwróć liczbę ostatniego Lp., nie ilości sztuk.'},
@@ -366,15 +382,18 @@ export async function onRequestPost({request,env}){
     };
     // Small printed WZ documents benefit from a separate extraction field for
     // EACH numbered row. Limit this to 20 to avoid runaway model work.
-    if(headerCount&&headerCount<=20)
-      for(let position=1;position<=headerCount;position++)
+    if(headerCount&&headerCount<=20){
+      for(let position=1;position<=headerCount;position++){
         tableFields['row_'+position]=rowField(position);
+        tableFields['row_'+position+'_components']=rowComponentsField(position);
+      }
+    }
     try{
       tableAnswer=await aiRead(env,table,tableFields,
         'To jest POWIĘKSZONY FRAGMENT tabeli dokumentu WZ. '+
         'Skup się wyłącznie na tabeli z nagłówkiem "WYDANE PACZKOMATY", kolumnami "Lp.", "Rodzaj i model", "Ilość". '+
-        'Odczytaj wszystkie numery Lp. i ich kompletne opisy oraz ilości, także wiersze zawinięte. '+
-        'Nie pomijaj numerowanych pozycji, nie dopowiadaj niewidocznego tekstu. '+
+        'W KAŻDYM wierszu Lp. wypisz osobno paczkomat/moduł ORAZ każdą dołączoną część (np. daszek, osłona, kotwa). '+
+        'Nie łącz modelu, adresu i akcesoriów w jedną nazwę! Lokalizacje i sklepy pomiń. '+
         'Nie traktuj numerów seryjnych, kodów modelu ani indeksów jako ilości.');
     }catch(error){
       console.error('PL route AI table pass failed',error?.name||'Error');
@@ -404,11 +423,16 @@ export async function onRequestPost({request,env}){
       warnings.push('Niektóre nazwy nie pasują jednoznacznie do katalogu. Sprawdź je.');
     if(parsed.missingQuantities)
       warnings.push('Nieczytelne ilości pozostawiono PUSTE. Wpisz je ze zdjęcia.');
+    if(parsed.splitFallbacks)
+      warnings.push('Niektóre złożone opisy rozdzielono orientacyjnie. Sprawdź każdą część.');
+    if(parsed.overflow)
+      warnings.push('Dokument zawiera więcej niż 150 pól. Odczyt ograniczono, sprawdź brakujące części.');
     if(headerCount&&parsed.expected!==headerCount)
       warnings.push('Różne odczyty liczby pozycji ('+headerCount+' i '+
         parsed.expected+'). Sprawdź tabelę.');
     return workerJson({ok:true,routeNumber,routeDate,lines:parsed.lines,
       expectedPositions:parsed.expected,recognizedPositions:parsed.recognized,
+      componentCount:parsed.lines.filter(item=>!item.missing).length,
       warnings,needsReview:parsed.lines.some(line=>line.review)||Boolean(warnings.length)});
   }catch(error){
     console.error('PL route AI recognition failed',error?.name||'Error');
