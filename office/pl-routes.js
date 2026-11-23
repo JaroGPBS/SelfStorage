@@ -82,6 +82,7 @@
   function openPhotoZoom(){
     if(!photoPreviewUrl)return;
     byId('plRoutePhotoLightbox').hidden=false;
+    byId('plRouteForm').inert=true;
     photoZoomFactor=1;
     const img=byId('plRoutePhotoZoomImage');
     img.src=photoPreviewUrl;
@@ -91,6 +92,7 @@
   function closePhotoZoom(refocus=true){
     if(!photoZoomOpen())return;
     byId('plRoutePhotoLightbox').hidden=true;
+    byId('plRouteForm').inert=false;
     photoZoomFactor=1;
     if(refocus&&byId('plRouteDialog').open)byId('plRoutePhotoOpen').focus();
   }
