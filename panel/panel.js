@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = id => document.getElementById(id);
-  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false,showWarehouseArchives:false,warehouseEditing:null, boxPartsSource:null,vehiclePartChoice:null,partChoiceScope:'vehicleParts'};
+  const state = {view:'summary', records:[], warehouses:[], currentPartsWarehouse:'PL-TYCHY', loggedIn:false, isSuperAdmin:false, expandedUserId:null, pinReady:false, generatedPinText:'', showArchives:false,showWarehouseArchives:false,warehouseEditing:null, boxPartsSource:null,vehiclePartChoice:null,partChoiceScope:'vehicleParts',modulePrefixes:[]};
   const defs = {
     summary:['Pulpit','Przegląd operacji i magazynów.'],
     warehouses:['Magazyny','Magazyny Polski i Francji. Kody QR Boxów pozostają bez zmian.'],
@@ -16,6 +16,7 @@
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
     frWeeklySettings:['Powiadomienia FR','Przypomnienia o cotygodniowej inwentaryzacji ekip francuskich.'],
+    modulePrefixes:['Prefiksy modułów','Mapowanie prefiksów numerów seryjnych na typ modułu.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.'],
     settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.'],
     superAdmin:['Super Admin','Hasło i wspólny PIN głównego konta właściciela.']
@@ -1496,7 +1497,8 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings'||view==='modulePrefixes');
+    $('modulePrefixesView').classList.toggle('hidden',view!=='modulePrefixes');
     $('frWeeklySettingsView').classList.toggle('hidden',view!=='frWeeklySettings');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
@@ -1537,6 +1539,11 @@
     closeSide();
     try {
       if(view==='security'||view==='settings') return;
+      if(view==='modulePrefixes'){
+        resetModulePrefixEditor();
+        await refreshModulePrefixes();
+        return;
+      }
       if(view==='frWeeklySettings'){
         const settings=await api('frWeeklySettings');
         $('frWeeklyEnabled').checked=Boolean(settings.enabled);
@@ -2273,6 +2280,114 @@
     logoutLocally();
   }
 
+
+  function resetModulePrefixEditor(){
+    $('modulePrefixForm').reset();
+    $('modulePrefixOriginal').value='';
+    $('modulePrefixSave').textContent='+ Dodaj prefiks';
+    $('modulePrefixCancel').classList.add('hidden');
+  }
+
+  function editModulePrefix(row){
+    $('modulePrefixOriginal').value=row.prefix;
+    $('modulePrefixType').value=row.moduleType;
+    $('modulePrefixCode').value=row.prefix;
+    $('modulePrefixSave').textContent='Zapisz zmiany';
+    $('modulePrefixCancel').classList.remove('hidden');
+    $('modulePrefixType').focus();
+  }
+
+  function renderModulePrefixes(){
+    const rows=state.modulePrefixes;
+    const target=$('modulePrefixRows');
+    target.replaceChildren();
+    const datalist=$('moduleTypeChoices');
+    datalist.replaceChildren();
+    const types=[...new Set(rows.map(item=>item.moduleType))];
+    for(const type of types){
+      const option=document.createElement('option');
+      option.value=type;
+      datalist.append(option);
+    }
+    if(!rows.length){
+      const tr=target.insertRow();
+      const cell=tr.insertCell();
+      cell.colSpan=3;
+      cell.className='module-prefix-empty';
+      cell.textContent='Nie dodano jeszcze żadnych prefiksów.';
+    }
+    for(const item of rows){
+      const tr=target.insertRow();
+      const module=td(item.moduleType);
+      module.classList.add('module-prefix-type');
+      const code=td(item.prefix);
+      code.classList.add('module-prefix-code');
+      tr.append(module,code);
+      const actions=tr.insertCell();
+      actions.className='module-prefix-actions';
+      const edit=document.createElement('button');
+      edit.className='btn mini ghost';
+      edit.type='button';
+      edit.textContent='Edytuj';
+      edit.setAttribute('aria-label','Edytuj prefiks '+item.prefix+' modułu '+item.moduleType);
+      edit.addEventListener('click',()=>editModulePrefix(item));
+      const remove=document.createElement('button');
+      remove.className='btn mini ghost module-prefix-delete';
+      remove.type='button';
+      remove.textContent='Usuń';
+      remove.setAttribute('aria-label','Usuń prefiks '+item.prefix);
+      remove.addEventListener('click',()=>removeModulePrefix(item,remove));
+      actions.append(edit,remove);
+    }
+    $('modulePrefixStatus').textContent='Typy modułów: '+types.length+
+      ' · Zapisane prefiksy: '+rows.length;
+  }
+
+  async function refreshModulePrefixes(){
+    const entries=await api('modulePrefixes');
+    if(state.view!=='modulePrefixes')return;
+    state.modulePrefixes=Array.isArray(entries)?entries:[];
+    renderModulePrefixes();
+  }
+
+  async function saveModulePrefix(event){
+    event.preventDefault();
+    const button=$('modulePrefixSave');
+    const oldPrefix=$('modulePrefixOriginal').value.trim().toUpperCase();
+    const prefix=$('modulePrefixCode').value.trim().toUpperCase();
+    const moduleType=$('modulePrefixType').value.trim().replace(/\s+/g,' ').toUpperCase();
+    if(!/^[A-Z0-9]{2,15}$/.test(prefix)||!
+       /^[A-Z0-9][A-Z0-9 _-]{0,29}$/.test(moduleType)){
+      message('Sprawdź typ modułu i prefiks. Prefiks może zawierać tylko litery i cyfry.','error');
+      return;
+    }
+    busy(button,true);
+    try{
+      await post({action:'modulePrefixSave',oldPrefix,prefix,moduleType});
+      resetModulePrefixEditor();
+      await refreshModulePrefixes();
+      message(oldPrefix?'Zapisano zmianę prefiksu.':'Dodano prefiks '+prefix+' do modułu '+moduleType+'.','success');
+    }catch(error){
+      message(error.message||'Nie udało się zapisać prefiksu.','error');
+    }finally{busy(button,false);}
+  }
+
+  async function removeModulePrefix(item,button){
+    if(!await confirmAction({
+      title:'Usunąć prefiks '+item.prefix+'?',
+      description:'Prefiks przestanie być przypisany do typu '+item.moduleType+
+        '. Nie zmieni to stanów magazynowych ani historii.',
+      confirmLabel:'Usuń prefiks',danger:true
+    }))return;
+    busy(button,true);
+    try{
+      await post({action:'modulePrefixDelete',prefix:item.prefix});
+      if($('modulePrefixOriginal').value===item.prefix)resetModulePrefixEditor();
+      await refreshModulePrefixes();
+      message('Usunięto prefiks '+item.prefix+'.','success');
+    }catch(error){message(error.message||'Nie udało się usunąć prefiksu.','error');}
+    finally{busy(button,false);}
+  }
   async function saveFrWeeklySettings(event){
     event.preventDefault();
     const button=$('frWeeklySave');busy(button,true);
@@ -2305,6 +2420,8 @@
     });
     $('loginForm').addEventListener('submit',performLogin);
     $('frWeeklySettingsForm').addEventListener('submit',saveFrWeeklySettings);
+    $('modulePrefixForm').addEventListener('submit',saveModulePrefix);
+    $('modulePrefixCancel').addEventListener('click',resetModulePrefixEditor);
     $('superPinForm').addEventListener('submit',submitSuperAdminCredential);
     $('superPasswordForm').addEventListener('submit',submitSuperAdminCredential);
     $('logoutBtn').addEventListener('click',performLogout);
