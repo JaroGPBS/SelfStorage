@@ -967,3 +967,81 @@
 }
 .pl-route-part-row.ai-missing .pl-route-ai-row-label{color:#924b21}
 .pl-route-ai-status.is-warning{color:#8b5b20}
+
+
+/* Compact WZ editor: one column header instead of repeated field labels. */
+.pl-route-visually-hidden{
+  position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important
+}
+.pl-route-parts{gap:6px}
+.pl-route-part-row{align-items:center;border-left:3px solid transparent;padding-left:7px}
+.pl-route-parts-columns{
+  display:grid;grid-template-columns:minmax(120px,1fr) minmax(170px,1.6fr) minmax(78px,.44fr) 32px;
+  gap:10px;align-items:end;padding:0 0 0 10px;margin-bottom:5px;
+  color:#526579;font-size:11px;font-weight:800
+}
+.pl-route-parts-columns small{font-weight:500;color:#7a8b99}
+.pl-route-edit-layout.has-photo .pl-route-parts-columns{
+  grid-template-columns:minmax(100px,.95fr) minmax(150px,1.55fr) minmax(65px,.45fr) 32px;
+  gap:7px
+}
+.pl-route-part-row.ai-review{border-left-color:#cc8c38}
+.pl-route-part-row.ai-missing{border-left-color:#b96324}
+.pl-route-ai-row-label{display:none}
+
+/* Zoom opens inside the existing route dialog, never in another tab. */
+.pl-route-dialog{position:relative}
+.pl-route-photo-stage .pl-route-photo-zoom-trigger{
+  display:flex;flex-direction:column;gap:6px;align-items:center;
+  width:100%;margin-top:10px;padding:0;border:0;
+  background:transparent;color:#416486;cursor:zoom-in
+}
+.pl-route-photo-zoom-trigger small{font-size:11px;font-weight:600}
+.pl-route-photo-zoom-trigger:focus-visible{
+  outline:2px solid #3d6c99;outline-offset:4px;border-radius:6px
+}
+.pl-route-photo-lightbox{
+  position:absolute;inset:0;z-index:1000;
+  display:flex;flex-direction:column;gap:0;
+  padding:12px;box-sizing:border-box;
+  background:#f8fafc;border-radius:14px;
+}
+.pl-route-photo-lightbox[hidden]{display:none!important}
+.pl-route-photo-zoom-toolbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:4px 6px 13px;flex:0 0 auto
+}
+.pl-route-photo-zoom-toolbar>strong{font-size:14px;color:#26394f}
+.pl-route-photo-zoom-controls{display:flex;align-items:center;gap:7px}
+.pl-route-photo-zoom-controls button{
+  min-width:36px;min-height:34px;padding:5px 8px;
+  border:1px solid #cbd7e2;border-radius:7px;
+  background:#fff;color:#334c64;cursor:pointer;font-size:15px;font-weight:750
+}
+.pl-route-photo-zoom-controls button:hover{background:#ecf2f8}
+.pl-route-photo-zoom-controls button:disabled{opacity:.4;cursor:default}
+.pl-route-photo-zoom-controls #plRouteZoomReset{min-width:58px;font-size:12px}
+.pl-route-photo-zoom-controls .pl-route-zoom-close{
+  margin-left:13px;color:#973748;font-size:22px
+}
+.pl-route-photo-zoom-viewport{
+  flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;
+  border:1px solid #d5dce5;border-radius:8px;
+  background:#dbe2e8;text-align:center
+}
+.pl-route-photo-zoom-viewport img{
+  display:block;margin:14px auto;width:auto;height:auto;
+  max-width:none;max-height:none;object-fit:contain;
+  background:#fff;box-shadow:0 4px 12px #23303b30
+}
+@media(max-width:1050px){
+  .pl-route-edit-layout.has-photo .pl-route-parts-columns{display:none}
+}
+@media(max-width:690px){
+  .pl-route-parts-columns{display:none}
+  .pl-route-photo-zoom-toolbar{flex-wrap:wrap}
+  .pl-route-photo-zoom-controls{width:100%;justify-content:flex-end}
+  .pl-route-photo-lightbox{padding:9px}
+}

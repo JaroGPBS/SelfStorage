@@ -9,6 +9,7 @@
   const endpoint='/api/pl-routes';
   let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
   let photoPreviewUrl=null;
+  let photoZoomFactor=1;
   let recognitionSequence=0;
   let photoRecognitionBusy=false;
   let editingRouteId=null; // Existing route opened for corrections before team confirmation.
@@ -55,15 +56,56 @@
     byId('plRouteSubmit').textContent=next?'Zapisywanie…':
       (savedRouteId?'Ponów zapis zdjęcia':editingRouteId?'Zapisz zmiany':'Zapisz trasę');
   }
+  function photoZoomOpen(){return !byId('plRoutePhotoLightbox').hidden;}
+  function setPhotoZoom(){
+    if(!photoZoomOpen())return;
+    const viewport=byId('plRoutePhotoZoomViewport'),img=byId('plRoutePhotoZoomImage');
+    if(!img.naturalWidth||!img.naturalHeight)return;
+    const maxW=Math.max(180,viewport.clientWidth-30);
+    const maxH=Math.max(180,viewport.clientHeight-30);
+    const fit=Math.min(img.naturalWidth,maxW,maxH*img.naturalWidth/img.naturalHeight);
+    img.style.width=Math.round(fit*photoZoomFactor)+'px';
+    img.style.height='auto';
+    byId('plRouteZoomReset').textContent=Math.round(photoZoomFactor*100)+'%';
+    byId('plRouteZoomOut').disabled=photoZoomFactor<=1;
+    byId('plRouteZoomIn').disabled=photoZoomFactor>=6;
+  }
+  function changePhotoZoom(change){
+    if(!photoZoomOpen())return;
+    const v=byId('plRoutePhotoZoomViewport'),w=v.scrollWidth,h=v.scrollHeight;
+    const cx=v.scrollLeft+v.clientWidth/2,cy=v.scrollTop+v.clientHeight/2;
+    photoZoomFactor=Math.max(1,Math.min(6,Math.round((photoZoomFactor+change)*100)/100));
+    setPhotoZoom();
+    v.scrollLeft=cx*v.scrollWidth/Math.max(1,w)-v.clientWidth/2;
+    v.scrollTop=cy*v.scrollHeight/Math.max(1,h)-v.clientHeight/2;
+  }
+  function openPhotoZoom(){
+    if(!photoPreviewUrl)return;
+    byId('plRoutePhotoLightbox').hidden=false;
+    byId('plRouteForm').inert=true;
+    photoZoomFactor=1;
+    const img=byId('plRoutePhotoZoomImage');
+    img.src=photoPreviewUrl;
+    if(img.complete)setPhotoZoom();
+    byId('plRouteZoomClose').focus();
+  }
+  function closePhotoZoom(refocus=true){
+    if(!photoZoomOpen())return;
+    byId('plRoutePhotoLightbox').hidden=true;
+    byId('plRouteForm').inert=false;
+    photoZoomFactor=1;
+    if(refocus&&byId('plRouteDialog').open)byId('plRoutePhotoOpen').focus();
+  }
   function clearPhoto(){
     recognitionSequence++;
     photoRecognitionBusy=false;
+    closePhotoZoom(false);
     if(photoPreviewUrl)URL.revokeObjectURL(photoPreviewUrl);
     photoPreviewUrl=null;
     byId('plRoutePhoto').value='';
     byId('plRoutePhotoFile').textContent='Nie wybrano zdjęcia.';
     byId('plRoutePhotoPreview').removeAttribute('src');
-    byId('plRoutePhotoOpen').href='#';
+    byId('plRoutePhotoZoomImage').removeAttribute('src');
     byId('plRouteAiStatus').textContent='';
     byId('plRouteAiStatus').className='pl-route-ai-status';
     byId('plRoutePhotoStage').classList.add('hidden');
@@ -79,26 +121,19 @@
     }
     const row=document.createElement('div');
     row.className='pl-route-part-row';
-    row.innerHTML='<label class="pl-route-part-code">Indeks SAP / GPBS (opcjonalnie)'+
+    row.innerHTML='<label class="pl-route-part-code"><span class="pl-route-visually-hidden">Indeks SAP / GPBS (opcjonalnie)</span>'+
       '<input type="text" data-pl-route-part-code maxlength="100" autocomplete="off" placeholder="Indeks części"></label>'+
-      '<div class="pl-route-part-name-wrap"><label class="pl-route-part-name">Nazwa części'+
-      '<input type="text" data-pl-route-part-name maxlength="180" autocomplete="off" aria-autocomplete="list" placeholder="Zacznij wpisywać nazwę"></label>'+
+      '<div class="pl-route-part-name-wrap"><label class="pl-route-part-name"><span class="pl-route-visually-hidden">Nazwa części</span>'+
+      '<input type="text" data-pl-route-part-name maxlength="180" autocomplete="off" aria-autocomplete="list" placeholder="Nazwa części"></label>'+
       '<div class="pl-route-part-suggestions hidden" data-pl-route-suggestions role="listbox"></div></div>'+
-      '<label class="pl-route-part-quantity">Ilość'+
-      '<input type="number" data-pl-route-part-quantity min="1" max="999999" step="1" inputmode="numeric" placeholder="0"></label>'+
+      '<label class="pl-route-part-quantity"><span class="pl-route-visually-hidden">Ilość</span>'+
+      '<input type="number" data-pl-route-part-quantity min="1" max="999999" step="1" inputmode="numeric" placeholder="Ilość"></label>'+
       '<button type="button" class="pl-route-remove-part" data-pl-route-remove-part aria-label="Usuń pozycję">×</button>';
     row.classList.toggle('ai-review',data.review===true);
     row.classList.toggle('ai-missing',data.missing===true);
     row.dataset.aiMissing=data.missing===true?'true':'false';
     row.dataset.aiPosition=data.position||'';
-    if(data.position){
-      const info=document.createElement('small');
-      info.className='pl-route-ai-row-label';
-      info.textContent='Lp. '+data.position+
-        (data.missing?' — nieodczytana pozycja, uzupełnij ręcznie':
-          data.review?' — sprawdź ze zdjęciem':'');
-      row.prepend(info);
-    }
+    if(data.position)row.title='WZ, pozycja '+data.position+(data.review?' — do sprawdzenia':'');
     row.dataset.catalogPartId=data.catalogPartId||'';
     row.dataset.catalogSelectedName=data.partName||'';
     row.dataset.catalogSelectedCode=data.partCode||'';
@@ -527,9 +562,11 @@
       const applied=savedRouteId?false:applyRecognizedRoute(result);
       const count=Number(result.expectedPositions)||0;
       const found=Number(result.recognizedPositions)||0;
+      const extracted=Number(result.componentCount)||0;
       photoAiStatus(applied
         ?'Odczyt AI zakończony. '+(count?'Rozpoznano '+found+' z '+count+
-          ' pozycji. ':'')+'Porównaj wszystkie wiersze ze zdjęciem i popraw dane.'+
+          ' pozycji WZ. ':'')+'Wyodrębniono '+extracted+
+          ' części i modułów. Porównaj je ze zdjęciem.'+
           (result.warnings?.length?'\n'+result.warnings.join('\n'):'')
         :'Zdjęcie wybrane. Dotychczasowe dane formularza pozostawiono bez zmian.',
         applied?(result.needsReview?'warning':'success'):'');
@@ -548,6 +585,7 @@
   async function selectedPhoto(){
     const file=byId('plRoutePhoto').files?.[0];
     const seq=++recognitionSequence;
+    closePhotoZoom(false);
     if(photoPreviewUrl)URL.revokeObjectURL(photoPreviewUrl);
     photoPreviewUrl=null;
     if(!file){clearPhoto();return;}
@@ -1900,8 +1938,7 @@
       if(hasPart&&validQty){
         row.dataset.aiMissing='false';
         row.classList.remove('ai-review','ai-missing');
-        const info=row.querySelector('.pl-route-ai-row-label');
-        if(info)info.textContent='Lp. '+row.dataset.aiPosition;
+        row.title='WZ, pozycja '+row.dataset.aiPosition;
       }
     }
     if(!field.matches('[data-pl-route-part-name],[data-pl-route-part-code]'))return;
@@ -1981,11 +2018,27 @@
       hidePartSuggestions(row);
     }
   });
+  byId('plRoutePhotoOpen').addEventListener('click',openPhotoZoom);
+  byId('plRoutePhotoZoomImage').addEventListener('load',setPhotoZoom);
+  byId('plRouteZoomClose').addEventListener('click',()=>closePhotoZoom());
+  byId('plRouteZoomOut').addEventListener('click',()=>changePhotoZoom(-.5));
+  byId('plRouteZoomIn').addEventListener('click',()=>changePhotoZoom(.5));
+  byId('plRouteZoomReset').addEventListener('click',()=>{
+    photoZoomFactor=1;setPhotoZoom();
+    const v=byId('plRoutePhotoZoomViewport');
+    v.scrollLeft=0;v.scrollTop=0;
+  });
+  byId('plRoutePhotoZoomViewport').addEventListener('wheel',event=>{
+    if(!event.ctrlKey&&!event.metaKey)return;
+    event.preventDefault();changePhotoZoom(event.deltaY<0?.25:-.25);
+  },{passive:false});
+  window.addEventListener('resize',setPhotoZoom);
   byId('plRoutePhotoPick').addEventListener('click',()=>byId('plRoutePhoto').click());
   byId('plRoutePhoto').addEventListener('change',selectedPhoto);
   byId('plRouteForm').addEventListener('submit',saveRoute);
   byId('plRouteDialog').addEventListener('close',clearPhoto);
   byId('plRouteDialog').addEventListener('cancel',event=>{
+    if(photoZoomOpen()){event.preventDefault();closePhotoZoom();return;}
     if(busy){event.preventDefault();return;}
     if(!byId('plRouteCalendar').classList.contains('hidden')){
       event.preventDefault();

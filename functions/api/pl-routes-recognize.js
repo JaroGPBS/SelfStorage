@@ -81,41 +81,116 @@ function reconcileRow(first,second){
     review:first.review||second.review||!agrees
   };
 }
+// "Lp." identifies a paczkomat/set on the WZ, NOT a single part.
+// A single numbered row can contain the machine and many separate accessories.
+function isSerialCode(code){
+  return /^\d{2}\/[A-Z]{2,}\d{5,}$/i.test(String(code||'').trim());
+}
+function isLocationText(value){
+  return /^(?:dino|stokrotka|żabka|zabka|biedronka|lidl|kaufland|auchan|jan[oó]w|ul[.\s]|os[.\s]|adres\b|miasto\b|montaż\b|montaz\b|lokalizacja\b)\b/i
+    .test(String(value||'').trim());
+}
+function namedComponent(raw,position){
+  const item=normalizedRow(raw,position);
+  if(!item)return null;
+  let name=item.partName.replace(/^\*+\s*|\s*\*+$/g,'').trim();
+  if(!name||isLocationText(name))return null;
+  const prefix=name.match(/^[*"\s]*(\d{1,5})\s*[x×]\s*(\S.+)$/i);
+  let quantity=item.quantity;
+  if(prefix){
+    name=prefix[2].replace(/^\*+\s*|\s*\*+$/g,'').trim();
+    if(quantity===null)quantity=Number(prefix[1]);
+  }
+  const code=isSerialCode(item.partCode)?'':item.partCode;
+  return {...item,position,partName:name,partCode:code,quantity};
+}
+function splitRecognizableParts(row,position){
+  // Conservative fallback for a legacy compound OCR string. Split ONLY at
+  // spaced separators (not inside an SAP or serial number like 26/SUX...).
+  // Place names/addresses are never added as catalogue parts.
+  const raw=String(row.partName||'');
+  if(!/\s\/\s|[;\n]/.test(raw))return [];
+  const fragments=raw.split(/\s+\/\s+|[;\n]/g);
+  const extracted=[];
+  const partPattern=/\b(?:standard|outdoor|indoor|new\s?gen|bq|dach|daszek|os[lł]ona|kotw[ay]|rynna|s[lł]upek|separator|dzielenie|p[lł]yta|wspornik|adapter|modu[lł]|zasilacz|okablowanie|kabel|przew[oó]d|listwa|drzwi|panel|ramka|kratka|za[sś]lepka|[uü]chwyt|led)\b/i;
+  for(const fragment of fragments){
+    const text=fragment.replace(/^\*+\s*|\s*\*+$/g,'').trim();
+    const multiplied=text.match(/^[*"\s]*(\d{1,5})\s*[x×]\s*(.+)$/i);
+    const candidate=multiplied?multiplied[2].trim():text;
+    if(candidate.length<2||isLocationText(candidate))continue;
+    if(!multiplied&&!partPattern.test(candidate))continue;
+    const item=namedComponent({
+      partName:candidate,partCode:'',
+      quantity:multiplied?Number(multiplied[1]):(extracted.length===0?row.quantity:null)
+    },position);
+    if(item){
+      item.review=true; // A rule-based split always requires confirmation.
+      extracted.push(item);
+    }
+  }
+  return extracted;
+}
+function componentItems(raw,position){
+  if(!Array.isArray(raw))return [];
+  const items=[];
+  for(const candidate of raw.slice(0,60)){
+    const item=namedComponent(candidate,position);
+    if(!item)continue;
+    const split=splitRecognizableParts(item,position);
+    if(split.length)items.push(...split);
+    else items.push(item);
+  }
+  return items;
+}
+function dedupeWithinSource(components){
+  const seen=new Map();
+  for(const component of components){
+    const key=normalizeRoutePart(component.partName)+'|'+
+      normalizeRoutePart(component.partCode);
+    if(!key||key==='|')continue;
+    const existing=seen.get(key);
+    if(!existing){seen.set(key,{...component});continue;}
+    // Two model passes describing the same component are NOT two items.
+    // Never sum a duplicate AI observation; flag conflicting quantities.
+    if(existing.quantity!==component.quantity){
+      if(existing.quantity===null)existing.quantity=component.quantity;
+      else if(component.quantity!==null){existing.quantity=null;existing.review=true;}
+    }
+    existing.review=existing.review||component.review;
+  }
+  return [...seen.values()];
+}
 function parseTableAnswer(tableAnswer,expectedRows,parts){
   const byPosition=new Map();
   const unknown=[];
-  const items=extractValue(tableAnswer,'items');
-  const entries=Array.isArray(items)?items.slice(0,MAX_ROWS):[];
+  const entries=Array.isArray(extractValue(tableAnswer,'items'))
+    ?extractValue(tableAnswer,'items').slice(0,MAX_ROWS):[];
   const tableCount=readCount(tableAnswer,'printed_positions');
   const anchored=Math.max(expectedRows||0,tableCount||0);
-  // Guard against an OCR mistake reading an SAP index (e.g. 99) as Lp.
-  // Permit a few adjacent numbers when the two count passes disagree.
   const plausibleLast=anchored
     ?Math.min(MAX_ROWS,anchored+Math.max(3,Math.ceil(anchored*.1)))
     :Math.min(MAX_ROWS,Math.max(50,entries.length+10));
   const rowConfidence=Number(tableAnswer?.answers?.items?.confidence??1);
-  for(const item of entries){
-    const row=normalizedRow(item);
+  for(const entry of entries){
+    const row=normalizedRow(entry);
     if(!row)continue;
-    if(row.position&&row.position<=plausibleLast){
+    if(row.position&&row.position<=plausibleLast)
       byPosition.set(row.position,reconcileRow(byPosition.get(row.position),row));
-    }else if(row.partName||row.partCode){
+    else if(row.partName||row.partCode){
       row.position=null;
       row.review=true;
       unknown.push(row);
     }
   }
-  // Per-number fields are extracted independently instead of relying on a
-  // list generator to capture every tiny printed row.
-  for(let position=1;position<=Math.min(expectedRows||0,20);position++){
+  for(let position=1;position<=Math.min(anchored||0,20);position++){
     const answer=tableAnswer?.answers?.['row_'+position];
     const row=normalizedRow(answer?.value,position);
     if(!row||!row.partName&&!row.partCode)continue;
     if(Number(answer?.confidence??1)<.75)row.review=true;
     byPosition.set(position,reconcileRow(byPosition.get(position),row));
   }
-  const numbered=extractValue(tableAnswer,'row_numbers');
-  const detectedNums=(Array.isArray(numbered)?numbered:[])
+  const detectedNums=(Array.isArray(extractValue(tableAnswer,'row_numbers'))
+    ?extractValue(tableAnswer,'row_numbers'):[])
     .map(validRowNumber).filter(position=>position&&position<=plausibleLast);
   const maxEnumerated=detectedNums.length?Math.max(...detectedNums):0;
   const lastFound=Math.max(0,...byPosition.keys());
@@ -126,42 +201,113 @@ function parseTableAnswer(tableAnswer,expectedRows,parts){
       if(!byPosition.has(position)){row.position=position;byPosition.set(position,row);break;}
     }
   }
-  const result=[];
+
+  const allParts=extractValue(tableAnswer,'components_all');
+  const byGlobalPosition=new Map();
+  if(Array.isArray(allParts)){
+    for(const item of allParts.slice(0,MAX_ROWS)){
+      const position=validRowNumber(item?.position);
+      if(!position||position>bounded)continue;
+      const normalized=namedComponent(item,position);
+      if(!normalized)continue;
+      if(!byGlobalPosition.has(position))byGlobalPosition.set(position,[]);
+      byGlobalPosition.get(position).push(normalized);
+    }
+  }
+
+  const lines=[];
   const missingPositions=[];
-  let missingQuantities=0,unmatched=0;
+  let missingQuantities=0,unmatched=0,splitFallbacks=0;
+  let recognized=0,overflow=false;
   for(let position=1;position<=bounded;position++){
     const row=byPosition.get(position);
-    if(!row||!row.partName&&!row.partCode){
-      missingPositions.push(position);
-      result.push({position,partName:'',partCode:'',catalogPartId:'',
-        quantity:null,review:true,missing:true});
-      continue;
+    const indexedField=tableAnswer?.answers?.['row_'+position+'_components'];
+    const local=componentItems(indexedField?.value,position);
+    const global=componentItems(byGlobalPosition.get(position),position);
+    // Prefer row-targeted recognition when it identifies multiple parts.
+    // Use the full-table list to recover accessories the row pass missed.
+    let combined=dedupeWithinSource([...local,...global]);
+    if(row&&(row.partName||row.partCode)){
+      const fallback=splitRecognizableParts(row,position);
+      // Clairic can return a lone accessory but miss the machine model.
+      // Use obvious printed separators to recover missing source fragments.
+      if(fallback.length>combined.length){
+        const augmented=dedupeWithinSource([...combined,...fallback]);
+        if(augmented.length>combined.length)splitFallbacks++;
+        combined=augmented;
+      }
+      if(!combined.length){
+        const raw=namedComponent(row,position);
+        if(raw)combined=[{...raw,review:true}];
+      }
     }
-    const match=catalogueMatch(row.partName,row.partCode,parts);
-    if(!match)unmatched++;
-    if(row.quantity===null)missingQuantities++;
-    result.push({
-      position,partName:row.partName,partCode:row.partCode,
-      catalogPartId:match?.id||'',quantity:row.quantity,
-      review:row.review||!match||rowConfidence<.75,missing:false
-    });
+    if(!combined.length){
+      missingPositions.push(position);
+      combined=[{position,partName:'',partCode:'',quantity:null,
+        review:true,missing:true}];
+    }else{
+      recognized++;
+      // Keep component order as printed (machine before attached parts).
+      if(row?.partName&&combined.length>1){
+        const source=normalizeRoutePart(row.partName);
+        const positionInSource=item=>{
+          const name=normalizeRoutePart(item.partName);
+          const index=name?source.indexOf(name):-1;
+          return index>=0?index:999999;
+        };
+        combined.sort((a,b)=>positionInSource(a)-positionInSource(b));
+      }
+    }
+    if(lines.length+combined.length>MAX_ROWS){
+      overflow=true;
+      combined=combined.slice(0,Math.max(0,MAX_ROWS-lines.length));
+    }
+    for(const component of combined){
+      const match=catalogueMatch(component.partName,component.partCode,parts);
+      if(!match&&component.partName)unmatched++;
+      if(component.quantity===null&&component.partName)missingQuantities++;
+      lines.push({
+        position,partName:component.partName,partCode:component.partCode||'',
+        catalogPartId:match?.id||'',quantity:component.quantity,
+        review:component.review||!match||rowConfidence<.75||component.quantity===null,
+        missing:Boolean(component.missing)
+      });
+    }
+    if(lines.length>=MAX_ROWS)break;
   }
-  return {lines:result,expected:bounded,recognized:bounded-missingPositions.length,
-    missingPositions,missingQuantities,unmatched};
+  return {lines,expected:bounded,recognized,missingPositions,
+    missingQuantities,unmatched,splitFallbacks,overflow};
 }
 function rowField(position){
   return {
     type:'object',
-    instructions:'Tylko wiersz z kolumny Lp. = '+position+
-      ' w tabeli "Wydane paczkomaty". Nie sąsiedni wiersz. '+
-      'Pusta lub niewidoczna pozycja: wszystkie pola null. Zachowaj pełny tekst.',
+    instructions:'Odczytaj surowy opis TYLKO wiersza Lp. '+position+
+      ' z tabeli Wydane paczkomaty; nie sąsiedniego wiersza.',
     properties:{
-      partName:{type:'text',instructions:'Pełny, dokładny opis z wiersza Lp. '+position+
-        ', bez ucinania po kilku słowach.'},
-      partCode:{type:'text',instructions:'Indeks SAP/GPBS z tego wiersza, jeżeli rzeczywiście widoczny.'},
+      partName:{type:'text',instructions:'Pełny drukowany tekst w tym wierszu. To materiał źródłowy do kontroli.'},
+      partCode:{type:'text',instructions:'Indeks SAP/GPBS, nie numer seryjny ani adres.'},
       quantity:{type:'number',integer:true,
-        instructions:'Liczba sztuk z kolumny Ilość tego wiersza, null jeśli nieczytelna.'}
+        instructions:'Ilość głównego modułu tylko gdy wyraźnie podana, inaczej null.'}
     }
+  };
+}
+function rowComponentsField(position){
+  return {
+    type:'list',max_items:40,
+    instructions:'Dla wiersza Lp. '+position+' wypisz OSOBNO wszystkie fizyczne elementy '+
+      'wydawane w tej pozycji, NIE jeden długi opis. Np. STANDARD CFM-Q, dach uniwersalny, '+
+      'osłona przyłącza i 4x kotwa trójkątna to cztery osobne rekordy z ilościami. '+
+      'Fragmenty po znaku / odczytaj pojedynczo, dopóki nie skończą się części. '+
+      'Nazwy sklepów (Dino, Żabka, Stokrotka), ulice, adresy, miejscowości, montaż, '+
+      'numer seryjny i lokalizacja NIE są częściami — pomiń je. '+
+      'Jeżeli ilość nie jest czytelna, wpisz null. Nie zgaduj ilości. '+
+      'Zachowaj pełną nazwę każdej osobnej części.',
+    items:{type:'object',properties:{
+      partName:{type:'text',instructions:'Jedna nazwa części, bez adresu, sklepu i opisu innych części.'},
+      partCode:{type:'text',instructions:'Tylko indeks SAP/GPBS tej części, nigdy numer seryjny.'},
+      quantity:{type:'number',integer:true,
+        instructions:'Ilość sztuk tej konkretnej części, null jeżeli brak wiarygodnej ilości.'}
+    }}
   };
 }
 async function aiRead(env,photo,fields,state){
@@ -222,6 +368,22 @@ export async function onRequestPost({request,env}){
     }
     const headerCount=readCount(headerAnswer,'printed_positions');
     const tableFields={
+      components_all:{
+        type:'list',max_items:MAX_ROWS,
+        instructions:'Zwróć PŁASKĄ LISTĘ wszystkich osobnych fizycznych części i akcesoriów '+
+          'wydanych w głównej tabeli dokumentu WZ. Jedna część = jeden rekord, nie cały wiersz. '+
+          'Każda pozycja Lp. może mieć wiele rekordów z TYM SAMYM numerem Lp. '+
+          'Przykład: Lp.1: STANDARD CFM-Q / Dino Bógucin / dach uniwersalny / 4x kotwa trójkątna '+
+          '=> trzy rekordy: STANDARD CFM-Q, dach uniwersalny, kotwa trójkątna (ilość 4). '+
+          'Adresy sklepów, nazwy miejscowości, słowa montaż i numery seryjne nie są częściami. '+
+          'Nie zgaduj ilości, brak czytelnej ilości = null.',
+        items:{type:'object',properties:{
+          position:{type:'number',integer:true,instructions:'Numer Lp. z lewej kolumny, do którego należy część.'},
+          partName:{type:'text',instructions:'Jedna fizyczna część lub moduł bez adresu, nie cały wieloczłonowy opis.'},
+          partCode:{type:'text',instructions:'Indeks SAP/GPBS tej części, ale nie numer seryjny.'},
+          quantity:{type:'number',integer:true,instructions:'Sztuk tej części, null gdy nie podano.'}
+        }}
+      },
       printed_positions:{type:'number',integer:true,instructions:
         'Liczba numerowanych wierszy w głównej tabeli Wydane paczkomaty. '+
         'Zwróć liczbę ostatniego Lp., nie ilości sztuk.'},
@@ -244,15 +406,18 @@ export async function onRequestPost({request,env}){
     };
     // Small printed WZ documents benefit from a separate extraction field for
     // EACH numbered row. Limit this to 20 to avoid runaway model work.
-    if(headerCount&&headerCount<=20)
-      for(let position=1;position<=headerCount;position++)
+    if(headerCount&&headerCount<=20){
+      for(let position=1;position<=headerCount;position++){
         tableFields['row_'+position]=rowField(position);
+        tableFields['row_'+position+'_components']=rowComponentsField(position);
+      }
+    }
     try{
       tableAnswer=await aiRead(env,table,tableFields,
         'To jest POWIĘKSZONY FRAGMENT tabeli dokumentu WZ. '+
         'Skup się wyłącznie na tabeli z nagłówkiem "WYDANE PACZKOMATY", kolumnami "Lp.", "Rodzaj i model", "Ilość". '+
-        'Odczytaj wszystkie numery Lp. i ich kompletne opisy oraz ilości, także wiersze zawinięte. '+
-        'Nie pomijaj numerowanych pozycji, nie dopowiadaj niewidocznego tekstu. '+
+        'W KAŻDYM wierszu Lp. wypisz osobno paczkomat/moduł ORAZ każdą dołączoną część (np. daszek, osłona, kotwa). '+
+        'Nie łącz modelu, adresu i akcesoriów w jedną nazwę! Lokalizacje i sklepy pomiń. '+
         'Nie traktuj numerów seryjnych, kodów modelu ani indeksów jako ilości.');
     }catch(error){
       console.error('PL route AI table pass failed',error?.name||'Error');
@@ -282,11 +447,16 @@ export async function onRequestPost({request,env}){
       warnings.push('Niektóre nazwy nie pasują jednoznacznie do katalogu. Sprawdź je.');
     if(parsed.missingQuantities)
       warnings.push('Nieczytelne ilości pozostawiono PUSTE. Wpisz je ze zdjęcia.');
+    if(parsed.splitFallbacks)
+      warnings.push('Niektóre złożone opisy rozdzielono orientacyjnie. Sprawdź każdą część.');
+    if(parsed.overflow)
+      warnings.push('Dokument zawiera więcej niż 150 pól. Odczyt ograniczono, sprawdź brakujące części.');
     if(headerCount&&parsed.expected!==headerCount)
       warnings.push('Różne odczyty liczby pozycji ('+headerCount+' i '+
         parsed.expected+'). Sprawdź tabelę.');
     return workerJson({ok:true,routeNumber,routeDate,lines:parsed.lines,
       expectedPositions:parsed.expected,recognizedPositions:parsed.recognized,
+      componentCount:parsed.lines.filter(item=>!item.missing).length,
       warnings,needsReview:parsed.lines.some(line=>line.review)||Boolean(warnings.length)});
   }catch(error){
     console.error('PL route AI recognition failed',error?.name||'Error');

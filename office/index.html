@@ -10,7 +10,7 @@
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./office.css?v=149">
-  <link rel="stylesheet" href="./pl-routes.css?v=59">
+  <link rel="stylesheet" href="./pl-routes.css?v=60">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
@@ -125,7 +125,7 @@
   <script defer src="./vehicle-report-export.js?v=11"></script>
   <script defer src="./office.js?v=181"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
-  <script defer src="./pl-routes.js?v=63"></script>
+  <script defer src="./pl-routes.js?v=64"></script>
 </head>
 <body>
   <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -470,10 +470,10 @@
         <div class="pl-route-edit-layout" id="plRouteEditLayout">
           <aside class="pl-route-photo-stage hidden" id="plRoutePhotoStage" aria-label="Podgląd fotografii dokumentu">
             <strong>Zdjęcie do porównania</strong>
-            <a id="plRoutePhotoOpen" target="_blank" rel="noopener noreferrer" href="#">
+            <button type="button" id="plRoutePhotoOpen" class="pl-route-photo-zoom-trigger" aria-label="Powiększ zdjęcie w tym oknie">
               <img id="plRoutePhotoPreview" class="pl-route-ai-preview" alt="Wybrane zdjęcie WZ">
-              <small>Powiększ zdjęcie</small>
-            </a>
+              <small><span aria-hidden="true">⌕</span> Powiększ zdjęcie</small>
+            </button>
             <p id="plRouteAiStatus" class="pl-route-ai-status" role="status" aria-live="polite"></p>
           </aside>
           <div class="pl-route-edit-fields">
@@ -512,6 +512,12 @@
           </div>
           <button type="button" class="btn outline" id="plRouteAddPart">+ Dodaj część</button>
         </div>
+        <div class="pl-route-parts-columns" aria-hidden="true">
+          <span>Indeks SAP / GPBS <small>(opcjonalnie)</small></span>
+          <span>Nazwa części</span>
+          <span>Ilość</span>
+          <span></span>
+        </div>
         <div class="pl-route-parts" id="plRouteParts"></div>
           </div>
         </div>
@@ -522,6 +528,21 @@
         <button type="submit" id="plRouteSubmit" class="btn dark">Zapisz trasę</button>
       </div>
     </form>
+    <div id="plRoutePhotoLightbox" class="pl-route-photo-lightbox" role="dialog" aria-modal="true"
+      aria-label="Powiększenie zdjęcia WZ" hidden>
+      <div class="pl-route-photo-zoom-toolbar">
+        <strong>Zdjęcie WZ</strong>
+        <div class="pl-route-photo-zoom-controls">
+          <button type="button" id="plRouteZoomOut" aria-label="Pomniejsz zdjęcie">−</button>
+          <button type="button" id="plRouteZoomReset" aria-label="Przywróć dopasowanie">100%</button>
+          <button type="button" id="plRouteZoomIn" aria-label="Powiększ zdjęcie">+</button>
+          <button type="button" id="plRouteZoomClose" class="pl-route-zoom-close" aria-label="Zamknij powiększenie">×</button>
+        </div>
+      </div>
+      <div id="plRoutePhotoZoomViewport" class="pl-route-photo-zoom-viewport">
+        <img id="plRoutePhotoZoomImage" alt="Powiększone zdjęcie dokumentu WZ">
+      </div>
+    </div>
   </dialog>
   <dialog id="officeNewPartDialog" class="office-new-part-dialog" aria-labelledby="officeNewPartTitle">
     <form id="officeNewPartForm" class="office-new-part-form">
