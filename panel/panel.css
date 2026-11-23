@@ -1613,7 +1613,8 @@ tr:hover td{background:#ffffff04}
 .module-prefix-hint strong{color:#e7eef6}
 .module-prefix-type{font-weight:800;color:#f0f3f8}
 .module-prefix-code{font:750 13px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.5px;color:#dfe8f3}
-.module-prefix-actions{display:flex;gap:8px;justify-content:flex-start}
+.module-prefix-actions{white-space:nowrap}
+.module-prefix-actions .btn+.btn{margin-left:8px}
 .module-prefix-delete{color:#ff9299!important}
 .module-prefix-empty{padding:26px 22px;color:var(--mute);font-weight:400}
 .module-prefix-status{padding:13px 24px;margin:0;border-top:1px solid var(--edge);
@@ -1623,6 +1624,6 @@ tr:hover td{background:#ffffff04}
   .module-prefix-fields label{max-width:none;flex-basis:100%}
   .module-prefix-fields .btn{flex:1}
   .module-prefix-table th,.module-prefix-table td{padding:11px}
-  .module-prefix-actions{gap:4px}
+  .module-prefix-actions .btn+.btn{margin-left:4px}
   .module-prefix-status{padding:13px 17px}
 }
