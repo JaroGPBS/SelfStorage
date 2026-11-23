@@ -404,10 +404,20 @@ function aiFailureCode(error){
     httpStatus:Number.isInteger(status)&&status>=400&&status<=599?status:null};
 }
 async function aiRead(env,photo,fields,state){
-  return env.AI.run(AI_MODEL,{
+  const response=await env.AI.run(AI_MODEL,{
     model:'clairic',state,fields,
     images:[{content_type:photo.type,base64:base64Image(photo.bytes)}]
   });
+  if(!response?.answers||typeof response.answers!=='object'){
+    // In case the provider returned a structured error object rather than
+    // throwing, treat it as a failed inference (not a blank WZ).
+    const failure=response?.errors?.[0]||response?.error||{};
+    const code=String(failure.code??'');
+    const error=Error(String(failure.message||'Invalid Workers AI response'));
+    if(code)error.code=code;
+    throw error;
+  }
+  return response;
 }
 async function checkedPhoto(file){
   if(!(file instanceof Blob)||file.size<100||file.size>MAX_AI_BYTES)
