@@ -245,7 +245,19 @@ function parseTableAnswer(tableAnswer,expectedRows,parts){
       missingPositions.push(position);
       combined=[{position,partName:'',partCode:'',quantity:null,
         review:true,missing:true}];
-    }else recognized++;
+    }else{
+      recognized++;
+      // Keep component order as printed (machine before attached parts).
+      if(row?.partName&&combined.length>1){
+        const source=normalizeRoutePart(row.partName);
+        const positionInSource=item=>{
+          const name=normalizeRoutePart(item.partName);
+          const index=name?source.indexOf(name):-1;
+          return index>=0?index:999999;
+        };
+        combined.sort((a,b)=>positionInSource(a)-positionInSource(b));
+      }
+    }
     if(lines.length+combined.length>MAX_ROWS){
       overflow=true;
       combined=combined.slice(0,Math.max(0,MAX_ROWS-lines.length));
