@@ -1045,3 +1045,19 @@
   .pl-route-photo-zoom-controls{width:100%;justify-content:flex-end}
   .pl-route-photo-lightbox{padding:9px}
 }
+
+
+/* One-click diagnostic export, visible after a successful AI response. */
+.pl-route-dialog-tools{
+  display:flex;align-items:center;justify-content:flex-end;gap:12px;
+  margin-left:auto;flex:0 0 auto
+}
+.pl-route-dialog-tools .pl-route-copy-ai{
+  min-height:32px;padding:7px 12px;
+  font-size:11px;font-weight:750;white-space:nowrap
+}
+.pl-route-dialog-tools .pl-route-copy-ai[hidden]{display:none!important}
+@media(max-width:690px){
+  .pl-route-dialog-tools{gap:5px}
+  .pl-route-dialog-tools .pl-route-copy-ai{padding:6px 8px;font-size:10px}
+}

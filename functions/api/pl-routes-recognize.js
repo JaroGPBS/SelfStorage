@@ -310,6 +310,73 @@ function rowComponentsField(position){
     }}
   };
 }
+// Diagnostic export: values returned by the model BEFORE deduplication,
+// catalogue matching, filtering locations or deriving missing quantities.
+// Kept only in the authenticated response, not persisted to D1/R2.
+function rawAiValue(value){
+  if(value===null||value===undefined||value==='')return 'nie odczytano';
+  if(typeof value==='string')return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,' ').trim();
+  if(typeof value==='number'||typeof value==='boolean')return String(value);
+  return JSON.stringify(value);
+}
+function rawAiRow(item,position=null){
+  if(!item||typeof item!=='object')return rawAiValue(item);
+  const pos=item.position??item.rowNumber??item.row??position;
+  const leading=pos!==null&&pos!==undefined?'Lp. '+rawAiValue(pos)+' | ':'';
+  return leading+'nazwa: '+rawAiValue(item.partName??item.name)+
+    ' | ilość: '+rawAiValue(item.quantity)+
+    ' | indeks z AI: '+rawAiValue(item.partCode??item.code);
+}
+function formatRawAiOutput(headerAnswer,tableAnswer){
+  const head=headerAnswer?.answers||{};
+  const table=tableAnswer?.answers||{};
+  const lines=[
+    'WZ — SUROWY ODCZYT AI (PRZED PRZETWARZANIEM)',
+    'Wyniki niezależnych pól modelu: bez sumowania, deduplikacji i dopasowania do katalogu.',
+    'Powtórzenia pomiędzy sekcjami są celowo zachowane, aby znaleźć źródło błędów.',
+    '',
+    'NAGŁÓWEK DOKUMENTU',
+    'Numer trasy: '+rawAiValue(head.route_number?.value),
+    'Data załadunku: '+rawAiValue(head.loading_date?.value),
+    'Liczba Lp. z całego zdjęcia: '+rawAiValue(head.printed_positions?.value),
+    'Liczba Lp. z tabeli: '+rawAiValue(table.printed_positions?.value),
+    'Numery Lp. rozpoznane w tabeli: '+rawAiValue(table.row_numbers?.value),
+    ''
+  ];
+  const section=(title,key)=>{
+    lines.push(title);
+    const entries=table[key]?.value;
+    if(Array.isArray(entries)&&entries.length){
+      for(let i=0;i<entries.length;i++)
+        lines.push((i+1)+'. '+rawAiRow(entries[i]));
+    }else lines.push('Brak odczytu.');
+    lines.push('');
+  };
+  section('PEŁNE WIERSZE TABELI (items; opisy bez podziału)', 'items');
+  section('CZĘŚCI Z CAŁEJ TABELI (components_all)', 'components_all');
+  const positions=Object.keys(table).map(key=>{
+    const match=/^row_(\d+)(?:_components)?$/.exec(key);
+    return match?Number(match[1]):null;
+  }).filter(n=>n!==null&&Number.isSafeInteger(n)&&n>0&&n<=MAX_ROWS);
+  const sorted=[...new Set(positions)].sort((a,b)=>a-b);
+  lines.push('OSOBNE ODCZYTY KAŻDEGO LP.');
+  if(!sorted.length)lines.push('Brak oddzielnych odczytów Lp.');
+  for(const position of sorted){
+    const raw=table['row_'+position]?.value;
+    lines.push('Lp. '+position+' — pełny wiersz:');
+    lines.push(rawAiRow(raw,position));
+    lines.push('Lp. '+position+' — rozpoznane osobne części:');
+    const components=table['row_'+position+'_components']?.value;
+    if(Array.isArray(components)&&components.length){
+      for(let i=0;i<components.length;i++)
+        lines.push('  '+(i+1)+'. '+rawAiRow(components[i],position));
+    }else lines.push('  Brak odczytu.');
+    lines.push('');
+  }
+  if(!headerAnswer)lines.push('Uwaga: odczyt nagłówka nie powiódł się.');
+  if(!tableAnswer)lines.push('Uwaga: odczyt tabeli nie powiódł się.');
+  return lines.join('\n');
+}
 async function aiRead(env,photo,fields,state){
   return env.AI.run(AI_MODEL,{
     model:'clairic',state,fields,
@@ -454,10 +521,11 @@ export async function onRequestPost({request,env}){
     if(headerCount&&parsed.expected!==headerCount)
       warnings.push('Różne odczyty liczby pozycji ('+headerCount+' i '+
         parsed.expected+'). Sprawdź tabelę.');
+    const rawAiText=formatRawAiOutput(headerAnswer,tableAnswer);
     return workerJson({ok:true,routeNumber,routeDate,lines:parsed.lines,
       expectedPositions:parsed.expected,recognizedPositions:parsed.recognized,
       componentCount:parsed.lines.filter(item=>!item.missing).length,
-      warnings,needsReview:parsed.lines.some(line=>line.review)||Boolean(warnings.length)});
+      warnings,rawAiText,needsReview:parsed.lines.some(line=>line.review)||Boolean(warnings.length)});
   }catch(error){
     console.error('PL route AI recognition failed',error?.name||'Error');
     return fail('Odczyt AI nie powiódł się. Zdjęcie pozostaje wybrane; dane możesz wpisać ręcznie.',503);

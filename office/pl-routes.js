@@ -10,6 +10,7 @@
   let savedRouteId=null; // Retry a failed R2 upload without duplicating the D1 route.
   let photoPreviewUrl=null;
   let photoZoomFactor=1;
+  let rawAiText=''; // Current unsaved AI response, never sent to D1/R2.
   let recognitionSequence=0;
   let photoRecognitionBusy=false;
   let editingRouteId=null; // Existing route opened for corrections before team confirmation.
@@ -47,6 +48,47 @@
     const element=byId('plRouteError');
     element.textContent=message;
     element.hidden=!message;
+  }
+  function resetRawAiCopy(){
+    rawAiText='';
+    const button=byId('plRouteCopyAi');
+    button.hidden=true;
+    button.disabled=true;
+    button.textContent='Kopiuj wynik AI';
+  }
+  function setRawAiCopy(value){
+    rawAiText=typeof value==='string'?value:'';
+    const button=byId('plRouteCopyAi');
+    button.hidden=!rawAiText;
+    button.disabled=!rawAiText;
+    button.textContent='Kopiuj wynik AI';
+  }
+  async function copyRawAiResult(){
+    if(!rawAiText||photoRecognitionBusy)return;
+    const content=rawAiText;
+    const button=byId('plRouteCopyAi');
+    try{
+      if(navigator.clipboard?.writeText){
+        await navigator.clipboard.writeText(content);
+      }else{
+        // Works in browsers without async Clipboard API.
+        const temp=document.createElement('textarea');
+        temp.value=content;
+        temp.readOnly=true;
+        temp.style.position='fixed';
+        temp.style.top='-9999px';
+        document.body.append(temp);
+        temp.select();
+        const copied=document.execCommand('copy');
+        temp.remove();
+        if(!copied)throw Error('Clipboard unavailable');
+      }
+      if(content===rawAiText&&byId('plRouteDialog').open)
+        button.textContent='Skopiowano ✓';
+    }catch{
+      if(content===rawAiText&&byId('plRouteDialog').open)
+        button.textContent='Nie udało się skopiować';
+    }
   }
   function setBusy(next){
     busy=next;
@@ -97,6 +139,7 @@
     if(refocus&&byId('plRouteDialog').open)byId('plRoutePhotoOpen').focus();
   }
   function clearPhoto(){
+    resetRawAiCopy();
     recognitionSequence++;
     photoRecognitionBusy=false;
     closePhotoZoom(false);
@@ -559,6 +602,7 @@
         method:'POST',credentials:'same-origin',body:form
       }));
       if(recognitionSequence!==seq||!byId('plRouteDialog').open)return;
+      setRawAiCopy(result.rawAiText);
       const applied=savedRouteId?false:applyRecognizedRoute(result);
       const count=Number(result.expectedPositions)||0;
       const found=Number(result.recognizedPositions)||0;
@@ -583,6 +627,7 @@
     }
   }
   async function selectedPhoto(){
+    resetRawAiCopy();
     const file=byId('plRoutePhoto').files?.[0];
     const seq=++recognitionSequence;
     closePhotoZoom(false);
@@ -2033,6 +2078,7 @@
     event.preventDefault();changePhotoZoom(event.deltaY<0?.25:-.25);
   },{passive:false});
   window.addEventListener('resize',setPhotoZoom);
+  byId('plRouteCopyAi').addEventListener('click',copyRawAiResult);
   byId('plRoutePhotoPick').addEventListener('click',()=>byId('plRoutePhoto').click());
   byId('plRoutePhoto').addEventListener('change',selectedPhoto);
   byId('plRouteForm').addEventListener('submit',saveRoute);
