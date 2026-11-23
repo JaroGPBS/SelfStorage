@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=149">
+  <link rel="stylesheet" href="./office.css?v=150">
   <link rel="stylesheet" href="./pl-routes.css?v=61">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
@@ -123,7 +123,7 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=6"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=181"></script>
+  <script defer src="./office.js?v=182"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
   <script defer src="./pl-routes.js?v=66"></script>
 </head>
@@ -223,6 +223,10 @@
           <div id="stockTabs" class="stock-tabs hidden" role="tablist" aria-label="Zawartość magazynu">
             <button type="button" id="partsTab" role="tab" aria-selected="true" class="stock-tab active" data-stock-tab="parts">CZĘŚCI</button>
             <button type="button" id="modulesTab" role="tab" aria-selected="false" class="stock-tab" data-stock-tab="modules">MODUŁY</button>
+            <button type="button" id="bellevilleSumTab" role="tab" aria-selected="false" class="stock-tab belleville-tab hidden" data-belleville-stock="sum">SUMA</button>
+            <button type="button" id="bellevilleOkTab" role="tab" aria-selected="false" class="stock-tab belleville-tab hidden" data-belleville-stock="ok">MODUŁY OK</button>
+            <button type="button" id="bellevilleNokTab" role="tab" aria-selected="false" class="stock-tab belleville-tab hidden" data-belleville-stock="nok">MODUŁY NOK</button>
+            <button type="button" id="bellevillePartsTab" role="tab" aria-selected="false" class="stock-tab belleville-tab hidden" data-belleville-stock="parts">CZĘŚCI</button>
             <button type="button" id="bovisParisPzTab" role="tab" aria-selected="false" class="stock-tab hidden" data-bovis-paris-process="pz">PZ</button>
             <button type="button" id="bovisParisWzTab" role="tab" aria-selected="false" class="stock-tab hidden" data-bovis-paris-process="wz">WZ</button>
           </div>
