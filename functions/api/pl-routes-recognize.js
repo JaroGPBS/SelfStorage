@@ -93,10 +93,16 @@ function isLocationText(value){
 function namedComponent(raw,position){
   const item=normalizedRow(raw,position);
   if(!item)return null;
-  const name=item.partName.replace(/^\*+\s*|\s*\*+$/g,'').trim();
+  let name=item.partName.replace(/^\*+\s*|\s*\*+$/g,'').trim();
   if(!name||isLocationText(name))return null;
+  const prefix=name.match(/^[*"\s]*(\d{1,5})\s*[x×]\s*(\S.+)$/i);
+  let quantity=item.quantity;
+  if(prefix){
+    name=prefix[2].replace(/^\*+\s*|\s*\*+$/g,'').trim();
+    if(quantity===null)quantity=Number(prefix[1]);
+  }
   const code=isSerialCode(item.partCode)?'':item.partCode;
-  return {...item,position,partName:name,partCode:code};
+  return {...item,position,partName:name,partCode,quantity};
 }
 function splitRecognizableParts(row,position){
   // Conservative fallback for a legacy compound OCR string. Split ONLY at
