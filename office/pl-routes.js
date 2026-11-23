@@ -576,6 +576,10 @@
     const routeNumber=byId('plRouteNumber').value.trim().toUpperCase();
     const routeDate=byId('plRouteDate').value;
     const crewSymbol=byId('plRouteCrewSymbol').value.trim().toUpperCase();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(routeDate)){
+      byId('plRouteDate').focus();
+      throw Error('Nie odczytano daty załadunku. Wybierz prawidłową datę w kalendarzu.');
+    }
     const lines=[];
     for(const row of byId('plRouteParts').children){
       const partCode=row.querySelector('[data-pl-route-part-code]').value.trim();
