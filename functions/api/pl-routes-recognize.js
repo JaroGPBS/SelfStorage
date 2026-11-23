@@ -227,10 +227,16 @@ function parseTableAnswer(tableAnswer,expectedRows,parts){
     // Prefer row-targeted recognition when it identifies multiple parts.
     // Use the full-table list to recover accessories the row pass missed.
     let combined=dedupeWithinSource([...local,...global]);
-    if(!combined.length&&row&&(row.partName||row.partCode)){
-      combined=splitRecognizableParts(row,position);
-      if(combined.length)splitFallbacks++;
-      else {
+    if(row&&(row.partName||row.partCode)){
+      const fallback=splitRecognizableParts(row,position);
+      // Clairic can return a lone accessory but miss the machine model.
+      // Use obvious printed separators to recover missing source fragments.
+      if(fallback.length>combined.length){
+        const augmented=dedupeWithinSource([...combined,...fallback]);
+        if(augmented.length>combined.length)splitFallbacks++;
+        combined=augmented;
+      }
+      if(!combined.length){
         const raw=namedComponent(row,position);
         if(raw)combined=[{...raw,review:true}];
       }
