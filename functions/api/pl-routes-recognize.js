@@ -102,7 +102,7 @@ function namedComponent(raw,position){
     if(quantity===null)quantity=Number(prefix[1]);
   }
   const code=isSerialCode(item.partCode)?'':item.partCode;
-  return {...item,position,partName:name,partCode,quantity};
+  return {...item,position,partName:name,partCode:code,quantity};
 }
 function splitRecognizableParts(row,position){
   // Conservative fallback for a legacy compound OCR string. Split ONLY at
