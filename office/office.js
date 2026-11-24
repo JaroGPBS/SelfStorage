@@ -2250,29 +2250,38 @@ function drawBellevilleModules(){
     $('tableFooter').textContent='Belleville · — oznacza brak danych o ilości, nie stan zerowy.';
   }else{
     const status=state.bellevilleModuleStatus.toUpperCase();
-    const statusClass=state.bellevilleModuleStatus==='ok'?'module-ok':'module-nok';
-    const rows=groups.map(group=>
-      '<tr class="module-group-row"><th colspan="3" scope="rowgroup">'+
-        escapeHtml(group.name)+'</th></tr>'+
-      (state.sortReverse?[...group.types].reverse():group.types).map(type=>
-        '<tr class="belleville-module-empty-row"><td class="module-type">'+
-          escapeHtml(type)+'</td><td>'+missing+'</td>'+
-          '<td class="belleville-module-empty-status">Brak ewidencji</td></tr>'
-      ).join('')
-    ).join('');
-    const noResults='<tr><td colspan="3" class="module-no-results">'+
-      (search?'Brak zapisanych numerów seryjnych do wyszukania.':'Brak pasujących typów modułów.')+
-      '</td></tr>';
-    $('tableArea').innerHTML='<div class="belleville-module-table-scroll">'+
-      '<table class="table belleville-module-serial-table">'+
-      '<thead><tr><th scope="col">Typ modułu</th>'+
-      '<th scope="col">Numer seryjny</th>'+
-      '<th scope="col">Ewidencja '+status+'</th></tr></thead>'+
-      '<tbody>'+(rows||noResults)+'</tbody></table></div>';
+    // Each category forms its own horizontal type grid. When the serial ledger
+    // becomes available, numbers will populate downwards inside each type
+    // column. No Bovis demonstration serials are shown for Belleville.
+    const sections=groups.map(group=>{
+      const types=state.sortReverse?[...group.types].reverse():group.types;
+      const header=types.map(type=>
+        '<th scope="col">'+escapeHtml(type)+'</th>'
+      ).join('');
+      const placeholders=types.map(()=>
+        '<td><span class="belleville-module-unknown" '+
+        'title="Brak podłączonej ewidencji numerów seryjnych">—</span></td>'
+      ).join('');
+      return '<section class="belleville-serial-group" aria-label="'+
+        escapeHtml(group.name)+'">'+
+        '<h3 class="belleville-serial-group-heading">'+escapeHtml(group.name)+'</h3>'+
+        '<div class="belleville-serial-group-scroll">'+
+          '<table class="belleville-serial-grid" aria-label="'+
+            escapeHtml(group.name)+' · numery seryjne '+status+'">'+
+            '<thead><tr>'+header+'</tr></thead>'+
+            '<tbody><tr>'+placeholders+'</tr></tbody>'+
+          '</table></div></section>';
+    }).join('');
+    $('tableArea').innerHTML='<div class="belleville-module-serial-layout">'+
+      (sections||'<div class="belleville-serial-no-results">'+
+        'Brak zapisanych numerów seryjnych do wyszukania.</div>')+
+      '</div>';
     $('tableFooter').textContent='Belleville · '+status+
-      ' · lista typów modułów (bez zapisanych numerów seryjnych).';
+      ' · kolumny typów modułów. — oznacza brak podłączonej ewidencji numerów seryjnych.';
   }
-  noteSearch(count,MODULE_GROUPS.reduce((sum,g)=>sum+g.types.length,0),'typach modułów');
+  noteSearch(summary?count:0,
+    summary?MODULE_GROUPS.reduce((sum,g)=>sum+g.types.length,0):0,
+    summary?'typach modułów':'numerach seryjnych');
 }
 function drawModules(){
   if(isBellevilleStock()){drawBellevilleModules();return;}
