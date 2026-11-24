@@ -8724,3 +8724,78 @@
     width:auto;
   }
 }
+
+
+/* Belleville OK/NOK: each module family has type columns and serials below.
+   Isolated from SUMA, the Bovis preview, and all other warehouses. */
+.app.view-stocks.view-belleville-stock.view-modules .belleville-module-serial-layout{
+  padding:8px 10px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-group{
+  min-width:0;
+  border:1px solid #e4e8ed;
+  border-radius:7px;
+  overflow:hidden;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-group-heading{
+  margin:0;
+  padding:7px 10px;
+  background:#eff1f4;
+  color:#505a67;
+  border-bottom:1px solid #e1e5eb;
+  text-align:left;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.09em;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-group-scroll{
+  width:100%;
+  min-width:0;
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid{
+  width:max-content;
+  min-width:100%;
+  border-spacing:0;
+  border-collapse:collapse;
+  table-layout:fixed;
+  font-size:11px;
+  color:#344353;
+  font-variant-numeric:tabular-nums;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid th,
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid td{
+  min-width:158px;
+  width:158px;
+  padding:7px 9px;
+  border-right:1px solid #e5eaf0;
+  border-bottom:1px solid #edf0f3;
+  text-align:center;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid th{
+  background:#f3f5f7;
+  color:#344353;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid td{
+  height:33px;
+  background:#fff;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid th:last-child,
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid td:last-child{
+  border-right:0;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-serial-no-results{
+  padding:24px;
+  color:#8894a0;
+  text-align:center;
+  font-size:12px;
+}
