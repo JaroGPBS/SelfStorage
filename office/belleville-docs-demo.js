@@ -241,7 +241,6 @@
         '</div>'+
         '<div class="doc-print-title-row">'+
           '<div class="belleville-demo-print-heading">'+
-            '<span class="doc-print-kicker">DOKUMENT MAGAZYNOWY · DANE FIKCYJNE — PODGLĄD</span>'+
             '<h2>'+(incoming?'POTWIERDZENIE PRZYJĘCIA':'POTWIERDZENIE WYDANIA')+'</h2>'+
           '</div>'+
           '<strong class="doc-print-type">'+escape(doc.id)+'</strong>'+
@@ -249,7 +248,7 @@
         '<div class="doc-print-fields">'+
           field('Trasa',doc.route)+
           field('Tydzień',doc.week)+
-          field('Data i godzina',formatDate(doc)+' · '+doc.time)+
+          field('Data',formatDate(doc))+
           field(incoming?'Przyjął':'Wydał',doc.worker)+
           field('Przewoźnik',doc.carrier)+
           field('Kierowca',doc.driver)+
@@ -283,7 +282,6 @@
               incoming?doc.worker:doc.driver)+
           '</div>'+
         '</div>'+
-        '<div class="belleville-demo-print-watermark">DANE FIKCYJNE · WYŁĄCZNIE PREZENTACJA UKŁADU — NIE JEST TO DOKUMENT MAGAZYNOWY</div>'+
       '</div>'
     };
   }
