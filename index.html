@@ -13,7 +13,7 @@
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=7">
-  <link rel="stylesheet" href="./css/warehouse.css?v=20">
+  <link rel="stylesheet" href="./css/warehouse.css?v=21">
   <link rel="stylesheet" href="./css/theme-gpbs.css?v=7">
   <style>
     .toast {
@@ -146,7 +146,7 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=78"></script>
+  <script type="module" src="./js/app.js?v=79"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -207,6 +207,7 @@
           <h2 class="warehouse-scan-title">Zeskanuj kod magazynu aby rozpocząć wizytę</h2>
           <button id="openWarehouseScannerBtn" class="btn btn-primary warehouse-scan-btn">Otwórz skaner</button>
           <button id="vehicleStatePreBtn" class="btn btn-secondary vehicle-entry-btn hidden" type="button">Stan auta</button>
+          <button id="boxStockEntryBtn" class="btn btn-secondary crew-box-stock-entry hidden" type="button">Stany magazynowe</button>
 
           <details class="warehouse-manual-details">
             <summary class="warehouse-manual-toggle">Wpisz kod magazynu</summary>
@@ -218,6 +219,34 @@
         </div>
 
         <button id="logoutBtn" class="btn btn-ghost danger-text">Wyloguj</button>
+      </section>
+
+
+      <section id="screenBoxStock" class="screen box-stock-screen">
+        <div class="box-stock-header">
+          <h2>Stany magazynowe</h2>
+          <button id="boxStockBackBtn" class="instruction-link-btn" type="button">← Wróć</button>
+        </div>
+        <div class="box-stock-chooser" role="group" aria-label="Wybierz BOX">
+          <button type="button" class="btn box-stock-choice" data-box-stock-warehouse="FR-PARIS">Box Paryż</button>
+          <button type="button" class="btn box-stock-choice" data-box-stock-warehouse="FR-TOULOUSE">Box Tuluza</button>
+        </div>
+        <div id="boxStockContent" class="box-stock-content hidden">
+          <div class="box-stock-toolbar">
+            <strong id="boxStockTitle">Box</strong>
+            <button id="boxStockRefreshBtn" type="button" class="instruction-link-btn">Odśwież</button>
+          </div>
+          <input id="boxStockSearch" type="search" class="text-input box-stock-search"
+            autocomplete="off" placeholder="Szukaj części…" aria-label="Szukaj części">
+          <div class="box-stock-table-wrap">
+            <table class="box-stock-table" aria-label="Aktualne stany części">
+              <thead><tr><th scope="col">Nazwa części</th><th scope="col">Stan</th></tr></thead>
+              <tbody id="boxStockRows"></tbody>
+            </table>
+          </div>
+          <p id="boxStockFooter" class="box-stock-footer" role="status"></p>
+        </div>
+        <p id="boxStockError" class="box-stock-error hidden" role="alert"></p>
       </section>
 
       <section id="screenBelleville" class="screen">
