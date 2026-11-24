@@ -198,9 +198,14 @@
             '<path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
           '</svg></button></td>'+
         '<td class="belleville-doc-print-cell"><button type="button" class="belleville-doc-action" '+
-          'data-belleville-demo-direct-print="'+escape(doc.id)+'" aria-label="Drukuj '+escape(doc.id)+'">Drukuj</button></td></tr>'+
-        (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="9">'+details(doc)+'</td></tr>':'');
-    }).join('')||'<tr><td class="belleville-doc-no-results" colspan="9">Brak pasujących dokumentów pokazowych.</td></tr>';
+          'data-belleville-demo-direct-print="'+escape(doc.id)+'" aria-label="Drukuj '+escape(doc.id)+'">Drukuj</button></td>'+
+        (doc.direction==='WZ'
+          ?'<td class="belleville-doc-cmr-cell"><button type="button" class="belleville-doc-action belleville-doc-cmr-action" '+
+            'data-belleville-demo-cmr="'+escape(doc.id)+'" aria-label="Drukuj CMR dla '+escape(doc.id)+'">CMR</button></td>'
+          :'')+'</tr>'+
+        (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="'+
+          (doc.direction==='WZ'?'10':'9')+'">'+details(doc)+'</td></tr>':'');
+    }).join('')||'<tr><td class="belleville-doc-no-results" colspan="'+(direction==='WZ'?'10':'9')+'">Brak pasujących dokumentów pokazowych.</td></tr>';
     return {
       html:'<div class="belleville-doc-demo">'+
         '<p class="belleville-doc-banner">DANE FIKCYJNE — PODGLĄD UKŁADU. Nic nie zapisuje się do D1 ani nie zmienia stanów magazynowych.</p>'+
@@ -209,6 +214,7 @@
         '<th>Numer '+direction+'</th><th>Tydz.</th><th>Trasa</th>'+
         '<th>Data i godzina</th><th>Moduły</th><th>Części</th>'+
         '<th>'+(direction==='PZ'?'Przyjął':'Wydał')+'</th><th></th><th></th>'+
+        (direction==='WZ'?'<th></th>':'')+
         '</tr></thead><tbody>'+rows+'</tbody></table></div></div>',
       shown:list.length,total:3
     };
