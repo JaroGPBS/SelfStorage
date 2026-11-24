@@ -8759,8 +8759,9 @@
   scrollbar-width:thin;
 }
 .app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid{
+  /* Match the INDOOR column width in every group; don't stretch short rows. */
   width:max-content;
-  min-width:100%;
+  min-width:0;
   border-spacing:0;
   border-collapse:collapse;
   table-layout:fixed;
@@ -8772,6 +8773,7 @@
 .app.view-stocks.view-belleville-stock.view-modules .belleville-serial-grid td{
   min-width:158px;
   width:158px;
+  max-width:158px;
   padding:7px 9px;
   border-right:1px solid #e5eaf0;
   border-bottom:1px solid #edf0f3;

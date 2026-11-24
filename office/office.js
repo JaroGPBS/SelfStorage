@@ -2255,19 +2255,20 @@ function drawBellevilleModules(){
     // column. No Bovis demonstration serials are shown for Belleville.
     const sections=groups.map(group=>{
       const types=state.sortReverse?[...group.types].reverse():group.types;
+      const groupLabel=group.name.toLocaleUpperCase('pl');
       const header=types.map(type=>
-        '<th scope="col">'+escapeHtml(type)+'</th>'
+        '<th scope="col">'+escapeHtml(type.toLocaleUpperCase('pl'))+'</th>'
       ).join('');
       const placeholders=types.map(()=>
         '<td><span class="belleville-module-unknown" '+
         'title="Brak podłączonej ewidencji numerów seryjnych">—</span></td>'
       ).join('');
       return '<section class="belleville-serial-group" aria-label="'+
-        escapeHtml(group.name)+'">'+
-        '<h3 class="belleville-serial-group-heading">'+escapeHtml(group.name)+'</h3>'+
+        escapeHtml(groupLabel)+'">'+
+        '<h3 class="belleville-serial-group-heading">'+escapeHtml(groupLabel)+'</h3>'+
         '<div class="belleville-serial-group-scroll">'+
           '<table class="belleville-serial-grid" aria-label="'+
-            escapeHtml(group.name)+' · numery seryjne '+status+'">'+
+            escapeHtml(groupLabel)+' · numery seryjne '+status+'">'+
             '<thead><tr>'+header+'</tr></thead>'+
             '<tbody><tr>'+placeholders+'</tr></tbody>'+
           '</table></div></section>';
