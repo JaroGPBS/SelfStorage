@@ -8966,13 +8966,17 @@
   display:block;font-size:12px;font-weight:650;color:#303b46;
   overflow-wrap:anywhere;
 }
+.app.view-fr-empty .belleville-doc-meta .belleville-doc-vehicle strong{
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
 .app.view-fr-empty .belleville-doc-section{margin:16px 0}
 .app.view-fr-empty .belleville-doc-section h3{
   margin:0 0 8px;font-size:13px;font-weight:750;color:#303b46;
 }
 .app.view-fr-empty .belleville-doc-subtable{max-width:100%;overflow-x:auto;border:1px solid #e0e5eb;border-radius:5px}
 .app.view-fr-empty .belleville-doc-parts{
-  width:min(100%,530px);
+  width:min(100%,470px);
   margin-left:0;
   margin-right:auto;
 }
@@ -8984,8 +8988,14 @@
 .app.view-fr-empty .belleville-doc-parts td:first-child{width:25%}
 .app.view-fr-empty .belleville-doc-parts th:last-child,
 .app.view-fr-empty .belleville-doc-parts td:last-child{
-  width:72px;
+  width:110px;
   text-align:center;
+}
+.app.view-fr-empty .belleville-doc-parts th:last-child{
+  white-space:nowrap;
+  font-size:10px;
+  padding-left:6px;
+  padding-right:6px;
 }
 .app.view-fr-empty .belleville-doc-subtable table{width:100%;border-collapse:collapse;font-size:12px}
 .app.view-fr-empty .belleville-doc-subtable th{
@@ -8997,16 +9007,19 @@
 }
 .app.view-fr-empty .belleville-doc-subtable tbody tr:last-child td{border-bottom:0}
 .app.view-fr-empty .belleville-doc-subtable td.num{text-align:center;width:80px}
+.app.view-fr-empty .belleville-doc-parts td.num{width:110px}
 .app.view-fr-empty .belleville-doc-type{font-weight:700;white-space:nowrap;width:150px}
-.app.view-fr-empty .belleville-doc-serials{display:flex;flex-wrap:wrap;gap:5px 16px}
+.app.view-fr-empty .belleville-doc-serials{display:flex;flex-wrap:wrap;gap:5px 15px;align-items:baseline}
 .app.view-fr-empty .belleville-doc-serials span{
-  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+  display:inline-block;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
 }
 .app.view-fr-empty .belleville-doc-serials .belleville-doc-serial-nok{
-  color:#bd3446;
-  font-weight:800;
+  color:#c34454;
+  font-weight:600;
 }
-.app.view-fr-empty .belleville-doc-status{display:inline-block;font-size:10px;margin-left:3px;font-weight:750}
+.app.view-fr-empty .belleville-doc-status{display:inline-block;font-size:13px;margin-left:4px;font-weight:750;line-height:1.1}
 .app.view-fr-empty .belleville-doc-status-ok{color:#23804c}
 .app.view-fr-empty .belleville-doc-status-nok{color:#b23946}
 .app.view-fr-empty .belleville-doc-comment{
