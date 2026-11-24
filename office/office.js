@@ -3819,6 +3819,16 @@ function openBellevilleDemoDocumentPrint(id){
   $('docPrintClose').focus();
   return true;
 }
+function openBellevilleDemoCmrPrint(id){
+  if(!isBellevilleDemoDocuments()||state.view!=='wz')return false;
+  const sheet=window.GPBSBellevilleDocsDemo.cmrHtml(id);
+  if(!sheet||sheet.direction!=='CMR')return false;
+  $('docPrintTitle').textContent='Podgląd CMR · '+sheet.sourceWz+' · DANE FIKCYJNE';
+  $('docPrintSheet').innerHTML=sheet.html;
+  $('docPrintModal').classList.remove('hidden');
+  $('docPrintClose').focus();
+  return true;
+}
 
 function drawFrenchEmptyView(){
   const view=state.view;
@@ -4229,6 +4239,14 @@ document.addEventListener('click',e=>{
   const demoDirectPrint=e.target.closest('[data-belleville-demo-direct-print]');
   if(demoDirectPrint&&isBellevilleDemoDocuments()){
     if(openBellevilleDemoDocumentPrint(demoDirectPrint.dataset.bellevilleDemoDirectPrint)){
+      closeBellevillePrintAfterDialog=true;
+      printOfficeDocument();
+    }
+    return;
+  }
+  const demoCmr=e.target.closest('[data-belleville-demo-cmr]');
+  if(demoCmr&&isBellevilleDemoDocuments()&&state.view==='wz'){
+    if(openBellevilleDemoCmrPrint(demoCmr.dataset.bellevilleDemoCmr)){
       closeBellevillePrintAfterDialog=true;
       printOfficeDocument();
     }
