@@ -8574,6 +8574,13 @@
 }
 
 
+/* Belleville parts: halve vertical spacing in table rows; preserve font and column widths. */
+.app.view-stocks.view-belleville-stock:not(.view-modules) .table.part-stock-table th,
+.app.view-stocks.view-belleville-stock:not(.view-modules) .table.part-stock-table td{
+  padding-top:6px;
+  padding-bottom:6px;
+}
+
 /* Belleville stock-layout trial. Does not affect Bovis, the Boxes or Poland. */
 .app.view-stocks.view-belleville-stock .stock-tabs{
   gap:7px;flex-wrap:wrap;
