@@ -8574,6 +8574,13 @@
 }
 
 
+/* Belleville parts: halve vertical spacing in table rows; preserve font and column widths. */
+.app.view-stocks.view-belleville-stock:not(.view-modules) .table.part-stock-table th,
+.app.view-stocks.view-belleville-stock:not(.view-modules) .table.part-stock-table td{
+  padding-top:6px;
+  padding-bottom:6px;
+}
+
 /* Belleville stock-layout trial. Does not affect Bovis, the Boxes or Poland. */
 .app.view-stocks.view-belleville-stock .stock-tabs{
   gap:7px;flex-wrap:wrap;
@@ -8800,4 +8807,23 @@
   color:#8894a0;
   text-align:center;
   font-size:12px;
+}
+
+
+/* Belleville MODUŁY NOK only: quiet red cues distinguish NOK from OK. */
+.app.view-stocks.view-belleville-stock.view-belleville-module-nok #bellevilleNokTab.active,
+.app.view-stocks.view-belleville-stock.view-belleville-module-nok #bellevilleNokTab[aria-selected="true"]{
+  background:#fff0f1;
+  border-color:#dca5ab;
+  color:#a72e3d;
+  box-shadow:inset 0 0 0 1px #f6dadd;
+}
+.app.view-stocks.view-belleville-stock.view-belleville-module-nok .belleville-serial-grid th{
+  background:#fff0f2;
+  color:#7d3540;
+  border-bottom-color:#efd5d9;
+}
+.app.view-stocks.view-belleville-stock.view-belleville-module-nok .belleville-serial-group-heading{
+  border-left:3px solid #c85a68;
+  padding-left:7px;
 }
