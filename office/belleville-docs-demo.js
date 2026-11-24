@@ -183,13 +183,15 @@
       return '<tr class="belleville-doc-main-row">'+
         '<td><strong>'+escape(doc.id)+'</strong>'+comment+'</td>'+
         '<td>'+doc.week+'</td>'+
+        '<td>'+escape(doc.route)+'</td>'+
         '<td><div class="belleville-doc-datetime">'+
           '<span class="belleville-doc-date">'+formatDate(doc)+'</span>'+
           '<span class="belleville-doc-time">'+escape(doc.time)+'</span>'+
           '</div></td>'+
-        '<td>'+escape(doc.route)+'</td>'+
         '<td class="num">'+doc.modules.length+' szt.</td>'+
         '<td class="num">'+doc.parts.length+' poz.</td>'+
+        '<td>'+escape(doc.direction==='WZ'?doc.worker:doc.driver)+'</td>'+
+        '<td>'+escape(doc.direction==='PZ'?doc.worker:doc.driver)+'</td>'+
         '<td><button type="button" class="belleville-doc-toggle" aria-expanded="'+
           String(isExpanded)+'" data-belleville-demo-toggle="'+escape(doc.id)+'">'+
           (isExpanded?'Zwiń':'Szczegóły')+
@@ -198,15 +200,16 @@
           '</svg></button></td>'+
         '<td class="belleville-doc-print-cell"><button type="button" class="belleville-doc-action" '+
           'data-belleville-demo-direct-print="'+escape(doc.id)+'" aria-label="Drukuj '+escape(doc.id)+'">Drukuj</button></td></tr>'+
-        (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="8">'+details(doc)+'</td></tr>':'');
-    }).join('')||'<tr><td class="belleville-doc-no-results" colspan="8">Brak pasujących dokumentów pokazowych.</td></tr>';
+        (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="10">'+details(doc)+'</td></tr>':'');
+    }).join('')||'<tr><td class="belleville-doc-no-results" colspan="10">Brak pasujących dokumentów pokazowych.</td></tr>';
     return {
       html:'<div class="belleville-doc-demo">'+
         '<p class="belleville-doc-banner">DANE FIKCYJNE — PODGLĄD UKŁADU. Nic nie zapisuje się do D1 ani nie zmienia stanów magazynowych.</p>'+
         '<div class="belleville-doc-table-scroll">'+
         '<table class="table belleville-doc-table"><thead><tr>'+
-        '<th>Numer '+direction+'</th><th>Tydz.</th><th>Data i godzina</th>'+
-        '<th>Trasa</th><th>Moduły</th><th>Części</th><th></th><th></th>'+
+        '<th>Numer '+direction+'</th><th>Tydz.</th><th>Trasa</th>'+
+        '<th>Data i godzina</th><th>Moduły</th><th>Części</th>'+
+        '<th>Wydał</th><th>Przyjął</th><th></th><th></th>'+
         '</tr></thead><tbody>'+rows+'</tbody></table></div></div>',
       shown:list.length,total:3
     };
