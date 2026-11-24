@@ -9381,3 +9381,207 @@
     page-break-inside:avoid;
   }
 }
+
+/* Belleville WZ -> CMR based on the bilingual numbered CMR sheet in MagBelleville.
+   A4 document is intentionally separate from existing PZ/WZ print styling. */
+.app.view-fr-empty .belleville-doc-cmr-cell{
+  width:1%;
+  white-space:nowrap;
+  text-align:right;
+}
+.app.view-fr-empty .belleville-doc-cmr-action{
+  min-width:48px;
+}
+.doc-print-sheet:has(> .belleville-cmr-print){
+  padding:10mm 15mm 10mm;
+}
+.doc-print-sheet .belleville-cmr-print{
+  font-family:Arial,Inter,"Segoe UI",sans-serif;
+  font-size:9px;
+  line-height:1.2;
+  color:#1b232c;
+  font-variant-numeric:tabular-nums;
+}
+.belleville-cmr-print *{box-sizing:border-box}
+.belleville-cmr-print .belleville-cmr-upper,
+.belleville-cmr-print .belleville-cmr-lower{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:0;
+  align-items:stretch;
+}
+.belleville-cmr-print .belleville-cmr-upper-left,
+.belleville-cmr-print .belleville-cmr-upper-right,
+.belleville-cmr-print .belleville-cmr-lower-left,
+.belleville-cmr-print .belleville-cmr-lower-right{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+.belleville-cmr-print .belleville-cmr-field{
+  border:1px solid #28323a;
+  margin:-1px 0 0 -1px;
+  min-height:45px;
+  flex:1 1 auto;
+  break-inside:avoid;
+}
+.belleville-cmr-print .belleville-cmr-field-head{
+  display:flex;
+  align-items:flex-start;
+  gap:5px;
+  padding:4px 5px 0;
+  font-size:9px;
+  font-weight:700;
+}
+.belleville-cmr-print .belleville-cmr-field-head b{
+  flex:0 0 15px;
+  font-size:11px;
+  line-height:1.1;
+  text-align:center;
+}
+.belleville-cmr-print .belleville-cmr-field-head span{
+  min-width:0;
+}
+.belleville-cmr-print .belleville-cmr-field-head small,
+.belleville-cmr-print .belleville-cmr-sign-title small{
+  display:block;
+  margin-top:2px;
+  font-size:7px;
+  font-weight:400;
+  line-height:1.15;
+}
+.belleville-cmr-print .belleville-cmr-field-value{
+  min-height:20px;
+  padding:5px 8px 7px 25px;
+  white-space:pre-line;
+  overflow-wrap:anywhere;
+  font-size:9px;
+}
+.belleville-cmr-print .belleville-cmr-large{min-height:61px}
+.belleville-cmr-print .belleville-cmr-title{
+  min-height:115px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:10px 9px;
+  border:1px solid #28323a;
+  margin:-1px 0 0 -1px;
+  text-align:center;
+}
+.belleville-cmr-print .belleville-cmr-title strong{
+  font-size:12px;
+  line-height:1.15;
+  letter-spacing:.01em;
+}
+.belleville-cmr-print .belleville-cmr-title > span{font-size:9px;font-weight:650}
+.belleville-cmr-print .belleville-cmr-title > div{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  font-size:14px;
+  font-weight:800;
+}
+.belleville-cmr-print .belleville-cmr-title > div span{
+  font-size:9px;
+  font-weight:500;
+}
+.belleville-cmr-print .belleville-cmr-title p{
+  margin:2px 0 0;
+  font-size:7.5px;
+  line-height:1.2;
+}
+.belleville-cmr-print .belleville-cmr-title p small{
+  display:block;
+  margin-top:2px;
+  font-size:7px;
+}
+.belleville-cmr-print .belleville-cmr-goods{margin:0}
+.belleville-cmr-print .belleville-cmr-goods table{
+  width:100%;
+  table-layout:fixed;
+  border-collapse:collapse;
+  margin:0;
+  font-size:8px;
+}
+.belleville-cmr-print .belleville-cmr-goods th,
+.belleville-cmr-print .belleville-cmr-goods td{
+  border:1px solid #28323a;
+  padding:4px 5px;
+  vertical-align:top;
+  line-height:1.24;
+  overflow-wrap:anywhere;
+  text-align:left;
+}
+.belleville-cmr-print .belleville-cmr-goods th{
+  background:#f5f6f7;
+  font-size:7.6px;
+  font-weight:700;
+}
+.belleville-cmr-print .belleville-cmr-goods th b{
+  display:block;
+  font-size:10px;
+  line-height:1.1;
+  margin-bottom:2px;
+}
+.belleville-cmr-print .belleville-cmr-goods th small{
+  display:block;
+  margin-top:3px;
+  font-size:6.7px;
+  font-weight:400;
+}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(1){width:29%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(2){width:9%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(3){width:10%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(4){width:26%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(5){width:8%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(6){width:9%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(7){width:9%}
+.belleville-cmr-print .belleville-cmr-goods td{min-height:23px}
+.belleville-cmr-print .belleville-cmr-lower .belleville-cmr-large{min-height:75px}
+.belleville-cmr-print .belleville-cmr-issue{
+  min-height:41px;
+}
+.belleville-cmr-print .belleville-cmr-issue .belleville-cmr-field-value{
+  padding-top:2px;
+  padding-bottom:5px;
+}
+.belleville-cmr-print .belleville-cmr-signatures{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  margin-top:0;
+  break-inside:avoid;
+}
+.belleville-cmr-print .belleville-cmr-signature{
+  border:1px solid #28323a;
+  margin:-1px 0 0 -1px;
+  min-height:95px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.belleville-cmr-print .belleville-cmr-sign-title{
+  display:flex;
+  align-items:flex-start;
+  gap:5px;
+  padding:5px 6px;
+  font-size:8px;
+  font-weight:700;
+}
+.belleville-cmr-print .belleville-cmr-sign-title b{font-size:11px}
+.belleville-cmr-print .belleville-cmr-sign-blank{min-height:50px}
+@media print{
+  body.printing-office-document .doc-print-sheet:has(> .belleville-cmr-print){
+    padding:10mm 15mm 10mm!important;
+  }
+  body.printing-office-document .belleville-cmr-print .belleville-cmr-goods thead{
+    display:table-header-group;
+  }
+  body.printing-office-document .belleville-cmr-print .belleville-cmr-goods tr,
+  body.printing-office-document .belleville-cmr-print .belleville-cmr-signature{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+}
