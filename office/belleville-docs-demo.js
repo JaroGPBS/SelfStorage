@@ -159,7 +159,7 @@
           escape(linked.id)+'">Zobacz powiązaną '+linked.direction+' · '+escape(linked.id)+'</button>':'')+
         '<button type="button" class="belleville-doc-action" data-belleville-demo-print="'+
           escape(doc.id)+'">Podgląd wydruku '+doc.direction+'</button>'+
-        (doc.direction==='WZ'?'<span class="belleville-doc-muted">CMR — do podłączenia po zatwierdzeniu widoku</span>':'')+
+
       '</div></div>';
   };
   const matches=(doc,term)=>{
