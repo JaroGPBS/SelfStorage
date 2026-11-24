@@ -9172,8 +9172,8 @@
 .belleville-demo-print .doc-print-field,
 .belleville-demo-print .doc-print-field:last-child{
   min-width:0;
-  min-height:48px;
-  padding:8px 9px;
+  min-height:40px;
+  padding:5px 9px;
   grid-column:auto;
   border-left:0;
   border-bottom:1px solid #e5e9ee;
@@ -9183,7 +9183,7 @@
 }
 .belleville-demo-print .doc-print-field:nth-child(n+5){border-bottom:0}
 .belleville-demo-print .doc-print-field span{
-  margin:0 0 4px;
+  margin:0 0 3px;
   font-size:9px;
   line-height:1.2;
   color:#6f7d8a;
