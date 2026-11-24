@@ -9085,8 +9085,12 @@
   color:#25313c;
   font-variant-numeric:tabular-nums;
 }
+.doc-print-sheet:has(> .belleville-demo-print){
+  padding-top:12mm;
+}
 .belleville-demo-print .doc-print-letterhead{
-  padding:0 0 12px;
+  align-items:flex-end;
+  padding:0 0 4px;
   border-bottom:2px solid #30343b;
 }
 .belleville-demo-print .doc-print-brand .belleville-demo-print-logo{
@@ -9096,6 +9100,8 @@
   max-width:100%;
 }
 .belleville-demo-print .doc-print-region{
+  align-self:flex-end;
+  margin-bottom:1px;
   font-size:10px;
   font-weight:700;
   letter-spacing:.02em;
@@ -9279,6 +9285,9 @@
 .belleville-demo-print .doc-print-signature strong{font-size:10px}
 .belleville-demo-print .doc-print-signature span{font-size:9px}
 @media print{
+  body.printing-office-document .doc-print-sheet:has(> .belleville-demo-print){
+    padding-top:12mm!important;
+  }
   body.printing-office-document .belleville-demo-print{
     width:100%!important;
     box-shadow:none!important;
