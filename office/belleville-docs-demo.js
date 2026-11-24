@@ -140,12 +140,12 @@
       '<span>DANE FIKCYJNE · PODGLĄD</span></div>'+
       '<div class="belleville-doc-top-grid">'+
         '<div class="belleville-doc-meta">'+
-          '<div><span>'+(doc.direction==='PZ'?'Przyjmował':'Wydawał')+'</span><strong>'+escape(doc.worker)+'</strong></div>'+
-          '<div><span>Przewoźnik</span><strong>'+escape(doc.carrier)+'</strong></div>'+
-          '<div><span>Data</span><strong>'+formatDate(doc)+'</strong></div>'+
-          '<div><span>Kierowca</span><strong>'+escape(doc.driver)+'</strong></div>'+
-          '<div class="belleville-doc-vehicle"><span>Samochód</span><strong>'+escape(doc.truck)+'</strong></div>'+
-          '<div class="belleville-doc-vehicle"><span>Przyczepa / naczepa</span><strong>'+escape(doc.trailer)+'</strong></div>'+
+          '<div class="belleville-doc-field-carrier"><span>Przewoźnik</span><strong>'+escape(doc.carrier)+'</strong></div>'+
+          '<div class="belleville-doc-field-driver"><span>Kierowca</span><strong>'+escape(doc.driver)+'</strong></div>'+
+          '<div class="belleville-doc-field-worker"><span>'+(doc.direction==='PZ'?'Przyjmował':'Wydawał')+'</span><strong>'+escape(doc.worker)+'</strong></div>'+
+          '<div class="belleville-doc-vehicle belleville-doc-field-truck"><span>Samochód</span><strong>'+escape(doc.truck)+'</strong></div>'+
+          '<div class="belleville-doc-vehicle belleville-doc-field-trailer"><span>Przyczepa / naczepa</span><strong>'+escape(doc.trailer)+'</strong></div>'+
+          '<div class="belleville-doc-field-date"><span>Data</span><strong>'+formatDate(doc)+'</strong></div>'+
         '</div>'+
         '<div class="belleville-doc-comment"><strong>Dodatkowe informacje</strong><p>'+
           escape(doc.comment||'Brak dodatkowych informacji.')+'</p></div>'+
