@@ -183,8 +183,10 @@
       return '<tr class="belleville-doc-main-row">'+
         '<td><strong>'+escape(doc.id)+'</strong>'+comment+'</td>'+
         '<td>'+doc.week+'</td>'+
-        '<td><span class="belleville-doc-date">'+formatDate(doc)+'</span>'+
-          '<span class="belleville-doc-time">'+escape(doc.time)+'</span></td>'+
+        '<td><div class="belleville-doc-datetime">'+
+          '<span class="belleville-doc-date">'+formatDate(doc)+'</span>'+
+          '<span class="belleville-doc-time">'+escape(doc.time)+'</span>'+
+          '</div></td>'+
         '<td>'+escape(doc.route)+'</td>'+
         '<td class="num">'+doc.modules.length+' szt.</td>'+
         '<td class="num">'+doc.parts.length+' poz.</td>'+
