@@ -8931,7 +8931,26 @@
 .app.view-fr-empty .belleville-doc-action:hover{background:#f1f4f7;border-color:#aebbc7}
 .app.view-fr-empty .belleville-doc-toggle:focus-visible,
 .app.view-fr-empty .belleville-doc-action:focus-visible{outline:2px solid #658eae;outline-offset:2px}
-.app.view-fr-empty .belleville-doc-toggle span{margin-left:5px;font-size:15px;line-height:0}
+.app.view-fr-empty .belleville-doc-toggle{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+.app.view-fr-empty .belleville-doc-toggle .belleville-doc-chevron{
+  display:block;
+  width:14px;
+  height:14px;
+  flex:none;
+  transform:rotate(0deg);
+  transition:transform .18s ease;
+}
+.app.view-fr-empty .belleville-doc-toggle[aria-expanded="true"] .belleville-doc-chevron{
+  transform:rotate(180deg);
+}
+@media(prefers-reduced-motion:reduce){
+  .app.view-fr-empty .belleville-doc-toggle .belleville-doc-chevron{transition:none}
+}
 .app.view-fr-empty .belleville-doc-expansion:hover{background:transparent}
 .app.view-fr-empty .belleville-doc-expansion>td{
   padding:0 13px 15px!important;
