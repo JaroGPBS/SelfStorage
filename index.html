@@ -13,7 +13,7 @@
   <link rel="icon" href="./icons/app-icon-192.png?v=8" type="image/png">
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=7">
-  <link rel="stylesheet" href="./css/warehouse.css?v=21">
+  <link rel="stylesheet" href="./css/warehouse.css?v=22">
   <link rel="stylesheet" href="./css/theme-gpbs.css?v=7">
   <style>
     .toast {
@@ -146,7 +146,7 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=80"></script>
+  <script type="module" src="./js/app.js?v=81"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -234,9 +234,12 @@
         <div id="boxStockContent" class="box-stock-content hidden">
           <div class="box-stock-toolbar">
             <strong id="boxStockTitle">Box</strong>
-            <button id="boxStockRefreshBtn" type="button" class="instruction-link-btn">Odśwież</button>
+            <div class="box-stock-actions">
+              <button id="boxStockSearchBtn" type="button" class="instruction-link-btn" aria-controls="boxStockSearch" aria-expanded="false">Wyszukaj</button>
+              <button id="boxStockRefreshBtn" type="button" class="instruction-link-btn">Odśwież</button>
+            </div>
           </div>
-          <input id="boxStockSearch" type="search" class="text-input box-stock-search"
+          <input id="boxStockSearch" type="search" class="text-input box-stock-search hidden"
             autocomplete="off" placeholder="Szukaj części…" aria-label="Szukaj części">
           <div class="box-stock-table-wrap">
             <table class="box-stock-table" aria-label="Aktualne stany części">
