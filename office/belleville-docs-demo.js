@@ -238,7 +238,7 @@
     return {direction:doc.direction,html:
       '<div class="belleville-demo-print">'+
         '<div class="doc-print-letterhead">'+
-          '<div class="doc-print-brand"><strong>GPBS</strong><span>STORAGE</span></div>'+
+          '<div class="doc-print-brand"><img class="belleville-demo-print-logo" src="./gpbs-logo-print.svg?v=1" alt="Logo GPBS"></div>'+
           '<span class="doc-print-region">Magazyn: BELLEVILLE</span>'+
         '</div>'+
         '<div class="doc-print-title-row">'+
