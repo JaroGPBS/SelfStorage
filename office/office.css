@@ -8921,6 +8921,20 @@
 .app.view-fr-empty .belleville-doc-time{display:block;white-space:nowrap}
 .app.view-fr-empty .belleville-doc-time{color:#7a8794;font-size:11px;margin-top:0}
 .app.view-fr-empty .belleville-doc-comment-mark{margin-left:7px;color:#8c6d39;font-size:12px}
+.app.view-fr-empty .belleville-doc-comment-legend{
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+  margin-left:auto;
+  color:#65707d;
+  font-size:11px;
+  white-space:nowrap;
+}
+.app.view-fr-empty .belleville-doc-comment-legend .belleville-doc-comment-mark{
+  margin:0;
+}
 .app.view-fr-empty .belleville-doc-toggle,
 .app.view-fr-empty .belleville-doc-action{
   appearance:none;
