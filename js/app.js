@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=25';
 
-const APP_VERSION = '0.62';
+const APP_VERSION = '0.63';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -534,12 +534,34 @@ async function checkRestoredVehicleInventory(){
 function boxStockName(id){
   return id==='FR-PARIS'?'Box Paryż':id==='FR-TOULOUSE'?'Box Tuluza':'BOX';
 }
+function resetBoxStockSearch(){
+  const input=$('boxStockSearch');
+  input.value='';
+  input.classList.add('hidden');
+  input.blur();
+  $('boxStockSearchBtn').setAttribute('aria-expanded','false');
+}
+function toggleBoxStockSearch(){
+  if(!boxStockWarehouseId)return;
+  const input=$('boxStockSearch'),button=$('boxStockSearchBtn');
+  const opening=input.classList.contains('hidden');
+  input.classList.toggle('hidden',!opening);
+  button.setAttribute('aria-expanded',String(opening));
+  if(opening){
+    // Synchronous focus from the user's tap opens the mobile keyboard.
+    input.focus();
+  }else{
+    input.value='';
+    input.blur();
+    renderBoxStockRows();
+  }
+}
 function openBoxStock(){
   if(!state.team||String(state.team.rola||'').trim().toUpperCase()!=='EKIPA')return;
   ++boxStockRequestId;
   boxStockWarehouseId=null;
   boxStockParts=[];
-  $('boxStockSearch').value='';
+  resetBoxStockSearch();
   $('boxStockContent').classList.add('hidden');
   $('boxStockError').classList.add('hidden');
   $('boxStockError').textContent='';
@@ -592,7 +614,7 @@ async function selectBoxStock(warehouseId){
   const title=boxStockName(warehouseId);
   $('boxStockTitle').textContent=title;
   $('boxStockContent').classList.remove('hidden');
-  $('boxStockSearch').value='';
+  resetBoxStockSearch();
   $('boxStockRows').replaceChildren();
   $('boxStockFooter').textContent='Pobieranie stanów…';
   $('boxStockError').textContent='';
@@ -2848,6 +2870,7 @@ function bindEvents() {
   $('logoutBtn').addEventListener('click', logout);
   $('boxStockEntryBtn')?.addEventListener('click',openBoxStock);
   $('boxStockBackBtn')?.addEventListener('click',closeBoxStock);
+  $('boxStockSearchBtn')?.addEventListener('click',toggleBoxStockSearch);
   $('boxStockRefreshBtn')?.addEventListener('click',()=>{
     if(boxStockWarehouseId)selectBoxStock(boxStockWarehouseId);
   });
