@@ -8943,9 +8943,20 @@
 }
 .app.view-fr-empty .belleville-doc-detail-head strong{color:#293644;font-size:14px}
 .app.view-fr-empty .belleville-doc-detail-head span{font-size:10px;font-weight:700;color:#7a8794}
+.app.view-fr-empty .belleville-doc-top-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  align-items:stretch;
+  gap:18px;
+  margin-bottom:16px;
+}
 .app.view-fr-empty .belleville-doc-meta{
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-  column-gap:20px;row-gap:13px;margin-bottom:18px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  column-gap:13px;
+  row-gap:10px;
+  align-content:start;
+  margin:0;
 }
 .app.view-fr-empty .belleville-doc-meta>div{min-width:0}
 .app.view-fr-empty .belleville-doc-meta span{
@@ -8960,6 +8971,22 @@
   margin:0 0 8px;font-size:13px;font-weight:750;color:#303b46;
 }
 .app.view-fr-empty .belleville-doc-subtable{max-width:100%;overflow-x:auto;border:1px solid #e0e5eb;border-radius:5px}
+.app.view-fr-empty .belleville-doc-parts{
+  width:min(100%,530px);
+  margin-left:0;
+  margin-right:auto;
+}
+.app.view-fr-empty .belleville-doc-parts table{
+  width:100%;
+  table-layout:fixed;
+}
+.app.view-fr-empty .belleville-doc-parts th:first-child,
+.app.view-fr-empty .belleville-doc-parts td:first-child{width:25%}
+.app.view-fr-empty .belleville-doc-parts th:last-child,
+.app.view-fr-empty .belleville-doc-parts td:last-child{
+  width:72px;
+  text-align:center;
+}
 .app.view-fr-empty .belleville-doc-subtable table{width:100%;border-collapse:collapse;font-size:12px}
 .app.view-fr-empty .belleville-doc-subtable th{
   padding:8px 10px;text-align:left;color:#566373;background:#f2f4f7;
@@ -8975,11 +9002,20 @@
 .app.view-fr-empty .belleville-doc-serials span{
   font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
 }
+.app.view-fr-empty .belleville-doc-serials .belleville-doc-serial-nok{
+  color:#bd3446;
+  font-weight:800;
+}
 .app.view-fr-empty .belleville-doc-status{display:inline-block;font-size:10px;margin-left:3px;font-weight:750}
 .app.view-fr-empty .belleville-doc-status-ok{color:#23804c}
 .app.view-fr-empty .belleville-doc-status-nok{color:#b23946}
 .app.view-fr-empty .belleville-doc-comment{
-  margin-top:15px;padding:11px 12px;background:#f7f9fa;border:1px solid #e5e9ee;
+  margin:0;
+  min-width:0;
+  min-height:100%;
+  padding:12px 14px;
+  background:#f7f9fa;
+  border:1px solid #e5e9ee;
   border-radius:6px;
 }
 .app.view-fr-empty .belleville-doc-comment strong{font-size:12px;color:#364350}
@@ -8991,7 +9027,8 @@
 .app.view-fr-empty .belleville-doc-no-results{text-align:center;padding:24px!important;color:#7d8793}
 .doc-print-sheet .belleville-doc-print-secondary{margin-top:18px}
 @media(max-width:950px){
-  .app.view-fr-empty .belleville-doc-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app.view-fr-empty .belleville-doc-top-grid{grid-template-columns:minmax(0,1fr)}
+  .app.view-fr-empty .belleville-doc-comment{min-height:88px}
 }
 @media(max-width:690px){
   .app.view-fr-empty .belleville-doc-banner{font-size:11px}
