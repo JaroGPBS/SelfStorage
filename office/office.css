@@ -8810,20 +8810,52 @@
 }
 
 
-/* Belleville MODUŁY NOK only: quiet red cues distinguish NOK from OK. */
+/* Belleville NOK remains a clear but understated red warning view. */
 .app.view-stocks.view-belleville-stock.view-belleville-module-nok #bellevilleNokTab.active,
 .app.view-stocks.view-belleville-stock.view-belleville-module-nok #bellevilleNokTab[aria-selected="true"]{
-  background:#fff0f1;
-  border-color:#dca5ab;
-  color:#a72e3d;
-  box-shadow:inset 0 0 0 1px #f6dadd;
+  background:#f7dce1;
+  border-color:#c87a86;
+  color:#992c3c;
+  box-shadow:inset 0 0 0 1px #eab4be;
 }
 .app.view-stocks.view-belleville-stock.view-belleville-module-nok .belleville-serial-grid th{
-  background:#fff0f2;
-  color:#7d3540;
-  border-bottom-color:#efd5d9;
+  background:#f8dce1;
+  color:#762d3a;
+  border-bottom-color:#eab7c1;
 }
-.app.view-stocks.view-belleville-stock.view-belleville-module-nok .belleville-serial-group-heading{
-  border-left:3px solid #c85a68;
-  padding-left:7px;
+
+/* Glow on the category heading only: green = OK, red = NOK.
+   The serial cells and SUMA keep their existing neutral appearance. */
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-ok .belleville-serial-group-heading{
+  --belleville-neon:#2aa46a;
+  --belleville-neon-glow:rgba(36,172,103,.66);
+  --belleville-neon-soft:rgba(36,172,103,.28);
+  --belleville-neon-wash:#e1f2e8;
+  color:#2d7450;
+}
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading{
+  --belleville-neon:#dc3e50;
+  --belleville-neon-glow:rgba(224,57,78,.68);
+  --belleville-neon-soft:rgba(224,57,78,.30);
+  --belleville-neon-wash:#f9dce2;
+  color:#9b3040;
+}
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-ok .belleville-serial-group-heading,
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading{
+  position:relative;
+  border-left:0;
+  padding-left:13px;
+  background:linear-gradient(90deg,var(--belleville-neon-wash) 0%,#eff1f4 38%);
+}
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-ok .belleville-serial-group-heading::before,
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:var(--belleville-neon);
+  box-shadow:0 0 8px 2px var(--belleville-neon-glow),
+             0 0 17px 4px var(--belleville-neon-soft);
 }
