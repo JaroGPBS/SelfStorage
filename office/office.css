@@ -9659,11 +9659,27 @@
 .belleville-cmr-print .belleville-cmr-fees td:nth-child(4){width:25%}
 .belleville-cmr-print .belleville-cmr-f20{min-height:19mm;flex:1 1 auto}
 .belleville-cmr-print .belleville-cmr-f20 .belleville-cmr-field-value{font-size:7px}
-.belleville-cmr-print .belleville-cmr-issue{height:10mm}
-.belleville-cmr-print .belleville-cmr-issue .belleville-cmr-field-value{
-  padding-top:0;
-  padding-bottom:0;
+.belleville-cmr-print .belleville-cmr-issue{
+  display:grid;
+  grid-template-columns:13px auto minmax(0,1fr) 24px 70px;
+  align-items:center;
+  height:10mm;
+  margin:-1px 0 0 -1px;
+  border:1px solid #191919;
+  padding:2px 4px;
+  column-gap:4px;
   font-size:8px;
+}
+.belleville-cmr-print .belleville-cmr-issue b{font-size:9px}
+.belleville-cmr-print .belleville-cmr-issue strong{
+  text-align:center;
+  font-size:9px;
+  font-weight:400;
+}
+.belleville-cmr-print .belleville-cmr-issue small{
+  display:block;
+  margin-top:2px;
+  font-size:7px;
 }
 .belleville-cmr-print .belleville-cmr-signatures{
   display:grid;
