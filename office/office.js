@@ -1515,7 +1515,7 @@ function syncStockTabUI(){
     .classList.toggle('hidden',belleville);
   // Keep the Bovis abbreviation unchanged; Belleville uses the full brand label.
   $('moduleCategories').querySelector('[data-module-category="bq"]').textContent=
-    belleville?'Bloq.it':'BQ';
+    belleville?'BLOQ.IT':'BQ';
   const moduleNotice=$('bellevilleModuleNotice');
   moduleNotice.classList.toggle('hidden',!belleville||!modules);
   if(belleville&&modules){
