@@ -247,7 +247,7 @@
         '</div>'+
         '<div class="doc-print-title-row">'+
           '<div class="belleville-demo-print-heading">'+
-            '<h2>'+(incoming?'POTWIERDZENIE PRZYJĘCIA':'POTWIERDZENIE WYDANIA')+'</h2>'+
+            '<h2>'+(incoming?'POTWIERDZENIE PRZYJĘCIA':'WYDANIE ZEWNĘTRZNE')+'</h2>'+
           '</div>'+
           '<strong class="doc-print-type">'+escape(doc.id)+'</strong>'+
         '</div>'+
