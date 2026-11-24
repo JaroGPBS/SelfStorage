@@ -89,6 +89,10 @@ export const api = {
     );
   },
 
+  getBoxStock(magazynId) {
+    return request('POBIERZ_STANY_BOX', { magazynId });
+  },
+
   getVehicleStock(idEkipy, nazwaEkipy = '', idUrzadzenia = '') {
     return request('POBIERZ_STAN_AUTA', {
       idEkipy,
