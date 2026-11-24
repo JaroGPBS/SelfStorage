@@ -266,17 +266,19 @@
             '<tbody>'+moduleLines+'</tbody>'+
           '</table>'+
         '</section>'+
-        '<section class="belleville-demo-print-section">'+
-          '<div class="doc-print-section-title">Części — '+doc.parts.length+
-            (doc.parts.length===1?' pozycja':' pozycji')+'</div>'+
-          '<table class="doc-print-parts belleville-demo-print-parts">'+
-            '<thead><tr><th>Indeks SAP</th><th>Nazwa części</th><th>Ilość (szt.)</th></tr></thead>'+
-            '<tbody>'+partLines+'</tbody>'+
-          '</table>'+
-        '</section>'+
-        '<div class="doc-print-bottom">'+
+        '<div class="belleville-demo-print-lower">'+
+          '<section class="belleville-demo-print-section">'+
+            '<div class="doc-print-section-title">Części — '+doc.parts.length+
+              (doc.parts.length===1?' pozycja':' pozycji')+'</div>'+
+            '<table class="doc-print-parts belleville-demo-print-parts">'+
+              '<thead><tr><th>Indeks SAP</th><th>Nazwa części</th><th>Ilość (szt.)</th></tr></thead>'+
+              '<tbody>'+partLines+'</tbody>'+
+            '</table>'+
+          '</section>'+
           '<div class="doc-print-notes"><strong>Dodatkowe informacje</strong><p>'+
             escape(doc.comment||'Brak dodatkowych informacji.')+'</p></div>'+
+        '</div>'+
+        '<div class="doc-print-bottom">'+
           '<div class="doc-print-signatures">'+
             signature(incoming?'Przekazujący — kierowca':'Wydający — magazynier',
               incoming?doc.driver:doc.worker)+
