@@ -1,4 +1,4 @@
-import { api } from './api.js?v=3';
+import { api } from './api.js?v=4';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
@@ -491,6 +491,11 @@ function updateInitialInventoryAccess(){
   const input=$('warehouseCodeInput'),confirm=$('manualWarehouseBtn');
   if(input)input.disabled=locked;
   if(confirm)confirm.disabled=locked;
+  const boxStockButton=$('boxStockEntryBtn');
+  if(boxStockButton){
+    boxStockButton.classList.toggle('hidden',locked||
+      !crew||!state.team?.id||!plate||firstInventoryRequired!==false);
+  }
   const carButton=$('vehicleStatePreBtn');
   if(carButton){
     carButton.classList.toggle('hidden',!plate);
@@ -608,8 +613,6 @@ async function selectBoxStock(warehouseId){
 }
 
 function renderWarehouse() {
-  $('boxStockEntryBtn')?.classList.toggle('hidden',
-    !state.team||String(state.team.rola||'').trim().toUpperCase()!=='EKIPA');
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
   updateCrewPlateBadges();
