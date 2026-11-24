@@ -9382,201 +9382,337 @@
   }
 }
 
-/* Belleville WZ -> CMR based on the bilingual numbered CMR sheet in MagBelleville.
-   A4 document is intentionally separate from existing PZ/WZ print styling. */
+/* Belleville WZ CMR: source layout and texts from MagBelleville / "CMR Szablon".
+   Source form rows 4–78: two-column header, 7 cargo fields, side notices,
+   sender/carrier instructions, payment schedule, receipt and CMR/IRU footer. */
 .app.view-fr-empty .belleville-doc-cmr-cell{
   width:1%;
   white-space:nowrap;
   text-align:right;
 }
-.app.view-fr-empty .belleville-doc-cmr-action{
-  min-width:48px;
-}
+.app.view-fr-empty .belleville-doc-cmr-action{min-width:48px}
 .doc-print-sheet:has(> .belleville-cmr-print){
-  padding:10mm 15mm 10mm;
+  padding:10mm 10mm 7mm;
 }
 .doc-print-sheet .belleville-cmr-print{
-  font-family:Arial,Inter,"Segoe UI",sans-serif;
-  font-size:9px;
-  line-height:1.2;
-  color:#1b232c;
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:8px;
+  line-height:1.15;
+  color:#161616;
   font-variant-numeric:tabular-nums;
 }
 .belleville-cmr-print *{box-sizing:border-box}
+.belleville-cmr-print .belleville-cmr-page{
+  display:grid;
+  grid-template-columns:16mm minmax(0,1fr);
+  width:100%;
+  min-width:0;
+}
+.belleville-cmr-print .belleville-cmr-side{
+  position:relative;
+  min-width:0;
+  color:#222;
+  font-size:6px;
+  line-height:1.25;
+}
+.belleville-cmr-print .belleville-cmr-side-top{
+  position:absolute;
+  top:8mm;
+  left:1mm;
+  right:2mm;
+}
+.belleville-cmr-print .belleville-cmr-side-top small{
+  display:block;
+  margin-top:21mm;
+  font-size:6px;
+}
+.belleville-cmr-print .belleville-cmr-side-goods{
+  position:absolute;
+  top:99mm;
+  left:0;
+  right:1.2mm;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5mm;
+  text-align:center;
+  font-size:6px;
+}
+.belleville-cmr-print .belleville-cmr-side-goods strong{
+  font-size:10px;
+}
+.belleville-cmr-print .belleville-cmr-side-goods small{
+  display:block;
+  margin-top:2px;
+  font-size:6px;
+}
+.belleville-cmr-print .belleville-cmr-form{min-width:0}
 .belleville-cmr-print .belleville-cmr-upper,
 .belleville-cmr-print .belleville-cmr-lower{
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:0;
   align-items:stretch;
+  gap:0;
 }
 .belleville-cmr-print .belleville-cmr-upper-left,
 .belleville-cmr-print .belleville-cmr-upper-right,
 .belleville-cmr-print .belleville-cmr-lower-left,
 .belleville-cmr-print .belleville-cmr-lower-right{
   display:flex;
-  flex-direction:column;
   min-width:0;
+  flex-direction:column;
 }
 .belleville-cmr-print .belleville-cmr-field{
-  border:1px solid #28323a;
+  flex:0 0 auto;
+  min-width:0;
+  border:1px solid #191919;
   margin:-1px 0 0 -1px;
-  min-height:45px;
-  flex:1 1 auto;
   break-inside:avoid;
 }
 .belleville-cmr-print .belleville-cmr-field-head{
   display:flex;
   align-items:flex-start;
-  gap:5px;
-  padding:4px 5px 0;
-  font-size:9px;
-  font-weight:700;
+  gap:3px;
+  padding:2px 3px 0;
+  font-size:8px;
+  font-weight:400;
+  line-height:1.12;
 }
 .belleville-cmr-print .belleville-cmr-field-head b{
-  flex:0 0 15px;
-  font-size:11px;
-  line-height:1.1;
+  flex:0 0 12px;
+  font-size:9px;
   text-align:center;
+  font-weight:750;
 }
-.belleville-cmr-print .belleville-cmr-field-head span{
-  min-width:0;
-}
+.belleville-cmr-print .belleville-cmr-field-head span{min-width:0}
 .belleville-cmr-print .belleville-cmr-field-head small,
 .belleville-cmr-print .belleville-cmr-sign-title small{
   display:block;
   margin-top:2px;
   font-size:7px;
   font-weight:400;
-  line-height:1.15;
+  line-height:1.05;
 }
 .belleville-cmr-print .belleville-cmr-field-value{
-  min-height:20px;
-  padding:5px 8px 7px 25px;
+  min-height:1mm;
+  padding:2px 4px 4px 16px;
+  font-size:8px;
+  line-height:1.24;
   white-space:pre-line;
   overflow-wrap:anywhere;
-  font-size:9px;
 }
-.belleville-cmr-print .belleville-cmr-large{min-height:61px}
+.belleville-cmr-print .belleville-cmr-f1{height:27mm}
+.belleville-cmr-print .belleville-cmr-f2{height:19mm}
+.belleville-cmr-print .belleville-cmr-f3{height:12mm}
+.belleville-cmr-print .belleville-cmr-f4{height:15mm}
+.belleville-cmr-print .belleville-cmr-f5{height:10mm}
+.belleville-cmr-print .belleville-cmr-f16{height:19mm}
+.belleville-cmr-print .belleville-cmr-f17{height:12mm}
+.belleville-cmr-print .belleville-cmr-f18{height:37mm}
 .belleville-cmr-print .belleville-cmr-title{
-  min-height:115px;
+  flex:0 0 15mm;
+  min-width:0;
+  height:15mm;
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:center;
-  gap:5px;
-  padding:10px 9px;
-  border:1px solid #28323a;
+  justify-content:flex-start;
+  gap:1px;
   margin:-1px 0 0 -1px;
+  padding:3px 4px 2px;
+  border:1px solid #191919;
+  overflow:hidden;
   text-align:center;
 }
-.belleville-cmr-print .belleville-cmr-title strong{
-  font-size:12px;
-  line-height:1.15;
-  letter-spacing:.01em;
-}
-.belleville-cmr-print .belleville-cmr-title > span{font-size:9px;font-weight:650}
+.belleville-cmr-print .belleville-cmr-title strong{font-size:8px;line-height:1.1;font-weight:400}
+.belleville-cmr-print .belleville-cmr-title > span{font-size:7.2px}
 .belleville-cmr-print .belleville-cmr-title > div{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:12px;
-  font-size:14px;
+  font-size:13px;
   font-weight:800;
+  line-height:1.1;
 }
-.belleville-cmr-print .belleville-cmr-title > div span{
-  font-size:9px;
-  font-weight:500;
-}
+.belleville-cmr-print .belleville-cmr-title > div span{font-size:9px}
 .belleville-cmr-print .belleville-cmr-title p{
+  font-size:6.3px;
+  line-height:1.12;
   margin:2px 0 0;
-  font-size:7.5px;
-  line-height:1.2;
+  font-weight:400;
 }
 .belleville-cmr-print .belleville-cmr-title p small{
   display:block;
   margin-top:2px;
-  font-size:7px;
+  font-size:6px;
 }
-.belleville-cmr-print .belleville-cmr-goods{margin:0}
+.belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f16{height:19mm}
+.belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f17{height:12mm}
+.belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f18{height:37mm}
+.belleville-cmr-print .belleville-cmr-goods{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  min-height:49mm;
+}
 .belleville-cmr-print .belleville-cmr-goods table{
   width:100%;
   table-layout:fixed;
-  border-collapse:collapse;
+  height:40mm;
   margin:0;
-  font-size:8px;
+  border-collapse:collapse;
+  font-size:7px;
+  line-height:1.12;
 }
 .belleville-cmr-print .belleville-cmr-goods th,
 .belleville-cmr-print .belleville-cmr-goods td{
-  border:1px solid #28323a;
-  padding:4px 5px;
+  border:1px solid #191919;
+  padding:2px 3px;
   vertical-align:top;
-  line-height:1.24;
-  overflow-wrap:anywhere;
   text-align:left;
+  font-weight:400;
+  overflow-wrap:anywhere;
 }
 .belleville-cmr-print .belleville-cmr-goods th{
-  background:#f5f6f7;
-  font-size:7.6px;
-  font-weight:700;
+  height:8mm;
+  font-size:7px;
 }
 .belleville-cmr-print .belleville-cmr-goods th b{
-  display:block;
-  font-size:10px;
-  line-height:1.1;
-  margin-bottom:2px;
+  float:left;
+  margin-right:3px;
+  font-weight:750;
+  font-size:9px;
 }
 .belleville-cmr-print .belleville-cmr-goods th small{
   display:block;
-  margin-top:3px;
-  font-size:6.7px;
+  clear:both;
+  margin-top:2px;
+  font-size:7px;
+}
+.belleville-cmr-print .belleville-cmr-goods tbody tr{height:4mm}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(1){width:16%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(2){width:18%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(3){width:15%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(4){width:12%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(5){width:12%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(6){width:12%}
+.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(7){width:15%}
+.belleville-cmr-print .belleville-cmr-danger{
+  display:grid;
+  grid-template-columns:1fr 1fr 1.5fr 1fr;
+  height:9mm;
+}
+.belleville-cmr-print .belleville-cmr-danger>div{
+  border:1px solid #191919;
+  margin:-1px 0 0 -1px;
+  padding:2px 3px;
+  font-size:7px;
+}
+.belleville-cmr-print .belleville-cmr-danger small,
+.belleville-cmr-print .belleville-cmr-fees small,
+.belleville-cmr-print .belleville-cmr-received-place small{
+  display:block;
+  font-size:6.5px;
+  margin-top:2px;
+}
+.belleville-cmr-print .belleville-cmr-f13{min-height:59mm;flex:1 1 auto}
+.belleville-cmr-print .belleville-cmr-f13 .belleville-cmr-field-value{text-align:center}
+.belleville-cmr-print .belleville-cmr-f14{height:7mm}
+.belleville-cmr-print .belleville-cmr-f15{min-height:12mm}
+.belleville-cmr-print .belleville-cmr-f15 .belleville-cmr-field-value{padding-top:0;font-size:6px}
+.belleville-cmr-print .belleville-cmr-fees{
+  height:59mm;
+  border:1px solid #191919;
+  margin:-1px 0 0 -1px;
+}
+.belleville-cmr-print .belleville-cmr-fees-title{
+  display:grid;
+  grid-template-columns:35% 22% 18% 25%;
+  min-height:10mm;
+  border-bottom:1px solid #191919;
+  font-size:7px;
+}
+.belleville-cmr-print .belleville-cmr-fees-title b{
+  float:left;
+  margin:1px 2px 0;
+  font-size:9px;
+}
+.belleville-cmr-print .belleville-cmr-fees-title span{
+  padding:2px 3px;
+  border-left:1px solid #191919;
+}
+.belleville-cmr-print .belleville-cmr-fees-title span:first-of-type{border-left:0}
+.belleville-cmr-print .belleville-cmr-fees table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  font-size:7px;
+}
+.belleville-cmr-print .belleville-cmr-fees th,
+.belleville-cmr-print .belleville-cmr-fees td{
+  text-align:left;
   font-weight:400;
+  border:1px solid #191919;
+  padding:1px 3px;
+  height:7mm;
 }
-.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(1){width:29%}
-.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(2){width:9%}
-.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(3){width:10%}
-.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(4){width:26%}
-.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(5){width:8%}
-.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(6){width:9%}
-.belleville-cmr-print .belleville-cmr-goods :is(th,td):nth-child(7){width:9%}
-.belleville-cmr-print .belleville-cmr-goods td{min-height:23px}
-.belleville-cmr-print .belleville-cmr-lower .belleville-cmr-large{min-height:75px}
-.belleville-cmr-print .belleville-cmr-issue{
-  min-height:41px;
-}
+.belleville-cmr-print .belleville-cmr-fees th{width:35%}
+.belleville-cmr-print .belleville-cmr-fees td:nth-child(2){width:22%}
+.belleville-cmr-print .belleville-cmr-fees td:nth-child(3){width:18%}
+.belleville-cmr-print .belleville-cmr-fees td:nth-child(4){width:25%}
+.belleville-cmr-print .belleville-cmr-f20{min-height:19mm;flex:1 1 auto}
+.belleville-cmr-print .belleville-cmr-f20 .belleville-cmr-field-value{font-size:7px}
+.belleville-cmr-print .belleville-cmr-issue{height:10mm}
 .belleville-cmr-print .belleville-cmr-issue .belleville-cmr-field-value{
-  padding-top:2px;
-  padding-bottom:5px;
+  padding-top:0;
+  padding-bottom:0;
+  font-size:8px;
 }
 .belleville-cmr-print .belleville-cmr-signatures{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
-  margin-top:0;
+  height:27mm;
   break-inside:avoid;
 }
 .belleville-cmr-print .belleville-cmr-signature{
-  border:1px solid #28323a;
+  border:1px solid #191919;
   margin:-1px 0 0 -1px;
-  min-height:95px;
   display:flex;
   flex-direction:column;
   justify-content:space-between;
+  min-width:0;
 }
 .belleville-cmr-print .belleville-cmr-sign-title{
   display:flex;
+  gap:4px;
+  padding:2px 3px;
   align-items:flex-start;
-  gap:5px;
-  padding:5px 6px;
-  font-size:8px;
-  font-weight:700;
+  font-size:7px;
 }
-.belleville-cmr-print .belleville-cmr-sign-title b{font-size:11px}
-.belleville-cmr-print .belleville-cmr-sign-blank{min-height:50px}
+.belleville-cmr-print .belleville-cmr-sign-title b{
+  font-size:9px;
+  flex:0 0 10px;
+}
+.belleville-cmr-print .belleville-cmr-sign-bottom{
+  padding-bottom:3px;
+}
+.belleville-cmr-print .belleville-cmr-sign-blank{min-height:17mm}
+.belleville-cmr-print .belleville-cmr-received-place{
+  display:flex;
+  justify-content:space-around;
+  font-size:7px;
+  min-height:7mm;
+}
+.belleville-cmr-print .belleville-cmr-footer{
+  padding:2px 3px 0;
+  font-size:6.4px;
+  line-height:1.2;
+}
+.belleville-cmr-print .belleville-cmr-footer p{
+  margin:0 0 3px;
+}
 @media print{
   body.printing-office-document .doc-print-sheet:has(> .belleville-cmr-print){
-    padding:10mm 15mm 10mm!important;
+    padding:10mm 10mm 7mm!important;
   }
-  body.printing-office-document .belleville-cmr-print .belleville-cmr-goods thead{
+  body.printing-office-document .belleville-cmr-goods thead{
     display:table-header-group;
   }
   body.printing-office-document .belleville-cmr-print .belleville-cmr-goods tr,
