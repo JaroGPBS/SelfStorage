@@ -8824,38 +8824,39 @@
   border-bottom-color:#eab7c1;
 }
 
-/* Glow on the category heading only: green = OK, red = NOK.
-   The serial cells and SUMA keep their existing neutral appearance. */
+/* Belleville category headers: restrained accent immediately beside the left stripe.
+   OK = green, NOK = red. Keep column headers and SUMA unchanged. */
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-ok .belleville-serial-group-heading{
-  --belleville-neon:#2aa46a;
-  --belleville-neon-glow:rgba(36,172,103,.66);
-  --belleville-neon-soft:rgba(36,172,103,.28);
-  --belleville-neon-wash:#e1f2e8;
-  color:#2d7450;
+  --belleville-neon:#2f9a67;
+  --belleville-neon-glow:rgba(47,154,103,.22);
+  --belleville-neon-soft:rgba(47,154,103,.07);
+  --belleville-neon-wash:rgba(47,154,103,.12);
+  color:#356f53;
 }
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading{
-  --belleville-neon:#dc3e50;
-  --belleville-neon-glow:rgba(224,57,78,.68);
-  --belleville-neon-soft:rgba(224,57,78,.30);
-  --belleville-neon-wash:#f9dce2;
-  color:#9b3040;
+  --belleville-neon:#cf4a5b;
+  --belleville-neon-glow:rgba(207,74,91,.20);
+  --belleville-neon-soft:rgba(207,74,91,.06);
+  --belleville-neon-wash:rgba(207,74,91,.12);
+  color:#8d3b47;
 }
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-ok .belleville-serial-group-heading,
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading{
   position:relative;
   border-left:0;
-  padding-left:13px;
-  background:linear-gradient(90deg,var(--belleville-neon-wash) 0%,#eff1f4 38%);
+  padding-left:12px;
+  background:linear-gradient(90deg,var(--belleville-neon-wash) 0,transparent 80px),#eff1f4;
 }
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-ok .belleville-serial-group-heading::before,
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading::before{
   content:"";
   position:absolute;
   left:0;
-  top:0;
-  bottom:0;
+  top:1px;
+  bottom:1px;
   width:4px;
+  border-radius:2px;
   background:var(--belleville-neon);
-  box-shadow:0 0 8px 2px var(--belleville-neon-glow),
-             0 0 17px 4px var(--belleville-neon-soft);
+  box-shadow:0 0 4px 1px var(--belleville-neon-glow),
+             0 0 9px 2px var(--belleville-neon-soft);
 }
