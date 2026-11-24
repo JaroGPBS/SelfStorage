@@ -9508,11 +9508,11 @@
 .belleville-cmr-print .belleville-cmr-f5{height:10mm}
 .belleville-cmr-print .belleville-cmr-f16{height:19mm}
 .belleville-cmr-print .belleville-cmr-f17{height:12mm}
-.belleville-cmr-print .belleville-cmr-f18{height:37mm}
+.belleville-cmr-print .belleville-cmr-f18{height:25mm}
 .belleville-cmr-print .belleville-cmr-title{
-  flex:0 0 15mm;
+  flex:0 0 27mm;
   min-width:0;
-  height:15mm;
+  height:27mm;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -9545,7 +9545,7 @@
 }
 .belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f16{height:19mm}
 .belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f17{height:12mm}
-.belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f18{height:37mm}
+.belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f18{height:25mm}
 .belleville-cmr-print .belleville-cmr-goods{
   width:100%;
   display:flex;
