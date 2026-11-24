@@ -115,7 +115,9 @@
     '<tr><td class="belleville-doc-type">'+escape(group.type)+' '+statusLabel(group.status)+'</td>'+
     '<td class="num">'+group.serials.length+'</td>'+
     '<td><div class="belleville-doc-serials">'+group.serials.map(s=>
-      '<span>'+escape(s)+'</span>').join('')+'</div></td></tr>'
+      '<span class="belleville-doc-serial'+
+        (doc.direction==='PZ'&&group.status==='NOK'?' belleville-doc-serial-nok':'')+
+        '">'+escape(s)+'</span>').join('')+'</div></td></tr>'
   ).join('');
   const partRows=doc=>doc.parts.map(part=>
     '<tr><td>'+escape(part.sap)+'</td><td>'+escape(part.name)+'</td>'+
@@ -129,28 +131,28 @@
         '<tbody>'+moduleRows(doc)+'</tbody></table></div>'
       :'<p class="belleville-doc-muted">W tej operacji nie było modułów.</p>';
     const parts=doc.parts.length
-      ?'<div class="belleville-doc-subtable"><table><thead><tr>'+
+      ?'<div class="belleville-doc-subtable belleville-doc-parts"><table><thead><tr>'+
         '<th>Indeks SAP</th><th>Nazwa części</th><th>Ilość (szt.)</th></tr></thead>'+
         '<tbody>'+partRows(doc)+'</tbody></table></div>'
       :'<p class="belleville-doc-muted">Brak części w tej operacji.</p>';
     return '<div class="belleville-doc-detail">'+
       '<div class="belleville-doc-detail-head"><strong>'+escape(doc.id)+'</strong>'+
       '<span>DANE FIKCYJNE · PODGLĄD</span></div>'+
-      '<div class="belleville-doc-meta">'+
-        '<div><span>Data i godzina</span><strong>'+formatDate(doc)+' · '+escape(doc.time)+'</strong></div>'+
-        '<div><span>Przyjmował / wydawał</span><strong>'+escape(doc.worker)+'</strong></div>'+
-        '<div><span>Przewoźnik</span><strong>'+escape(doc.carrier)+'</strong></div>'+
-        '<div><span>Kierowca</span><strong>'+escape(doc.driver)+'</strong></div>'+
-        '<div><span>Numer trasy</span><strong>'+escape(doc.route)+'</strong></div>'+
-        '<div><span>Samochód</span><strong>'+escape(doc.truck)+'</strong></div>'+
-        '<div><span>Przyczepa / naczepa</span><strong>'+escape(doc.trailer)+'</strong></div>'+
+      '<div class="belleville-doc-top-grid">'+
+        '<div class="belleville-doc-meta">'+
+          '<div><span>'+(doc.direction==='PZ'?'Przyjmował':'Wydawał')+'</span><strong>'+escape(doc.worker)+'</strong></div>'+
+          '<div><span>Przewoźnik</span><strong>'+escape(doc.carrier)+'</strong></div>'+
+          '<div><span>Kierowca</span><strong>'+escape(doc.driver)+'</strong></div>'+
+          '<div><span>Samochód</span><strong>'+escape(doc.truck)+'</strong></div>'+
+          '<div><span>Przyczepa / naczepa</span><strong>'+escape(doc.trailer)+'</strong></div>'+
+        '</div>'+
+        '<div class="belleville-doc-comment"><strong>Dodatkowe informacje</strong><p>'+
+          escape(doc.comment||'Brak dodatkowych informacji.')+'</p></div>'+
       '</div>'+
       '<section class="belleville-doc-section"><h3>Moduły — '+doc.modules.length+' szt.</h3>'+
         modules+'</section>'+
       '<section class="belleville-doc-section"><h3>Części — '+doc.parts.length+' '+(doc.parts.length===1?'pozycja':'pozycje')+'</h3>'+
         parts+'</section>'+
-      '<div class="belleville-doc-comment"><strong>Dodatkowe informacje</strong><p>'+
-        escape(doc.comment||'Brak dodatkowych informacji.')+'</p></div>'+
       '<div class="belleville-doc-actions">'+
         (linked?'<button type="button" class="belleville-doc-action" data-belleville-demo-related="'+
           escape(linked.id)+'">Zobacz powiązaną '+linked.direction+' · '+escape(linked.id)+'</button>':'')+
