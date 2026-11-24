@@ -8952,12 +8952,22 @@
 }
 .app.view-fr-empty .belleville-doc-meta{
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  column-gap:13px;
-  row-gap:10px;
+  grid-template-columns:minmax(125px,150px) minmax(155px,220px) minmax(130px,1fr);
+  grid-template-areas:
+    "carrier driver worker"
+    "truck trailer date";
+  column-gap:12px;
+  row-gap:14px;
   align-content:start;
+  justify-content:start;
   margin:0;
 }
+.app.view-fr-empty .belleville-doc-field-carrier{grid-area:carrier}
+.app.view-fr-empty .belleville-doc-field-driver{grid-area:driver}
+.app.view-fr-empty .belleville-doc-field-worker{grid-area:worker}
+.app.view-fr-empty .belleville-doc-field-truck{grid-area:truck}
+.app.view-fr-empty .belleville-doc-field-trailer{grid-area:trailer}
+.app.view-fr-empty .belleville-doc-field-date{grid-area:date}
 .app.view-fr-empty .belleville-doc-meta>div{min-width:0}
 .app.view-fr-empty .belleville-doc-meta span{
   display:block;color:#7b8794;font-size:11px;margin-bottom:4px;
@@ -9044,6 +9054,14 @@
   .app.view-fr-empty .belleville-doc-comment{min-height:88px}
 }
 @media(max-width:690px){
+  .app.view-fr-empty .belleville-doc-meta{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-areas:
+      "carrier driver"
+      "worker date"
+      "truck trailer";
+    gap:12px;
+  }
   .app.view-fr-empty .belleville-doc-banner{font-size:11px}
   .app.view-fr-empty .belleville-doc-expansion>td{padding:0 5px 10px!important}
   .app.view-fr-empty .belleville-doc-detail{padding:11px}
