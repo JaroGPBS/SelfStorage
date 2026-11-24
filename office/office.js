@@ -1438,6 +1438,7 @@ function setHead(title,kicker,desc){
   $('export').classList.toggle('hidden',state.view==='frMovements');
   $('search').closest('.search-wrap').classList.toggle('hidden',state.view==='vehicles');
   $('search').placeholder=state.view==='frMovements'?'Szukaj: ekipa, data, rejestracja, część...':state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
+  if(isBellevilleDemoDocuments())$('search').placeholder='Szukaj: dokument, trasa, S/N, przewoźnik, część...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
