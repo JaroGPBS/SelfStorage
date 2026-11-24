@@ -3778,6 +3778,35 @@ function drawVehicles(){
   $('vehicleTopScroll').classList.add('hidden');
 }
 
+// Belleville PZ/WZ layout review: client-only examples (never D1).
+function isBellevilleDemoDocuments(){
+  return Boolean(window.GPBSBellevilleDocsDemo&&
+    state.preview?.type==='operation'&&state.preview.warehouseKey==='belleville'&&
+    (state.view==='pz'||state.view==='wz'));
+}
+function drawBellevilleDemoDocuments(){
+  if(!isBellevilleDemoDocuments())return;
+  const result=window.GPBSBellevilleDocsDemo.render(
+    state.view,state.search,state.expanded);
+  errorBanner('');
+  $('tableArea').innerHTML=result.html;
+  $('tableFooter').textContent=result.shown+' z '+result.total+
+    ' dokumentów pokazowych · brak zapisu do D1.';
+  $('searchNote').classList.toggle('hidden',!state.search.trim());
+  $('searchNote').textContent=state.search.trim()
+    ?'Znaleziono '+result.shown+' z '+result.total+' przykładów.':'';
+  $('vehicleTopScroll').classList.add('hidden');
+}
+function openBellevilleDemoDocumentPrint(id){
+  if(!isBellevilleDemoDocuments())return;
+  const sheet=window.GPBSBellevilleDocsDemo.printHtml(id);
+  if(!sheet||sheet.direction!==(state.view==='pz'?'PZ':'WZ'))return;
+  $('docPrintTitle').textContent='Podgląd '+sheet.direction+' · DANE FIKCYJNE';
+  $('docPrintSheet').innerHTML=sheet.html;
+  $('docPrintModal').classList.remove('hidden');
+  $('docPrintClose').focus();
+}
+
 function drawFrenchEmptyView(){
   const view=state.view;
   const headers={
@@ -3863,7 +3892,9 @@ async function render({silent=false}={}){
     return;
   }
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    drawFrenchEmptyView();return;
+    if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
+    else drawFrenchEmptyView();
+    return;
   }
   if(state.view==='preview')return;
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){
@@ -4005,7 +4036,9 @@ function filterCurrent(){
   if(state.view==='frMovements'){drawFrBoxMovements();return;}
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    drawFrenchEmptyView();return;
+    if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
+    else drawFrenchEmptyView();
+    return;
   }
   if(state.preview?.type==='warehouse'&&state.view==='stocks'){
     if(state.stockTab==='modules')drawModules();
@@ -4142,6 +4175,33 @@ function closeModal(){
   $('modalBody').innerHTML='';
 }
 document.addEventListener('click',e=>{
+  const demoToggle=e.target.closest('[data-belleville-demo-toggle]');
+  if(demoToggle&&isBellevilleDemoDocuments()){
+    const id=demoToggle.dataset.bellevilleDemoToggle;
+    const doc=window.GPBSBellevilleDocsDemo.find(id);
+    if(!doc||doc.direction!==(state.view==='pz'?'PZ':'WZ'))return;
+    state.expanded=state.expanded===id?null:id;
+    drawBellevilleDemoDocuments();
+    return;
+  }
+  const demoRelated=e.target.closest('[data-belleville-demo-related]');
+  if(demoRelated&&isBellevilleDemoDocuments()){
+    const doc=window.GPBSBellevilleDocsDemo.find(demoRelated.dataset.bellevilleDemoRelated);
+    if(!doc)return;
+    showOfficePreview('operation',doc.direction.toLowerCase(),
+      doc.direction==='PZ'?'Przyjęcia':'Wydania',
+      {warehouseKey:'belleville',warehouseName:'Belleville'});
+    state.expanded=doc.id;
+    drawBellevilleDemoDocuments();
+    $('tableArea').querySelector('[data-belleville-demo-toggle="'+doc.id+'"]')
+      ?.scrollIntoView({block:'nearest',behavior:'smooth'});
+    return;
+  }
+  const demoPrint=e.target.closest('[data-belleville-demo-print]');
+  if(demoPrint&&isBellevilleDemoDocuments()){
+    openBellevilleDemoDocumentPrint(demoPrint.dataset.bellevilleDemoPrint);
+    return;
+  }
   if(e.target.closest('[data-bovis-export-preview]')){
     drawBovisParisExportPreview();return;
   }
