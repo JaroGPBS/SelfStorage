@@ -192,8 +192,10 @@
         '<td class="num">'+doc.parts.length+' poz.</td>'+
         '<td><button type="button" class="belleville-doc-toggle" aria-expanded="'+
           String(isExpanded)+'" data-belleville-demo-toggle="'+escape(doc.id)+'">'+
-          (isExpanded?'Zwiń':'Szczegóły')+' <span aria-hidden="true">'+(isExpanded?'⌃':'⌄')+'</span>'+
-          '</button></td></tr>'+
+          (isExpanded?'Zwiń':'Szczegóły')+
+          '<svg class="belleville-doc-chevron" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+
+            '<path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+          '</svg></button></td></tr>'+
         (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="7">'+details(doc)+'</td></tr>':'');
     }).join('')||'<tr><td class="belleville-doc-no-results" colspan="7">Brak pasujących dokumentów pokazowych.</td></tr>';
     return {
