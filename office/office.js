@@ -2228,7 +2228,7 @@ function drawBellevilleModules(){
   if(summary){
     const rows=groups.map(group=>'<tr class="module-group-row"><th colspan="4" scope="rowgroup">'+
       escapeHtml(group.name)+'</th></tr>'+
-      (state.sortReverse?[...group.types].reverse():group.types).map(type=>
+      group.types.map(type=>
         '<tr><th scope="row" class="module-type">'+escapeHtml(type)+'</th>'+
         '<td class="num">'+missing+'</td><td class="num">'+missing+'</td>'+
         '<td class="num module-count-total">'+missing+'</td></tr>').join('')
