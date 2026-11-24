@@ -1507,7 +1507,9 @@ function syncStockTabUI(){
   const secondary=modules||nok;
   const belleville=isBellevilleStock();
   const bellevilleSummary=belleville&&modules&&state.bellevilleModuleStatus==='sum';
+  const bellevilleNok=belleville&&modules&&state.bellevilleModuleStatus==='nok';
   $('app').classList.toggle('view-belleville-stock',belleville);
+  $('app').classList.toggle('view-belleville-module-nok',bellevilleNok);
   $('stockTabs').classList.toggle('belleville-stock-tabs',belleville);
   $('app').classList.toggle('view-modules',modules);
   $('moduleCategories').classList.toggle('hidden',!modules);
