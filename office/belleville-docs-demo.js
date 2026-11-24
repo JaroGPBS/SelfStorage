@@ -195,16 +195,18 @@
           (isExpanded?'Zwiń':'Szczegóły')+
           '<svg class="belleville-doc-chevron" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+
             '<path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
-          '</svg></button></td></tr>'+
-        (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="7">'+details(doc)+'</td></tr>':'');
-    }).join('')||'<tr><td class="belleville-doc-no-results" colspan="7">Brak pasujących dokumentów pokazowych.</td></tr>';
+          '</svg></button></td>'+
+        '<td class="belleville-doc-print-cell"><button type="button" class="belleville-doc-action" '+
+          'data-belleville-demo-direct-print="'+escape(doc.id)+'" aria-label="Drukuj '+escape(doc.id)+'">Drukuj</button></td></tr>'+
+        (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="8">'+details(doc)+'</td></tr>':'');
+    }).join('')||'<tr><td class="belleville-doc-no-results" colspan="8">Brak pasujących dokumentów pokazowych.</td></tr>';
     return {
       html:'<div class="belleville-doc-demo">'+
         '<p class="belleville-doc-banner">DANE FIKCYJNE — PODGLĄD UKŁADU. Nic nie zapisuje się do D1 ani nie zmienia stanów magazynowych.</p>'+
         '<div class="belleville-doc-table-scroll">'+
         '<table class="table belleville-doc-table"><thead><tr>'+
         '<th>Numer '+direction+'</th><th>Tydz.</th><th>Data i godzina</th>'+
-        '<th>Trasa</th><th>Moduły</th><th>Części</th><th></th>'+
+        '<th>Trasa</th><th>Moduły</th><th>Części</th><th></th><th></th>'+
         '</tr></thead><tbody>'+rows+'</tbody></table></div></div>',
       shown:list.length,total:3
     };
