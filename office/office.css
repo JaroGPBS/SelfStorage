@@ -8895,15 +8895,14 @@
   text-align:left;
   white-space:nowrap;
 }
-.app.view-fr-empty .belleville-doc-table :is(th,td):nth-child(n+2):nth-child(-n+8){
+.app.view-fr-empty .belleville-doc-table :is(th,td):nth-child(n+2):nth-child(-n+7){
   text-align:center;
 }
 .app.view-fr-empty .belleville-doc-table td{
   font-size:12px;
   vertical-align:middle;
 }
-.app.view-fr-empty .belleville-doc-main-row td:nth-child(7),
-.app.view-fr-empty .belleville-doc-main-row td:nth-child(8){
+.app.view-fr-empty .belleville-doc-main-row td:nth-child(7){
   white-space:nowrap;
 }
 .app.view-fr-empty .belleville-doc-table .belleville-doc-print-cell{
