@@ -8834,11 +8834,11 @@
   color:#356f53;
 }
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading{
-  --belleville-neon:#cf4a5b;
-  --belleville-neon-glow:rgba(207,74,91,.20);
-  --belleville-neon-soft:rgba(207,74,91,.06);
-  --belleville-neon-wash:rgba(207,74,91,.12);
-  color:#8d3b47;
+  --belleville-neon:#c85a68;
+  --belleville-neon-glow:rgba(200,90,104,.12);
+  --belleville-neon-soft:rgba(200,90,104,.04);
+  --belleville-neon-wash:rgba(200,90,104,.08);
+  color:#8a3f49;
 }
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-ok .belleville-serial-group-heading,
 .app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading{
@@ -8859,4 +8859,13 @@
   background:var(--belleville-neon);
   box-shadow:0 0 4px 1px var(--belleville-neon-glow),
              0 0 9px 2px var(--belleville-neon-soft);
+}
+
+/* NOK only: softer, more diffuse halo without changing the green OK accent. */
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading{
+  background:linear-gradient(90deg,var(--belleville-neon-wash) 0,transparent 90px),#eff1f4;
+}
+.app.view-stocks.view-belleville-stock.view-modules.view-belleville-module-nok .belleville-serial-group-heading::before{
+  box-shadow:0 0 5px 1px var(--belleville-neon-glow),
+             0 0 12px 3px var(--belleville-neon-soft);
 }
