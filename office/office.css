@@ -8888,19 +8888,23 @@
 .app.view-fr-empty .belleville-doc-table-scroll{width:100%;overflow-x:auto}
 .app.view-fr-empty .belleville-doc-table{
   width:100%;
-  min-width:690px;
+  min-width:1040px;
   table-layout:auto;
 }
 .app.view-fr-empty .belleville-doc-table th{
   text-align:left;
   white-space:nowrap;
 }
-.app.view-fr-empty .belleville-doc-table :is(th,td):nth-child(n+2):nth-child(-n+6){
+.app.view-fr-empty .belleville-doc-table :is(th,td):nth-child(n+2):nth-child(-n+8){
   text-align:center;
 }
 .app.view-fr-empty .belleville-doc-table td{
   font-size:12px;
   vertical-align:middle;
+}
+.app.view-fr-empty .belleville-doc-main-row td:nth-child(7),
+.app.view-fr-empty .belleville-doc-main-row td:nth-child(8){
+  white-space:nowrap;
 }
 .app.view-fr-empty .belleville-doc-table .belleville-doc-print-cell{
   text-align:right;
