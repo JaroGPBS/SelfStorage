@@ -301,5 +301,94 @@
       '</div>'
     };
   }
-  window.GPBSBellevilleDocsDemo={render,printHtml,find:byId};
+  // CMR prototype based on MagBelleville -> "CMR Szablon" (fields 1-24).
+  // A WZ does not include consignee address, package count, weight or volume;
+  // keep these fields blank rather than deriving them from route or part count.
+  function cmrHtml(id){
+    const doc=byId(id);
+    if(!doc||doc.direction!=='WZ')return null;
+    const field=(num,pl,en,value='',extra='')=>
+      '<section class="belleville-cmr-field '+extra+'">'+
+        '<div class="belleville-cmr-field-head"><b>'+escape(num)+'</b><span>'+escape(pl)+
+          '<small>'+escape(en)+'</small></span></div>'+
+        '<div class="belleville-cmr-field-value">'+escape(value)+'</div>'+
+      '</section>';
+    const goodsRow=(marks,nature)=>'<tr>'+
+      '<td>'+escape(marks)+'</td><td></td><td></td>'+
+      '<td>'+escape(nature)+'</td><td></td><td></td><td></td>'+
+      '</tr>';
+    const grouped=groupModules(doc.modules);
+    const moduleLines=grouped.map(item=>goodsRow(
+      'S/N: '+item.serials.join(' · '),
+      'Moduł '+item.type+' '+item.status+' — '+item.serials.length+' szt.'
+    ));
+    const partLines=doc.parts.map(item=>goodsRow(
+      'SAP: '+item.sap,'Część: '+item.name+' — '+item.qty+' szt.'
+    ));
+    const goodsLines=[...moduleLines,...partLines].join('')||goodsRow('','');
+    const sender='Global Post Box Service\nul. Nad Jeziorem 85\n43-100 Tychy, Polska';
+    const loading='Belleville-en-Beaujolais, 185 Rue Gabriel Voisin\n69220, Francja\n'+formatDate(doc);
+    const agreements='Trasa: '+doc.route+
+      '\nKierowca: '+doc.driver+
+      '\nSamochód: '+doc.truck+
+      (doc.trailer&&doc.trailer!=='—'?'\nPrzyczepa / naczepa: '+doc.trailer:'');
+    const signature=(num,pl,en)=>
+      '<section class="belleville-cmr-signature"><div class="belleville-cmr-sign-title">'+
+      '<b>'+num+'</b><span>'+escape(pl)+'<small>'+escape(en)+'</small></span></div>'+
+      '<div class="belleville-cmr-sign-blank"></div></section>';
+    return {direction:'CMR',sourceWz:doc.id,html:
+      '<div class="belleville-cmr-print">'+
+        '<div class="belleville-cmr-upper">'+
+          '<div class="belleville-cmr-upper-left">'+
+            field(1,'Nadawca (nazwa, adres, kraj)','Sender (name, address, country)',sender,'belleville-cmr-large')+
+            field(2,'Odbiorca (nazwa, adres, kraj)','Consignee (name, address, country)','','belleville-cmr-large')+
+            field(3,'Miejsce przeznaczenia (miejscowość, kraj)','Place of delivery of the goods')+
+            field(4,'Miejsce i data załadowania','Place and date of taking over the goods',loading)+
+            field(5,'Załączone dokumenty','Documents attached','WZ: '+doc.id)+
+          '</div>'+
+          '<div class="belleville-cmr-upper-right">'+
+            '<header class="belleville-cmr-title">'+
+              '<strong>MIĘDZYNARODOWY SAMOCHODOWY LIST PRZEWOZOWY</strong>'+
+              '<span>INTERNATIONAL CONSIGNEMENT NOTE</span>'+
+              '<div>CMR <span>№ __________</span></div>'+
+              '<p>Niniejszy przewóz podlega postanowieniom konwencji CMR.<small>'+
+                'This carriage is subject to the CMR Convention.</small></p>'+
+            '</header>'+
+            field(16,'Przewoźnik (nazwa, adres, kraj)','Carrier (name, address, country)',doc.carrier,'belleville-cmr-large')+
+            field(17,'Kolejni przewoźnicy','Successive carriers')+
+            field(18,'Zastrzeżenia i uwagi przewoźnika','Carrier’s reservations and observations','', 'belleville-cmr-large')+
+          '</div>'+
+        '</div>'+
+        '<div class="belleville-cmr-goods">'+
+          '<table><thead><tr>'+
+            '<th><b>6</b> Cechy i numery<small>Marks and Nos</small></th>'+
+            '<th><b>7</b> Ilość sztuk<small>Number of packages</small></th>'+
+            '<th><b>8</b> Sposób opakowania<small>Method of packing</small></th>'+
+            '<th><b>9</b> Rodzaj towaru<small>Nature of the goods</small></th>'+
+            '<th><b>10</b> Nr statystyczny<small>Statistical No.</small></th>'+
+            '<th><b>11</b> Waga brutto (kg)<small>Gross weight (kg)</small></th>'+
+            '<th><b>12</b> Objętość (m³)<small>Volume (m³)</small></th>'+
+          '</tr></thead><tbody>'+goodsLines+'</tbody></table>'+
+        '</div>'+
+        '<div class="belleville-cmr-lower">'+
+          '<div class="belleville-cmr-lower-left">'+
+            field(13,'Instrukcje nadawcy','Sender’s instructions','','belleville-cmr-large')+
+            field(14,'Zapłata','Cash on delivery')+
+            field(15,'Postanowienia odnośnie przewoźnego','Instructions as to payment of carriage', 'Przewoźne zapłacone ☐    Przewoźne nieopłacone ☐')+
+          '</div>'+
+          '<div class="belleville-cmr-lower-right">'+
+            field(19,'Do zapłacenia: nadawca / waluta / odbiorca','To be paid by: sender / currency / consignee','','belleville-cmr-large')+
+            field(20,'Postanowienia specjalne','Special agreements',agreements,'belleville-cmr-large')+
+          '</div>'+
+        '</div>'+
+        field(21,'Wystawiono w / dnia','Established in / on','Belleville-en-Beaujolais, '+formatDate(doc),'belleville-cmr-issue')+
+        '<div class="belleville-cmr-signatures">'+
+          signature(22,'Podpis i stempel nadawcy','Signature and stamp of sender')+
+          signature(23,'Podpis i stempel przewoźnika','Signature and stamp of carrier')+
+          signature(24,'Podpis i stempel odbiorcy','Signature and stamp of consignee')+
+        '</div>'+
+      '</div>'
+    };
+  }
+  window.GPBSBellevilleDocsDemo={render,printHtml,cmrHtml,find:byId};
 })();
