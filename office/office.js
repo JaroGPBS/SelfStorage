@@ -137,7 +137,7 @@ function normalizeFrBoxVisits(records){
           returned:Number(line.returned)||0})) :[]};
   }).filter(Boolean).sort(frPreviewVisitSort);
 }
-const BELLEVILLE_SERVICE={key:'service',name:'Serwisy',icon:'⚙'};
+const BELLEVILLE_SERVICE={key:'service',name:'Zaopatrzenie ekipy',icon:'⚙'};
 // TEMPORARY POLISH OFFICE PREVIEW ONLY. These two imaginary crews and all
 // quantities exist only in client-side JavaScript. Never write them into D1.
 // Delete this block and drawPolishVehiclePreview when the layout is approved.
