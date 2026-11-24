@@ -9086,7 +9086,7 @@
   font-variant-numeric:tabular-nums;
 }
 .doc-print-sheet:has(> .belleville-demo-print){
-  padding:10mm 12mm 10mm;
+  padding:10mm 12mm 10mm 28mm;
 }
 .belleville-demo-print .doc-print-letterhead{
   align-items:flex-end;
@@ -9304,7 +9304,7 @@
 .belleville-demo-print .doc-print-signature span{font-size:9px}
 @media print{
   body.printing-office-document .doc-print-sheet:has(> .belleville-demo-print){
-    padding:10mm 12mm 10mm!important;
+    padding:10mm 12mm 10mm 28mm!important;
   }
   body.printing-office-document .belleville-demo-print{
     width:100%!important;
