@@ -197,12 +197,12 @@
           '<svg class="belleville-doc-chevron" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+
             '<path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
           '</svg></button></td>'+
-        '<td class="belleville-doc-print-cell"><button type="button" class="belleville-doc-action" '+
-          'data-belleville-demo-direct-print="'+escape(doc.id)+'" aria-label="Drukuj '+escape(doc.id)+'">Drukuj</button></td>'+
         (doc.direction==='WZ'
           ?'<td class="belleville-doc-cmr-cell"><button type="button" class="belleville-doc-action belleville-doc-cmr-action" '+
             'data-belleville-demo-cmr="'+escape(doc.id)+'" aria-label="Drukuj CMR dla '+escape(doc.id)+'">CMR</button></td>'
-          :'')+'</tr>'+
+          :'')+
+        '<td class="belleville-doc-print-cell"><button type="button" class="belleville-doc-action" '+
+          'data-belleville-demo-direct-print="'+escape(doc.id)+'" aria-label="Drukuj '+escape(doc.id)+'">Drukuj</button></td></tr>'+
         (isExpanded?'<tr class="belleville-doc-expansion"><td colspan="'+
           (doc.direction==='WZ'?'10':'9')+'">'+details(doc)+'</td></tr>':'');
     }).join('')||'<tr><td class="belleville-doc-no-results" colspan="'+(direction==='WZ'?'10':'9')+'">Brak pasujących dokumentów pokazowych.</td></tr>';
