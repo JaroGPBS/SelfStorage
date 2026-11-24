@@ -5,7 +5,7 @@ import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrCarClaims,normalPlate} from '../../lib/fr-car-claims.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
 import {BOX_CATALOG_SNAPSHOT} from '../../lib/box-catalog-20261111.js';
-import {activeBoxCatalogItems} from '../../lib/fr-box-office-stock.js';
+import {activeBoxCatalogItems,readFrBoxOfficeParts} from '../../lib/fr-box-office-stock.js';
 
 // One authoritative, 78-item list for both self-service BOX warehouses.
 const BOX_CATALOG_VERSION='FR-BOX-78-20261111';
@@ -578,6 +578,25 @@ async function action(db,user,body){
         "WHERE w.country_code='FR' AND w.active=1"
       ).all()).results.map(w=>({id:w.id,nazwa:w.name,kodQr:w.code,aktywny:true,gotowy:true})),
       ustawienia:{logowanieOfflineDni:0,autoSynchronizacja:true,whatsappAlert:false}};
+  }
+  if(type==='POBIERZ_STANY_BOX'){
+    const boxId=clean(data.magazynId);
+    if(!BOX_WAREHOUSES.has(boxId))
+      throw Error('Wybierz Box Paryż lub Box Tuluza.');
+    const enabled=await db.prepare(
+      "SELECT id FROM warehouses WHERE id=? AND country_code='FR' AND active=1"
+    ).bind(boxId).first();
+    if(!enabled)throw Error('Wybrany BOX jest nieaktywny lub niedostępny.');
+    // Same active BOX catalogue as Office. Only confirmed D1 quantities are
+    // displayed: never substitute an import snapshot for live inventory.
+    const result=await readFrBoxOfficeParts(db,boxId);
+    return {ok:true,magazynId:boxId,magazyn:BOX_WAREHOUSES.get(boxId),
+      czesci:result.parts.map(part=>({
+        id:part.id,nazwa:part.name,
+        stan:part.stock_source==='D1'&&
+          part.quantity!==null&&Number.isFinite(Number(part.quantity))
+            ?Number(part.quantity):null
+      }))};
   }
   if(type==='USTAW_SAMOCHOD'){
     const car=await assignVehicle(db,user,data.numerRejestracyjny);

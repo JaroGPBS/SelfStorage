@@ -1155,3 +1155,40 @@ body:has(#screenWarehouse.active) .app-signature img{
   color:#fff;
   font-weight:850;
 }
+
+
+/* FR crews: minimal, read-only stock table for the two fixed self-storage BOXes. */
+#screenWarehouse .crew-box-stock-entry{
+  min-height:48px;
+  margin-top:14px;
+  font-size:15px;
+  background:#343c47;
+  border:1px solid rgba(255,255,255,.12);
+}
+.box-stock-screen{padding:8px 0 25px;min-width:0}
+.box-stock-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.box-stock-header h2{margin:0;font-size:24px}
+.box-stock-header .instruction-link-btn{flex:0 0 auto}
+.box-stock-chooser{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:18px}
+.box-stock-choice{margin:0;min-height:49px;padding:12px 7px;background:#353c46;border:1px solid var(--line);font-size:14px}
+.box-stock-choice.active{background:#35577b;border-color:#6297ce;color:#fff}
+.box-stock-content{min-width:0}
+.box-stock-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+.box-stock-toolbar strong{font-size:17px;font-weight:800}
+.box-stock-toolbar .instruction-link-btn{flex:0 0 auto}
+.box-stock-search{min-height:42px;margin-bottom:12px}
+.box-stock-table-wrap{width:100%;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.box-stock-table{width:100%;border-collapse:collapse;table-layout:fixed;text-align:left}
+.box-stock-table th{background:#303842;color:#d5dce5;font-size:12px;letter-spacing:.02em}
+.box-stock-table td,.box-stock-table th{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.box-stock-table th:first-child,.box-stock-table td:first-child{width:79%;overflow-wrap:anywhere}
+.box-stock-table th:last-child,.box-stock-table td:last-child{width:21%;text-align:center}
+.box-stock-table tbody tr:last-child td{border-bottom:0}
+.box-stock-table tbody td{font-size:13px;line-height:1.4}
+.box-stock-table .box-stock-qty{font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;color:#f0f3f7}
+.box-stock-table .box-stock-empty{text-align:center;color:var(--muted);padding:28px 12px}
+.box-stock-footer{margin:11px 2px 0;font-size:12px;color:var(--muted)}
+.box-stock-error{margin:12px 0;color:#ffb7ba;font-size:13px;line-height:1.5}
+@media(max-height:680px){
+  #screenWarehouse .warehouse-scan-area{margin-top:35px}
+}
