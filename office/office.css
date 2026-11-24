@@ -8904,10 +8904,10 @@
 .app.view-fr-empty .belleville-doc-main-row td:first-child strong{white-space:nowrap}
 .app.view-fr-empty .belleville-doc-datetime{
   display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  justify-content:center;
-  gap:2px;
+  flex-direction:row;
+  align-items:baseline;
+  justify-content:flex-start;
+  gap:7px;
 }
 .app.view-fr-empty .belleville-doc-date,
 .app.view-fr-empty .belleville-doc-time{display:block;white-space:nowrap}
