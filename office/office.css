@@ -8895,6 +8895,9 @@
   text-align:left;
   white-space:nowrap;
 }
+.app.view-fr-empty .belleville-doc-table :is(th,td):nth-child(n+2):nth-child(-n+6){
+  text-align:center;
+}
 .app.view-fr-empty .belleville-doc-table td{
   font-size:12px;
   vertical-align:middle;
@@ -8911,7 +8914,7 @@
   display:flex;
   flex-direction:row;
   align-items:baseline;
-  justify-content:flex-start;
+  justify-content:center;
   gap:7px;
 }
 .app.view-fr-empty .belleville-doc-date,
