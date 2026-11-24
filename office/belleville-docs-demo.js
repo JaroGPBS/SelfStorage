@@ -367,7 +367,8 @@
               '<strong>19+20+21+22</strong><span>włącznie oraz<small>including</small></span>'+
               '<strong>1-15</strong>'+
               '<span>Do wypełnienia pod odpowiedzialnością nadawcy'+
-              '<small>To be completed on sender’s responsability</small></span>'+
+              '<small>Auszufüllen auf Verantwortung des Absenders</small>'+
+              '<small>To be completed on sender&#39;s responsability</small></span>'+
             '</div>'+
           '</aside>'+
           '<div class="belleville-cmr-form">'+
@@ -422,8 +423,13 @@
                 field(20,'Postanowienia specjalne','Special agreements',agreements,'belleville-cmr-f20')+
               '</div>'+
             '</div>'+
-            field(21,'Wystawiono w     dnia','Established in     on',
-              'Belleville-en-Beaujolais                       '+date,'belleville-cmr-issue')+
+            '<section class="belleville-cmr-issue">'+
+              '<b>21</b>'+
+              '<span>Wystawiono w<small>Established in</small></span>'+
+              '<strong>Belleville-en-Beaujolais</strong>'+
+              '<span>dnia<small>on</small></span>'+
+              '<strong>'+e(date)+'</strong>'+
+            '</section>'+
             '<div class="belleville-cmr-signatures">'+
               signature(22,'Podpis i stempel nadawcy','Signature and stamp of the sender')+
               signature(23,'Podpis i stempel przewoźnika','Signature and stamp of the carrier')+
