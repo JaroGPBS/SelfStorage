@@ -9089,8 +9089,12 @@
   padding:0 0 12px;
   border-bottom:2px solid #30343b;
 }
-.belleville-demo-print .doc-print-brand strong{font-size:25px}
-.belleville-demo-print .doc-print-brand span{font-size:11px}
+.belleville-demo-print .doc-print-brand .belleville-demo-print-logo{
+  display:block;
+  width:135px;
+  height:auto;
+  max-width:100%;
+}
 .belleville-demo-print .doc-print-region{
   font-size:10px;
   font-weight:700;
