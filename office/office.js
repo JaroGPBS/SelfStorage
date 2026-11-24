@@ -1506,12 +1506,16 @@ function syncStockTabUI(){
   const nok=state.view==='stocks'&&state.stockTab==='nok'&&!process;
   const secondary=modules||nok;
   const belleville=isBellevilleStock();
+  const bellevilleSummary=belleville&&modules&&state.bellevilleModuleStatus==='sum';
   $('app').classList.toggle('view-belleville-stock',belleville);
   $('stockTabs').classList.toggle('belleville-stock-tabs',belleville);
   $('app').classList.toggle('view-modules',modules);
   $('moduleCategories').classList.toggle('hidden',!modules);
   $('moduleCategories').querySelector('[data-module-category="all"]')
     .classList.toggle('hidden',belleville);
+  // Keep the Bovis abbreviation unchanged; Belleville uses the full brand label.
+  $('moduleCategories').querySelector('[data-module-category="bq"]').textContent=
+    belleville?'Bloq.it':'BQ';
   const moduleNotice=$('bellevilleModuleNotice');
   moduleNotice.classList.toggle('hidden',!belleville||!modules);
   if(belleville&&modules){
@@ -1539,8 +1543,9 @@ function syncStockTabUI(){
     $(id).classList.toggle('active',process===view);
     $(id).setAttribute('aria-selected',String(process===view));
   }
-  $('search').closest('.search-wrap').classList.toggle('hidden',Boolean(process));
-  $('sort').classList.toggle('hidden',Boolean(process)||!['stocks','aggregate'].includes(state.view));
+  $('search').closest('.search-wrap').classList.toggle('hidden',Boolean(process)||bellevilleSummary);
+  $('sort').classList.toggle('hidden',Boolean(process)||bellevilleSummary||
+    !['stocks','aggregate'].includes(state.view));
   $('export').classList.toggle('hidden',Boolean(process)||state.view==='frMovements');
   const sampleExport=isBovisParisModuleExample()&&!process;
   $('export').disabled=!sampleExport;
@@ -1574,6 +1579,7 @@ function setBellevilleStockTab(tab){
   ++state.requestId;
   state.stockTab=next;
   state.bellevilleModuleStatus=tab;
+  if(tab==='sum')state.sortReverse=false;
   state.moduleCategory='all';
   state.search='';
   state.expanded=null;
@@ -2212,6 +2218,7 @@ function drawBellevilleModules(){
     state.moduleCategory==='all'||group.id===state.moduleCategory
   ).map(group=>({
     ...group,
+    name:group.id==='bq'?'Bloq.it':group.name,
     // S/N records will be attached to the Belleville inventory later.
     // Do not make a type name look like a matching serial number.
     types:group.types.filter(()=>!search)
@@ -2221,7 +2228,7 @@ function drawBellevilleModules(){
   if(summary){
     const rows=groups.map(group=>'<tr class="module-group-row"><th colspan="4" scope="rowgroup">'+
       escapeHtml(group.name)+'</th></tr>'+
-      (state.sortReverse?[...group.types].reverse():group.types).map(type=>
+      group.types.map(type=>
         '<tr><th scope="row" class="module-type">'+escapeHtml(type)+'</th>'+
         '<td class="num">'+missing+'</td><td class="num">'+missing+'</td>'+
         '<td class="num module-count-total">'+missing+'</td></tr>').join('')

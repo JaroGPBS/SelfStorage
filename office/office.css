@@ -8591,14 +8591,14 @@
   overflow-x:visible;
 }
 .app.view-stocks.view-belleville-stock.view-modules .belleville-module-notice{
-  flex:1 1 200px;
-  margin-left:auto;
-  max-width:360px;
+  flex:0 1 380px;
+  margin-left:9px;
+  max-width:380px;
   color:#7b8693;
   font-size:11px;
   line-height:1.25;
   font-weight:500;
-  text-align:right;
+  text-align:left;
 }
 /* Belleville compact preview: halve vertical spacing without shrinking text. */
 .app.view-stocks.view-belleville-stock.view-modules .table-toolbar{
@@ -8652,6 +8652,11 @@
 .app.view-stocks.view-belleville-stock.view-modules .belleville-module-summary .module-group-row th{
   padding-top:5px;
   padding-bottom:5px;
+}
+/* Center module group names in Belleville, without altering the other markets. */
+.app.view-stocks.view-belleville-stock.view-modules .belleville-module-summary .module-group-row th,
+.app.view-stocks.view-belleville-stock.view-modules .belleville-module-serial-table .module-group-row th{
+  text-align:center;
 }
 .app.view-stocks.view-belleville-stock.view-modules .module-summary-table{
   width:620px;min-width:550px;max-width:620px;table-layout:fixed;
