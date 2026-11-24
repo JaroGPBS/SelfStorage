@@ -8586,7 +8586,19 @@
   min-width:130px;
 }
 .app.view-stocks.view-belleville-stock.view-modules .module-categories{
-  flex:0 1 auto;
+  flex:1 1 460px;
+  flex-wrap:wrap;
+  overflow-x:visible;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-module-notice{
+  flex:1 1 200px;
+  margin-left:auto;
+  max-width:360px;
+  color:#7b8693;
+  font-size:11px;
+  line-height:1.25;
+  font-weight:500;
+  text-align:right;
 }
 /* Belleville compact preview: halve vertical spacing without shrinking text. */
 .app.view-stocks.view-belleville-stock.view-modules .table-toolbar{
@@ -8600,6 +8612,37 @@
 .app.view-stocks.view-belleville-stock.view-modules .module-category{
   padding:4px 7px;
   min-height:27px;
+}
+/* Belleville's search, name sort and export match the category controls. */
+.app.view-stocks.view-belleville-stock.view-modules .table-toolbar{
+  column-gap:8px;
+}
+.app.view-stocks.view-belleville-stock.view-modules .search-wrap{
+  flex:0 1 205px;
+  width:205px;
+  min-width:175px;
+  max-width:220px;
+  height:27px;
+  padding:0 7px;
+  gap:5px;
+  margin-left:0;
+}
+.app.view-stocks.view-belleville-stock.view-modules .search-wrap span{
+  font-size:16px;
+}
+.app.view-stocks.view-belleville-stock.view-modules .search-wrap input{
+  font-size:11px;
+}
+.app.view-stocks.view-belleville-stock.view-modules .tools-right{
+  gap:3px;
+}
+.app.view-stocks.view-belleville-stock.view-modules .tools-right .btn{
+  height:27px;
+  min-height:27px;
+  padding:4px 7px;
+  font-size:11px;
+  line-height:1.15;
+  white-space:nowrap;
 }
 .app.view-stocks.view-belleville-stock.view-modules .belleville-module-summary th,
 .app.view-stocks.view-belleville-stock.view-modules .belleville-module-summary td{
@@ -8618,11 +8661,6 @@
 }
 .app.view-stocks.view-belleville-stock.view-modules .module-summary-table thead th:nth-child(n+2){
   width:136px;
-}
-.app.view-stocks.view-belleville-stock .belleville-module-note{
-  color:#687380;font-size:12px;line-height:1.45;
-  background:#f7f8fa;border-bottom:1px solid #e5e8ec;
-  padding:13px 17px;
 }
 .app.view-stocks.view-belleville-stock .belleville-module-table-scroll{
   width:100%;overflow-x:auto;
@@ -8651,5 +8689,24 @@
   }
   .app.view-stocks.view-belleville-stock .stock-tab.belleville-tab{
     min-width:0;max-width:none;width:100%;font-size:11px;padding:8px 9px;
+  }
+}
+
+@media(max-width:760px){
+  .app.view-stocks.view-belleville-stock.view-modules .module-categories{
+    flex:1 1 100%;
+    width:100%;
+    overflow-x:visible;
+  }
+  .app.view-stocks.view-belleville-stock.view-modules .belleville-module-notice{
+    flex:1 1 100%;
+    max-width:none;
+    margin-left:0;
+    text-align:left;
+  }
+  .app.view-stocks.view-belleville-stock.view-modules .search-wrap{
+    flex:1 1 175px;
+    max-width:none;
+    width:auto;
   }
 }

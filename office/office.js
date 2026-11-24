@@ -1512,6 +1512,14 @@ function syncStockTabUI(){
   $('moduleCategories').classList.toggle('hidden',!modules);
   $('moduleCategories').querySelector('[data-module-category="all"]')
     .classList.toggle('hidden',belleville);
+  const moduleNotice=$('bellevilleModuleNotice');
+  moduleNotice.classList.toggle('hidden',!belleville||!modules);
+  if(belleville&&modules){
+    moduleNotice.textContent=state.bellevilleModuleStatus==='sum'
+      ?'Układ zestawienia modułów · ilości pojawią się po podłączeniu ewidencji Belleville.'
+      :'Moduły '+state.bellevilleModuleStatus.toUpperCase()+
+        ' · nie ma jeszcze podłączonych rzeczywistych numerów seryjnych.';
+  }
   $('partsTab').classList.toggle('hidden',belleville);
   $('modulesTab').classList.toggle('hidden',belleville||
     (state.view==='stocks'&&frenchStockKind(state.warehouse,state.preview)==='box'));
@@ -1547,9 +1555,9 @@ function syncStockTabUI(){
     belleville&&modules?(state.bellevilleModuleStatus==='sum'?'Zestawienie modułów OK / NOK':
       'Numery seryjne modułów '+state.bellevilleModuleStatus.toUpperCase()):
     modules?'Stany magazynowe modułów':nok?'Części niekompletne (NOK)':'Aktualne stany części w magazynie';
-  $('search').placeholder=modules?(isBovisParisStock()?'Szukaj typu lub numeru seryjnego':
-    belleville&&state.bellevilleModuleStatus!=='sum'?'Szukaj typu lub numeru seryjnego':
-    'Szukaj typu modułu'):'Szukaj po SAP lub nazwie części';
+  $('search').placeholder=belleville&&modules?'Szukaj po numerze seryjnym':
+    modules?(isBovisParisStock()?'Szukaj typu lub numeru seryjnego':'Szukaj typu modułu'):
+    'Szukaj po SAP lub nazwie części';
   $('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   document.querySelectorAll('[data-module-category]').forEach(btn=>{
     const selected=btn.dataset.moduleCategory===state.moduleCategory;
@@ -2204,8 +2212,9 @@ function drawBellevilleModules(){
     state.moduleCategory==='all'||group.id===state.moduleCategory
   ).map(group=>({
     ...group,
-    types:group.types.filter(type=>!search||
-      (group.name+' '+type).toLocaleLowerCase('pl').includes(search))
+    // S/N records will be attached to the Belleville inventory later.
+    // Do not make a type name look like a matching serial number.
+    types:group.types.filter(()=>!search)
   })).filter(group=>group.types.length);
   const count=groups.reduce((sum,group)=>sum+group.types.length,0);
   const missing='<span class="belleville-module-unknown" title="Brak rzeczywistych danych magazynowych">—</span>';
@@ -2218,13 +2227,12 @@ function drawBellevilleModules(){
         '<td class="num module-count-total">'+missing+'</td></tr>').join('')
     ).join('');
     const noResults='<tr><td colspan="4" class="module-no-results">'+
-      'Brak pasujących typów modułów.</td></tr>';
+      (search?'Brak zapisanych numerów seryjnych do wyszukania.':'Brak pasujących typów modułów.')+
+      '</td></tr>';
     const footer=groups.length?'<tr class="module-grand-total">'+
       '<th scope="row">ŁĄCZNIE</th><td class="num">'+missing+'</td>'+
       '<td class="num">'+missing+'</td><td class="num">'+missing+'</td></tr>':'';
-    $('tableArea').innerHTML='<div class="belleville-module-note">'+
-      'Układ zestawienia modułów · ilości pojawią się po podłączeniu ewidencji Belleville.'+
-      '</div><div class="belleville-module-table-scroll">'+
+    $('tableArea').innerHTML='<div class="belleville-module-table-scroll">'+
       '<table class="table module-summary-table belleville-module-summary">'+
       '<thead><tr><th scope="col">Typ modułu</th>'+
       '<th scope="col" class="num">OK</th>'+
@@ -2245,10 +2253,9 @@ function drawBellevilleModules(){
       ).join('')
     ).join('');
     const noResults='<tr><td colspan="3" class="module-no-results">'+
-      'Brak pasujących typów modułów.</td></tr>';
-    $('tableArea').innerHTML='<div class="belleville-module-note">'+
-      'Moduły '+status+' · nie ma jeszcze podłączonych rzeczywistych numerów seryjnych.'+
-      '</div><div class="belleville-module-table-scroll">'+
+      (search?'Brak zapisanych numerów seryjnych do wyszukania.':'Brak pasujących typów modułów.')+
+      '</td></tr>';
+    $('tableArea').innerHTML='<div class="belleville-module-table-scroll">'+
       '<table class="table belleville-module-serial-table">'+
       '<thead><tr><th scope="col">Typ modułu</th>'+
       '<th scope="col">Numer seryjny</th>'+

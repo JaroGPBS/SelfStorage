@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=151">
+  <link rel="stylesheet" href="./office.css?v=152">
   <link rel="stylesheet" href="./pl-routes.css?v=61">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
@@ -123,7 +123,7 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=6"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./office.js?v=182"></script>
+  <script defer src="./office.js?v=183"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
   <script defer src="./pl-routes.js?v=66"></script>
 </head>
@@ -417,6 +417,7 @@
               <button type="button" class="module-category" data-module-category="indoor" aria-pressed="false">INDOOR</button>
               <button type="button" class="module-category" data-module-category="bq" aria-pressed="false">BQ</button>
               <button type="button" class="module-category" data-module-category="newgen" aria-pressed="false">NEW GEN</button>
+              <span id="bellevilleModuleNotice" class="belleville-module-notice hidden" role="status"></span>
             </div>
             <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" aria-label="Szukaj" placeholder="Szukaj po SAP lub nazwie części"></div>
             <div id="receiptToolbarInfo" class="receipt-toolbar-info hidden">
