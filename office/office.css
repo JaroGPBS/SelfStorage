@@ -8869,3 +8869,134 @@
   box-shadow:0 0 5px 1px var(--belleville-neon-glow),
              0 0 12px 3px var(--belleville-neon-soft);
 }
+
+
+/* Belleville PZ/WZ: temporary read-only sample documents. */
+.app.view-fr-empty .belleville-doc-demo{width:100%;min-width:0}
+.app.view-fr-empty .belleville-doc-banner{
+  margin:0 0 12px;
+  padding:9px 12px;
+  border:1px solid #dde2e7;
+  border-left:3px solid #8794a2;
+  border-radius:5px;
+  color:#596575;
+  background:#f6f8fa;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.5;
+}
+.app.view-fr-empty .belleville-doc-table-scroll{width:100%;overflow-x:auto}
+.app.view-fr-empty .belleville-doc-table{
+  width:100%;
+  min-width:690px;
+  table-layout:auto;
+}
+.app.view-fr-empty .belleville-doc-table th{
+  text-align:left;
+  white-space:nowrap;
+}
+.app.view-fr-empty .belleville-doc-table td{
+  font-size:12px;
+  vertical-align:middle;
+}
+.app.view-fr-empty .belleville-doc-table td.num{text-align:center;font-variant-numeric:tabular-nums}
+.app.view-fr-empty .belleville-doc-main-row td{padding-top:11px;padding-bottom:11px}
+.app.view-fr-empty .belleville-doc-main-row td:first-child strong{white-space:nowrap}
+.app.view-fr-empty .belleville-doc-date,
+.app.view-fr-empty .belleville-doc-time{display:block;white-space:nowrap}
+.app.view-fr-empty .belleville-doc-time{color:#7a8794;font-size:11px;margin-top:2px}
+.app.view-fr-empty .belleville-doc-comment-mark{margin-left:7px;color:#8c6d39;font-size:12px}
+.app.view-fr-empty .belleville-doc-toggle,
+.app.view-fr-empty .belleville-doc-action{
+  appearance:none;
+  border:1px solid #d1d9e1;
+  border-radius:6px;
+  padding:6px 10px;
+  background:#fff;
+  color:#344456;
+  font:inherit;
+  font-size:11px;
+  font-weight:650;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.app.view-fr-empty .belleville-doc-toggle:hover,
+.app.view-fr-empty .belleville-doc-action:hover{background:#f1f4f7;border-color:#aebbc7}
+.app.view-fr-empty .belleville-doc-toggle:focus-visible,
+.app.view-fr-empty .belleville-doc-action:focus-visible{outline:2px solid #658eae;outline-offset:2px}
+.app.view-fr-empty .belleville-doc-toggle span{margin-left:5px;font-size:15px;line-height:0}
+.app.view-fr-empty .belleville-doc-expansion:hover{background:transparent}
+.app.view-fr-empty .belleville-doc-expansion>td{
+  padding:0 13px 15px!important;
+  background:#fbfcfd;
+}
+.app.view-fr-empty .belleville-doc-detail{
+  border:1px solid #dfe4e9;
+  border-radius:8px;
+  background:#fff;
+  padding:15px 17px;
+  box-shadow:0 4px 14px rgba(29,40,51,.045);
+}
+.app.view-fr-empty .belleville-doc-detail-head{
+  display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+  border-bottom:1px solid #e6eaf0;padding-bottom:10px;margin-bottom:13px;
+}
+.app.view-fr-empty .belleville-doc-detail-head strong{color:#293644;font-size:14px}
+.app.view-fr-empty .belleville-doc-detail-head span{font-size:10px;font-weight:700;color:#7a8794}
+.app.view-fr-empty .belleville-doc-meta{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  column-gap:20px;row-gap:13px;margin-bottom:18px;
+}
+.app.view-fr-empty .belleville-doc-meta>div{min-width:0}
+.app.view-fr-empty .belleville-doc-meta span{
+  display:block;color:#7b8794;font-size:11px;margin-bottom:4px;
+}
+.app.view-fr-empty .belleville-doc-meta strong{
+  display:block;font-size:12px;font-weight:650;color:#303b46;
+  overflow-wrap:anywhere;
+}
+.app.view-fr-empty .belleville-doc-section{margin:16px 0}
+.app.view-fr-empty .belleville-doc-section h3{
+  margin:0 0 8px;font-size:13px;font-weight:750;color:#303b46;
+}
+.app.view-fr-empty .belleville-doc-subtable{max-width:100%;overflow-x:auto;border:1px solid #e0e5eb;border-radius:5px}
+.app.view-fr-empty .belleville-doc-subtable table{width:100%;border-collapse:collapse;font-size:12px}
+.app.view-fr-empty .belleville-doc-subtable th{
+  padding:8px 10px;text-align:left;color:#566373;background:#f2f4f7;
+  border-bottom:1px solid #dce3ea;font-size:11px;font-weight:700;
+}
+.app.view-fr-empty .belleville-doc-subtable td{
+  padding:7px 10px;vertical-align:top;font-size:12px;border-bottom:1px solid #edf0f3;
+}
+.app.view-fr-empty .belleville-doc-subtable tbody tr:last-child td{border-bottom:0}
+.app.view-fr-empty .belleville-doc-subtable td.num{text-align:center;width:80px}
+.app.view-fr-empty .belleville-doc-type{font-weight:700;white-space:nowrap;width:150px}
+.app.view-fr-empty .belleville-doc-serials{display:flex;flex-wrap:wrap;gap:5px 16px}
+.app.view-fr-empty .belleville-doc-serials span{
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+.app.view-fr-empty .belleville-doc-status{display:inline-block;font-size:10px;margin-left:3px;font-weight:750}
+.app.view-fr-empty .belleville-doc-status-ok{color:#23804c}
+.app.view-fr-empty .belleville-doc-status-nok{color:#b23946}
+.app.view-fr-empty .belleville-doc-comment{
+  margin-top:15px;padding:11px 12px;background:#f7f9fa;border:1px solid #e5e9ee;
+  border-radius:6px;
+}
+.app.view-fr-empty .belleville-doc-comment strong{font-size:12px;color:#364350}
+.app.view-fr-empty .belleville-doc-comment p{margin:5px 0 0;font-size:12px;white-space:pre-wrap}
+.app.view-fr-empty .belleville-doc-actions{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;
+}
+.app.view-fr-empty .belleville-doc-muted{color:#88939e;font-size:12px}
+.app.view-fr-empty .belleville-doc-no-results{text-align:center;padding:24px!important;color:#7d8793}
+.doc-print-sheet .belleville-doc-print-secondary{margin-top:18px}
+@media(max-width:950px){
+  .app.view-fr-empty .belleville-doc-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:690px){
+  .app.view-fr-empty .belleville-doc-banner{font-size:11px}
+  .app.view-fr-empty .belleville-doc-expansion>td{padding:0 5px 10px!important}
+  .app.view-fr-empty .belleville-doc-detail{padding:11px}
+  .app.view-fr-empty .belleville-doc-detail-head{flex-wrap:wrap}
+  .app.view-fr-empty .belleville-doc-meta{gap:10px}
+}
