@@ -4,7 +4,11 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=25';
 
-const APP_VERSION = '0.61';
+const APP_VERSION = '0.62';
+// TEMPORARY: preview FR crew screens without completing first vehicle inventory.
+// D1 still verifies first inventory before stock-changing writes.
+// Set to false when restoring the mandatory first-inventory flow.
+const TEMP_FR_CREW_PREVIEW_MODE = true;
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v2_box78';
 const BOX_CATALOG_VERSION = 'FR-BOX-78-20261111';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
@@ -460,6 +464,12 @@ function closeMissingVehiclePlate(){
   if(error){error.textContent='';error.classList.add('hidden');}
 }
 function showMissingVehiclePlate(force=false){
+  // Read-only UI review must work for a newly created crew without a car.
+  // Explicit attempt to start a real visit still requires the registration.
+  if(TEMP_FR_CREW_PREVIEW_MODE&&!force){
+    closeMissingVehiclePlate();
+    return;
+  }
   if(!state.team||(!force&&String(state.team.rola||'').toUpperCase()!=='EKIPA')||
      String(state.team.samochod||'').trim()){
     closeMissingVehiclePlate();
@@ -477,7 +487,7 @@ function updateInitialInventoryAccess(){
   const crew=String(state.team?.rola||'').toUpperCase()==='EKIPA';
   const plate=String(state.team?.samochod||'').trim();
   // Until the server confirms the first inventory, scanning is locked.
-  const locked=crew&&Boolean(plate)&&firstInventoryRequired!==false;
+  const locked=!TEMP_FR_CREW_PREVIEW_MODE&&crew&&Boolean(plate)&&firstInventoryRequired!==false;
   $('firstVehicleInventoryNotice')?.classList.toggle('hidden',!locked);
   const scanner=$('openWarehouseScannerBtn');
   if(scanner){scanner.disabled=locked;scanner.classList.toggle('hidden',locked);}
@@ -493,8 +503,8 @@ function updateInitialInventoryAccess(){
   if(confirm)confirm.disabled=locked;
   const boxStockButton=$('boxStockEntryBtn');
   if(boxStockButton){
-    boxStockButton.classList.toggle('hidden',locked||
-      !crew||!state.team?.id||!plate||firstInventoryRequired!==false);
+    boxStockButton.classList.toggle('hidden',!crew||!state.team?.id||
+      (!TEMP_FR_CREW_PREVIEW_MODE&&(locked||!plate||firstInventoryRequired!==false)));
   }
   const carButton=$('vehicleStatePreBtn');
   if(carButton){
@@ -2177,7 +2187,7 @@ async function startVisit(code) {
     showToast('Rozpoczęcie nowej wizyty wymaga teraz internetu.', true);
     return;
   }
-  if(!isAdminTeam()&&firstInventoryRequired!==false){
+  if(!TEMP_FR_CREW_PREVIEW_MODE&&!isAdminTeam()&&firstInventoryRequired!==false){
     showToast('Najpierw wykonaj inwentaryzację samochodu.',true);
     return;
   }
@@ -2877,7 +2887,7 @@ function bindEvents() {
     if(event.key==='Enter'){event.preventDefault();$('frVehicleAssignBtn')?.click();}
   });
   $('vehicleStatePreBtn')?.addEventListener('click',()=>{
-    if(firstInventoryRequired!==false)openFirstVehicleInventory();
+    if(!TEMP_FR_CREW_PREVIEW_MODE&&firstInventoryRequired!==false)openFirstVehicleInventory();
     else openVehicleStock();
   });
   $('vehiclePartsBtn')?.addEventListener('click', openVehicleStock);
