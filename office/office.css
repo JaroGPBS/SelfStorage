@@ -9099,12 +9099,6 @@
   margin:16px 0 13px;
 }
 .belleville-demo-print .belleville-demo-print-heading{min-width:0;flex:1}
-.belleville-demo-print .doc-print-kicker{
-  font-size:8px;
-  line-height:1.3;
-  letter-spacing:.08em;
-  margin-bottom:6px;
-}
 .belleville-demo-print .doc-print-title-row h2{
   margin:0;
   font-size:20px;
@@ -9131,7 +9125,7 @@
 }
 .belleville-demo-print .doc-print-fields{
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,.65fr) minmax(0,1.22fr) minmax(0,1.23fr);
+  grid-template-columns:repeat(4,minmax(0,1fr));
   grid-template-rows:auto auto;
   gap:0;
   margin:0 0 16px;
@@ -9273,15 +9267,6 @@
 }
 .belleville-demo-print .doc-print-signature strong{font-size:10px}
 .belleville-demo-print .doc-print-signature span{font-size:9px}
-.belleville-demo-print .belleville-demo-print-watermark{
-  margin-top:28px;
-  padding-top:8px;
-  border-top:1px solid #e4e8ec;
-  color:#788594;
-  font-size:8px;
-  text-align:center;
-  letter-spacing:.025em;
-}
 @media print{
   body.printing-office-document .belleville-demo-print{
     width:100%!important;
