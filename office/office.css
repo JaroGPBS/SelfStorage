@@ -9179,6 +9179,24 @@
 .belleville-demo-print .belleville-demo-print-section{
   margin:13px 0 0;
 }
+/* As in the approved print mock-up: full-width modules, then a compact
+   parts list on the left and the comment box on the right. */
+.belleville-demo-print .belleville-demo-print-lower{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:12px;
+  align-items:start;
+  margin-top:10px;
+}
+.belleville-demo-print .belleville-demo-print-lower .belleville-demo-print-section{
+  min-width:0;
+  margin:0;
+}
+.belleville-demo-print .belleville-demo-print-lower .doc-print-notes{
+  min-width:0;
+  margin-top:19px;
+}
+
 .belleville-demo-print .doc-print-section-title{
   display:flex;
   align-items:baseline;
@@ -9221,9 +9239,9 @@
 .belleville-demo-print .belleville-demo-print-modules th:nth-child(1){width:26%}
 .belleville-demo-print .belleville-demo-print-modules th:nth-child(2){width:13%;text-align:center}
 .belleville-demo-print .belleville-demo-print-modules th:nth-child(3){width:61%}
-.belleville-demo-print .belleville-demo-print-parts th:nth-child(1){width:26%}
-.belleville-demo-print .belleville-demo-print-parts th:nth-child(2){width:57%}
-.belleville-demo-print .belleville-demo-print-parts th:nth-child(3){width:17%;text-align:center}
+.belleville-demo-print .belleville-demo-print-parts th:nth-child(1){width:25%}
+.belleville-demo-print .belleville-demo-print-parts th:nth-child(2){width:48%}
+.belleville-demo-print .belleville-demo-print-parts th:nth-child(3){width:27%;text-align:center}
 .belleville-demo-print .belleville-demo-print-serials{
   display:flex;
   flex-wrap:wrap;
