@@ -8900,11 +8900,18 @@
   vertical-align:middle;
 }
 .app.view-fr-empty .belleville-doc-table td.num{text-align:center;font-variant-numeric:tabular-nums}
-.app.view-fr-empty .belleville-doc-main-row td{padding-top:11px;padding-bottom:11px}
+.app.view-fr-empty .belleville-doc-main-row td{padding-top:8px;padding-bottom:8px}
 .app.view-fr-empty .belleville-doc-main-row td:first-child strong{white-space:nowrap}
+.app.view-fr-empty .belleville-doc-datetime{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:2px;
+}
 .app.view-fr-empty .belleville-doc-date,
 .app.view-fr-empty .belleville-doc-time{display:block;white-space:nowrap}
-.app.view-fr-empty .belleville-doc-time{color:#7a8794;font-size:11px;margin-top:2px}
+.app.view-fr-empty .belleville-doc-time{color:#7a8794;font-size:11px;margin-top:0}
 .app.view-fr-empty .belleville-doc-comment-mark{margin-left:7px;color:#8c6d39;font-size:12px}
 .app.view-fr-empty .belleville-doc-toggle,
 .app.view-fr-empty .belleville-doc-action{
