@@ -1175,7 +1175,11 @@ body:has(#screenWarehouse.active) .app-signature img{
 .box-stock-content{min-width:0}
 .box-stock-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
 .box-stock-toolbar strong{font-size:17px;font-weight:800}
-.box-stock-toolbar .instruction-link-btn{flex:0 0 auto}
+.box-stock-toolbar .box-stock-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.box-stock-toolbar .box-stock-actions .instruction-link-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 88px;width:88px;min-height:36px;padding:7px 6px;white-space:nowrap
+}
 .box-stock-search{min-height:42px;margin-bottom:12px}
 .box-stock-table-wrap{width:100%;border:1px solid var(--line);border-radius:11px;overflow:hidden}
 .box-stock-table{width:100%;border-collapse:collapse;table-layout:fixed;text-align:left}
