@@ -142,9 +142,10 @@
         '<div class="belleville-doc-meta">'+
           '<div><span>'+(doc.direction==='PZ'?'Przyjmował':'Wydawał')+'</span><strong>'+escape(doc.worker)+'</strong></div>'+
           '<div><span>Przewoźnik</span><strong>'+escape(doc.carrier)+'</strong></div>'+
+          '<div><span>Data</span><strong>'+formatDate(doc)+'</strong></div>'+
           '<div><span>Kierowca</span><strong>'+escape(doc.driver)+'</strong></div>'+
-          '<div><span>Samochód</span><strong>'+escape(doc.truck)+'</strong></div>'+
-          '<div><span>Przyczepa / naczepa</span><strong>'+escape(doc.trailer)+'</strong></div>'+
+          '<div class="belleville-doc-vehicle"><span>Samochód</span><strong>'+escape(doc.truck)+'</strong></div>'+
+          '<div class="belleville-doc-vehicle"><span>Przyczepa / naczepa</span><strong>'+escape(doc.trailer)+'</strong></div>'+
         '</div>'+
         '<div class="belleville-doc-comment"><strong>Dodatkowe informacje</strong><p>'+
           escape(doc.comment||'Brak dodatkowych informacji.')+'</p></div>'+
