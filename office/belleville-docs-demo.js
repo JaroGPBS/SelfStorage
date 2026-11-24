@@ -205,55 +205,86 @@
       shown:list.length,total:3
     };
   }
+  // Printable Belleville document prototype; mock data only, with the same
+  // grouping and original receipt-condition status used by Office PZ/WZ.
   function printHtml(id){
     const doc=byId(id);
     if(!doc)return null;
     const incoming=doc.direction==='PZ';
-    const moduleLines=doc.modules.map((item,i)=>
-      '<tr><td class="doc-print-number">'+(i+1)+'</td>'+
-      '<td>'+escape(item.type)+' '+escape(item.status)+'</td>'+
-      '<td>'+escape(item.serial)+'</td><td class="doc-print-qty">1</td></tr>'
-    ).join('')||'<tr><td colspan="4">Brak modułów</td></tr>';
-    const partLines=doc.parts.map((item,i)=>
-      '<tr><td class="doc-print-number">'+(i+1)+'</td>'+
-      '<td>'+escape(item.sap)+'</td><td>'+escape(item.name)+'</td>'+
-      '<td class="doc-print-qty">'+escape(item.qty)+'</td></tr>'
-    ).join('')||'<tr><td colspan="4">Brak części</td></tr>';
+    const groups=groupModules(doc.modules);
     const field=(label,value)=>'<div class="doc-print-field"><span>'+escape(label)+
       '</span><strong>'+escape(value||'—')+'</strong></div>';
     const signature=(title,person)=>'<div class="doc-print-signature">'+
       '<div class="doc-print-sign-line"></div><strong>'+escape(title)+'</strong>'+
       '<span>'+escape(person)+'</span></div>';
+    const moduleLines=groups.map(group=>{
+      const serials='<div class="belleville-demo-print-serials">'+group.serials.map(serial=>
+        '<span class="'+(group.status==='NOK'?'belleville-demo-print-nok-serial':'')+
+        '">'+escape(serial)+'</span>').join('')+'</div>';
+      return '<tr><td><strong>'+escape(group.type)+'</strong> '+
+        '<span class="belleville-demo-print-status '+(group.status==='NOK'?'nok':'ok')+
+        '">'+escape(group.status)+'</span></td>'+
+        '<td class="doc-print-qty">'+group.serials.length+'</td>'+
+        '<td>'+serials+'</td></tr>';
+    }).join('')||'<tr><td colspan="3">Brak modułów</td></tr>';
+    const partLines=doc.parts.map(item=>
+      '<tr><td>'+escape(item.sap)+'</td><td>'+escape(item.name)+'</td>'+
+      '<td class="doc-print-qty">'+escape(item.qty)+'</td></tr>'
+    ).join('')||'<tr><td colspan="3">Brak części</td></tr>';
+    const ok=doc.modules.filter(item=>item.status==='OK').length;
+    const nok=doc.modules.filter(item=>item.status==='NOK').length;
     return {direction:doc.direction,html:
-      '<div class="doc-print-letterhead"><div class="doc-print-brand">'+
-        '<strong>GPBS</strong><span>STORAGE</span></div>'+
-        '<span class="doc-print-region">BELLEVILLE · DANE FIKCYJNE / DEMO</span></div>'+
-      '<div class="doc-print-title-row"><div><span class="doc-print-kicker">'+
-        'WYŁĄCZNIE PODGLĄD — NIE JEST DOKUMENTEM MAGAZYNOWYM</span>'+
-        '<h2>'+(incoming?'POTWIERDZENIE PRZYJĘCIA':'POTWIERDZENIE WYDANIA')+
-        '</h2></div><strong class="doc-print-type">'+escape(doc.id)+'</strong></div>'+
-      '<div class="doc-print-fields">'+
-        field('Magazyn','Belleville')+field('Dokument',doc.id)+
-        field('Data i godzina',formatDate(doc)+' '+doc.time)+
-        field('Tydzień',doc.week)+field('Trasa',doc.route)+
-        field('Przewoźnik',doc.carrier)+field('Kierowca',doc.driver)+
-        field('Samochód',doc.truck)+field('Przyczepa / naczepa',doc.trailer)+
-        field(incoming?'Przyjął':'Wydał',doc.worker)+
-      '</div>'+
-      '<div class="doc-print-section-title">Moduły — '+doc.modules.length+' szt.</div>'+
-      '<table class="doc-print-parts"><thead><tr><th>Lp.</th><th>Typ / status</th>'+
-        '<th>Numer seryjny</th><th>Ilość</th></tr></thead><tbody>'+moduleLines+'</tbody></table>'+
-      '<div class="doc-print-section-title belleville-doc-print-secondary">Części — '+doc.parts.length+' poz.</div>'+
-      '<table class="doc-print-parts"><thead><tr><th>Lp.</th><th>Indeks SAP</th>'+
-        '<th>Nazwa części</th><th>Ilość</th></tr></thead><tbody>'+partLines+'</tbody></table>'+
-      '<div class="doc-print-bottom"><div class="doc-print-notes">'+
-        '<strong>Uwagi:</strong><p>'+escape(doc.comment||'Brak dodatkowych informacji.')+'</p>'+
-        '</div><div class="doc-print-signatures">'+
-          signature(incoming?'Przekazujący — kierowca':'Wydający — magazynier',
-            incoming?doc.driver:doc.worker)+
-          signature(incoming?'Odbierający — magazynier':'Odbierający — kierowca',
-            incoming?doc.worker:doc.driver)+
-        '</div></div>'
+      '<div class="belleville-demo-print">'+
+        '<div class="doc-print-letterhead">'+
+          '<div class="doc-print-brand"><strong>GPBS</strong><span>STORAGE</span></div>'+
+          '<span class="doc-print-region">Magazyn: BELLEVILLE</span>'+
+        '</div>'+
+        '<div class="doc-print-title-row">'+
+          '<div class="belleville-demo-print-heading">'+
+            '<span class="doc-print-kicker">DOKUMENT MAGAZYNOWY · DANE FIKCYJNE — PODGLĄD</span>'+
+            '<h2>'+(incoming?'POTWIERDZENIE PRZYJĘCIA':'POTWIERDZENIE WYDANIA')+'</h2>'+
+          '</div>'+
+          '<strong class="doc-print-type">'+escape(doc.id)+'</strong>'+
+        '</div>'+
+        '<div class="doc-print-fields">'+
+          field('Trasa',doc.route)+
+          field('Tydzień',doc.week)+
+          field('Data i godzina',formatDate(doc)+' · '+doc.time)+
+          field(incoming?'Przyjął':'Wydał',doc.worker)+
+          field('Przewoźnik',doc.carrier)+
+          field('Kierowca',doc.driver)+
+          field('Samochód',doc.truck)+
+          field('Przyczepa / naczepa',doc.trailer)+
+        '</div>'+
+        '<section class="belleville-demo-print-section">'+
+          '<div class="doc-print-section-title">Moduły — '+doc.modules.length+' szt.'+
+            (doc.modules.length?' <small>OK: '+ok+' · NOK: '+nok+'</small>':'')+
+          '</div>'+
+          '<table class="doc-print-parts belleville-demo-print-modules">'+
+            '<thead><tr><th>Typ / status</th><th>Ilość</th><th>Numery seryjne</th></tr></thead>'+
+            '<tbody>'+moduleLines+'</tbody>'+
+          '</table>'+
+        '</section>'+
+        '<section class="belleville-demo-print-section">'+
+          '<div class="doc-print-section-title">Części — '+doc.parts.length+
+            (doc.parts.length===1?' pozycja':' pozycji')+'</div>'+
+          '<table class="doc-print-parts belleville-demo-print-parts">'+
+            '<thead><tr><th>Indeks SAP</th><th>Nazwa części</th><th>Ilość (szt.)</th></tr></thead>'+
+            '<tbody>'+partLines+'</tbody>'+
+          '</table>'+
+        '</section>'+
+        '<div class="doc-print-bottom">'+
+          '<div class="doc-print-notes"><strong>Dodatkowe informacje</strong><p>'+
+            escape(doc.comment||'Brak dodatkowych informacji.')+'</p></div>'+
+          '<div class="doc-print-signatures">'+
+            signature(incoming?'Przekazujący — kierowca':'Wydający — magazynier',
+              incoming?doc.driver:doc.worker)+
+            signature(incoming?'Przyjmujący — magazynier':'Odbierający — kierowca',
+              incoming?doc.worker:doc.driver)+
+          '</div>'+
+        '</div>'+
+        '<div class="belleville-demo-print-watermark">DANE FIKCYJNE · WYŁĄCZNIE PREZENTACJA UKŁADU — NIE JEST TO DOKUMENT MAGAZYNOWY</div>'+
+      '</div>'
     };
   }
   window.GPBSBellevilleDocsDemo={render,printHtml,find:byId};
