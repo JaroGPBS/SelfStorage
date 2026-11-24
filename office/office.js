@@ -3799,13 +3799,14 @@ function drawBellevilleDemoDocuments(){
   $('vehicleTopScroll').classList.add('hidden');
 }
 function openBellevilleDemoDocumentPrint(id){
-  if(!isBellevilleDemoDocuments())return;
+  if(!isBellevilleDemoDocuments())return false;
   const sheet=window.GPBSBellevilleDocsDemo.printHtml(id);
-  if(!sheet||sheet.direction!==(state.view==='pz'?'PZ':'WZ'))return;
+  if(!sheet||sheet.direction!==(state.view==='pz'?'PZ':'WZ'))return false;
   $('docPrintTitle').textContent='Podgląd '+sheet.direction+' · DANE FIKCYJNE';
   $('docPrintSheet').innerHTML=sheet.html;
   $('docPrintModal').classList.remove('hidden');
   $('docPrintClose').focus();
+  return true;
 }
 
 function drawFrenchEmptyView(){
@@ -4196,6 +4197,13 @@ document.addEventListener('click',e=>{
     drawBellevilleDemoDocuments();
     $('tableArea').querySelector('[data-belleville-demo-toggle="'+doc.id+'"]')
       ?.scrollIntoView({block:'nearest',behavior:'smooth'});
+    return;
+  }
+  const demoDirectPrint=e.target.closest('[data-belleville-demo-direct-print]');
+  if(demoDirectPrint&&isBellevilleDemoDocuments()){
+    if(openBellevilleDemoDocumentPrint(demoDirectPrint.dataset.bellevilleDemoDirectPrint)){
+      printOfficeDocument();
+    }
     return;
   }
   const demoPrint=e.target.closest('[data-belleville-demo-print]');
