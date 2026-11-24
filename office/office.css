@@ -8899,6 +8899,11 @@
   font-size:12px;
   vertical-align:middle;
 }
+.app.view-fr-empty .belleville-doc-table .belleville-doc-print-cell{
+  text-align:right;
+  white-space:nowrap;
+  width:1%;
+}
 .app.view-fr-empty .belleville-doc-table td.num{text-align:center;font-variant-numeric:tabular-nums}
 .app.view-fr-empty .belleville-doc-main-row td{padding-top:8px;padding-bottom:8px}
 .app.view-fr-empty .belleville-doc-main-row td:first-child strong{white-space:nowrap}
