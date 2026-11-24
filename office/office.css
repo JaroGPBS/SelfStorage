@@ -8658,6 +8658,15 @@
 .app.view-stocks.view-belleville-stock.view-modules .belleville-module-serial-table .module-group-row th{
   text-align:center;
 }
+.app.view-stocks.view-belleville-stock.view-modules .belleville-module-summary .belleville-summary-group-row th{
+  text-align:center;
+}
+.app.view-stocks.view-belleville-stock.view-modules .belleville-module-summary .belleville-summary-group-empty{
+  background:#fff;
+  padding:0;
+  border-top:1px solid #e2e5e9;
+  border-bottom:1px solid #e7ebef;
+}
 .app.view-stocks.view-belleville-stock.view-modules .module-summary-table{
   width:620px;min-width:550px;max-width:620px;table-layout:fixed;
 }

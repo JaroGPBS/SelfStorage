@@ -2226,8 +2226,9 @@ function drawBellevilleModules(){
   const count=groups.reduce((sum,group)=>sum+group.types.length,0);
   const missing='<span class="belleville-module-unknown" title="Brak rzeczywistych danych magazynowych">—</span>';
   if(summary){
-    const rows=groups.map(group=>'<tr class="module-group-row"><th colspan="4" scope="rowgroup">'+
-      escapeHtml(group.name)+'</th></tr>'+
+    const rows=groups.map(group=>'<tr class="module-group-row belleville-summary-group-row">'+
+      '<th scope="rowgroup">'+escapeHtml(group.name)+'</th>'+
+      '<td colspan="3" class="belleville-summary-group-empty"></td></tr>'+
       group.types.map(type=>
         '<tr><th scope="row" class="module-type">'+escapeHtml(type)+'</th>'+
         '<td class="num">'+missing+'</td><td class="num">'+missing+'</td>'+
