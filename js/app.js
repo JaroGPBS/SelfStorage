@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=25';
 
-const APP_VERSION = '0.60';
+const APP_VERSION = '0.61';
 const START_DATA_CACHE_KEY = 'selfstorage_start_data_cache_v2_box78';
 const BOX_CATALOG_VERSION = 'FR-BOX-78-20261111';
 const VEHICLE_STOCK_CACHE_KEY = 'selfstorage_vehicle_stock_cache_v1';
@@ -23,6 +23,9 @@ let toastTimer = null;
 let scannerMode = null;
 let quantityTarget = null;
 let vehicleStockRequest = null;
+let boxStockRequestId = 0;
+let boxStockWarehouseId = null;
+let boxStockParts = [];
 let vehicleManualDraft = {};
 let pendingManualSave = null;
 let pendingWeeklySave = null;
@@ -134,6 +137,11 @@ async function handleSystemBack() {
     } else {
       renderWarehouse();
     }
+    return false;
+  }
+
+  if (activeScreen === 'screenBoxStock') {
+    closeBoxStock();
     return false;
   }
 
@@ -302,6 +310,9 @@ function resetState() {
   state.vehicleVisitDelta = {};
   state.vehicleStockCache = null;
   vehicleStockRequest = null;
+  ++boxStockRequestId;
+  boxStockWarehouseId = null;
+  boxStockParts = [];
   vehicleManualDraft = {};
   pendingManualSave = null;
   pendingWeeklySave = null;
@@ -504,7 +515,101 @@ async function checkRestoredVehicleInventory(){
     }
   }
 }
+// Read-only preview. Every selection and refresh reads fresh D1 balances.
+function boxStockName(id){
+  return id==='FR-PARIS'?'Box Paryż':id==='FR-TOULOUSE'?'Box Tuluza':'BOX';
+}
+function openBoxStock(){
+  if(!state.team||String(state.team.rola||'').trim().toUpperCase()!=='EKIPA')return;
+  ++boxStockRequestId;
+  boxStockWarehouseId=null;
+  boxStockParts=[];
+  $('boxStockSearch').value='';
+  $('boxStockContent').classList.add('hidden');
+  $('boxStockError').classList.add('hidden');
+  $('boxStockError').textContent='';
+  document.querySelectorAll('[data-box-stock-warehouse]').forEach(btn=>
+    btn.classList.remove('active'));
+  showScreen('screenBoxStock');
+}
+function closeBoxStock(){
+  ++boxStockRequestId;
+  boxStockWarehouseId=null;
+  boxStockParts=[];
+  if(state.team)renderWarehouse();
+  else showScreen('screenLogin');
+}
+function renderBoxStockRows(){
+  const query=$('boxStockSearch').value.trim().toLocaleLowerCase('pl');
+  const found=boxStockParts.filter(part=>
+    String(part.nazwa||'').toLocaleLowerCase('pl').includes(query));
+  const target=$('boxStockRows');
+  target.replaceChildren();
+  if(!found.length){
+    const row=target.insertRow();
+    const cell=row.insertCell();
+    cell.colSpan=2;
+    cell.className='box-stock-empty';
+    cell.textContent=boxStockParts.length
+      ?'Brak części pasujących do wyszukiwania.':'Brak części do wyświetlenia.';
+  }else{
+    for(const part of found){
+      const tr=target.insertRow();
+      const label=tr.insertCell();
+      label.textContent=part.nazwa;
+      const amount=tr.insertCell();
+      amount.className='box-stock-qty';
+      const known=Number.isSafeInteger(part.stan)&&part.stan>=0;
+      amount.textContent=known?String(part.stan):'—';
+      if(!known)amount.title='Brak potwierdzonego stanu w D1';
+    }
+  }
+  const unknown=boxStockParts.filter(part=>
+    !Number.isSafeInteger(part.stan)||part.stan<0).length;
+  $('boxStockFooter').textContent='Pozycje: '+found.length+' / '+boxStockParts.length+
+    (unknown?' · — oznacza brak potwierdzonego stanu':'');
+}
+async function selectBoxStock(warehouseId){
+  if(!['FR-PARIS','FR-TOULOUSE'].includes(warehouseId)||!state.team)return;
+  const ticket=++boxStockRequestId;
+  boxStockWarehouseId=warehouseId;
+  boxStockParts=[];
+  const title=boxStockName(warehouseId);
+  $('boxStockTitle').textContent=title;
+  $('boxStockContent').classList.remove('hidden');
+  $('boxStockSearch').value='';
+  $('boxStockRows').replaceChildren();
+  $('boxStockFooter').textContent='Pobieranie stanów…';
+  $('boxStockError').textContent='';
+  $('boxStockError').classList.add('hidden');
+  document.querySelectorAll('[data-box-stock-warehouse]').forEach(button=>
+    button.classList.toggle('active',button.dataset.boxStockWarehouse===warehouseId));
+  const refresh=$('boxStockRefreshBtn');
+  refresh.disabled=true;
+  try{
+    const response=await api.getBoxStock(warehouseId);
+    if(ticket!==boxStockRequestId||!state.team||
+       getActiveScreenId()!=='screenBoxStock')return;
+    if(response.magazynId!==warehouseId||!Array.isArray(response.czesci))
+      throw Error('Nieprawidłowa odpowiedź magazynu.');
+    boxStockParts=response.czesci.map(item=>({
+      nazwa:String(item.nazwa||'Nieznana część'),
+      stan:Number.isSafeInteger(item.stan)&&item.stan>=0?item.stan:null
+    })).sort((a,b)=>a.nazwa.localeCompare(b.nazwa,'pl',{sensitivity:'base'}));
+    renderBoxStockRows();
+  }catch(error){
+    if(ticket!==boxStockRequestId||getActiveScreenId()!=='screenBoxStock')return;
+    $('boxStockFooter').textContent='';
+    $('boxStockError').textContent=messageFromError(error);
+    $('boxStockError').classList.remove('hidden');
+  }finally{
+    if(ticket===boxStockRequestId)refresh.disabled=false;
+  }
+}
+
 function renderWarehouse() {
+  $('boxStockEntryBtn')?.classList.toggle('hidden',
+    !state.team||String(state.team.rola||'').trim().toUpperCase()!=='EKIPA');
   $('teamName').textContent = state.team?.nazwa || 'Ekipa';
   $('teamRole').textContent = state.team?.rola || '';
   updateCrewPlateBadges();
@@ -2728,6 +2833,15 @@ function bindEvents() {
   $('loginBtn').addEventListener('click', login);
   $('frPushEnableBtn')?.addEventListener('click',enableFrenchPush);
   $('logoutBtn').addEventListener('click', logout);
+  $('boxStockEntryBtn')?.addEventListener('click',openBoxStock);
+  $('boxStockBackBtn')?.addEventListener('click',closeBoxStock);
+  $('boxStockRefreshBtn')?.addEventListener('click',()=>{
+    if(boxStockWarehouseId)selectBoxStock(boxStockWarehouseId);
+  });
+  $('boxStockSearch')?.addEventListener('input',renderBoxStockRows);
+  document.querySelectorAll('[data-box-stock-warehouse]').forEach(button=>{
+    button.addEventListener('click',()=>selectBoxStock(button.dataset.boxStockWarehouse));
+  });
   $('openWarehouseScannerBtn').addEventListener('click', () => openCodeScanner('warehouse'));
   $('closeScannerBtn').addEventListener('click', closeScanner);
   $('manualWarehouseBtn').addEventListener('click', () => startVisit($('warehouseCodeInput').value));
