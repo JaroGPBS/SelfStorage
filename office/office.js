@@ -138,6 +138,7 @@ function normalizeFrBoxVisits(records){
   }).filter(Boolean).sort(frPreviewVisitSort);
 }
 const BELLEVILLE_SERVICE={key:'service',name:'Zaopatrzenie ekipy',icon:'⚙'};
+const BELLEVILLE_ORDER_LIST={key:'orders',name:'Do zamówienia',icon:'≡'};
 // TEMPORARY POLISH OFFICE PREVIEW ONLY. These two imaginary crews and all
 // quantities exist only in client-side JavaScript. Never write them into D1.
 // Delete this block and drawPolishVehiclePreview when the layout is approved.
@@ -1034,7 +1035,11 @@ function renderMenu(){
       ?'<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
         'data-belleville-service="1" data-fr-warehouse-name="'+escapeHtml(label)+'">'+
         '<span class="office-operation-icon" aria-hidden="true">'+BELLEVILLE_SERVICE.icon+'</span>'+
-        BELLEVILLE_SERVICE.name+'</button>':'');
+        BELLEVILLE_SERVICE.name+'</button>'+
+        '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
+          'data-belleville-orders="1" data-fr-warehouse-name="'+escapeHtml(label)+'">'+
+          '<span class="office-operation-icon" aria-hidden="true">'+BELLEVILLE_ORDER_LIST.icon+'</span>'+
+          BELLEVILLE_ORDER_LIST.name+'</button>':'');
     return '<div class="office-fr-warehouse">'+
       '<button type="button" class="subnav-btn office-fr-warehouse-toggle" '+
         'data-fr-warehouse-toggle="'+escapeHtml(key)+'" '+
@@ -1119,7 +1124,7 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle],#sidebar [data-pl-warehouse-toggle],#sidebar [data-pl-routes-toggle],#sidebar [data-pl-routes-tab]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-belleville-orders],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle],#sidebar [data-pl-warehouse-toggle],#sidebar [data-pl-routes-toggle],#sidebar [data-pl-routes-tab]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
@@ -1156,6 +1161,9 @@ function renderMenu(){
     const isService=Boolean(el.dataset.bellevilleService)&&
       state.preview?.type==='module'&&state.preview?.key===BELLEVILLE_SERVICE.key&&
       state.preview?.warehouseKey==='belleville';
+    const isOrderList=Boolean(el.dataset.bellevilleOrders)&&
+      state.preview?.type==='module'&&state.preview?.key===BELLEVILLE_ORDER_LIST.key&&
+      state.preview?.warehouseKey==='belleville';
     const isMarketVehicles=el.dataset.marketVehicles==='FR'
       ?state.preview?.type==='operation'&&state.preview?.key==='vehicles'&&
         !state.preview?.warehouseKey
@@ -1164,7 +1172,7 @@ function renderMenu(){
           realWarehouse(state.warehouse)?.country_code==='PL':false;
      const isPlRoutesTab=el.hasAttribute('data-pl-routes-tab')&&
       state.view==='plRoutes'&&el.dataset.plRoutesTab===state.plRoutesTab;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isMarketVehicles||isPolishScoped||isPlRoutesTab));
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isOrderList||isMarketVehicles||isPolishScoped||isPlRoutesTab));
     if(el.dataset.frWarehouseToggle)el.classList.toggle('is-expanded',isFrWarehouseExpanded);
   }
   // Parent section shows an understated white selection while its active child
@@ -3897,7 +3905,15 @@ async function render({silent=false}={}){
     return;
   }
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
+    if(state.preview?.type==='module'&&state.preview.key===BELLEVILLE_ORDER_LIST.key&&
+      state.preview.warehouseKey==='belleville'){
+      errorBanner('');
+      $('tableArea').innerHTML='<div class="empty">Lista „Do zamówienia” jest na razie pusta. Składanie zamówień nie jest jeszcze podłączone.</div>';
+      $('tableFooter').textContent='';
+      $('searchNote').classList.add('hidden');
+      $('vehicleTopScroll').classList.add('hidden');
+    }
+    else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else drawFrenchEmptyView();
     return;
   }
@@ -4041,7 +4057,15 @@ function filterCurrent(){
   if(state.view==='frMovements'){drawFrBoxMovements();return;}
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
+    if(state.preview?.type==='module'&&state.preview.key===BELLEVILLE_ORDER_LIST.key&&
+      state.preview.warehouseKey==='belleville'){
+      errorBanner('');
+      $('tableArea').innerHTML='<div class="empty">Lista „Do zamówienia” jest na razie pusta. Składanie zamówień nie jest jeszcze podłączone.</div>';
+      $('tableFooter').textContent='';
+      $('searchNote').classList.add('hidden');
+      $('vehicleTopScroll').classList.add('hidden');
+    }
+    else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else drawFrenchEmptyView();
     return;
   }
@@ -4578,6 +4602,14 @@ document.addEventListener('click',e=>{
     state.frExpanded='belleville';state.bovisExpanded=false;
     showOfficePreview('module',BELLEVILLE_SERVICE.key,BELLEVILLE_SERVICE.name,{
       warehouseKey:'belleville',warehouseName:service.dataset.frWarehouseName||'Belleville'
+    });
+    return;
+  }
+  const orderList=e.target.closest('[data-belleville-orders]');
+  if(orderList){
+    state.frExpanded='belleville';state.bovisExpanded=false;
+    showOfficePreview('module',BELLEVILLE_ORDER_LIST.key,BELLEVILLE_ORDER_LIST.name,{
+      warehouseKey:'belleville',warehouseName:orderList.dataset.frWarehouseName||'Belleville'
     });
     return;
   }
