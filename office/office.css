@@ -9208,17 +9208,27 @@
 .belleville-demo-print .belleville-demo-print-lower{
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:12px;
+  column-gap:12px;
+  row-gap:0;
   align-items:start;
   margin-top:10px;
 }
 .belleville-demo-print .belleville-demo-print-lower .belleville-demo-print-section{
-  min-width:0;
-  margin:0;
+  display:contents;
+}
+.belleville-demo-print .belleville-demo-print-lower .doc-print-section-title{
+  grid-column:1;
+  grid-row:1;
+}
+.belleville-demo-print .belleville-demo-print-lower .belleville-demo-print-parts{
+  grid-column:1;
+  grid-row:2;
 }
 .belleville-demo-print .belleville-demo-print-lower .doc-print-notes{
+  grid-column:2;
+  grid-row:2;
   min-width:0;
-  margin-top:19px;
+  margin:0;
 }
 
 .belleville-demo-print .doc-print-section-title{
@@ -9260,9 +9270,13 @@
   text-align:center;
   font-weight:700;
 }
-.belleville-demo-print .belleville-demo-print-modules th:nth-child(1){width:26%}
-.belleville-demo-print .belleville-demo-print-modules th:nth-child(2){width:13%;text-align:center}
-.belleville-demo-print .belleville-demo-print-modules th:nth-child(3){width:61%}
+.belleville-demo-print .belleville-demo-print-modules th:nth-child(1){width:90px}
+.belleville-demo-print .belleville-demo-print-modules th:nth-child(2){width:42px;text-align:center}
+.belleville-demo-print .belleville-demo-print-modules th:nth-child(3){width:auto}
+.belleville-demo-print .belleville-demo-print-modules :is(th,td):nth-child(-n+2){
+  padding-left:5px;
+  padding-right:5px;
+}
 .belleville-demo-print .belleville-demo-print-parts th:nth-child(1){width:25%}
 .belleville-demo-print .belleville-demo-print-parts th:nth-child(2){width:48%}
 .belleville-demo-print .belleville-demo-print-parts th:nth-child(3){width:27%;text-align:center}
