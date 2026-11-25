@@ -2792,9 +2792,7 @@ function clearOfficePrintStyle(){
   document.body.classList.remove('printing-office-document');
   document.getElementById('officeDocumentPageStyle')?.remove();
 }
-let closeBellevillePrintAfterDialog=false;
 function closeDocumentPrint(){
-  closeBellevillePrintAfterDialog=false;
   clearOfficePrintStyle();
   $('docPrintModal').classList.add('hidden');
   $('docPrintSheet').innerHTML='';
@@ -4238,18 +4236,12 @@ document.addEventListener('click',e=>{
   }
   const demoDirectPrint=e.target.closest('[data-belleville-demo-direct-print]');
   if(demoDirectPrint&&isBellevilleDemoDocuments()){
-    if(openBellevilleDemoDocumentPrint(demoDirectPrint.dataset.bellevilleDemoDirectPrint)){
-      closeBellevillePrintAfterDialog=true;
-      printOfficeDocument();
-    }
+    openBellevilleDemoDocumentPrint(demoDirectPrint.dataset.bellevilleDemoDirectPrint);
     return;
   }
   const demoCmr=e.target.closest('[data-belleville-demo-cmr]');
   if(demoCmr&&isBellevilleDemoDocuments()&&state.view==='wz'){
-    if(openBellevilleDemoCmrPrint(demoCmr.dataset.bellevilleDemoCmr)){
-      closeBellevillePrintAfterDialog=true;
-      printOfficeDocument();
-    }
+    openBellevilleDemoCmrPrint(demoCmr.dataset.bellevilleDemoCmr);
     return;
   }
   const demoPrint=e.target.closest('[data-belleville-demo-print]');
@@ -4831,13 +4823,6 @@ $('officeNewPartPhoto').addEventListener('change',async()=>{
 $('modalClose').addEventListener('click',closeModal);
 $('docPrintButton').addEventListener('click',printOfficeDocument);
 window.addEventListener('afterprint',clearOfficePrintStyle);
-window.addEventListener('afterprint',()=>{
-  // afterprint also fires when the user cancels the system print dialog.
-  // Only the direct-list action closes the preview; manual preview stays open.
-  if(closeBellevillePrintAfterDialog){
-    closeDocumentPrint();
-  }
-});
 window.addEventListener('afterprint',clearVehicleInventoryPrintStyle);
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
