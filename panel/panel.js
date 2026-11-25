@@ -18,11 +18,16 @@
     frWeeklySettings:['Powiadomienia FR','Przypomnienia o cotygodniowej inwentaryzacji ekip francuskich.'],
     modulePrefixes:['Prefiksy modułów','Mapowanie prefiksów numerów seryjnych na typ modułu.'],
     cmrModuleWeights:['Wagi modułów','Wagi modułów wykorzystywane w dokumentach CMR.'],
+    loadingListParts:['Części listy załadunkowej','Powiązania nazw z Excela z indeksami magazynowymi.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.'],
     settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.'],
     superAdmin:['Super Admin','Hasło i wspólny PIN głównego konta właściciela.']
   };
 
+  let loadingListEntries=[];
+  let loadingPartCatalogue=[];
+  let loadingSelectedParts=new Set();
+  let loadingPartChoiceItems=[];
   const FONT_SIZE_KEY='gpbs_admin_font_size';
   const FONT_SIZES=new Set(['11','13','15','17']);
 
@@ -1502,9 +1507,10 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings'||view==='modulePrefixes'||view==='cmrModuleWeights');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings'||view==='modulePrefixes'||view==='cmrModuleWeights'||view==='loadingListParts');
     $('modulePrefixesView').classList.toggle('hidden',view!=='modulePrefixes');
     $('cmrModuleWeightsView').classList.toggle('hidden',view!=='cmrModuleWeights');
+    $('loadingListPartsView').classList.toggle('hidden',view!=='loadingListParts');
     $('frWeeklySettingsView').classList.toggle('hidden',view!=='frWeeklySettings');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
@@ -1552,6 +1558,10 @@
       }
       if(view==='cmrModuleWeights'){
         await refreshCmrModuleWeights();
+        return;
+      }
+      if(view==='loadingListParts'){
+        await refreshLoadingListParts();
         return;
       }
       if(view==='frWeeklySettings'){
@@ -2418,6 +2428,146 @@
   }
 
 
+
+  function loadingPartIndexLabel(part){
+    return String(part.index||'—')+' · '+String(part.name||'');
+  }
+  async function refreshLoadingListParts(){
+    const data=await api('loadingListParts');
+    if(state.view!=='loadingListParts')return;
+    loadingListEntries=data.entries||[];
+    loadingPartCatalogue=data.catalogue||[];
+    const rows=$('loadingListPartRows');
+    rows.replaceChildren();
+    for(const entry of loadingListEntries){
+      const tr=rows.insertRow();
+      tr.append(td(entry.excelName),td(entry.displayName));
+      const cell=td('');
+      cell.className='loading-parts-index-cell';
+      const indexes=document.createElement('span');
+      indexes.className='loading-parts-indexes';
+      indexes.textContent=(entry.parts||[]).map(p=>p.index||p.name).join(', ')||'—';
+      indexes.title=(entry.parts||[]).map(p=>(p.index||'—')+' · '+p.name).join('\n');
+      cell.append(indexes);
+      const actions=document.createElement('span');
+      actions.className='loading-parts-actions';
+      const edit=document.createElement('button');
+      edit.type='button';edit.className='btn ghost';edit.textContent='Edytuj';
+      edit.addEventListener('click',()=>openLoadingPartEditor(entry));
+      const remove=document.createElement('button');
+      remove.type='button';remove.className='btn ghost';remove.textContent='Usuń';
+      remove.addEventListener('click',()=>{void deleteLoadingPartEntry(entry);});
+      actions.append(edit,remove);
+      cell.append(actions);
+      tr.append(cell);
+    }
+    if(!loadingListEntries.length){
+      const row=rows.insertRow();
+      const blank=row.insertCell();blank.colSpan=3;
+      blank.className='loading-parts-empty';
+      blank.textContent='Brak przypisań. Kliknij „Dodaj pozycję”, aby połączyć nazwę z Excela z indeksem magazynowym.';
+    }
+    $('loadingListPartStatus').textContent='Zapisano '+loadingListEntries.length+
+      ' pozycji · katalog: '+loadingPartCatalogue.length+' aktywnych indeksów.';
+  }
+  function updateLoadingPartsCount(){
+    const selected=Array.from(loadingSelectedParts);
+    $('loadingListPartSelected').textContent='Wybrano '+selected.length+
+      ' indeksów'+(selected.length?': '+selected.map(id=>
+        loadingPartChoiceItems.find(p=>p.id===id)?.index||id).join(', '):'.');
+  }
+  function renderLoadingPartChoices(){
+    const query=$('loadingListPartSearch').value.trim().toLocaleLowerCase('pl-PL');
+    const items=loadingPartChoiceItems.filter(p=>loadingSelectedParts.has(p.id)||
+      !query||(String(p.index)+' '+String(p.name)).toLocaleLowerCase('pl-PL').includes(query))
+      .sort((a,b)=>Number(loadingSelectedParts.has(b.id))-Number(loadingSelectedParts.has(a.id))||
+        String(a.index||'').localeCompare(String(b.index||''),'pl'))
+      .slice(0,70);
+    const box=$('loadingListPartChoices');
+    box.replaceChildren();
+    for(const part of items){
+      const label=document.createElement('label');
+      label.className='loading-parts-option';
+      const checkbox=document.createElement('input');
+      checkbox.type='checkbox';
+      checkbox.checked=loadingSelectedParts.has(part.id);
+      checkbox.value=part.id;
+      checkbox.addEventListener('change',()=>{
+        if(checkbox.checked)loadingSelectedParts.add(part.id);
+        else loadingSelectedParts.delete(part.id);
+        updateLoadingPartsCount();
+        renderLoadingPartChoices();
+      });
+      const value=document.createElement('span');
+      const idx=document.createElement('strong');
+      idx.textContent=part.index||'—';
+      value.append(idx,document.createTextNode(' · '+part.name));
+      label.append(checkbox,value);
+      box.append(label);
+    }
+    if(!items.length){
+      const empty=document.createElement('p');
+      empty.textContent='Nie znaleziono indeksów.';
+      empty.className='hint';box.append(empty);
+    }
+    updateLoadingPartsCount();
+  }
+  function openLoadingPartEditor(entry=null){
+    const dialog=$('loadingListPartDialog');
+    $('loadingListPartForm').reset();
+    $('loadingListPartId').value=entry?.id||'';
+    $('loadingListPartTitle').textContent=entry?'Edytuj przypisanie':'Dodaj pozycję';
+    $('loadingListExcelName').value=entry?.excelName||'';
+    $('loadingListDisplayName').value=entry?.displayName||'';
+    $('loadingListPartError').classList.add('hidden');
+    $('loadingListPartError').textContent='';
+    loadingSelectedParts=new Set((entry?.parts||[]).map(p=>p.id));
+    loadingPartChoiceItems=[...loadingPartCatalogue];
+    for(const part of entry?.parts||[]){
+      if(!loadingPartChoiceItems.some(p=>p.id===part.id))
+        loadingPartChoiceItems.push({id:part.id,index:part.index,name:part.name});
+    }
+    renderLoadingPartChoices();
+    dialog.showModal();
+    $('loadingListExcelName').focus();
+  }
+  async function saveLoadingPartEntry(event){
+    event.preventDefault();
+    const button=$('loadingListPartSave');
+    const selected=Array.from(loadingSelectedParts);
+    const error=$('loadingListPartError');
+    if(!selected.length){
+      error.textContent='Wybierz przynajmniej jeden indeks magazynowy.';
+      error.classList.remove('hidden');return;
+    }
+    busy(button,true);
+    try{
+      await post({action:'loadingListPartSave',
+        id:$('loadingListPartId').value,
+        excelName:$('loadingListExcelName').value,
+        displayName:$('loadingListDisplayName').value,
+        partIds:selected
+      });
+      $('loadingListPartDialog').close();
+      await refreshLoadingListParts();
+      message('Zapisano przypisanie nazwy z Excela do indeksów magazynowych.','success');
+    }catch(err){
+      error.textContent=err.message;
+      error.classList.remove('hidden');
+    }finally{busy(button,false);}
+  }
+  async function deleteLoadingPartEntry(entry){
+    const yes=await confirmAction({title:'Usuń przypisanie?',
+      description:'Usunięcie „'+entry.excelName+'” skasuje tylko słownikowe powiązanie. Nie zmieni części ani stanów magazynowych.',
+      confirmLabel:'Usuń',danger:true});
+    if(!yes)return;
+    try{
+      await post({action:'loadingListPartDelete',id:entry.id});
+      await refreshLoadingListParts();
+      message('Usunięto przypisanie. Katalog i stany magazynowe pozostają bez zmian.','success');
+    }catch(err){message(err.message,'error');}
+  }
+
   async function refreshCmrModuleWeights(){
     const data=await api('cmrModuleWeights');
     if(state.view!=='cmrModuleWeights')return;
@@ -2515,6 +2665,10 @@
     $('frWeeklySettingsForm').addEventListener('submit',saveFrWeeklySettings);
     $('modulePrefixForm').addEventListener('submit',saveModulePrefix);
     $('cmrModuleWeightForm').addEventListener('submit',saveCmrModuleWeight);
+    $('loadingListPartAdd').addEventListener('click',()=>openLoadingPartEditor());
+    $('loadingListPartForm').addEventListener('submit',saveLoadingPartEntry);
+    $('loadingListPartSearch').addEventListener('input',renderLoadingPartChoices);
+    $('loadingListPartCancel').addEventListener('click',()=>$('loadingListPartDialog').close());
     $('modulePrefixCancel').addEventListener('click',resetModulePrefixEditor);
     $('superPinForm').addEventListener('submit',submitSuperAdminCredential);
     $('superPasswordForm').addEventListener('submit',submitSuperAdminCredential);
