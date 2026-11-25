@@ -1678,15 +1678,9 @@ tr:hover td{background:#ffffff04}
 .loading-parts-table td:nth-child(2){width:28%}
 .loading-parts-table th:nth-child(3),
 .loading-parts-table td:nth-child(3){width:41%}
-.loading-parts-index-cell{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:space-between;
-  gap:5px 12px;
-}
-.loading-parts-indexes{font-weight:600;line-height:1.45}
-.loading-parts-actions{display:inline-flex;align-items:center;gap:4px}
+.loading-parts-index-cell{vertical-align:middle}
+.loading-parts-indexes{display:inline-block;font-weight:600;line-height:1.45;margin-right:10px}
+.loading-parts-actions{display:inline-flex;align-items:center;gap:4px;vertical-align:middle}
 .loading-parts-actions .btn{
   padding:5px 8px;
   min-height:28px;
