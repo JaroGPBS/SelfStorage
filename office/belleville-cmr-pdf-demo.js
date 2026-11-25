@@ -571,7 +571,7 @@
       const countY=Math.max(314,Math.min(556,312+(moduleCount-1)*7*1.16/2));
       const jobs=[
         [B(504,18,49,17),snapshot.route,{size:11,bold:true,white:true,align:'right',label:'Trasa'}],
-        [B(463,49,58,13),snapshot.number,{size:7,bold:true,minSize:5.8,label:'Numer WZ'}],
+        [B(467,49,54,13),snapshot.number,{size:7,bold:true,minSize:5.8,label:'Numer WZ'}],
         // The actual template has much taller recipient/destination boxes
         // than the first demo used. Allow full address lists to fit.
         [B(51,88,258,60),snapshot.recipient,{size:8,minSize:4.8,label:'Odbiorca'}],
