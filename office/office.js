@@ -1039,7 +1039,9 @@ function renderMenu(){
         '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
           'data-belleville-orders="1" data-fr-warehouse-name="'+escapeHtml(label)+'">'+
           '<span class="office-operation-icon" aria-hidden="true">'+BELLEVILLE_ORDER_LIST.icon+'</span>'+
-          BELLEVILLE_ORDER_LIST.name+'</button>':'');
+          BELLEVILLE_ORDER_LIST.name+'</button>'+
+          '<button type="button" class="subnav-btn office-operation-link office-fr-operation" data-belleville-carriers="1">'+
+            '<span class="office-operation-icon" aria-hidden="true">▣</span>Przewoźnicy</button>':'');
     return '<div class="office-fr-warehouse">'+
       '<button type="button" class="subnav-btn office-fr-warehouse-toggle" '+
         'data-fr-warehouse-toggle="'+escapeHtml(key)+'" '+
@@ -1124,7 +1126,7 @@ function renderMenu(){
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
     (hasFrance?group('FR',frItems.join(''),true,false):'');
-  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-belleville-orders],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle],#sidebar [data-pl-warehouse-toggle],#sidebar [data-pl-routes-toggle],#sidebar [data-pl-routes-tab]')){
+  for(const el of document.querySelectorAll('#sidebar [data-warehouse],#sidebar [data-preview-warehouse],#sidebar [data-fr-warehouse-toggle],#sidebar [data-fr-stock],#sidebar [data-fr-operation],#sidebar [data-belleville-service],#sidebar [data-belleville-orders],#sidebar [data-belleville-carriers],#sidebar [data-market-vehicles],#sidebar [data-view],#sidebar [data-pl-warehouse],#sidebar [data-aggregate-market],#sidebar [data-bovis-toggle],#sidebar [data-pl-warehouse-toggle],#sidebar [data-pl-routes-toggle],#sidebar [data-pl-routes-tab]')){
     const isReal=state.view==='stocks'&&!state.preview&&el.dataset.warehouse===state.warehouse;
     const isPreview=Boolean(state.preview)&&(
       el.dataset.previewWarehouse===state.preview?.key&&state.preview?.type==='warehouse'||
@@ -4626,6 +4628,12 @@ document.addEventListener('click',e=>{
     showOfficePreview('module',BELLEVILLE_ORDER_LIST.key,BELLEVILLE_ORDER_LIST.name,{
       warehouseKey:'belleville',warehouseName:orderList.dataset.frWarehouseName||'Belleville'
     });
+    return;
+  }
+  const belCarrierMenu=e.target.closest('[data-belleville-carriers]');
+  if(belCarrierMenu){
+    if(window.GPBSBellevilleCmrCarriers)
+      void window.GPBSBellevilleCmrCarriers.openManager().catch(err=>errorBanner(err.message));
     return;
   }
   const plRoutesToggle=e.target.closest('[data-pl-routes-toggle]');
