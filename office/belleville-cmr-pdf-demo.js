@@ -24,6 +24,7 @@
   let pdfMode='draft';
   let printRecord=null;
   let recordLoaded=false;
+  let archiveReady=false;
   let serverClockOffset=0;
   let lockTimer=null;
   let isSavingPrint=false;
@@ -202,7 +203,7 @@
     };
   }
   function importExcelAddresses(){
-    if(!values)return;
+    if(!values||!recordLoaded||editorLocked||isSavingPrint)return;
     try{
       const result=parseExcelColumns($('cmrPdfDemoExcel').value);
       values.recipient=result.recipient;
@@ -213,7 +214,7 @@
     }catch(err){showError(err.message);}
   }
   function composeCarrier(){
-    if(!values)return;
+    if(!values||!recordLoaded||editorLocked||isSavingPrint)return;
     values.carrier=[
       values.carrierBase,
       values.plate?'Nr rej.: '+values.plate+(values.trailer?' / '+values.trailer:''):'',
@@ -224,7 +225,7 @@
     scheduleRender();
   }
   function selectCmrCarrier(){
-    if(!values)return;
+    if(!values||!recordLoaded||editorLocked||isSavingPrint)return;
     const id=$('cmrPdfDemoCarrierSelect').value;
     const item=(window.GPBSBellevilleCmrCarriers?.get()||[]).find(c=>c.id===id);
     if(item){
@@ -340,7 +341,7 @@
     $('cmrPdfDemoFrame').classList.remove('hidden');
     $('cmrPdfDemoUpload').classList.add('hidden');
     if(previous)URL.revokeObjectURL(previous);
-    $('cmrPdfDemoPrint').disabled=!recordLoaded||isSavingPrint||
+    $('cmrPdfDemoPrint').disabled=!recordLoaded||!archiveReady||isSavingPrint||
       (isLocked()&&mode!=='stored');
   }
   async function readStoredPdf(id,token){
@@ -401,7 +402,7 @@
       renderTimer=null;
       if(printRecord)void readStoredPdf(currentId,viewToken);
     }
-    if(locked&&pdfMode!=='stored')button.disabled=true;
+    if(!archiveReady||(locked&&pdfMode!=='stored'))button.disabled=true;
     else if(!isSavingPrint&&currentPdfBytes)button.disabled=false;
   }
   function printPdf(){
@@ -416,6 +417,7 @@
   }
   async function saveAndPrint(){
     if(!recordLoaded||isSavingPrint)return;
+    if(!archiveReady){showError('Archiwum R2 jest niedostępne. Wydruk wstrzymany.');return;}
     if(isLocked()||editorLocked){
       lockStatus();
       if(pdfMode!=='stored')await readStoredPdf(currentId,viewToken);
@@ -552,7 +554,7 @@
       ['cmrPdfDemoDriver','driver'],['cmrPdfDemoPlate','plate'],['cmrPdfDemoTrailer','trailer']
     ]){
       $(id).addEventListener('input',()=>{
-        if(!values)return;
+        if(!values||!recordLoaded||editorLocked||isSavingPrint)return;
         values[key]=$(id).value;
         composeCarrier();
       });
@@ -570,6 +572,7 @@
       const file=ev.target.files?.[0];
       ev.target.value='';
       if(!file)return;
+      if(!recordLoaded||editorLocked||isSavingPrint){showError('CMR jest zablokowana lub trwa zapis.');return;}
       if(!file.name.toLowerCase().endsWith('.pdf')||file.size>6*1024*1024){
         showError('Wybierz pusty PDF CMR, maksymalnie 6 MB.');return;
       }
@@ -584,6 +587,7 @@
         const {width,height}=pages[0].getSize();
         if(Math.abs(width-595)>6||Math.abs(height-842)>6)
           throw Error('Wybierz CMR w formacie A4 (pionowo).');
+        if(!recordLoaded||editorLocked)return;
         templateBytes=bytes;
         scheduleRender(0);
         try{await idb('put',bytes);}catch(_){setHint('Nie udało się zapisać wzoru lokalnie. Wczytaj go ponownie po odświeżeniu strony.');}
@@ -605,6 +609,9 @@
     pdfMode='draft';
     $('cmrPdfDemoFrame').removeAttribute('src');
     $('cmrPdfDemoPrint').disabled=true;
+    printRecord=null;
+    recordLoaded=false;
+    editorLocked=false;
   }
   function syncFields(){
     for(const el of $('cmrPdfDemoFields').querySelectorAll('[data-cmr-field]'))
@@ -761,7 +768,7 @@
         button.disabled=true;
         setHint('Zmień zbyt długie pola. Pozostałe dane i edycja nadal działają.');
       }else{
-        button.disabled=editorLocked||isLocked()||!recordLoaded;
+        button.disabled=editorLocked||isLocked()||!recordLoaded||!archiveReady;
         showError('');
         setHint('Gotowy podgląd. Zapisz i drukuj, aby zachować PDF w R2.');
       }
@@ -787,29 +794,88 @@
     init();
     const next=preparedDoc(id);
     if(!next)return false;
+    // Prevent an earlier asynchronous open/read from changing a newer modal.
+    const token=++viewToken;
+    clearInterval(lockTimer);
+    lockTimer=null;
     clearTimeout(renderTimer);
     renderTimer=null;
     renderCounter++;
+    renderQueued=false;
     currentId=id;
     values=next;
+    printRecord=null;
+    recordLoaded=false;
+    editorLocked=false;
+    archiveReady=false;
     weightManuallyEdited=false;
-    syncFields();
-    syncTransportFields();
-    void populateCmrDefaults(id);
+    currentPdfBytes=null;
+    pdfMode='draft';
+    if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl='';}
+    $('cmrPdfDemoFrame').removeAttribute('src');
+    $('cmrPdfDemoFrame').classList.add('hidden');
+    $('cmrPdfDemoUpload').classList.add('hidden');
     $('cmrPdfDemoModal').classList.remove('hidden');
     $('cmrPdfDemoTitle').textContent='Podgląd CMR · '+id;
     $('cmrPdfDemoPrint').disabled=true;
     showError('');
     setHint('');
-    if(!templateBytes){
-      try{const bytes=await idb('get');if(bytes)templateBytes=new Uint8Array(bytes);}catch(_){}
+    syncFields();
+    syncTransportFields();
+    lockStatus();
+    try{
+      const res=await fetch(documentApi(id)+'&view=status',{
+        credentials:'same-origin',cache:'no-store'
+      });
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok||!data.ok)throw Error(data.error||'Nie udało się sprawdzić stanu CMR.');
+      if(token!==viewToken||currentId!==id)return true;
+      archiveReady=Boolean(data.storageReady);
+      printRecord=data.document||null;
+      serverClockOffset=Number(data.serverNow)-Date.now();
+      if(printRecord){
+        values={...next,...printRecord.fields};
+        weightManuallyEdited=true;
+      }
+      recordLoaded=true;
+      syncFields();
+      syncTransportFields();
+      if(!printRecord||!isLocked())void populateCmrDefaults(id,Boolean(printRecord));
+      lockStatus();
+      lockTimer=setInterval(()=>{
+        if(token!==viewToken||currentId!==id)return;
+        lockStatus();
+      },1000);
+      if(!archiveReady){
+        showError('Archiwum R2 nie jest dostępne. Podgląd roboczy jest możliwy, ale zatwierdzanie wydruku zostało wstrzymane.');
+      }
+      if(isLocked())return true; // lockStatus loads only the saved immutable PDF.
+      if(!templateBytes){
+        try{
+          const bytes=await idb('get');
+          if(bytes)templateBytes=new Uint8Array(bytes);
+        }catch(_){}
+      }
+      if(token!==viewToken||currentId!==id||$('cmrPdfDemoModal').classList.contains('hidden'))return true;
+      if(templateBytes){
+        scheduleRender(0);
+      }else if(printRecord){
+        await readStoredPdf(id,token);
+        $('cmrPdfDemoUpload').classList.remove('hidden');
+        setHint('Aby zmienić zapisaną CMR w ciągu 60 minut, wczytaj pusty szablon PDF w tej przeglądarce.');
+      }else{
+        $('cmrPdfDemoUpload').classList.remove('hidden');
+        $('cmrPdfDemoFrame').classList.add('hidden');
+        setHint('Wczytaj pusty wzór PDF. Wystarczy raz na tę przeglądarkę.');
+      }
+    }catch(err){
+      if(token===viewToken&&currentId===id){
+        recordLoaded=false; // Fail closed: no untracked print if D1 is unavailable.
+        lockStatus();
+        showError(err.message||'Nie udało się odczytać dokumentu z D1.');
+        setHint('CMR nie jest dostępna do wydruku, dopóki nie uda się sprawdzić jej blokady.');
+      }
     }
-    if(currentId!==id||$('cmrPdfDemoModal').classList.contains('hidden'))return true;
-    if(!templateBytes){
-      $('cmrPdfDemoUpload').classList.remove('hidden');
-      $('cmrPdfDemoFrame').classList.add('hidden');
-      setHint('Najpierw wczytaj pusty wzór PDF. Wystarczy raz na tę przeglądarkę.');
-    }else scheduleRender(0);
     return true;
   }
   window.GPBSBellevilleCmrPdfDemo={open};
