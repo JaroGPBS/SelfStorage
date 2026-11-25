@@ -1627,3 +1627,23 @@ tr:hover td{background:#ffffff04}
   .module-prefix-actions .btn+.btn{margin-left:4px}
   .module-prefix-status{padding:13px 17px}
 }
+
+
+/* CMR module weight table: one clear category heading per machine family. */
+#cmrModuleWeightsView .cmr-module-weight-category th{
+  text-align:left;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.055em;
+  padding:11px 16px 8px;
+  color:var(--text,#e8eef6);
+  background:var(--panel,#242b34);
+  border-top:2px solid var(--edge,#424a55);
+  border-bottom:1px solid var(--edge,#424a55);
+}
+#cmrModuleWeightsView .cmr-module-weight-category:first-child th{
+  border-top:0;
+}
+#cmrModuleWeightsView .module-prefix-table td:first-child{
+  padding-left:22px;
+}
