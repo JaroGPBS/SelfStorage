@@ -17,6 +17,7 @@
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
     frWeeklySettings:['Powiadomienia FR','Przypomnienia o cotygodniowej inwentaryzacji ekip francuskich.'],
     modulePrefixes:['Prefiksy modułów','Mapowanie prefiksów numerów seryjnych na typ modułu.'],
+    cmrModuleWeights:['Wagi modułów','Wagi modułów wykorzystywane w dokumentach CMR.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.'],
     settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.'],
     superAdmin:['Super Admin','Hasło i wspólny PIN głównego konta właściciela.']
@@ -943,6 +944,8 @@
       ?'Nowy indeks jest nadany na stałe. Wymianę starego numeru prowadź w zakładce Wymiana indeksów.'
       :'';
     $('partEditSap').value=part.sap_number||'';
+    $('partEditWeightGroup').hidden=state.view!=='parts';
+    $('partEditWeight').value=part.weight_kg===null||part.weight_kg===undefined?'':String(part.weight_kg);
     $('partEditVerify').checked=false;
     $('partEditDelete').disabled=false;
     $('partEditStatus').textContent=part.verification_status==='PENDING'
@@ -1063,6 +1066,7 @@
       const form=new FormData();
       form.set('name',$('partCreateName').value.trim());
       form.set('sap',$('partCreateSap').value.trim());
+      form.set('weightKg',$('partCreateWeight').value.trim());
       if(photo)form.set('photo',photo,photo.name);
       const response=await fetch('/api/panel?action=createPart',{
         method:'POST',credentials:'same-origin',cache:'no-store',body:form
@@ -1110,6 +1114,7 @@
         name:$('partEditName').value.trim(),
         number:$('partEditNumber').value.trim(),
         sap:$('partEditSap').value.trim(),
+        ...(state.view==='parts'?{weightKg:$('partEditWeight').value.trim()}:{}),
         verify:$('partEditVerify').checked
       });
       if(file) {
@@ -1497,8 +1502,9 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings'||view==='modulePrefixes');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings'||view==='modulePrefixes'||view==='cmrModuleWeights');
     $('modulePrefixesView').classList.toggle('hidden',view!=='modulePrefixes');
+    $('cmrModuleWeightsView').classList.toggle('hidden',view!=='cmrModuleWeights');
     $('frWeeklySettingsView').classList.toggle('hidden',view!=='frWeeklySettings');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
@@ -1542,6 +1548,10 @@
       if(view==='modulePrefixes'){
         resetModulePrefixEditor();
         await refreshModulePrefixes();
+        return;
+      }
+      if(view==='cmrModuleWeights'){
+        await refreshCmrModuleWeights();
         return;
       }
       if(view==='frWeeklySettings'){
@@ -2407,6 +2417,69 @@
     finally{busy(button,false);}
   }
 
+
+  async function refreshCmrModuleWeights(){
+    const data=await api('cmrModuleWeights');
+    if(state.view!=='cmrModuleWeights')return;
+    const tbody=$('cmrModuleWeightRows');
+    tbody.replaceChildren();
+    const weights=new Map((data.weights||[]).map(w=>[w.moduleType,w.weightKg]));
+    const types=[...new Set([...(data.types||[]),...weights.keys()])]
+      .sort((a,b)=>a.localeCompare(b,'pl'));
+    const suggestions=$('cmrModuleWeightTypes');
+    suggestions.replaceChildren();
+    for(const type of types){
+      const opt=document.createElement('option');opt.value=type;suggestions.append(opt);
+      const row=tbody.insertRow();
+      row.insertCell().textContent=type;
+      const weight=row.insertCell();
+      weight.textContent=weights.has(type)
+        ?Number(weights.get(type)).toLocaleString('pl-PL',{maximumFractionDigits:3})+' kg':'—';
+      const action=row.insertCell();
+      const edit=document.createElement('button');
+      edit.type='button';edit.className='btn mini';edit.textContent='Edytuj';
+      edit.addEventListener('click',()=>{
+        $('cmrModuleWeightType').value=type;
+        $('cmrModuleWeightValue').value=weights.has(type)?weights.get(type):'';
+        $('cmrModuleWeightValue').focus();
+      });
+      action.append(edit);
+      if(weights.has(type)){
+        const del=document.createElement('button');
+        del.type='button';del.className='btn mini ghost';del.textContent='Usuń wagę';
+        del.addEventListener('click',async()=>{
+          const yes=await confirmAction({
+            title:'Usunąć wagę '+type+'?',
+            description:'Ten typ modułu nie będzie uwzględniany w sumie CMR.',
+            confirmLabel:'Usuń wagę'
+          });
+          if(!yes)return;
+          try{
+            await post({action:'cmrModuleWeightSave',moduleType:type,weightKg:null});
+            await refreshCmrModuleWeights();
+          }catch(error){message(error.message,'error');}
+        });
+        action.append(del);
+      }
+    }
+    $('cmrModuleWeightStatus').textContent='Zapisane w D1 · '+weights.size+' typów z wagą.';
+  }
+  async function saveCmrModuleWeight(event){
+    event.preventDefault();
+    const type=$('cmrModuleWeightType').value.trim().replace(/\s+/g,' ').toUpperCase();
+    const weight=$('cmrModuleWeightValue').value.trim();
+    if(!type||weight===''){message('Wybierz typ i wpisz wagę.','error');return;}
+    const btn=event.currentTarget.querySelector('button[type=submit]');
+    busy(btn,true);
+    try{
+      await post({action:'cmrModuleWeightSave',moduleType:type,weightKg:weight});
+      $('cmrModuleWeightForm').reset();
+      await refreshCmrModuleWeights();
+      message('Zapisano wagę modułu '+type+'.','success');
+    }catch(error){message(error.message,'error');}
+    finally{busy(btn,false);}
+  }
+
   async function init() {
     applyFontSize(storedFontSize(),false);
     applyTheme(storedTheme(),false);
@@ -2421,6 +2494,7 @@
     $('loginForm').addEventListener('submit',performLogin);
     $('frWeeklySettingsForm').addEventListener('submit',saveFrWeeklySettings);
     $('modulePrefixForm').addEventListener('submit',saveModulePrefix);
+    $('cmrModuleWeightForm').addEventListener('submit',saveCmrModuleWeight);
     $('modulePrefixCancel').addEventListener('click',resetModulePrefixEditor);
     $('superPinForm').addEventListener('submit',submitSuperAdminCredential);
     $('superPasswordForm').addEventListener('submit',submitSuperAdminCredential);
