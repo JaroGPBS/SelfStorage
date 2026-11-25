@@ -1,6 +1,8 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {listModulePrefixes,saveModulePrefix,deleteModulePrefix} from '../../lib/module-prefix-registry.js';
+import {listFrLoadingListCatalog,saveFrLoadingListAlias,deleteFrLoadingListAlias}
+  from '../../lib/fr-loading-list-catalog.js';
 import {cmrWeight,ensureCmrWeights,listCmrModuleWeights,saveCmrModuleWeight,partWeightStatement} from '../../lib/cmr-belleville-config.js';
 import {listRouteParts,createRoutePart,updateRoutePart,mergeRouteParts,importPreviousRouteParts} from '../../lib/pl-route-parts.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
@@ -505,6 +507,7 @@ async function rotateBoxQr(env,body,actor) {
 async function queryPanel(env,view,url) {
   if(view==='modulePrefixes')return listModulePrefixes(env.DB);
   if(view==='cmrModuleWeights')return listCmrModuleWeights(env.DB);
+  if(view==='loadingListParts')return listFrLoadingListCatalog(env.DB);
   if(view==='frWeeklySettings')return readFrWeeklySettings(env.DB);
   if(view==='boxQr')return boxQrRows(env.DB);
   if(view==='usage')return adminUsage(env,url);
@@ -1714,6 +1717,23 @@ async function route(request,env) {
     }catch(error){
       console.error('Super Admin credential change failed',error?.name||'Error');
       return fail('Nie udało się zapisać zmiany danych logowania.',503);
+    }
+  }
+  if(['loadingListPartSave','loadingListPartDelete'].includes(body?.action)){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try{
+      const result=body.action==='loadingListPartSave'
+        ?await saveFrLoadingListAlias(env.DB,body)
+        :await deleteFrLoadingListAlias(env.DB,body.id);
+      return respond({ok:true,...(result||{})});
+    }catch(error){
+      if(/UNIQUE constraint/i.test(String(error?.message||'')))
+        return fail('Ta nazwa z Excela już istnieje w słowniku.',409);
+      if(/D1_ERROR|SQLITE|FOREIGN KEY/i.test(String(error?.message||''))){
+        console.error('Loading list alias D1 failed',error?.name||'Error');
+        return fail('Nie udało się zapisać powiązania w D1.',503);
+      }
+      return fail(error?.message||'Nie udało się zapisać powiązania.',400);
     }
   }
   if(body?.action==='cmrModuleWeightSave'){
