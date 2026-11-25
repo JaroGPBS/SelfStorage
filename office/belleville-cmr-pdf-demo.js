@@ -577,7 +577,7 @@
         [B(51,88,258,60),snapshot.recipient,{size:8,minSize:4.8,label:'Odbiorca'}],
         [B(51,164,258,61),snapshot.delivery,{size:8,minSize:4.8,label:'Adres dostawy'}],
         [B(328,89,227,58),snapshot.carrier,{size:8,minSize:4.8,label:'Przewoźnik'}],
-        [B(138,261,85,12),snapshot.loadingDate,{size:8,label:'Data załadunku'}],
+        [B(138,258,85,12),snapshot.loadingDate,{size:8,label:'Data załadunku'}],
         [B(49,318,163,261),snapshot.cargo,{size:7,align:'left',top:true,minSize:5,label:'Moduły i części'}],
         [B(181,countY,66,18),snapshot.count,{size:6.5,minSize:4.6,label:'Ilość modułów'}],
         [B(443,349,52,32),snapshot.weight,{size:9,label:'Waga'}]
