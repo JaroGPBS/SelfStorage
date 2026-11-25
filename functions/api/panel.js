@@ -8,7 +8,7 @@ import {listRouteParts,createRoutePart,updateRoutePart,mergeRouteParts,importPre
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {readFrBoxSharedCatalog,removeBoxCataloguePart,addBoxCataloguePart} from '../../lib/fr-box-office-stock.js';
 import {ensureFrenchBoxSetup} from '../../lib/fr-fixed-box-setup.js';
-import {listAdminWarehouses,createManagedWarehouse,updateManagedWarehouse,deleteEmptyWarehouse} from '../../lib/warehouse-admin.js';
+import {listAdminWarehouses,createManagedWarehouse,updateManagedWarehouse,deleteEmptyWarehouse,ensureBellevilleWarehouseAccess} from '../../lib/warehouse-admin.js';
 import {VEHICLE_CATALOG_SNAPSHOT} from '../../lib/vehicle-catalog-20261111.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {isFrTestAccount} from '../../lib/fr-test-store.js';
@@ -617,10 +617,14 @@ async function queryPanel(env,view,url) {
     };
   }
   if(view==='warehouses') {
+    const owner=await ownerContext(env);
+    await ensureBellevilleWarehouseAccess(env,owner?.owner?.id);
     await ensureFrenchBoxSetup(env.DB);
     return await listAdminWarehouses(env.DB,url.searchParams.get('archived')==='1');
   }
   if(view==='warehouseOptions') {
+    const owner=await ownerContext(env);
+    await ensureBellevilleWarehouseAccess(env,owner?.owner?.id);
     const rows=await env.DB.prepare(
       'SELECT id,name,country_code,active FROM warehouses ORDER BY country_code,name'
     ).all();
