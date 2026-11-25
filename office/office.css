@@ -9501,6 +9501,21 @@
   white-space:pre-line;
   overflow-wrap:anywhere;
 }
+/* Match the source sheet: labels are 6pt, sender 9pt bold and centered,
+   loading address 8pt centered, while the sender instruction is 10pt. */
+.belleville-cmr-print .belleville-cmr-f1 .belleville-cmr-field-value{
+  font-size:12px;
+  font-weight:700;
+  line-height:1.28;
+  text-align:center;
+  padding:5px 7px 2px;
+}
+.belleville-cmr-print .belleville-cmr-f4 .belleville-cmr-field-value{
+  font-size:10.5px;
+  line-height:1.18;
+  text-align:center;
+  padding:1px 4px;
+}
 .belleville-cmr-print .belleville-cmr-f1{height:27mm}
 .belleville-cmr-print .belleville-cmr-f2{height:19mm}
 .belleville-cmr-print .belleville-cmr-f3{height:12mm}
@@ -9515,33 +9530,62 @@
   height:27mm;
   display:flex;
   flex-direction:column;
-  align-items:center;
-  justify-content:flex-start;
-  gap:1px;
+  justify-content:space-between;
   margin:-1px 0 0 -1px;
-  padding:3px 4px 2px;
   border:1px solid #191919;
   overflow:hidden;
-  text-align:center;
+  text-align:left;
 }
-.belleville-cmr-print .belleville-cmr-title strong{font-size:8px;line-height:1.1;font-weight:400}
-.belleville-cmr-print .belleville-cmr-title > span{font-size:7.2px}
-.belleville-cmr-print .belleville-cmr-title > div{
-  font-size:13px;
-  font-weight:800;
-  line-height:1.1;
+.belleville-cmr-print .belleville-cmr-title-top{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 24%;
+  align-items:stretch;
+  min-height:10mm;
 }
-.belleville-cmr-print .belleville-cmr-title > div span{font-size:9px}
-.belleville-cmr-print .belleville-cmr-title p{
-  font-size:6.3px;
-  line-height:1.12;
-  margin:2px 0 0;
-  font-weight:400;
+.belleville-cmr-print .belleville-cmr-title-name{
+  min-width:0;
+  padding:3px 4px 2px;
 }
-.belleville-cmr-print .belleville-cmr-title p small{
+.belleville-cmr-print .belleville-cmr-title-name strong,
+.belleville-cmr-print .belleville-cmr-title-name span{
   display:block;
-  margin-top:2px;
-  font-size:6px;
+  line-height:1.12;
+  font-weight:400;
+  font-size:8px;
+}
+.belleville-cmr-print .belleville-cmr-title-name span{margin-top:3px}
+.belleville-cmr-print .belleville-cmr-title-number{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:4px;
+  padding:2px 3px;
+  font-size:20px;
+  font-weight:700;
+}
+.belleville-cmr-print .belleville-cmr-title-number span{
+  flex:1;
+  min-width:6mm;
+  border-bottom:1px solid #222;
+  height:10px;
+}
+.belleville-cmr-print .belleville-cmr-terms{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  flex:1;
+  align-items:stretch;
+}
+.belleville-cmr-print .belleville-cmr-terms p{
+  min-width:0;
+  font-size:6.8px;
+  line-height:1.23;
+  padding:4px;
+  margin:0;
+  font-weight:400;
+  overflow-wrap:break-word;
+}
+.belleville-cmr-print .belleville-cmr-terms p+ p{
+  border-left:1px solid #777;
 }
 .belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f16{height:19mm}
 .belleville-cmr-print .belleville-cmr-upper-right .belleville-cmr-f17{height:12mm}
@@ -9613,7 +9657,7 @@
   margin-top:2px;
 }
 .belleville-cmr-print .belleville-cmr-f13{min-height:59mm;flex:1 1 auto}
-.belleville-cmr-print .belleville-cmr-f13 .belleville-cmr-field-value{text-align:center}
+.belleville-cmr-print .belleville-cmr-f13 .belleville-cmr-field-value{text-align:center;font-size:12px;line-height:1.22;padding-top:5px}
 .belleville-cmr-print .belleville-cmr-f14{height:7mm}
 .belleville-cmr-print .belleville-cmr-f15{min-height:12mm}
 .belleville-cmr-print .belleville-cmr-f15 .belleville-cmr-field-value{padding-top:0;font-size:6px}
@@ -9622,12 +9666,12 @@
   border:1px solid #191919;
   margin:-1px 0 0 -1px;
 }
-.belleville-cmr-print .belleville-cmr-fees-title{
+ .belleville-cmr-print .belleville-cmr-fees-title{
   display:grid;
   grid-template-columns:35% 22% 18% 25%;
   min-height:10mm;
   border-bottom:1px solid #191919;
-  font-size:7px;
+  font-size:8px;
 }
 .belleville-cmr-print .belleville-cmr-fees-title b{
   float:left;
@@ -9673,7 +9717,7 @@
 .belleville-cmr-print .belleville-cmr-issue b{font-size:9px}
 .belleville-cmr-print .belleville-cmr-issue strong{
   text-align:center;
-  font-size:9px;
+  font-size:11px;
   font-weight:400;
 }
 .belleville-cmr-print .belleville-cmr-issue small{
