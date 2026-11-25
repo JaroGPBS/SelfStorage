@@ -242,8 +242,9 @@
       });
       const data=await res.json();
       if(!res.ok||!data.ok||values!==expected||currentId!==id)return;
+      const moduleCode=type=>String(type||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
       const byType=new Map((data.modules||[]).map(x=>[
-        String(x.moduleType).trim().toUpperCase(),Number(x.weightKg)
+        moduleCode(x.moduleType),Number(x.weightKg)
       ]));
       const bySap=new Map(),byName=new Map();
       for(const part of data.parts||[]){
@@ -255,7 +256,7 @@
       }
       let total=0,found=false;
       for(const module of doc.modules||[]){
-        const kg=byType.get(String(module.type||'').trim().toUpperCase());
+        const kg=byType.get(moduleCode(module.type));
         if(kg!==undefined){total+=kg;found=true;}
       }
       for(const part of doc.parts||[]){
