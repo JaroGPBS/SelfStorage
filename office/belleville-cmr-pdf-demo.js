@@ -545,7 +545,7 @@
         // than the first demo used. Allow full address lists to fit.
         [B(51,88,258,60),snapshot.recipient,{size:8,minSize:4.8,label:'Odbiorca'}],
         [B(51,164,258,61),snapshot.delivery,{size:8,minSize:4.8,label:'Adres dostawy'}],
-        [B(328,89,227,58),snapshot.carrier,{size:9,bold:true,minSize:4.8,label:'Przewoźnik'}],
+        [B(328,89,227,58),snapshot.carrier,{size:8,minSize:4.8,label:'Przewoźnik'}],
         [B(138,256,85,12),snapshot.loadingDate,{size:8,label:'Data załadunku'}],
         [B(49,318,163,261),snapshot.cargo,{size:7,align:'left',top:true,minSize:5,label:'Moduły i części'}],
         [B(216,337,73,40),snapshot.count,{size:7,label:'Ilość modułów'}],
