@@ -12,6 +12,8 @@
   let values=null;
   let renderTimer=null;
   let renderCounter=0;
+  let renderInProgress=false;
+  let renderQueued=false;
   let libPromise=null;
   let fontkitPromise=null;
   let fontBytesPromise=null;
@@ -180,7 +182,7 @@
             '<iframe id="cmrPdfDemoFrame" class="cmr-pdf-demo-frame hidden" title="Podgląd wypełnionego CMR PDF"></iframe>',
           '</div>',
           '<div class="cmr-pdf-demo-editor">',
-            '<p>Popraw pola CMR. Podgląd PDF aktualizuje się automatycznie. ',
+            '<p>Popraw pola CMR. Podgląd PDF aktualizuje się automatycznie po zakończeniu pisania. ',
             'Wszystkie wartości są demonstracyjne — nic nie zapisuje się do D1.</p>',
             '<div id="cmrPdfDemoFields"></div>',
             '<p id="cmrPdfDemoHint" class="cmr-pdf-demo-hint"></p>',
@@ -236,8 +238,8 @@
         if(Math.abs(width-595)>6||Math.abs(height-842)>6)
           throw Error('Wybierz CMR w formacie A4 (pionowo).');
         templateBytes=bytes;
+        scheduleRender(0);
         try{await idb('put',bytes);}catch(_){setHint('Nie udało się zapisać wzoru lokalnie. Wczytaj go ponownie po odświeżeniu strony.');}
-        await render();
       }catch(err){showError(err.message||'Nie udało się wczytać CMR PDF.');setHint('');}
     });
     $('cmrPdfDemoPrint').addEventListener('click',()=>{
@@ -253,6 +255,8 @@
   }
   function close(){
     clearTimeout(renderTimer);
+    renderTimer=null;
+    renderQueued=false;
     renderCounter++;
     $('cmrPdfDemoModal').classList.add('hidden');
     if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl='';}
@@ -263,9 +267,18 @@
     for(const el of $('cmrPdfDemoFields').querySelectorAll('[data-cmr-field]'))
       el.value=values?.[el.dataset.cmrField]||'';
   }
-  function scheduleRender(){
+  // PDF embedding/serialization is expensive. Debounce input and never start
+  // another generation until the previous one finishes.
+  function scheduleRender(delay=900){
+    if(!templateBytes||!values)return;
+    renderCounter++;
     clearTimeout(renderTimer);
-    renderTimer=setTimeout(()=>{render().catch(err=>showError(err.message));},350);
+    $('cmrPdfDemoPrint').disabled=true;
+    setHint('Aktualizacja podglądu po zakończeniu wpisywania…');
+    renderTimer=setTimeout(()=>{
+      renderTimer=null;
+      void render();
+    },delay);
   }
   function wrapLines(font,text,size,maxWidth){
     const lines=[];
@@ -291,21 +304,33 @@
     }
     return lines;
   }
-  function stamp(page,box,value,options={},fonts,lib){
+  function stamp(page,box,value,options={},fonts,lib,overflowFields){
     if(!String(value||'').trim())return;
     const margin=options.margin===undefined?2:options.margin;
     const font=options.bold?fonts.bold:fonts.regular;
     const align=options.align||'center';
+    const minSize=options.minSize||4.8;
+    const leading=options.leading||1.16;
     let size=options.size||8;
     let lines=[],step=0;
-    while(true){
+    let fits=false;
+    for(;size>=minSize-0.001;size-=0.25){
       lines=wrapLines(font,value,size,box.w-2*margin);
-      step=size*(options.leading||1.16);
-      if(lines.length*step<=box.h-2*margin)break;
-      size-=0.25;
-      if(size<(options.minSize||4.8))
-        throw Error('Pole „'+(options.label||'CMR')+'” zawiera zbyt dużo tekstu do wydruku w tym miejscu.');
+      step=size*leading;
+      if(lines.length*step<=box.h-2*margin){fits=true;break;}
     }
+    if(!fits){
+      // Keep the editor and all other fields functional even if the text is
+      // longer than the physical CMR box. Mark PDF incomplete and block print.
+      size=minSize;
+      step=size*leading;
+      lines=wrapLines(font,value,size,box.w-2*margin);
+      const maxLines=Math.max(0,Math.floor((box.h-2*margin)/step));
+      lines=lines.slice(0,maxLines);
+      if(lines.length)lines[lines.length-1]='...';
+      overflowFields.push(options.label||'CMR');
+    }
+    if(!lines.length)return;
     const top=options.top?margin:Math.max(margin,(box.h-lines.length*step)/2);
     const color=options.white?lib.rgb(1,1,1):lib.rgb(0.08,0.08,0.08);
     for(let i=0;i<lines.length;i++){
@@ -320,8 +345,17 @@
   }
   function B(x,y,w,h){return {x,y,w,h};}
   async function render(){
-    if(!templateBytes||!values)return;
-    const sequence=++renderCounter;
+    if(!templateBytes||!values||$('cmrPdfDemoModal').classList.contains('hidden'))return;
+    if(renderInProgress){
+      renderQueued=true;
+      return;
+    }
+    renderInProgress=true;
+    renderQueued=false;
+    const sequence=renderCounter;
+    const docId=currentId;
+    const source=templateBytes;
+    const snapshot={...values};
     const button=$('cmrPdfDemoPrint');
     button.disabled=true;
     showError('');
@@ -330,50 +364,83 @@
       const [lib,fontkit,fontBytes]=await Promise.all([
         loadLib(),loadFontkit(),loadFontBytes()
       ]);
-      const pdf=await lib.PDFDocument.load(templateBytes);
+      if(sequence!==renderCounter)return;
+      const pdf=await lib.PDFDocument.load(source);
       pdf.registerFontkit(fontkit);
       const fonts={
         regular:await pdf.embedFont(fontBytes[0],{subset:true}),
         bold:await pdf.embedFont(fontBytes[1],{subset:true})
       };
+      if(sequence!==renderCounter)return;
       const page=pdf.getPages()[0];
       const jobs=[
-        [B(504,18,49,17),values.route,{size:11,bold:true,white:true,align:'right',label:'Trasa'}],
-        [B(475,43,37,14),values.number,{size:7,bold:true,label:'Numer WZ'}],
-        [B(51,99,258,43),values.recipient,{size:8,minSize:5.2,label:'Odbiorca'}],
-        [B(51,170,258,52),values.delivery,{size:8,minSize:5.2,label:'Adres dostawy'}],
-        [B(328,93,227,46),values.carrier,{size:9,bold:true,minSize:5.1,label:'Przewoźnik'}],
-        [B(138,256,85,12),values.loadingDate,{size:8,label:'Data załadunku'}],
-        [B(44,318,118,261),values.cargo,{size:7,align:'left',top:true,minSize:5,label:'Moduły i części'}],
-        [B(169,337,68,40),values.count,{size:7,label:'Ilość modułów'}],
-        [B(443,349,52,32),values.weight,{size:9,label:'Waga'}]
+        [B(504,18,49,17),snapshot.route,{size:11,bold:true,white:true,align:'right',label:'Trasa'}],
+        [B(475,43,37,14),snapshot.number,{size:7,bold:true,label:'Numer WZ'}],
+        // The actual template has much taller recipient/destination boxes
+        // than the first demo used. Allow full address lists to fit.
+        [B(51,88,258,60),snapshot.recipient,{size:8,minSize:4.8,label:'Odbiorca'}],
+        [B(51,164,258,61),snapshot.delivery,{size:8,minSize:4.8,label:'Adres dostawy'}],
+        [B(328,89,227,58),snapshot.carrier,{size:9,bold:true,minSize:4.8,label:'Przewoźnik'}],
+        [B(138,256,85,12),snapshot.loadingDate,{size:8,label:'Data załadunku'}],
+        [B(44,318,118,261),snapshot.cargo,{size:7,align:'left',top:true,minSize:5,label:'Moduły i części'}],
+        [B(169,337,68,40),snapshot.count,{size:7,label:'Ilość modułów'}],
+        [B(443,349,52,32),snapshot.weight,{size:9,label:'Waga'}]
       ];
-      for(const job of jobs)stamp(page,...job,fonts,lib);
-      // The blank template contains an old fixed issue date; cover only its digits.
-      page.drawRectangle({x:248.5,y:page.getHeight()-759.7,width:40.5,height:10.5,
-        color:lib.rgb(1,1,1),borderWidth:0});
-      stamp(page,B(248,748.4,41,10),values.issueDate,
-        {size:8,label:'Data wystawienia'},fonts,lib);
-      const data=await pdf.save();
+      const overflowFields=[];
+      for(const job of jobs)stamp(page,...job,fonts,lib,overflowFields);
+      // The blank PDF template still contains a fixed issue date.
+      page.drawRectangle({
+        x:248.5,y:page.getHeight()-759.7,width:40.5,height:10.5,
+        color:lib.rgb(1,1,1),borderWidth:0
+      });
+      stamp(page,B(248,748.4,41,10),snapshot.issueDate,
+        {size:8,label:'Data wystawienia'},fonts,lib,overflowFields);
       if(sequence!==renderCounter)return;
+      const data=await pdf.save();
+      if(sequence!==renderCounter||docId!==currentId||
+        $('cmrPdfDemoModal').classList.contains('hidden'))return;
       const url=URL.createObjectURL(new Blob([data],{type:'application/pdf'}));
-      if(currentUrl)URL.revokeObjectURL(currentUrl);
+      const previous=currentUrl;
       currentUrl=url;
       $('cmrPdfDemoFrame').src=url;
       $('cmrPdfDemoFrame').classList.remove('hidden');
       $('cmrPdfDemoUpload').classList.add('hidden');
-      button.disabled=false;
-      setHint('Ostry tekst PDF (nie obraz). Do D1 nie zapisano żadnych danych.');
+      if(previous)URL.revokeObjectURL(previous);
+      if(overflowFields.length){
+        showError('Tekst nie mieści się w polu: '+overflowFields.join(', ')+
+          '. W podglądzie pokazano tylko część. Skróć wpis lub podziel dane — drukowanie jest wstrzymane do poprawy.');
+        button.disabled=true;
+        setHint('Zmień zbyt długie pola. Pozostałe dane i edycja nadal działają.');
+      }else{
+        button.disabled=false;
+        showError('');
+        setHint('Ostry tekst PDF (nie obraz). Do D1 nie zapisano żadnych danych.');
+      }
     }catch(err){
-      if(sequence!==renderCounter)return;
-      showError(err.message||'Błąd generowania CMR.');
-      setHint('');
+      if(sequence===renderCounter){
+        showError(err.message||'Błąd generowania CMR.');
+        button.disabled=true;
+        setHint('Możesz nadal zmieniać pola. Podgląd spróbuje zaktualizować się po następnej zmianie.');
+      }
+    }finally{
+      renderInProgress=false;
+      if(!$('cmrPdfDemoModal').classList.contains('hidden')&&
+         (renderQueued||sequence!==renderCounter)&&!renderTimer){
+        renderQueued=false;
+        renderTimer=setTimeout(()=>{
+          renderTimer=null;
+          void render();
+        },120);
+      }
     }
   }
   async function open(id){
     init();
     const next=preparedDoc(id);
     if(!next)return false;
+    clearTimeout(renderTimer);
+    renderTimer=null;
+    renderCounter++;
     currentId=id;
     values=next;
     syncFields();
@@ -390,7 +457,7 @@
       $('cmrPdfDemoUpload').classList.remove('hidden');
       $('cmrPdfDemoFrame').classList.add('hidden');
       setHint('Najpierw wczytaj pusty wzór PDF. Wystarczy raz na tę przeglądarkę.');
-    }else await render();
+    }else scheduleRender(0);
     return true;
   }
   window.GPBSBellevilleCmrPdfDemo={open};
