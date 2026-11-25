@@ -5,7 +5,8 @@
   'use strict';
   const DB_NAME='gpbs-cmr-template-preview';
   const DB_STORE='assets';
-  const DB_KEY='cmr-blank-pdf-v1';
+  // New final blank template, separate from the old stored CMR form.
+  const DB_KEY='cmr-belleville-final-v2';
   let templateBytes=null;
   let currentUrl='';
   let currentId='';
@@ -18,6 +19,7 @@
   let fontkitPromise=null;
   let fontBytesPromise=null;
   let initialized=false;
+  let weightManuallyEdited=false;
   const $=id=>document.getElementById(id);
   const fieldNames=[
     ['route','Trasa','text'],
@@ -139,6 +141,11 @@
       number:doc.id,
       recipient:'',
       delivery:'',
+      carrierBase:doc.carrier||'',
+      driver:doc.driver||'',
+      plate:doc.truck||'',
+      trailer:doc.trailer&&doc.trailer!=='—'?doc.trailer:'',
+      stampBase64:'',
       carrier:[doc.carrier,doc.truck&&'Nr rej.: '+doc.truck+
         (doc.trailer&&doc.trailer!=='—'?' / '+doc.trailer:''),doc.driver&&'Kierowca: '+doc.driver]
         .filter(Boolean).join('\n'),
@@ -148,6 +155,130 @@
       weight:'',
       issueDate:date
     };
+  }
+  // Excel's clipboard format uses tabs between cells; quoted cells can contain
+  // new lines. We do not save recipients or destinations to any server.
+  function parseExcelColumns(raw){
+    const rows=[],row=[];
+    let cell='',quoted=false;
+    for(let i=0;i<raw.length;i++){
+      const ch=raw[i];
+      if(ch==='"'){
+        if(quoted&&raw[i+1]==='"'){cell+='"';i++;}
+        else if(!cell||quoted)quoted=!quoted;
+        else cell+=ch;
+      }else if(!quoted&&ch==='\t'){
+        row.push(cell);cell='';
+      }else if(!quoted&&(ch==='\n'||ch==='\r')){
+        if(ch==='\r'&&raw[i+1]==='\n')i++;
+        row.push(cell);cell='';
+        rows.push(row.splice(0));
+      }else cell+=ch;
+    }
+    row.push(cell);
+    if(row.some(value=>value.trim()))rows.push(row);
+    const data=rows.filter(line=>line.some(value=>value.trim()));
+    if(!data.length||data.some(line=>line.length!==2))
+      throw Error('Zaznacz i skopiuj dokładnie dwie kolumny z Excela: odbiorca i miejsce dostawy.');
+    return {
+      recipient:data.map(line=>line[0].trim()).filter(Boolean).join('\n'),
+      delivery:data.map(line=>line[1].trim()).filter(Boolean).join('\n')
+    };
+  }
+  function importExcelAddresses(){
+    if(!values)return;
+    try{
+      const result=parseExcelColumns($('cmrPdfDemoExcel').value);
+      values.recipient=result.recipient;
+      values.delivery=result.delivery;
+      syncFields();
+      showError('');
+      scheduleRender();
+    }catch(err){showError(err.message);}
+  }
+  function composeCarrier(){
+    if(!values)return;
+    values.carrier=[
+      values.carrierBase,
+      values.plate?'Nr rej.: '+values.plate+(values.trailer?' / '+values.trailer:''):'',
+      values.driver?'Kierowca: '+values.driver:''
+    ].filter(Boolean).join('\n');
+    const input=$('cmrPdfDemoFields')?.querySelector('[data-cmr-field="carrier"]');
+    if(input)input.value=values.carrier;
+    scheduleRender();
+  }
+  function selectCmrCarrier(){
+    if(!values)return;
+    const id=$('cmrPdfDemoCarrierSelect').value;
+    const item=(window.GPBSBellevilleCmrCarriers?.get()||[]).find(c=>c.id===id);
+    if(item){
+      values.carrierBase=[item.name,item.address].filter(Boolean).join('\n');
+      values.stampBase64=item.stampBase64||'';
+    }else{
+      values.carrierBase='';
+      values.stampBase64='';
+    }
+    composeCarrier();
+  }
+  async function populateCmrDefaults(id){
+    const doc=window.GPBSBellevilleDocsDemo?.find(id);
+    if(!doc||!values)return;
+    const expected=values;
+    const carrierService=window.GPBSBellevilleCmrCarriers;
+    try{
+      const carriers=carrierService?await carrierService.list(true):[];
+      if(values!==expected||currentId!==id)return;
+      const select=$('cmrPdfDemoCarrierSelect');
+      select.replaceChildren(new Option('— Wybierz przewoźnika —',''));
+      for(const carrier of carriers)select.add(new Option(carrier.name,carrier.id));
+      const matched=carriers.find(x=>x.name.toUpperCase()===String(doc.carrier||'').toUpperCase());
+      if(matched){select.value=matched.id;selectCmrCarrier();}
+    }catch(_){
+      // CMR remains editable even if the Office carrier list is unavailable.
+    }
+    try{
+      const res=await fetch('/api/cmr-belleville?view=weights',{
+        credentials:'same-origin',cache:'no-store'
+      });
+      const data=await res.json();
+      if(!res.ok||!data.ok||values!==expected||currentId!==id)return;
+      const byType=new Map((data.modules||[]).map(x=>[
+        String(x.moduleType).trim().toUpperCase(),Number(x.weightKg)
+      ]));
+      const bySap=new Map(),byName=new Map();
+      for(const part of data.parts||[]){
+        if(part.weightKg===null||part.weightKg===undefined)continue;
+        const kg=Number(part.weightKg);
+        if(!Number.isFinite(kg))continue;
+        if(part.sap)bySap.set(String(part.sap).toUpperCase(),kg);
+        if(part.name)byName.set(String(part.name).trim().toUpperCase(),kg);
+      }
+      let total=0,found=false;
+      for(const module of doc.modules||[]){
+        const kg=byType.get(String(module.type||'').trim().toUpperCase());
+        if(kg!==undefined){total+=kg;found=true;}
+      }
+      for(const part of doc.parts||[]){
+        const kg=bySap.get(String(part.sap||'').toUpperCase())??
+          byName.get(String(part.name||'').trim().toUpperCase());
+        if(kg!==undefined){total+=kg*(Number(part.qty)||0);found=true;}
+      }
+      if(found&&!weightManuallyEdited){
+        values.weight=total.toFixed(2).replace('.',',');
+        syncFields();
+        scheduleRender();
+      }
+    }catch(_){
+      // Missing catalogue data is ignored, as requested. No warnings.
+    }
+  }
+  function syncTransportFields(){
+    if(!values)return;
+    $('cmrPdfDemoDriver').value=values.driver||'';
+    $('cmrPdfDemoPlate').value=values.plate||'';
+    $('cmrPdfDemoTrailer').value=values.trailer||'';
+    $('cmrPdfDemoCarrierSelect').value='';
+    $('cmrPdfDemoExcel').value='';
   }
   function init(){
     if(initialized)return;
@@ -175,7 +306,7 @@
           '<div class="cmr-pdf-demo-viewer">',
             '<div id="cmrPdfDemoUpload" class="cmr-pdf-demo-upload">',
               '<strong>Wczytaj pusty formularz CMR</strong>',
-              '<p>Wybierz przesłany wzór „CMR Wzór.pdf” (bez żółtych pól). ',
+              '<p>Wybierz ostateczny wzór „CMR Belleville.pdf”. ',
               'Zapiszemy go tylko w tej przeglądarce do kolejnych podglądów.</p>',
               '<button type="button" id="cmrPdfDemoUploadButton" class="btn dark">Wybierz pusty PDF</button>',
             '</div>',
@@ -184,6 +315,20 @@
           '<div class="cmr-pdf-demo-editor">',
             '<p>Popraw pola CMR. Podgląd PDF aktualizuje się automatycznie po zakończeniu pisania. ',
             'Wszystkie wartości są demonstracyjne — nic nie zapisuje się do D1.</p>',
+            '<section class="cmr-pdf-demo-import">',
+              '<strong>Adresy z Excela</strong>',
+              '<label>Wklej dwie kolumny: odbiorca | miejsce dostawy',
+                '<textarea id="cmrPdfDemoExcel" rows="4" placeholder="Skopiuj dwie kolumny z Excela i wklej tutaj"></textarea>',
+              '</label>',
+              '<button type="button" id="cmrPdfDemoImport" class="btn dark">Wstaw adresy do CMR</button>',
+            '</section>',
+            '<section class="cmr-pdf-demo-import">',
+              '<strong>Przewoźnik z bazy Belleville</strong>',
+              '<label>Wybierz firmę<select id="cmrPdfDemoCarrierSelect"><option value="">— Wybierz przewoźnika —</option></select></label>',
+              '<label>Kierowca<input id="cmrPdfDemoDriver" autocomplete="off" placeholder="Imię i nazwisko"></label>',
+              '<label>Tablica pojazdu<input id="cmrPdfDemoPlate" autocomplete="off" placeholder="Nr rejestracyjny"></label>',
+              '<label>Tablica naczepy<input id="cmrPdfDemoTrailer" autocomplete="off" placeholder="Nr rejestracyjny naczepy"></label>',
+            '</section>',
             '<div id="cmrPdfDemoFields"></div>',
             '<p id="cmrPdfDemoHint" class="cmr-pdf-demo-hint"></p>',
           '</div>',
@@ -205,11 +350,23 @@
       input.addEventListener('input',()=>{
         if(!values)return;
         values[key]=input.value;
+        if(key==='weight')weightManuallyEdited=true;
         scheduleRender();
       });
       item.appendChild(input);
       box.appendChild(item);
     });
+    $('cmrPdfDemoImport').addEventListener('click',importExcelAddresses);
+    $('cmrPdfDemoCarrierSelect').addEventListener('change',selectCmrCarrier);
+    for(const [id,key] of [
+      ['cmrPdfDemoDriver','driver'],['cmrPdfDemoPlate','plate'],['cmrPdfDemoTrailer','trailer']
+    ]){
+      $(id).addEventListener('input',()=>{
+        if(!values)return;
+        values[key]=$(id).value;
+        composeCarrier();
+      });
+    }
     $('cmrPdfDemoChoose').addEventListener('click',()=>{$('cmrPdfDemoFile').click();});
     $('cmrPdfDemoUploadButton').addEventListener('click',()=>{$('cmrPdfDemoFile').click();});
     $('cmrPdfDemoClose').addEventListener('click',close);
@@ -388,13 +545,20 @@
       ];
       const overflowFields=[];
       for(const job of jobs)stamp(page,...job,fonts,lib,overflowFields);
-      // The blank PDF template still contains a fixed issue date.
-      page.drawRectangle({
-        x:248.5,y:page.getHeight()-759.7,width:40.5,height:10.5,
-        color:lib.rgb(1,1,1),borderWidth:0
-      });
+      // The final "CMR Belleville.pdf" has a blank date field.
       stamp(page,B(248,748.4,41,10),snapshot.issueDate,
         {size:8,label:'Data wystawienia'},fonts,lib,overflowFields);
+      if(snapshot.stampBase64){
+        const raw=Uint8Array.from(atob(snapshot.stampBase64),c=>c.charCodeAt(0));
+        const png=await pdf.embedPng(raw);
+        const frame=B(330,772,166,33);
+        const fit=png.scaleToFit(frame.w,frame.h);
+        page.drawImage(png,{
+          x:frame.x+(frame.w-fit.width)/2,
+          y:page.getHeight()-frame.y-frame.h+(frame.h-fit.height)/2,
+          width:fit.width,height:fit.height
+        });
+      }
       if(sequence!==renderCounter)return;
       const data=await pdf.save();
       if(sequence!==renderCounter||docId!==currentId||
@@ -443,7 +607,10 @@
     renderCounter++;
     currentId=id;
     values=next;
+    weightManuallyEdited=false;
     syncFields();
+    syncTransportFields();
+    void populateCmrDefaults(id);
     $('cmrPdfDemoModal').classList.remove('hidden');
     $('cmrPdfDemoTitle').textContent='Podgląd CMR · '+id;
     $('cmrPdfDemoPrint').disabled=true;
