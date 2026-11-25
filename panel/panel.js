@@ -2424,14 +2424,18 @@
     const tbody=$('cmrModuleWeightRows');
     tbody.replaceChildren();
     const weights=new Map((data.weights||[]).map(w=>[w.moduleType,w.weightKg]));
-    const types=[...new Set([...(data.types||[]),...weights.keys()])]
-      .sort((a,b)=>a.localeCompare(b,'pl'));
+    // Group module labels before the name (e.g. INDOOR – CU, BLOQ.IT – CU).
+    // Older D1 weights without a category remain accessible and unmodified.
+    const types=[...new Set([...(data.types||[]),...weights.keys()])];
+    const typeLabel=type=>type.includes(' - ')
+      ?type.replace(' - ',' – '):'STARSZY WPIS – '+type;
     const suggestions=$('cmrModuleWeightTypes');
     suggestions.replaceChildren();
     for(const type of types){
-      const opt=document.createElement('option');opt.value=type;suggestions.append(opt);
+      const opt=document.createElement('option');
+      opt.value=type;opt.label=typeLabel(type);suggestions.append(opt);
       const row=tbody.insertRow();
-      row.insertCell().textContent=type;
+      row.insertCell().textContent=typeLabel(type);
       const weight=row.insertCell();
       weight.textContent=weights.has(type)
         ?Number(weights.get(type)).toLocaleString('pl-PL',{maximumFractionDigits:3})+' kg':'—';
