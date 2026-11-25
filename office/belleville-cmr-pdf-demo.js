@@ -325,6 +325,149 @@
     $('cmrPdfDemoCarrierSelect').value='';
     $('cmrPdfDemoExcel').value='';
   }
+  // All deadlines come from D1; the server clock offset avoids local device
+  // time discrepancies. Printed PDFs are fetched from R2 after the lock.
+  const documentApi=id=>'/api/cmr-belleville-document?documentId='+encodeURIComponent(id);
+  const isLocked=()=>Boolean(printRecord&&
+    Date.now()+serverClockOffset>=Number(printRecord.lockedAtMs));
+  function setPdfPreview(bytes,mode){
+    const previous=currentUrl;
+    currentPdfBytes=bytes;
+    pdfMode=mode;
+    currentUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+    // Hide native PDF toolbar to direct first prints through "Zapisz i drukuj".
+    $('cmrPdfDemoFrame').src=currentUrl+'#toolbar=0&navpanes=0';
+    $('cmrPdfDemoFrame').classList.remove('hidden');
+    $('cmrPdfDemoUpload').classList.add('hidden');
+    if(previous)URL.revokeObjectURL(previous);
+    $('cmrPdfDemoPrint').disabled=!recordLoaded||isSavingPrint||
+      (isLocked()&&mode!=='stored');
+  }
+  async function readStoredPdf(id,token){
+    $('cmrPdfDemoPrint').disabled=true;
+    try{
+      const res=await fetch(documentApi(id)+'&view=pdf',{
+        credentials:'same-origin',cache:'no-store'
+      });
+      if(!res.ok){
+        const data=await res.json().catch(()=>({}));
+        throw Error(data.error||'Nie udało się odczytać zapisanego PDF-u.');
+      }
+      const bytes=new Uint8Array(await res.arrayBuffer());
+      if(token!==viewToken||currentId!==id||$('cmrPdfDemoModal').classList.contains('hidden'))return;
+      setPdfPreview(bytes,'stored');
+      showError('');
+      setHint(isLocked()?'To jest zapisany dokument. Dostępny jest tylko wydruk.':
+        'Otworzono ostatni zapisany PDF. Możesz drukować bez zmiany danych.');
+    }catch(err){
+      if(token===viewToken&&currentId===id){
+        currentPdfBytes=null;
+        $('cmrPdfDemoPrint').disabled=true;
+        showError(err.message||'Zapisany dokument jest niedostępny.');
+      }
+    }
+  }
+  function lockStatus(){
+    if(!initialized)return;
+    const status=$('cmrPdfDemoLockStatus');
+    const button=$('cmrPdfDemoPrint');
+    if(!recordLoaded){
+      status.textContent='Sprawdzanie zapisanego CMR i terminu blokady…';
+      $('cmrPdfDemoEditor').classList.add('hidden');
+      $('cmrPdfDemoChoose').classList.add('hidden');
+      button.disabled=true;
+      return;
+    }
+    const locked=isLocked();
+    const newlyLocked=locked&&!editorLocked;
+    editorLocked=locked;
+    $('cmrPdfDemoEditor').classList.toggle('hidden',locked);
+    $('cmrPdfDemoChoose').classList.toggle('hidden',locked);
+    button.textContent=locked?'Drukuj':printRecord?'Zapisz poprawkę i drukuj':'Zapisz i drukuj';
+    if(!printRecord){
+      status.textContent='Nie drukowano jeszcze CMR. Pierwszy zapis i wydruk uruchomi 60 minut na poprawki.';
+    }else if(locked){
+      status.textContent='CMR zablokowana — upłynęło 60 minut od pierwszego wydruku. Można tylko drukować zapisany PDF.';
+    }else{
+      const remaining=Math.max(0,Number(printRecord.lockedAtMs)-(Date.now()+serverClockOffset));
+      const min=Math.floor(remaining/60000);
+      const sec=Math.floor((remaining%60000)/1000);
+      status.textContent='Możliwość poprawek jeszcze przez '+String(min).padStart(2,'0')+':'+
+        String(sec).padStart(2,'0')+' · ponowny wydruk nie przedłuża czasu.';
+    }
+    if(newlyLocked){
+      renderCounter++;
+      clearTimeout(renderTimer);
+      renderTimer=null;
+      if(printRecord)void readStoredPdf(currentId,viewToken);
+    }
+    if(locked&&pdfMode!=='stored')button.disabled=true;
+    else if(!isSavingPrint&&currentPdfBytes)button.disabled=false;
+  }
+  function printPdf(){
+    if(!currentUrl)return;
+    const frame=$('cmrPdfDemoFrame');
+    try{
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    }catch(_){
+      window.open(currentUrl,'_blank','noopener');
+    }
+  }
+  async function saveAndPrint(){
+    if(!recordLoaded||isSavingPrint)return;
+    if(isLocked()||editorLocked){
+      lockStatus();
+      if(pdfMode!=='stored')await readStoredPdf(currentId,viewToken);
+      if(pdfMode==='stored'&&currentPdfBytes)printPdf();
+      return;
+    }
+    if(pdfMode==='stored'&&currentPdfBytes){
+      // The last saved PDF can be reprinted when the blank template is not
+      // available in this browser; no edit or timer extension is performed.
+      printPdf();return;
+    }
+    if(!currentPdfBytes||pdfMode!=='draft'||!values||renderTimer||renderInProgress){
+      showError('Zaczekaj na aktualny podgląd CMR przed wydrukiem.');
+      return;
+    }
+    const id=currentId,token=viewToken;
+    const snapshot={...values};
+    const pdf=new Blob([currentPdfBytes],{type:'application/pdf'});
+    isSavingPrint=true;
+    $('cmrPdfDemoPrint').disabled=true;
+    setHint('Zapisywanie CMR w archiwum przed wydrukiem…');
+    try{
+      const form=new FormData();
+      form.append('documentId',id);
+      form.append('revision',String(printRecord?.revision||0));
+      form.append('fields',JSON.stringify(snapshot));
+      form.append('pdf',pdf,id+'.pdf');
+      const res=await fetch(documentApi(id),{
+        method:'POST',credentials:'same-origin',cache:'no-store',body:form
+      });
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok||!data.ok)throw Error(data.error||'Nie udało się zapisać CMR.');
+      if(token!==viewToken||currentId!==id)return;
+      printRecord=data.document;
+      serverClockOffset=Number(data.serverNow)-Date.now();
+      showError('');
+      lockStatus();
+      setHint('PDF zapisany. Możesz wydrukować dokument.');
+      printPdf();
+    }catch(err){
+      if(token===viewToken&&currentId===id){
+        showError(err.message||'Nie udało się zapisać CMR. Wydruk wstrzymany.');
+        setHint('Wydruk nie został zatwierdzony — sprawdź komunikat.');
+      }
+    }finally{
+      isSavingPrint=false;
+      if(token===viewToken&&currentId===id){
+        if(isLocked())lockStatus();
+        else $('cmrPdfDemoPrint').disabled=!currentPdfBytes;
+      }
+    }
+  }
   function init(){
     if(initialized)return;
     initialized=true;
