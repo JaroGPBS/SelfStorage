@@ -29,6 +29,7 @@
   let serverClockOffset=0;
   let lockTimer=null;
   let isSavingPrint=false;
+  let printRequestVersion=0;
   let editorLocked=false;
   let viewToken=0;
   const $=id=>document.getElementById(id);
@@ -407,6 +408,13 @@
     if(!archiveReady||(locked&&pdfMode!=='stored'))button.disabled=true;
     else if(!isSavingPrint&&currentPdfBytes)button.disabled=false;
   }
+  function setEditorBusy(busy){
+    const editor=$('cmrPdfDemoEditor');
+    if(!editor)return;
+    for(const control of editor.querySelectorAll('input,textarea,select,button'))
+      control.disabled=busy;
+    $('cmrPdfDemoChoose').disabled=busy;
+  }
   function printPdf(){
     if(!currentUrl)return;
     const frame=$('cmrPdfDemoFrame');
@@ -440,10 +448,11 @@
       showError('Zaczekaj na aktualny podgląd CMR przed wydrukiem.');
       return;
     }
-    const id=currentId,token=viewToken;
+    const id=currentId,token=viewToken,operation=++printRequestVersion;
     const snapshot={...values};
     const pdf=new Blob([currentPdfBytes],{type:'application/pdf'});
     isSavingPrint=true;
+    setEditorBusy(true);
     $('cmrPdfDemoPrint').disabled=true;
     setHint('Zapisywanie CMR w archiwum przed wydrukiem…');
     try{
@@ -471,7 +480,9 @@
         setHint('Wydruk nie został zatwierdzony — sprawdź komunikat.');
       }
     }finally{
+      if(operation!==printRequestVersion)return;
       isSavingPrint=false;
+      setEditorBusy(false);
       if(token===viewToken&&currentId===id){
         if(isLocked())lockStatus();
         else $('cmrPdfDemoPrint').disabled=!currentPdfBytes;
@@ -605,6 +616,9 @@
   }
   function close(){
     viewToken++;
+    printRequestVersion++;
+    isSavingPrint=false;
+    setEditorBusy(false);
     clearInterval(lockTimer);
     lockTimer=null;
     clearTimeout(renderTimer);
@@ -778,7 +792,7 @@
         setHint('Zmień zbyt długie pola. Pozostałe dane i edycja nadal działają.');
       }else{
         button.disabled=editorLocked||isLocked()||!recordLoaded||!archiveReady;
-        showError('');
+        if(archiveReady)showError('');
         setHint('Gotowy podgląd. Zapisz i drukuj, aby zachować PDF w R2.');
       }
     }catch(err){
@@ -805,6 +819,10 @@
     if(!next)return false;
     // Prevent an earlier asynchronous open/read from changing a newer modal.
     const token=++viewToken;
+    printRequestVersion++;
+    isSavingPrint=false;
+    setEditorBusy(false);
+    $('cmrPdfDemoModal').querySelector('.cmr-pdf-demo-workspace').classList.remove('is-locked');
     clearInterval(lockTimer);
     lockTimer=null;
     clearTimeout(renderTimer);
