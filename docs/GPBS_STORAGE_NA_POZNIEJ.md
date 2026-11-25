@@ -12,10 +12,14 @@
 - Przed wdrożeniem ustalić sposób powiązania podpisu z niezmienną treścią dokumentu oraz akceptację takiego rozwiązania w obiegu transportowym. Sam obraz podpisu w PDF nie jest automatycznie formalnym systemem e-CMR.
 - **Decyzja 25.11.2026:** na razie **nie wdrażać**. Aktualny generator CMR pozostaje bez zmian; podpisy na papierze.
 
-### Blokada edycji po wydruku — ODŁOŻONE
-- Omówiono możliwość **60 minut na poprawki od pierwszego kliknięcia „Zapisz i drukuj”**, następnie podgląd i ponowny wydruk bez edycji.
-- Ponowne drukowanie nie przedłużałoby czasu; bez historii kolejnych poprawek (zgodnie z decyzją użytkownika).
-- **Decyzja 25.11.2026:** **nie wdrażać na razie**. Obecne działanie CMR zostawić bez zmian.
+### Blokada edycji po wydruku — WDROŻONA W KODZIE (25.11.2026)
+- Pierwsze **„Zapisz i drukuj”** zapisuje aktualny PDF w prywatnym R2 i uruchamia **60 minut** na poprawki, według czasu serwera (D1).
+- W tym czasie można zmienić dane i wydrukować aktualną wersję; ponowne drukowanie **nie przedłuża** limitu.
+- Po 60 minutach CMR jest **tylko do odczytu i druku**; ponowne otwarcie pobiera archiwalny PDF zamiast generować go na nowo.
+- Bez historii poprawek: w D1 jest tylko bieżąca wersja, a zastąpiony PDF jest usuwany z R2.
+- Wymagane działające powiązania Cloudflare **DB (D1)** i **PART_PHOTOS (R2)**. Jeśli zapis lub weryfikacja blokady się nie uda, aplikacja wstrzymuje wydruk.
+- Dotyczy CMR zapisanych przyciskiem od wdrożenia; wcześniejsze demonstracyjne podglądy nie miały rejestru wydruków i nie mogą zostać automatycznie zablokowane wstecz.
+- Podpis kierowcy nadal jest osobnym, **odłożonym** zadaniem.
 
 ## Storage Admin — limity Cloudflare i zabezpieczenia R2
 - Istniejąca, szczegółowa lista: [Monitoring Cloudflare / R2](admin-cloudflare-free-plan-usage-todo.md).
