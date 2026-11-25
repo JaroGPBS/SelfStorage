@@ -1647,3 +1647,108 @@ tr:hover td{background:#ffffff04}
 #cmrModuleWeightsView .module-prefix-table td:first-child{
   padding-left:22px;
 }
+
+
+/* ADMIN / Części listy załadunkowej — compact three-column mapping table. */
+.loading-parts-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.loading-parts-title p{
+  margin:0;
+  flex:1;
+  min-width:240px;
+}
+.loading-parts-table{
+  width:100%;
+  table-layout:fixed;
+}
+.loading-parts-table th,
+.loading-parts-table td{
+  padding:9px 12px;
+  vertical-align:middle;
+  overflow-wrap:anywhere;
+}
+.loading-parts-table th:nth-child(1),
+.loading-parts-table td:nth-child(1){width:31%}
+.loading-parts-table th:nth-child(2),
+.loading-parts-table td:nth-child(2){width:28%}
+.loading-parts-table th:nth-child(3),
+.loading-parts-table td:nth-child(3){width:41%}
+.loading-parts-index-cell{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:5px 12px;
+}
+.loading-parts-indexes{font-weight:600;line-height:1.45}
+.loading-parts-actions{display:inline-flex;align-items:center;gap:4px}
+.loading-parts-actions .btn{
+  padding:5px 8px;
+  min-height:28px;
+  font-size:11px;
+}
+.loading-parts-empty{padding:22px 14px!important;text-align:center}
+.loading-parts-dialog{width:min(760px,calc(100vw - 24px));max-width:760px}
+.loading-parts-dialog .modal-inner{width:100%}
+.loading-parts-form-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.loading-parts-form-fields label,
+.loading-parts-picker>label{display:flex;flex-direction:column;gap:5px}
+.loading-parts-form-fields input,
+.loading-parts-picker input[type=search]{
+  width:100%;
+  min-height:35px;
+  padding:8px 10px;
+  border:1px solid var(--edge2);
+  border-radius:6px;
+  color:var(--white);
+  background:var(--surface2);
+  font:inherit;
+}
+.loading-parts-picker{margin:14px 0 10px}
+.loading-parts-selected{
+  margin:8px 0 6px;
+  font-size:12px;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.loading-parts-choices{
+  max-height:230px;
+  min-height:80px;
+  padding:4px 8px;
+  overflow-y:auto;
+  border:1px solid var(--edge2);
+  border-radius:7px;
+}
+.loading-parts-option{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 5px;
+  cursor:pointer;
+  font-size:12px;
+  line-height:1.35;
+}
+.loading-parts-option+ .loading-parts-option{border-top:1px solid var(--edge2)}
+.loading-parts-option input{flex:none;accent-color:#68a4df}
+.loading-parts-option strong{white-space:nowrap}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"])
+  .loading-parts-form-fields input,
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"])
+  .loading-parts-picker input[type=search]{
+  background:var(--admin-theme-card);
+  border-color:var(--admin-theme-line);
+  color:var(--admin-theme-ink);
+}
+@media(max-width:650px){
+  .loading-parts-form-fields{grid-template-columns:1fr}
+  .loading-parts-table{min-width:680px}
+}
