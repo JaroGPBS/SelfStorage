@@ -46,7 +46,8 @@ export async function onRequestPost({request,env}){
   let user;
   try{user=await allowedUser(request,env);}catch(_){return fail('Błąd sesji.',503);}
   if(!user)return fail('Brak dostępu do Office Francja.',403);
-  if(!['ADMIN','KIEROWNIK','KOORDYNATOR'].includes(user.role))
+  // A signed-in Belleville Office warehouse clerk can maintain carriers too.
+  if(!['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER'].includes(user.role))
     return fail('Brak uprawnień do edycji przewoźników.',403);
   let body;
   try{
