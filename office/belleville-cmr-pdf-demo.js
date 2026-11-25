@@ -23,6 +23,7 @@
   let currentPdfBytes=null;
   let pdfMode='draft';
   let printRecord=null;
+  let lastSavedSnapshot=null;
   let recordLoaded=false;
   let archiveReady=false;
   let serverClockOffset=0;
@@ -383,6 +384,7 @@
     const newlyLocked=locked&&!editorLocked;
     editorLocked=locked;
     $('cmrPdfDemoEditor').classList.toggle('hidden',locked);
+    $('cmrPdfDemoModal').querySelector('.cmr-pdf-demo-workspace').classList.toggle('is-locked',locked);
     $('cmrPdfDemoChoose').classList.toggle('hidden',locked);
     button.textContent=locked?'Drukuj':printRecord?'Zapisz poprawkę i drukuj':'Zapisz i drukuj';
     if(!printRecord){
@@ -424,10 +426,15 @@
       if(pdfMode==='stored'&&currentPdfBytes)printPdf();
       return;
     }
-    if(pdfMode==='stored'&&currentPdfBytes){
-      // The last saved PDF can be reprinted when the blank template is not
-      // available in this browser; no edit or timer extension is performed.
-      printPdf();return;
+    if(printRecord&&JSON.stringify(values)===lastSavedSnapshot){
+      // No corrections: reuse the exact saved PDF, without another R2 write.
+      if(pdfMode!=='stored')await readStoredPdf(currentId,viewToken);
+      if(pdfMode==='stored'&&currentPdfBytes)printPdf();
+      return;
+    }
+    if(pdfMode==='stored'&&currentPdfBytes&&!templateBytes){
+      showError('Aby zapisać poprawki, najpierw wczytaj pusty szablon PDF.');
+      return;
     }
     if(!currentPdfBytes||pdfMode!=='draft'||!values||renderTimer||renderInProgress){
       showError('Zaczekaj na aktualny podgląd CMR przed wydrukiem.');
@@ -452,6 +459,7 @@
       if(!res.ok||!data.ok)throw Error(data.error||'Nie udało się zapisać CMR.');
       if(token!==viewToken||currentId!==id)return;
       printRecord=data.document;
+      lastSavedSnapshot=JSON.stringify(snapshot);
       serverClockOffset=Number(data.serverNow)-Date.now();
       showError('');
       lockStatus();
@@ -610,6 +618,7 @@
     $('cmrPdfDemoFrame').removeAttribute('src');
     $('cmrPdfDemoPrint').disabled=true;
     printRecord=null;
+    lastSavedSnapshot=null;
     recordLoaded=false;
     editorLocked=false;
   }
@@ -805,6 +814,7 @@
     currentId=id;
     values=next;
     printRecord=null;
+    lastSavedSnapshot=null;
     recordLoaded=false;
     editorLocked=false;
     archiveReady=false;
@@ -832,6 +842,7 @@
       if(token!==viewToken||currentId!==id)return true;
       archiveReady=Boolean(data.storageReady);
       printRecord=data.document||null;
+      lastSavedSnapshot=printRecord?JSON.stringify(printRecord.fields):null;
       serverClockOffset=Number(data.serverNow)-Date.now();
       if(printRecord){
         values={...next,...printRecord.fields};
@@ -861,7 +872,6 @@
         scheduleRender(0);
       }else if(printRecord){
         await readStoredPdf(id,token);
-        $('cmrPdfDemoUpload').classList.remove('hidden');
         setHint('Aby zmienić zapisaną CMR w ciągu 60 minut, wczytaj pusty szablon PDF w tej przeglądarce.');
       }else{
         $('cmrPdfDemoUpload').classList.remove('hidden');
