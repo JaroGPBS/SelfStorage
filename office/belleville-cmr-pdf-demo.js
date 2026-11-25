@@ -533,15 +533,15 @@
       const page=pdf.getPages()[0];
       const jobs=[
         [B(504,18,49,17),snapshot.route,{size:11,bold:true,white:true,align:'right',label:'Trasa'}],
-        [B(475,43,37,14),snapshot.number,{size:7,bold:true,label:'Numer WZ'}],
+        [B(468,44,59,14),snapshot.number,{size:7,bold:true,minSize:5.8,label:'Numer WZ'}],
         // The actual template has much taller recipient/destination boxes
         // than the first demo used. Allow full address lists to fit.
         [B(51,88,258,60),snapshot.recipient,{size:8,minSize:4.8,label:'Odbiorca'}],
         [B(51,164,258,61),snapshot.delivery,{size:8,minSize:4.8,label:'Adres dostawy'}],
         [B(328,89,227,58),snapshot.carrier,{size:9,bold:true,minSize:4.8,label:'Przewoźnik'}],
         [B(138,256,85,12),snapshot.loadingDate,{size:8,label:'Data załadunku'}],
-        [B(44,318,118,261),snapshot.cargo,{size:7,align:'left',top:true,minSize:5,label:'Moduły i części'}],
-        [B(169,337,68,40),snapshot.count,{size:7,label:'Ilość modułów'}],
+        [B(49,318,163,261),snapshot.cargo,{size:7,align:'left',top:true,minSize:5,label:'Moduły i części'}],
+        [B(216,337,73,40),snapshot.count,{size:7,label:'Ilość modułów'}],
         [B(443,349,52,32),snapshot.weight,{size:9,label:'Waga'}]
       ];
       const overflowFields=[];
@@ -552,7 +552,7 @@
       if(snapshot.stampBase64){
         const raw=Uint8Array.from(atob(snapshot.stampBase64),c=>c.charCodeAt(0));
         const png=await pdf.embedPng(raw);
-        const frame=B(330,772,166,33);
+        const frame=B(260,770,146,24);
         const fit=png.scaleToFit(frame.w,frame.h);
         page.drawImage(png,{
           x:frame.x+(frame.w-fit.width)/2,
