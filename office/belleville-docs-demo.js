@@ -315,16 +315,18 @@
           '<small>'+e(en)+'</small></span></div>'+
         '<div class="belleville-cmr-field-value">'+e(value)+'</div>'+
       '</section>';
-    const row=(marks,nature)=>'<tr><td>'+e(marks)+'</td>'+
-      '<td></td><td></td><td>'+e(nature)+'</td><td></td><td></td><td></td></tr>';
-    // One row for each physical serial, then one for each parts-catalogue item.
-    const moduleLines=doc.modules.map(item=>row(
-      item.serial,item.type+' / '+item.status
+    // Keep cargo in the seven original CMR columns; quantities belong in field 7.
+    // Group identical module types so the form is readable on a single A4 page.
+    const row=(marks,count,nature)=>'<tr><td>'+e(marks)+'</td>'+
+      '<td>'+e(count)+'</td><td></td><td>'+e(nature)+
+      '</td><td></td><td></td><td></td></tr>';
+    const moduleLines=groupModules(doc.modules).map(item=>row(
+      item.serials.join(', '),item.serials.length,item.type+' / '+item.status
     ));
     const partLines=doc.parts.map(item=>row(
-      'SAP '+item.sap,item.name+' × '+item.qty+' szt.'
+      'SAP '+item.sap,item.qty,item.name
     ));
-    const cargoRows=[...moduleLines,...partLines].join('')||row('','');
+    const cargoRows=[...moduleLines,...partLines].join('')||row('','','');
     const feeNames=[
       ['Przewoźne','Carriage'],
       ['Zmniejszenie','Reductions'],
@@ -335,8 +337,8 @@
       ['Razem','Total to be paid']
     ];
     const fees='<section class="belleville-cmr-fees">'+
-      '<div class="belleville-cmr-fees-title"><b>19</b>'+
-        '<span>Do zapłacenia<small>To be paid by</small></span>'+
+      '<div class="belleville-cmr-fees-title">'+
+        '<span><b>19</b>Do zapłacenia<small>To be paid by</small></span>'+
         '<span>Nadawca<small>Sender</small></span>'+
         '<span>Waluta<small>Currency</small></span>'+
         '<span>Odbiorca<small>Consignee</small></span>'+
@@ -382,11 +384,17 @@
               '</div>'+
               '<div class="belleville-cmr-upper-right">'+
                 '<header class="belleville-cmr-title">'+
-                  '<strong>MIEDZYNARODOWY SAMOCHODOWY LIST PRZEWOZOWY</strong>'+
-                  '<span>INTERNATIONAL CONSIGNEMENT NOTE</span>'+
-                  '<div>CMR <span>№ __________</span></div>'+
-                  '<p>Niniejszy przewóz podlega postanowianiom konwencji o umowie miedzynarodowej przewozu drogowego towarów (CMR) bez wzglę du na jakąkolwiek przeciwną klauzulę.'+
-                  '<small>This carriage is subject, notwithstanding any clause to the contrary, to the Convention on the Contract for the international Carriage of goods by road (CMR).</small></p>'+
+                  '<div class="belleville-cmr-title-top">'+
+                    '<div class="belleville-cmr-title-name">'+
+                      '<strong>MIEDZYNARODOWY SAMOCHODOWY LIST PRZEWOZOWY</strong>'+
+                      '<span>INTERNATIONAL CONSIGNEMENT NOTE</span>'+
+                    '</div>'+
+                    '<div class="belleville-cmr-title-number">№ <span></span></div>'+
+                  '</div>'+
+                  '<div class="belleville-cmr-terms">'+
+                    '<p>Niniejszy przewóz podlega postanowianiom konwencji o umowie miedzynarodowej przewozu drogowego towarów (CMR) bez wzglę du na jakąkolwiek przeciwną klauzulę.</p>'+
+                    '<p>This carriage is subject, notwithstanding any clause to the contrary, to the Convention on the Contract for the international Carriage of goods by road (CMR).</p>'+
+                  '</div>'+
                 '</header>'+
                 field(16,'Przewoźnik (nazwisko lub nazwa, adres, kraj)','Carrier (name, address, country)',doc.carrier,'belleville-cmr-f16')+
                 field(17,'Kolejni przewoźnicy (nazwisko lub nazwa, adres, kraj)','Successive carriers (name, address, country)','','belleville-cmr-f17')+
