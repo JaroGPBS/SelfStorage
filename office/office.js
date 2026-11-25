@@ -3819,6 +3819,11 @@ function openBellevilleDemoDocumentPrint(id){
 }
 function openBellevilleDemoCmrPrint(id){
   if(!isBellevilleDemoDocuments()||state.view!=='wz')return false;
+  if(window.GPBSBellevilleCmrPdfDemo){
+    window.GPBSBellevilleCmrPdfDemo.open(id).catch(error=>
+      errorBanner(error.message||'Nie udało się otworzyć podglądu PDF CMR.'));
+    return true;
+  }
   const sheet=window.GPBSBellevilleDocsDemo.cmrHtml(id);
   if(!sheet||sheet.direction!=='CMR')return false;
   $('docPrintTitle').textContent='Podgląd CMR · '+sheet.sourceWz+' · DANE FIKCYJNE';
