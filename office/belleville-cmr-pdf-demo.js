@@ -1,6 +1,6 @@
-/* CMR PDF preview for the Belleville WZ demonstration.
-   Uses a PDF selected by the user once in this browser (IndexedDB).
-   No PDF or WZ data are uploaded to GPBS Storage or D1. */
+/* Belleville CMR PDF preview and time-limited printed document archive.
+   Blank template stays in browser IndexedDB. On first 'Zapisz i drukuj',
+   the filled PDF is saved privately to R2 with a 60-minute D1 lock. */
 (()=>{
   'use strict';
   const DB_NAME='gpbs-cmr-template-preview';
@@ -20,6 +20,15 @@
   let fontBytesPromise=null;
   let initialized=false;
   let weightManuallyEdited=false;
+  let currentPdfBytes=null;
+  let pdfMode='draft';
+  let printRecord=null;
+  let recordLoaded=false;
+  let serverClockOffset=0;
+  let lockTimer=null;
+  let isSavingPrint=false;
+  let editorLocked=false;
+  let viewToken=0;
   const $=id=>document.getElementById(id);
   // Route, WZ number and module count come directly from the selected WZ.
   // They remain in the PDF but are not manually editable in the CMR sidebar.
@@ -227,7 +236,7 @@
     }
     composeCarrier();
   }
-  async function populateCmrDefaults(id){
+  async function populateCmrDefaults(id,restore=false){
     const doc=window.GPBSBellevilleDocsDemo?.find(id);
     if(!doc||!values)return;
     const expected=values;
@@ -239,10 +248,11 @@
       select.replaceChildren(new Option('— Wybierz przewoźnika —',''));
       for(const carrier of carriers)select.add(new Option(carrier.name,carrier.id));
       const matched=carriers.find(x=>x.name.toUpperCase()===String(doc.carrier||'').toUpperCase());
-      if(matched){select.value=matched.id;selectCmrCarrier();}
+      if(matched&&!restore){select.value=matched.id;selectCmrCarrier();}
     }catch(_){
       // CMR remains editable even if the Office carrier list is unavailable.
     }
+    if(restore)return; // Do not overwrite saved printed CMR weights or carrier.
     try{
       const res=await fetch('/api/cmr-belleville?view=weights',{
         credentials:'same-origin',cache:'no-store'
@@ -332,10 +342,11 @@
             '<h2 id="cmrPdfDemoTitle">Podgląd CMR</h2></div>',
           '<div class="cmr-pdf-demo-actions">',
             '<button type="button" id="cmrPdfDemoChoose" class="btn">Wgraj / zmień wzór PDF</button>',
-            '<button type="button" id="cmrPdfDemoPrint" class="btn dark" disabled>Drukuj</button>',
+            '<button type="button" id="cmrPdfDemoPrint" class="btn dark" disabled>Zapisz i drukuj</button>',
             '<button type="button" id="cmrPdfDemoClose" class="cmr-pdf-demo-close" title="Zamknij podgląd" aria-label="Zamknij podgląd">×</button>',
           '</div>',
         '</div>',
+        '<div id="cmrPdfDemoLockStatus" class="cmr-pdf-demo-hint" role="status" aria-live="off"></div>',
         '<div id="cmrPdfDemoError" class="cmr-pdf-demo-error hidden" role="alert"></div>',
         '<div class="cmr-pdf-demo-workspace">',
           '<div class="cmr-pdf-demo-viewer">',
@@ -347,9 +358,9 @@
             '</div>',
             '<iframe id="cmrPdfDemoFrame" class="cmr-pdf-demo-frame hidden" title="Podgląd wypełnionego CMR PDF"></iframe>',
           '</div>',
-          '<div class="cmr-pdf-demo-editor">',
-            '<p>Popraw pola CMR. Podgląd PDF aktualizuje się automatycznie po zakończeniu pisania. ',
-            'Wszystkie wartości są demonstracyjne — nic nie zapisuje się do D1.</p>',
+          '<div id="cmrPdfDemoEditor" class="cmr-pdf-demo-editor">',
+            '<p>Przygotuj CMR. Pierwsze „Zapisz i drukuj” uruchamia 60 minut na poprawki. ',
+            'Po tym czasie pozostaje podgląd i wydruk zapisanej wersji.</p>',
             '<section class="cmr-pdf-demo-import">',
               '<strong>Adresy z Excela</strong>',
               '<label>Wklej dwie kolumny: odbiorca | miejsce dostawy',
@@ -384,6 +395,7 @@
       input.autocomplete='off';
       input.addEventListener('input',()=>{
         if(!values)return;
+        if(!recordLoaded||editorLocked||isSavingPrint)return;
         values[key]=input.value;
         if(key==='weight')weightManuallyEdited=true;
         scheduleRender();
@@ -434,24 +446,20 @@
         try{await idb('put',bytes);}catch(_){setHint('Nie udało się zapisać wzoru lokalnie. Wczytaj go ponownie po odświeżeniu strony.');}
       }catch(err){showError(err.message||'Nie udało się wczytać CMR PDF.');setHint('');}
     });
-    $('cmrPdfDemoPrint').addEventListener('click',()=>{
-      if(!currentUrl)return;
-      const frame=$('cmrPdfDemoFrame');
-      try{
-        frame.contentWindow?.focus();
-        frame.contentWindow?.print();
-      }catch(_){
-        window.open(currentUrl,'_blank','noopener');
-      }
-    });
+    $('cmrPdfDemoPrint').addEventListener('click',()=>{void saveAndPrint();});
   }
   function close(){
+    viewToken++;
+    clearInterval(lockTimer);
+    lockTimer=null;
     clearTimeout(renderTimer);
     renderTimer=null;
     renderQueued=false;
     renderCounter++;
     $('cmrPdfDemoModal').classList.add('hidden');
     if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl='';}
+    currentPdfBytes=null;
+    pdfMode='draft';
     $('cmrPdfDemoFrame').removeAttribute('src');
     $('cmrPdfDemoPrint').disabled=true;
   }
@@ -462,7 +470,7 @@
   // PDF embedding/serialization is expensive. Debounce input and never start
   // another generation until the previous one finishes.
   function scheduleRender(delay=900){
-    if(!templateBytes||!values)return;
+    if(!templateBytes||!values||!recordLoaded||editorLocked||isSavingPrint)return;
     renderCounter++;
     clearTimeout(renderTimer);
     $('cmrPdfDemoPrint').disabled=true;
@@ -537,7 +545,8 @@
   }
   function B(x,y,w,h){return {x,y,w,h};}
   async function render(){
-    if(!templateBytes||!values||$('cmrPdfDemoModal').classList.contains('hidden'))return;
+    if(!templateBytes||!values||!recordLoaded||editorLocked||isSavingPrint||
+       isLocked()||$('cmrPdfDemoModal').classList.contains('hidden'))return;
     if(renderInProgress){
       renderQueued=true;
       return;
@@ -602,22 +611,16 @@
       const data=await pdf.save();
       if(sequence!==renderCounter||docId!==currentId||
         $('cmrPdfDemoModal').classList.contains('hidden'))return;
-      const url=URL.createObjectURL(new Blob([data],{type:'application/pdf'}));
-      const previous=currentUrl;
-      currentUrl=url;
-      $('cmrPdfDemoFrame').src=url;
-      $('cmrPdfDemoFrame').classList.remove('hidden');
-      $('cmrPdfDemoUpload').classList.add('hidden');
-      if(previous)URL.revokeObjectURL(previous);
+      setPdfPreview(new Uint8Array(data),'draft');
       if(overflowFields.length){
         showError('Tekst nie mieści się w polu: '+overflowFields.join(', ')+
           '. W podglądzie pokazano tylko część. Skróć wpis lub podziel dane — drukowanie jest wstrzymane do poprawy.');
         button.disabled=true;
         setHint('Zmień zbyt długie pola. Pozostałe dane i edycja nadal działają.');
       }else{
-        button.disabled=false;
+        button.disabled=editorLocked||isLocked()||!recordLoaded;
         showError('');
-        setHint('Ostry tekst PDF (nie obraz). Do D1 nie zapisano żadnych danych.');
+        setHint('Gotowy podgląd. Zapisz i drukuj, aby zachować PDF w R2.');
       }
     }catch(err){
       if(sequence===renderCounter){
