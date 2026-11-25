@@ -253,6 +253,33 @@
       const byType=new Map((data.modules||[]).map(x=>[
         moduleCode(x.moduleType),Number(x.weightKg)
       ]));
+      // Module names can repeat in different families (e.g. Indoor CU,
+      // Bloq.it CU and NewGen CU). Prefer a group-qualified weight when WZ
+      // provides the family. For old WZ records without group information,
+      // retain an existing plain weight or use a unique category match only.
+      // Never silently choose between two different CU/DUO family weights.
+      const familyCode=group=>{
+        const code=moduleCode(group);
+        return ['BQ','BLOCKIT','BLOQIT'].includes(code)?'BLOQIT':
+          code==='NEWGENERATION'?'NEWGEN':code;
+      };
+      const resolveModuleKg=module=>{
+        const type=moduleCode(module.type);
+        const family=familyCode(module.group||module.category||module.family||module.moduleGroup);
+        if(family){
+          const exact=byType.get(family+type);
+          if(exact!==undefined)return exact;
+        }
+        const ungrouped=byType.get(type);
+        if(ungrouped!==undefined)return ungrouped;
+        const matches=(data.modules||[]).filter(entry=>{
+          const name=String(entry.moduleType||'');
+          if(!name.includes(' - '))return false;
+          const bare=name.slice(name.indexOf(' - ')+3);
+          return moduleCode(bare)===type;
+        });
+        return matches.length===1?Number(matches[0].weightKg):undefined;
+      };
       const bySap=new Map(),byName=new Map();
       for(const part of data.parts||[]){
         if(part.weightKg===null||part.weightKg===undefined)continue;
@@ -263,8 +290,8 @@
       }
       let total=0,found=false;
       for(const module of doc.modules||[]){
-        const kg=byType.get(moduleCode(module.type));
-        if(kg!==undefined){total+=kg;found=true;}
+        const kg=resolveModuleKg(module);
+        if(kg!==undefined&&Number.isFinite(kg)){total+=kg;found=true;}
       }
       for(const part of doc.parts||[]){
         const kg=bySap.get(String(part.sap||'').toUpperCase())??
