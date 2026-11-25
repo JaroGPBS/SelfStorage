@@ -2424,46 +2424,62 @@
     const tbody=$('cmrModuleWeightRows');
     tbody.replaceChildren();
     const weights=new Map((data.weights||[]).map(w=>[w.moduleType,w.weightKg]));
-    // Group module labels before the name (e.g. INDOOR – CU, BLOQ.IT – CU).
-    // Older D1 weights without a category remain accessible and unmodified.
+    // Display the catalogue as sections with one group header, followed by
+    // short module names. Keep the full D1 key (e.g. INDOOR - CU) unchanged.
     const types=[...new Set([...(data.types||[]),...weights.keys()])];
-    const typeLabel=type=>type.includes(' - ')
-      ?type.replace(' - ',' – '):'STARSZY WPIS – '+type;
+    const groups=new Map();
     const suggestions=$('cmrModuleWeightTypes');
     suggestions.replaceChildren();
     for(const type of types){
+      const separator=type.indexOf(' - ');
+      const category=separator>=0?type.slice(0,separator):'STARSZE WPISY';
+      const moduleName=separator>=0?type.slice(separator+3):type;
+      if(!groups.has(category))groups.set(category,[]);
+      groups.get(category).push({type,moduleName});
       const opt=document.createElement('option');
-      opt.value=type;opt.label=typeLabel(type);suggestions.append(opt);
-      const row=tbody.insertRow();
-      row.insertCell().textContent=typeLabel(type);
-      const weight=row.insertCell();
-      weight.textContent=weights.has(type)
-        ?Number(weights.get(type)).toLocaleString('pl-PL',{maximumFractionDigits:3})+' kg':'—';
-      const action=row.insertCell();
-      const edit=document.createElement('button');
-      edit.type='button';edit.className='btn mini';edit.textContent='Edytuj';
-      edit.addEventListener('click',()=>{
-        $('cmrModuleWeightType').value=type;
-        $('cmrModuleWeightValue').value=weights.has(type)?weights.get(type):'';
-        $('cmrModuleWeightValue').focus();
-      });
-      action.append(edit);
-      if(weights.has(type)){
-        const del=document.createElement('button');
-        del.type='button';del.className='btn mini ghost';del.textContent='Usuń wagę';
-        del.addEventListener('click',async()=>{
-          const yes=await confirmAction({
-            title:'Usunąć wagę '+type+'?',
-            description:'Ten typ modułu nie będzie uwzględniany w sumie CMR.',
-            confirmLabel:'Usuń wagę'
-          });
-          if(!yes)return;
-          try{
-            await post({action:'cmrModuleWeightSave',moduleType:type,weightKg:null});
-            await refreshCmrModuleWeights();
-          }catch(error){message(error.message,'error');}
+      opt.value=type;
+      suggestions.append(opt);
+    }
+    for(const [category,items] of groups){
+      const groupRow=tbody.insertRow();
+      groupRow.className='cmr-module-weight-category';
+      const groupHeader=document.createElement('th');
+      groupHeader.colSpan=3;
+      groupHeader.scope='rowgroup';
+      groupHeader.textContent=category==='NEWGEN'?'NEW GEN':category;
+      groupRow.append(groupHeader);
+      for(const {type,moduleName} of items){
+        const row=tbody.insertRow();
+        row.insertCell().textContent=moduleName;
+        const weight=row.insertCell();
+        weight.textContent=weights.has(type)
+          ?Number(weights.get(type)).toLocaleString('pl-PL',{maximumFractionDigits:3})+' kg':'—';
+        const action=row.insertCell();
+        const edit=document.createElement('button');
+        edit.type='button';edit.className='btn mini';edit.textContent='Edytuj';
+        edit.addEventListener('click',()=>{
+          $('cmrModuleWeightType').value=type;
+          $('cmrModuleWeightValue').value=weights.has(type)?weights.get(type):'';
+          $('cmrModuleWeightValue').focus();
         });
-        action.append(del);
+        action.append(edit);
+        if(weights.has(type)){
+          const del=document.createElement('button');
+          del.type='button';del.className='btn mini ghost';del.textContent='Usuń wagę';
+          del.addEventListener('click',async()=>{
+            const yes=await confirmAction({
+              title:'Usunąć wagę '+type+'?',
+              description:'Ten typ modułu nie będzie uwzględniany w sumie CMR.',
+              confirmLabel:'Usuń wagę'
+            });
+            if(!yes)return;
+            try{
+              await post({action:'cmrModuleWeightSave',moduleType:type,weightKg:null});
+              await refreshCmrModuleWeights();
+            }catch(error){message(error.message,'error');}
+          });
+          action.append(del);
+        }
       }
     }
     $('cmrModuleWeightStatus').textContent='Zapisane w D1 · '+weights.size+' typów z wagą.';
