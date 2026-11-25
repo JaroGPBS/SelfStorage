@@ -13,6 +13,8 @@
   let renderTimer=null;
   let renderCounter=0;
   let libPromise=null;
+  let fontkitPromise=null;
+  let fontBytesPromise=null;
   let initialized=false;
   const $=id=>document.getElementById(id);
   const fieldNames=[
@@ -46,6 +48,57 @@
       tryNext(0);
     }).catch(error=>{libPromise=null;throw error;});
     return libPromise;
+  }
+  // The text inserted into CMR must be real PDF text, not a canvas/PNG.
+  // Lato supports Polish characters; both font files are embedded in the PDF.
+  function loadFontkit(){
+    if(window.fontkit)return Promise.resolve(window.fontkit);
+    if(fontkitPromise)return fontkitPromise;
+    fontkitPromise=new Promise((resolve,reject)=>{
+      const sources=[
+        'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js',
+        'https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js'
+      ];
+      const tryNext=i=>{
+        if(i>=sources.length){
+          reject(Error('Nie można załadować czcionek PDF. Sprawdź połączenie internetowe.'));
+          return;
+        }
+        const script=document.createElement('script');
+        script.src=sources[i];
+        script.onload=()=>window.fontkit?resolve(window.fontkit):tryNext(i+1);
+        script.onerror=()=>tryNext(i+1);
+        document.head.appendChild(script);
+      };
+      tryNext(0);
+    }).catch(error=>{fontkitPromise=null;throw error;});
+    return fontkitPromise;
+  }
+  async function fetchFont(name){
+    const urls=[
+      'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/lato/'+name,
+      'https://raw.githubusercontent.com/google/fonts/main/ofl/lato/'+name
+    ];
+    for(const url of urls){
+      try{
+        const res=await fetch(url);
+        if(!res.ok)continue;
+        const data=new Uint8Array(await res.arrayBuffer());
+        // A TTF/OTF must be present; HTML or an error body cannot be embedded.
+        if(data.length<15000)continue;
+        return data;
+      }catch(_){}
+    }
+    throw Error('Nie udało się pobrać czcionki '+name+'. Sprawdź połączenie internetowe.');
+  }
+  function loadFontBytes(){
+    if(!fontBytesPromise){
+      fontBytesPromise=Promise.all([
+        fetchFont('Lato-Regular.ttf'),
+        fetchFont('Lato-Bold.ttf')
+      ]).catch(err=>{fontBytesPromise=null;throw err;});
+    }
+    return fontBytesPromise;
   }
   function idb(operation,data){
     if(!('indexedDB' in window))return Promise.resolve(null);
@@ -214,53 +267,56 @@
     clearTimeout(renderTimer);
     renderTimer=setTimeout(()=>{render().catch(err=>showError(err.message));},350);
   }
-  function wrapLines(ctx,text,maxWidth){
-    const output=[];
-    for(const line of String(text||'').split('\n')){
-      if(!line){output.push('');continue;}
+  function wrapLines(font,text,size,maxWidth){
+    const lines=[];
+    const fits=line=>font.widthOfTextAtSize(line,size)<=maxWidth;
+    const appendWord=(word,current)=>{
+      if(fits(current?current+' '+word:word))return current?current+' '+word:word;
+      if(current)lines.push(current);
+      if(fits(word))return word;
+      // Split only an individually oversized word (e.g. a long serial number).
       let part='';
-      for(const word of line.split(/\s+/)){
-        const test=part?part+' '+word:word;
-        if(ctx.measureText(test).width>maxWidth&&part){output.push(part);part=word;}
-        else part=test;
+      for(const char of Array.from(word)){
+        if(part&&!fits(part+char)){lines.push(part);part=char;}
+        else part+=char;
       }
-      if(part)output.push(part);
+      return part;
+    };
+    for(const raw of String(text||'').replace(/\r\n?/g,'\n').split('\n')){
+      if(!raw.trim()){lines.push('');continue;}
+      let current='';
+      for(const word of raw.trim().split(/\s+/))
+        current=appendWord(word,current);
+      if(current)lines.push(current);
     }
-    return output;
+    return lines;
   }
-  async function stamp(pdf,page,box,value,options={}){
+  function stamp(page,box,value,options={},fonts,lib){
     if(!String(value||'').trim())return;
-    const scale=3.5;
-    const canvas=document.createElement('canvas');
-    canvas.width=Math.ceil(box.w*scale);
-    canvas.height=Math.ceil(box.h*scale);
-    const ctx=canvas.getContext('2d');
-    if(!ctx)throw Error('Przeglądarka nie obsługuje generowania obrazu.');
-    ctx.scale(scale,scale);
+    const margin=options.margin===undefined?2:options.margin;
+    const font=options.bold?fonts.bold:fonts.regular;
     const align=options.align||'center';
-    const bold=!!options.bold;
     let size=options.size||8;
     let lines=[],step=0;
-    const margin=options.margin===undefined?2:options.margin;
     while(true){
-      ctx.font=(bold?'700 ':'400 ')+size+'px Arial, Helvetica, sans-serif';
-      lines=wrapLines(ctx,value,box.w-2*margin);
+      lines=wrapLines(font,value,size,box.w-2*margin);
       step=size*(options.leading||1.16);
-      const longWord=lines.some(s=>ctx.measureText(s).width>box.w-2*margin);
-      if(lines.length*step<=box.h-2*margin&&!longWord)break;
+      if(lines.length*step<=box.h-2*margin)break;
       size-=0.25;
       if(size<(options.minSize||4.8))
         throw Error('Pole „'+(options.label||'CMR')+'” zawiera zbyt dużo tekstu do wydruku w tym miejscu.');
     }
-    ctx.textAlign=align;
-    ctx.textBaseline='top';
-    ctx.fillStyle=options.white?'#ffffff':'#141414';
-    const x=align==='left'?margin:(align==='right'?box.w-margin:box.w/2);
-    let y=options.top?margin:Math.max(margin,(box.h-lines.length*step)/2);
-    for(const line of lines){ctx.fillText(line,x,y);y+=step;}
-    const png=await pdf.embedPng(canvas.toDataURL('image/png'));
-    const height=page.getHeight();
-    page.drawImage(png,{x:box.x,y:height-box.y-box.h,width:box.w,height:box.h});
+    const top=options.top?margin:Math.max(margin,(box.h-lines.length*step)/2);
+    const color=options.white?lib.rgb(1,1,1):lib.rgb(0.08,0.08,0.08);
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(!line)continue;
+      const width=font.widthOfTextAtSize(line,size);
+      const x=align==='left'?box.x+margin:
+        (align==='right'?box.x+box.w-margin-width:box.x+(box.w-width)/2);
+      const y=page.getHeight()-box.y-top-size-i*step;
+      page.drawText(line,{x,y,size,font,color});
+    }
   }
   function B(x,y,w,h){return {x,y,w,h};}
   async function render(){
@@ -271,8 +327,15 @@
     showError('');
     setHint('Tworzenie podglądu na podstawie Twojego PDF…');
     try{
-      const lib=await loadLib();
+      const [lib,fontkit,fontBytes]=await Promise.all([
+        loadLib(),loadFontkit(),loadFontBytes()
+      ]);
       const pdf=await lib.PDFDocument.load(templateBytes);
+      pdf.registerFontkit(fontkit);
+      const fonts={
+        regular:await pdf.embedFont(fontBytes[0],{subset:true}),
+        bold:await pdf.embedFont(fontBytes[1],{subset:true})
+      };
       const page=pdf.getPages()[0];
       const jobs=[
         [B(504,18,49,17),values.route,{size:11,bold:true,white:true,align:'right',label:'Trasa'}],
@@ -285,12 +348,12 @@
         [B(169,337,68,40),values.count,{size:7,label:'Ilość modułów'}],
         [B(443,349,52,32),values.weight,{size:9,label:'Waga'}]
       ];
-      for(const job of jobs)await stamp(pdf,page,...job);
+      for(const job of jobs)stamp(page,...job,fonts,lib);
       // The blank template contains an old fixed issue date; cover only its digits.
       page.drawRectangle({x:248.5,y:page.getHeight()-759.7,width:40.5,height:10.5,
         color:lib.rgb(1,1,1),borderWidth:0});
-      await stamp(pdf,page,B(248,748.4,41,10),values.issueDate,
-        {size:8,label:'Data wystawienia'});
+      stamp(page,B(248,748.4,41,10),values.issueDate,
+        {size:8,label:'Data wystawienia'},fonts,lib);
       const data=await pdf.save();
       if(sequence!==renderCounter)return;
       const url=URL.createObjectURL(new Blob([data],{type:'application/pdf'}));
@@ -300,7 +363,7 @@
       $('cmrPdfDemoFrame').classList.remove('hidden');
       $('cmrPdfDemoUpload').classList.add('hidden');
       button.disabled=false;
-      setHint('Podgląd wygenerowany z pustego PDF. Do D1 nie zapisano żadnych danych.');
+      setHint('Ostry tekst PDF (nie obraz). Do D1 nie zapisano żadnych danych.');
     }catch(err){
       if(sequence!==renderCounter)return;
       showError(err.message||'Błąd generowania CMR.');
