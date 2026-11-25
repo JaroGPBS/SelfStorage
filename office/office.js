@@ -460,7 +460,7 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={bellevilleModuleStatus:'sum',user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={bellevilleModuleStatus:'ok',user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 // Read-only route-screen context for the separate PL routes script.
 // The Office state remains private; the API independently enforces permissions.
 window.getPlRoutesContext=()=>({
@@ -1209,7 +1209,7 @@ function showOfficePreview(type,key,label,warehouseContext=null){
     state.bovisParisProcess=null;
     state.view='stocks';state.preview={type,key,label};
     state.stockTab=(frenchStockKind('',state.preview)==='bovis'||key==='belleville')?'modules':'parts';
-    state.bellevilleModuleStatus='sum';
+    state.bellevilleModuleStatus='ok';
     state.moduleCategory='all';state.search='';state.focusDocument=null;
     $('sidebar').classList.remove('open');
     $('officePreview').classList.add('hidden');
@@ -1649,7 +1649,7 @@ function selectView(view,warehouse,focusDocument=null){
   state.bovisParisProcess=null;
   state.view=view;state.stockTab=view==='stocks'&&
     (frenchStockKind(targetWarehouse)==='bovis'||isBellevilleWarehouse(targetWarehouse))?'modules':'parts';
-  state.bellevilleModuleStatus='sum';
+  state.bellevilleModuleStatus='ok';
   state.moduleCategory='all';state.search='';
   if(view==='aggregate'){state.aggregateTab='parts';state.frAggregateSets=null;}
   if(view==='vehicles')state.vehicleTab='detail';state.expanded=focusDocument;state.focusDocument=focusDocument;state.positive=false;state.negative=false;
