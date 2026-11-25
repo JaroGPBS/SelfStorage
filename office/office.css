@@ -9861,6 +9861,21 @@
   flex:1;
   min-height:0;
 }
+.cmr-pdf-demo-workspace.is-locked{
+  grid-template-columns:minmax(0,1fr);
+}
+.cmr-pdf-demo-editor.hidden{display:none!important}
+#cmrPdfDemoLockStatus{
+  background:#f4f6f9;
+  color:#334155;
+  border-bottom:1px solid #dfe4e9;
+  margin:0;
+  padding:8px 16px;
+  font-size:12px;
+  font-weight:650;
+  flex:none;
+}
+
 .cmr-pdf-demo-viewer{
   position:relative;
   display:flex;
