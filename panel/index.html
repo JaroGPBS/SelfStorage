@@ -8,9 +8,9 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=46">
+  <link rel="stylesheet" href="./panel.css?v=47">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=80" defer></script>
+  <script src="./panel.js?v=81" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -53,6 +53,7 @@
         <div class="side-section administrative">ADMINISTRACJA</div>
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
         <button data-view="modulePrefixes" class="nav-item" type="button"><span class="nav-symbol">▧</span> Prefiksy modułów</button>
+        <button data-view="cmrModuleWeights" class="nav-item" type="button"><span class="nav-symbol">⚖</span> Wagi modułów</button>
         <button data-view="frWeeklySettings" class="nav-item" type="button"><span class="nav-symbol">♧</span> Powiadomienia FR</button>
         <button data-view="security" class="nav-item" type="button"><span class="nav-symbol">⚿</span> Bezpieczeństwo</button>
         <button data-view="settings" class="nav-item" type="button"><span class="nav-symbol">⚙</span> Ustawienia</button>
@@ -321,6 +322,33 @@
               </table>
             </div>
             <p id="modulePrefixStatus" class="module-prefix-status" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+        <section id="cmrModuleWeightsView" class="view hidden">
+          <div class="table-panel">
+            <div class="table-title"><div>
+              <h2>Wagi modułów</h2>
+              <p>Wagi jednej sztuki w kg, wykorzystywane wyłącznie do obliczeń CMR.</p>
+            </div></div>
+            <form id="cmrModuleWeightForm" class="module-prefix-form">
+              <div class="module-prefix-fields">
+                <label>Typ modułu
+                  <input id="cmrModuleWeightType" required maxlength="40" placeholder="Np. FM" autocapitalize="characters" list="cmrModuleWeightTypes">
+                </label>
+                <datalist id="cmrModuleWeightTypes"></datalist>
+                <label>Waga jednej sztuki (kg)
+                  <input id="cmrModuleWeightValue" type="number" min="0" max="100000" step="0.001" required placeholder="Np. 250">
+                </label>
+                <button type="submit" class="btn primary">Zapisz wagę</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="module-prefix-table" aria-label="Wagi modułów">
+                <thead><tr><th>Typ modułu</th><th>Waga (kg)</th><th></th></tr></thead>
+                <tbody id="cmrModuleWeightRows"></tbody>
+              </table>
+            </div>
+            <p id="cmrModuleWeightStatus" class="hint" role="status"></p>
           </div>
         </section>
         <section id="frWeeklySettingsView" class="view hidden">
@@ -637,6 +665,10 @@
           <input id="partCreateSap" type="text" maxlength="100" autocomplete="off"
             placeholder="Możesz uzupełnić później">
         </div>
+        <div class="part-editor-field">
+          <label for="partCreateWeight">Waga (kg) <span class="part-optional">(opcjonalnie)</span></label>
+          <input id="partCreateWeight" type="number" min="0" max="100000" step="0.001" autocomplete="off">
+        </div>
       </div>
       <section class="part-editor-photos" aria-label="Zdjęcie części">
         <div class="part-editor-field">
@@ -685,6 +717,10 @@
         <div class="part-editor-field">
           <label for="partEditSap">Numer SAP <span class="part-optional">(opcjonalnie)</span></label>
           <input id="partEditSap" type="text" maxlength="100" autocomplete="off">
+        </div>
+        <div class="part-editor-field" id="partEditWeightGroup">
+          <label for="partEditWeight">Waga (kg) <span class="part-optional">(opcjonalnie)</span></label>
+          <input id="partEditWeight" type="number" min="0" max="100000" step="0.001" autocomplete="off">
         </div>
       </div>
       <section class="part-editor-photos" aria-label="Zdjęcie części">
