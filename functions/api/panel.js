@@ -1,6 +1,7 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
 import {listModulePrefixes,saveModulePrefix,deleteModulePrefix} from '../../lib/module-prefix-registry.js';
+import {cmrWeight,ensureCmrWeights,listCmrModuleWeights,saveCmrModuleWeight,partWeightStatement} from '../../lib/cmr-belleville-config.js';
 import {listRouteParts,createRoutePart,updateRoutePart,mergeRouteParts,importPreviousRouteParts} from '../../lib/pl-route-parts.js';
 import {createSharedCataloguePart} from '../../lib/shared-catalogue-create.js';
 import {readFrBoxSharedCatalog,removeBoxCataloguePart,addBoxCataloguePart} from '../../lib/fr-box-office-stock.js';
@@ -503,6 +504,7 @@ async function rotateBoxQr(env,body,actor) {
 
 async function queryPanel(env,view,url) {
   if(view==='modulePrefixes')return listModulePrefixes(env.DB);
+  if(view==='cmrModuleWeights')return listCmrModuleWeights(env.DB);
   if(view==='frWeeklySettings')return readFrWeeklySettings(env.DB);
   if(view==='boxQr')return boxQrRows(env.DB);
   if(view==='usage')return adminUsage(env,url);
@@ -628,6 +630,8 @@ async function queryPanel(env,view,url) {
     return readFrBoxSharedCatalog(env.DB);
   }
   if(view==='parts') {
+    // Weight is attached to the existing shared catalogue part, never a duplicate.
+    await ensureCmrWeights(env.DB);
     // A single catalogue is shared by every market; stock belongs to warehouses.
     const verification=await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
@@ -649,11 +653,11 @@ async function queryPanel(env,view,url) {
       'SELECT p.id,'+
       (hasIndices?'COALESCE(ix.new_index,p.part_number) AS part_number,ix.old_index,'
         :'p.part_number,NULL AS old_index,')+
-      'p.name,p.sap_number '+
+      'p.name,p.sap_number,cmrw.weight_kg AS weight_kg '+
       (verification?' ,v.status AS verification_status ':' ,NULL AS verification_status ')+
       (photoFlags?' ,('+photoFlags+') AS has_photo, CASE WHEN ('+photoFlags+') THEN 1 ELSE 0 END AS photo_count ':
         ' ,0 AS has_photo,0 AS photo_count ')+
-      'FROM parts p '+
+      'FROM parts p LEFT JOIN cmr_part_weights cmrw ON cmrw.part_id=p.id '+
       (hasIndices?'LEFT JOIN pl_part_index_migrations ix ON ix.part_id=p.id ':'')+
       (verification?'LEFT JOIN pl_part_verifications v ON v.part_id=p.id ':'')+
       'WHERE p.active=1 ORDER BY p.name COLLATE NOCASE LIMIT 3000'
@@ -1542,7 +1546,14 @@ async function createAdminCataloguePart(request,env){
     return fail('Zdjęcie przekracza 20 MB.',413);
   try{
     const form=await request.formData();
+    // Validate before the new part is created, so an invalid weight cannot
+    // leave a catalogue entry that looks like a failed creation.
+    const kg=cmrWeight(form.get('weightKg'));
     const part=await createSharedCataloguePart(env,form);
+    if(kg!==null){
+      await ensureCmrWeights(env.DB);
+      await partWeightStatement(env.DB,part.id,kg).run();
+    }
     await env.DB.prepare(
       'INSERT INTO panel_audit_log(id,actor_id,action,target_type,target_id,details) '+
       'VALUES (?,?,?,?,?,?)'
@@ -1704,6 +1715,13 @@ async function route(request,env) {
       console.error('Super Admin credential change failed',error?.name||'Error');
       return fail('Nie udało się zapisać zmiany danych logowania.',503);
     }
+  }
+  if(body?.action==='cmrModuleWeightSave'){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try{
+      const result=await saveCmrModuleWeight(env.DB,body.moduleType,body.weightKg);
+      return respond({ok:true,...result});
+    }catch(error){return fail(error.message||'Nie udało się zapisać wagi modułu.',400);}
   }
   if(['modulePrefixSave','modulePrefixDelete'].includes(body?.action)){
     if(session.role!=='ADMIN')return fail('Brak uprawnień do konfiguracji prefiksów.',403);
@@ -2191,6 +2209,8 @@ async function route(request,env) {
       const exists=await env.DB.prepare('SELECT id FROM parts WHERE id=? AND active=1')
         .bind(id).first();
       if(!exists)return fail('Część nie istnieje.',404);
+      if(Object.prototype.hasOwnProperty.call(body,'weightKg'))
+        cmrWeight(body.weightKg);
       if(verify) {
         const hasReviewTable=await env.DB.prepare(
           "SELECT name FROM sqlite_master WHERE type='table' AND name='pl_part_verifications'"
@@ -2203,6 +2223,10 @@ async function route(request,env) {
             'UPDATE parts SET name=?,part_number=?,sap_number=? WHERE id=?'
         ).bind(...(migration?[name,sap||null,id]:[name,number,sap||null,id]))
       ];
+      if(Object.prototype.hasOwnProperty.call(body,'weightKg')){
+        await ensureCmrWeights(env.DB);
+        statements.push(partWeightStatement(env.DB,id,body.weightKg));
+      }
       if(verify)statements.push(env.DB.prepare(
         "UPDATE pl_part_verifications SET status='VERIFIED',verified_by=?,verified_at=CURRENT_TIMESTAMP "+
         "WHERE part_id=? AND status='PENDING'"
