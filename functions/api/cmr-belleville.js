@@ -25,9 +25,10 @@ export async function onRequestGet({request,env}){
     if(action==='carriers')
       return workerJson({ok:true,carriers:await listCmrCarriers(env.DB)});
     if(action==='weights'){
-      const [modules,parts]=await Promise.all([
-        listCmrModuleWeights(env.DB),listCmrPartWeights(env.DB)
-      ]);
+      // D1 schema setup runs once per table; avoid concurrent CREATE TABLE
+      // operations on the first request after deployment.
+      const modules=await listCmrModuleWeights(env.DB);
+      const parts=await listCmrPartWeights(env.DB);
       return workerJson({ok:true,modules:modules.weights,parts});
     }
     return fail('Nieznany widok CMR.',404);
