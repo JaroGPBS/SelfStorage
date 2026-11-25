@@ -158,6 +158,7 @@
       loadingDate:date,
       cargo:modules.join('\n')+(parts.length?'\n\nCZĘŚCI:\n'+parts.join('\n'):''),
       count:doc.modules.length?'Parcel locker - '+doc.modules.length+' pcs':'',
+      moduleCount:doc.modules.length,
       weight:'',
       issueDate:date
     };
@@ -537,24 +538,28 @@
       };
       if(sequence!==renderCounter)return;
       const page=pdf.getPages()[0];
+      // Center the value in physical CMR column 7, vertically alongside
+      // the module serial list in column 6 (not next to the parts list).
+      const moduleCount=Number(snapshot.moduleCount)||0;
+      const countY=Math.max(314,Math.min(556,312+(moduleCount-1)*7*1.16/2));
       const jobs=[
         [B(504,18,49,17),snapshot.route,{size:11,bold:true,white:true,align:'right',label:'Trasa'}],
-        [B(468,44,59,14),snapshot.number,{size:7,bold:true,minSize:5.8,label:'Numer WZ'}],
+        [B(463,49,58,13),snapshot.number,{size:7,bold:true,minSize:5.8,label:'Numer WZ'}],
         // The actual template has much taller recipient/destination boxes
         // than the first demo used. Allow full address lists to fit.
         [B(51,88,258,60),snapshot.recipient,{size:8,minSize:4.8,label:'Odbiorca'}],
         [B(51,164,258,61),snapshot.delivery,{size:8,minSize:4.8,label:'Adres dostawy'}],
         [B(328,89,227,58),snapshot.carrier,{size:8,minSize:4.8,label:'Przewoźnik'}],
-        [B(138,256,85,12),snapshot.loadingDate,{size:8,label:'Data załadunku'}],
+        [B(138,261,85,12),snapshot.loadingDate,{size:8,label:'Data załadunku'}],
         [B(49,318,163,261),snapshot.cargo,{size:7,align:'left',top:true,minSize:5,label:'Moduły i części'}],
-        [B(216,337,73,40),snapshot.count,{size:7,label:'Ilość modułów'}],
+        [B(181,countY,66,18),snapshot.count,{size:6.5,minSize:4.6,label:'Ilość modułów'}],
         [B(443,349,52,32),snapshot.weight,{size:9,label:'Waga'}]
       ];
       const overflowFields=[];
       for(const job of jobs)stamp(page,...job,fonts,lib,overflowFields);
       // The final "CMR Belleville.pdf" has a blank date field.
-      stamp(page,B(248,748.4,41,10),snapshot.issueDate,
-        {size:8,label:'Data wystawienia'},fonts,lib,overflowFields);
+      stamp(page,B(222,742,65,15),snapshot.issueDate,
+        {size:9,margin:1,label:'Data wystawienia'},fonts,lib,overflowFields);
       if(snapshot.stampBase64){
         const raw=Uint8Array.from(atob(snapshot.stampBase64),c=>c.charCodeAt(0));
         const png=await pdf.embedPng(raw);
