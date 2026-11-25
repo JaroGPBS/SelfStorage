@@ -21,14 +21,13 @@
   let initialized=false;
   let weightManuallyEdited=false;
   const $=id=>document.getElementById(id);
+  // Route, WZ number and module count come directly from the selected WZ.
+  // They remain in the PDF but are not manually editable in the CMR sidebar.
   const fieldNames=[
-    ['route','Trasa','text'],
-    ['number','Numer dokumentu WZ','text'],
     ['recipient','2. Odbiorca','textarea'],
     ['delivery','3. Miejsce dostawy','textarea'],
     ['carrier','16. Przewoźnik, samochód, kierowca','textarea'],
     ['cargo','6. Numery modułów i części','textarea'],
-    ['count','7. Liczba modułów','text'],
     ['weight','11. Waga brutto (kg)','text']
   ];
   function loadLib(){
