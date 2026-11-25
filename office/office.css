@@ -9781,3 +9781,187 @@
     page-break-inside:avoid;
   }
 }
+
+
+/* Belleville CMR: preview of the user's actual blank A4 PDF, demo only. */
+.cmr-pdf-demo-modal{
+  position:fixed;
+  inset:0;
+  z-index:240;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:12px;
+}
+.cmr-pdf-demo-modal.hidden{display:none!important}
+.cmr-pdf-demo-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,32,.80);
+  backdrop-filter:blur(3px);
+}
+.cmr-pdf-demo-panel{
+  position:relative;
+  width:min(98vw,1370px);
+  height:min(96dvh,1020px);
+  min-height:340px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:#f5f6f8;
+  border-radius:11px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+.cmr-pdf-demo-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 17px;
+  border-bottom:1px solid #dfe4e9;
+  background:#fff;
+  flex:none;
+}
+.cmr-pdf-demo-kicker{
+  font-size:9px;
+  font-weight:750;
+  color:#9c3138;
+  letter-spacing:.08em;
+}
+.cmr-pdf-demo-head h2{
+  color:#2d3642;
+  font-size:17px;
+  margin:2px 0 0;
+}
+.cmr-pdf-demo-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:9px;
+  flex-wrap:wrap;
+}
+.cmr-pdf-demo-actions .btn{padding:7px 12px;font-size:11px;min-height:34px}
+.cmr-pdf-demo-close{
+  display:grid;
+  place-items:center;
+  width:35px;height:35px;
+  flex:0 0 auto;
+  border:0;
+  border-radius:7px;
+  font-size:24px;
+  line-height:1;
+  background:#eef1f4;
+  color:#4b5563;
+  cursor:pointer;
+}
+.cmr-pdf-demo-workspace{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 306px;
+  gap:0;
+  flex:1;
+  min-height:0;
+}
+.cmr-pdf-demo-viewer{
+  position:relative;
+  display:flex;
+  min-width:0;
+  min-height:0;
+  background:#e0e3e8;
+}
+.cmr-pdf-demo-frame{
+  width:100%;
+  height:100%;
+  flex:1;
+  border:0;
+  background:#eee;
+}
+.cmr-pdf-demo-frame.hidden{display:none!important}
+.cmr-pdf-demo-upload{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:15px;
+  width:100%;
+  padding:30px;
+  color:#354153;
+  text-align:center;
+}
+.cmr-pdf-demo-upload.hidden{display:none!important}
+.cmr-pdf-demo-upload strong{font-size:17px}
+.cmr-pdf-demo-upload p{max-width:520px;font-size:13px;line-height:1.5}
+.cmr-pdf-demo-editor{
+  min-width:0;
+  min-height:0;
+  overflow:auto;
+  border-left:1px solid #d8dee5;
+  background:#fff;
+  padding:13px 15px 18px;
+}
+.cmr-pdf-demo-editor>p{
+  margin:0 0 14px;
+  font-size:11px;
+  line-height:1.45;
+  color:#637082;
+}
+.cmr-pdf-demo-field{
+  display:flex;
+  flex-direction:column;
+  margin:0 0 11px;
+  gap:4px;
+}
+.cmr-pdf-demo-field span{
+  color:#465466;
+  font-weight:700;
+  font-size:11px;
+}
+.cmr-pdf-demo-field input,
+.cmr-pdf-demo-field textarea{
+  width:100%;
+  min-height:32px;
+  background:#fff;
+  color:#1f2937;
+  border:1px solid #c9d2db;
+  border-radius:5px;
+  padding:6px 8px;
+  font:12px/1.35 Arial,sans-serif;
+}
+.cmr-pdf-demo-field textarea{
+  min-height:59px;
+  resize:vertical;
+}
+.cmr-pdf-demo-field textarea[data-cmr-field="cargo"]{min-height:150px}
+.cmr-pdf-demo-field :is(input,textarea):focus{
+  outline:2px solid #97b5d5;
+  outline-offset:0;
+}
+.cmr-pdf-demo-error{
+  position:relative;
+  padding:10px 16px;
+  background:#fff1f2;
+  border-bottom:1px solid #efb7c0;
+  color:#9f1726;
+  font-size:12px;
+}
+.cmr-pdf-demo-error.hidden{display:none!important}
+.cmr-pdf-demo-hint{font-size:11px;color:#64748b}
+@media(max-width:860px){
+  .cmr-pdf-demo-modal{padding:5px}
+  .cmr-pdf-demo-panel{width:100%;height:99dvh}
+  .cmr-pdf-demo-head{padding:8px 10px;align-items:flex-start}
+  .cmr-pdf-demo-head h2{font-size:14px}
+  .cmr-pdf-demo-actions{gap:4px}
+  .cmr-pdf-demo-actions .btn{padding:6px 8px;font-size:10px}
+  .cmr-pdf-demo-workspace{
+    display:flex;
+    flex-direction:column;
+  }
+  .cmr-pdf-demo-viewer{min-height:46%;flex:1}
+  .cmr-pdf-demo-editor{
+    height:36%;
+    border-top:1px solid #d8dee5;
+    border-left:0;
+    flex:none;
+    padding:10px;
+  }
+}
