@@ -199,6 +199,7 @@
     });
   }
   function close(){
+    clearTimeout(renderTimer);
     renderCounter++;
     $('cmrPdfDemoModal').classList.add('hidden');
     if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl='';}
