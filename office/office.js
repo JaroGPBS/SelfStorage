@@ -1019,29 +1019,38 @@ function renderMenu(){
     const isBox=key==='toulouse'||key==='paris'||String(realId).startsWith('FR-BOX-');
     const warehouseOperations=permittedOperations('FR').filter(op=>
       !(isBox&&['pz','wz','labels'].includes(op.view))&&
-      !(['belleville','toulouse','paris'].includes(key)&&op.view==='nok')
+      !(['belleville','toulouse','paris'].includes(key)&&op.view==='nok')&&
+      // Belleville's warehouse menu is a short loading workflow.
+      // Do not remove or alter inventory features for other locations.
+      !(key==='belleville'&&op.view==='inventories')
     );
     // Only the two self-storage BOX menus replace separate PZ/WZ with one view.
     // Polish menus and other French warehouses are deliberately unchanged.
     if(isBox&&(state.user?.features?.pz!==false||state.user?.features?.wz!==false))
       warehouseOperations.unshift({view:'frMovements',label:'Ruchy magazynowe',icon:'⇄'});
-    const children=stockButton+warehouseOperations.map(op=>
+    const operationButton=op=>
       '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
         'data-fr-operation="'+escapeHtml(key)+'" data-fr-real-id="'+escapeHtml(realId)+'" '+
         'data-fr-warehouse-name="'+escapeHtml(label)+'" data-view="'+escapeHtml(op.view)+'">'+
         '<span class="office-operation-icon" aria-hidden="true">'+(officeMenuIcon(op.view)||escapeHtml(op.icon))+'</span>'+
-        escapeHtml(op.label)+'</button>'
-    ).join('')+(key==='belleville'
-      ?'<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
-        'data-belleville-service="1" data-fr-warehouse-name="'+escapeHtml(label)+'">'+
-        '<span class="office-operation-icon" aria-hidden="true">'+BELLEVILLE_SERVICE.icon+'</span>'+
-        BELLEVILLE_SERVICE.name+'</button>'+
-        '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
+        escapeHtml(key==='belleville'&&op.view==='labels'?'Druk etykiet':op.label)+'</button>';
+    const mainOperations=key==='belleville'
+      ?warehouseOperations.filter(op=>op.view!=='labels')
+      :warehouseOperations;
+    const children=stockButton+mainOperations.map(operationButton).join('')+
+      (key==='belleville'
+        ?'<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
+          'data-belleville-service="1" data-fr-warehouse-name="'+escapeHtml(label)+'">'+
+          '<span class="office-operation-icon" aria-hidden="true">'+BELLEVILLE_SERVICE.icon+'</span>'+
+          BELLEVILLE_SERVICE.name+'</button>'+
+          '<button type="button" class="subnav-btn office-operation-link office-fr-operation" '+
           'data-belleville-orders="1" data-fr-warehouse-name="'+escapeHtml(label)+'">'+
           '<span class="office-operation-icon" aria-hidden="true">'+BELLEVILLE_ORDER_LIST.icon+'</span>'+
           BELLEVILLE_ORDER_LIST.name+'</button>'+
+          warehouseOperations.filter(op=>op.view==='labels').map(operationButton).join('')+
           '<button type="button" class="subnav-btn office-operation-link office-fr-operation" data-belleville-carriers="1">'+
-            '<span class="office-operation-icon" aria-hidden="true">▣</span>Przewoźnicy</button>':'');
+          '<span class="office-operation-icon" aria-hidden="true">▣</span>Przewoźnicy</button>'
+        :'');
     return '<div class="office-fr-warehouse">'+
       '<button type="button" class="subnav-btn office-fr-warehouse-toggle" '+
         'data-fr-warehouse-toggle="'+escapeHtml(key)+'" '+
