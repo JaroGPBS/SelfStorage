@@ -27,11 +27,9 @@
     ['recipient','2. Odbiorca','textarea'],
     ['delivery','3. Miejsce dostawy','textarea'],
     ['carrier','16. Przewoźnik, samochód, kierowca','textarea'],
-    ['loadingDate','4. Data załadunku','text'],
     ['cargo','6. Numery modułów i części','textarea'],
     ['count','7. Liczba modułów','text'],
-    ['weight','11. Waga brutto (kg)','text'],
-    ['issueDate','21. Data wystawienia','text']
+    ['weight','11. Waga brutto (kg)','text']
   ];
   function loadLib(){
     if(window.PDFLib)return Promise.resolve(window.PDFLib);
@@ -130,10 +128,19 @@
     el.classList.toggle('hidden',!message);
   }
   function setHint(message){$('cmrPdfDemoHint').textContent=message||'';}
+  // Both CMR dates refer to the day the document is prepared, not the
+  // historical WZ date. Use the loading warehouse's local calendar (France).
+  function currentCmrDate(){
+    const values=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+      timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',year:'numeric'
+    }).formatToParts(new Date()).filter(part=>part.type!=='literal')
+      .map(part=>[part.type,part.value]));
+    return values.day+'-'+values.month+'-'+values.year;
+  }
   function preparedDoc(id){
     const doc=window.GPBSBellevilleDocsDemo?.find(id);
     if(!doc||doc.direction!=='WZ')return null;
-    const date=doc.date.slice(8,10)+'-'+doc.date.slice(5,7)+'-'+doc.date.slice(0,4);
+    const date=currentCmrDate();
     const modules=doc.modules.map(x=>x.type+' - '+x.serial);
     const parts=doc.parts.map(x=>x.name+': '+x.qty);
     return {
