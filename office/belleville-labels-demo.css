@@ -74,3 +74,14 @@
  #belLabPrintRoot .bel-lab-part-photo{border:.8mm solid #111}
  #belLabPrintRoot .bel-lab-part-photo span{font:400 18pt Arial,sans-serif}
 }
+
+/* Module-label queue: compact separate serial-number search. */
+.bel-lab-module-search{margin:0 0 8px;max-width:560px}
+.bel-lab-module-search form{display:flex;align-items:center;gap:6px}
+.bel-lab-module-search input{box-sizing:border-box;min-width:0;width:280px;max-width:100%;height:28px;padding:3px 8px;font-size:12px;border:1px solid #d5dce3;border-radius:4px}
+.bel-lab-module-search .btn{min-height:28px;padding:4px 8px;font-size:11px;white-space:nowrap}
+.bel-lab-result{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;padding:4px 0;font-size:12px}
+.bel-lab-module-search p,.bel-lab-module-message{font-size:11px;color:#667281;margin:5px 0}
+.bel-lab-module-message:empty{display:none}
+.bel-lab-queue-title{font-size:12px;font-weight:750;margin:8px 0 0}
+.bel-lab-ok{color:#277755;font-weight:800}
