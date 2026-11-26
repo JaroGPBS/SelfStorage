@@ -914,6 +914,10 @@ function officeMenuIcon(view){
     'stroke-linejoin="round" aria-hidden="true">'+paths[view]+'</svg>';
 }
 function renderMenu(){
+  // Keep planned-loading pane in sync with navigation, including home screens.
+  window.GPBSBellevilleLoadingPlans?.onViewChange(
+    state.view==='wz'&&state.preview?.type==='operation'&&
+    state.preview?.warehouseKey==='belleville');
   // Real warehouses obey D1 grants. Other FR entries are layout-only placeholders
   // visible to Admin, not permission grants and NEVER queried through the API.
   const pl=state.warehouses.filter(w=>w.country_code==='PL');
@@ -1488,11 +1492,6 @@ function setHead(title,kicker,desc){
   else $('tableToolbarTools').append($('export'));
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView||vehicleView);
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
-  // Planned loading lists belong only to Belleville -> Wydania.
-  // Existing WZ display and all other warehouse views stay unchanged.
-  window.GPBSBellevilleLoadingPlans?.onViewChange(
-    state.view==='wz'&&state.preview?.type==='operation'&&
-    state.preview?.warehouseKey==='belleville');
   $('bellevilleDocCommentLegend').classList.toggle('hidden',!isBellevilleDemoDocuments());
   // The fleet scroll track is useful only when a real crew-stock table exists.
   // Do not show an empty horizontal strip above the no-data message.
@@ -4932,6 +4931,9 @@ async function synchronizeOffice(){
       if(user!==state.user)return;
       state.warehouses=data.warehouses||[];
       renderMenu();
+      if(state.view==='wz'&&state.preview?.type==='operation'&&
+         state.preview?.warehouseKey==='belleville')
+        await window.GPBSBellevilleLoadingPlans?.refresh?.();
       if(state.view==='home'){
         const status=$('homeSyncError');
         status.classList.remove('is-error');
