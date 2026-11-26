@@ -1,0 +1,31 @@
+/* Belleville — fikcyjny podgląd zamówień. */
+.bel-order-banner{padding:9px 16px;background:#fafbfc;color:#9d4343;font-size:11px;font-weight:700;border-bottom:1px solid #e8ebef}
+.bel-order-scroll{width:100%;overflow-x:auto}
+.bel-order-table{width:100%;min-width:720px}
+.bel-order-table th,.bel-order-table td{padding:7px 12px;font-size:12px;vertical-align:middle}
+.bel-order-table th{font-size:10px;white-space:nowrap}
+.bel-order-table th:nth-child(3),.bel-order-table th:nth-child(4),.bel-order-table th:nth-child(6),.bel-order-table .bel-order-num{text-align:center}
+.bel-order-table td:first-child{white-space:nowrap;color:#73808d;width:115px}
+.bel-order-table th:nth-child(3),.bel-order-table th:nth-child(4){width:95px}
+.bel-order-table th:nth-child(5){width:145px}
+.bel-order-table th:nth-child(6){width:100px}
+.bel-order-status{display:inline-block;font-size:11px;font-weight:700;white-space:nowrap}
+.bel-order-status-low{color:#b34343}
+.bel-order-status-ok{color:#277755}
+.bel-order-status-manual{color:#365e8f}
+.bel-order-status-never{color:#8b96a2}
+.bel-order-row-low td:nth-child(3){color:#b34343;font-weight:800}
+.bel-order-qty{box-sizing:border-box;width:76px;min-height:29px;padding:3px 6px;border:1px solid #d5dce3;border-radius:4px;background:#fff;color:#303b47;text-align:center;font:inherit;font-variant-numeric:tabular-nums}
+.bel-order-qty:focus{outline:2px solid #8da7c3;outline-offset:1px}
+.bel-order-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid #e5e9ee;font-size:12px;flex-wrap:wrap}
+.bel-order-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bel-order-buttons button{font-size:11px}
+.bel-order-feedback:not(:empty){padding:0 16px 10px;color:#465366;font-size:11px}
+.bel-order-draft{padding:10px 16px;font-size:12px}
+.bel-order-draft[hidden]{display:none}
+.bel-order-draft textarea{display:block;width:100%;box-sizing:border-box;min-height:170px;margin-top:8px;padding:8px;border:1px solid #d5dce3;font:inherit}
+.bel-order-empty{text-align:center!important;padding:20px!important}
+.doc-print-sheet .bel-order-print .doc-print-letterhead{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.doc-print-sheet .bel-order-print .doc-print-letterhead img{width:95px;max-height:40px;object-fit:contain}
+.doc-print-sheet .bel-order-print h2{font-size:18px;margin:0}
+.doc-print-sheet .bel-order-print p{font-size:11px}
