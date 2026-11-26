@@ -1,0 +1,54 @@
+/* Belleville → Zaopatrzenie ekipy. Demonstration only; no D1 writes. */
+.bel-service-demo-banner{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:9px 17px;border-bottom:1px solid #eceff2;
+  background:#fafbfc;color:#707c89;font-size:11px;
+}
+.bel-service-demo-banner strong{color:#9d4343;font-size:11px;font-weight:800}
+.bel-service-table-scroll{width:100%;overflow-x:auto}
+.bel-service-demo-table{min-width:890px;width:100%}
+.bel-service-demo-table th,
+.bel-service-demo-table td{padding:11px 13px;white-space:nowrap;font-size:12px}
+.bel-service-demo-table th{font-size:10px}
+.bel-service-demo-table td:last-child{padding-right:15px}
+.bel-service-demo-table .bel-service-time{color:#8c97a3;font-size:11px;padding-left:6px}
+.bel-service-demo-table .bel-service-in,
+.bel-service-lines .bel-service-in{color:#277755;font-variant-numeric:tabular-nums}
+.bel-service-demo-table .bel-service-out,
+.bel-service-lines .bel-service-out{color:#365e8f;font-variant-numeric:tabular-nums}
+.bel-service-actions{white-space:nowrap;text-align:right}
+.bel-service-actions .belleville-doc-toggle,
+.bel-service-actions .belleville-doc-action{min-height:31px;padding:6px 9px}
+.bel-service-demo-table .bel-service-expanded-row:hover{background:transparent}
+.bel-service-demo-table .bel-service-expanded-row td{padding:0!important;background:#fbfcfd}
+.bel-service-expanded{padding:12px 17px 17px}
+.bel-service-expanded-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  margin:0 0 9px;font-size:11px;color:#77828f;white-space:normal}
+.bel-service-expanded-head strong{color:#303b47;font-size:12px}
+.bel-service-lines{border-collapse:collapse;width:100%;min-width:510px;
+  font-size:12px;background:white}
+.bel-service-lines th,.bel-service-lines td{
+  padding:9px 12px;border:1px solid #e5e9ee;text-align:left;white-space:normal}
+.bel-service-lines th{background:#f2f4f7;color:#667281;font-size:10px}
+.bel-service-lines th:nth-child(n+3){text-align:center;width:95px}
+.bel-service-lines .bel-service-qty{text-align:center;font-weight:700}
+.bel-service-lines tfoot td{background:#f4f6f8;font-weight:800}
+.bel-service-print-logo{width:148px;max-height:50px;display:block;object-fit:contain}
+.bel-service-print-number{margin-top:7px;font-size:12px;font-weight:750;color:#63707d}
+.bel-service-print-demo-mark{border:1px solid #e4b9bd;background:#fff5f6;
+  padding:7px 11px;margin:0 0 16px;text-align:center;
+  font-size:9px;font-weight:800;letter-spacing:.055em;color:#a43b47}
+.doc-print-sheet .bel-service-print .doc-print-fields{margin-bottom:22px}
+.doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(1){width:7%}
+.doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(2){width:19%}
+.doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(3){width:48%}
+.doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(4),
+.doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(5){width:13%;text-align:center}
+.doc-print-sheet .bel-service-print .doc-print-parts th,
+.doc-print-sheet .bel-service-print .doc-print-parts td{padding:8px 7px}
+.doc-print-sheet .bel-service-print .bel-service-print-total td{
+  background:#eff2f5;font-weight:850}
+@media print{
+  .doc-print-sheet .bel-service-print .bel-service-print-demo-mark{
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
