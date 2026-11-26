@@ -18,7 +18,10 @@
 .bel-order-status-manual{color:#365e8f}
 .bel-order-status-never{color:#8b96a2}
 .bel-order-row-low td:nth-child(3){color:#b34343;font-weight:800}
-.bel-order-demo .bel-order-qty{box-sizing:border-box;width:59px;height:22px;min-height:0;margin:0;padding:0 4px;border:1px solid #d5dce3;border-radius:4px;background:#fff;color:#303b47;text-align:center;font:inherit;line-height:18px;font-variant-numeric:tabular-nums;vertical-align:middle}
+.bel-order-demo .bel-order-qty{box-sizing:border-box;width:59px;height:22px;min-height:0;margin:0;padding:0;border:1px solid #d5dce3;border-radius:4px;background:#fff;color:#303b47;text-align:center;font:inherit;line-height:18px;font-variant-numeric:tabular-nums;vertical-align:middle;appearance:textfield;-moz-appearance:textfield}
+.bel-order-demo .bel-order-qty::-webkit-inner-spin-button,
+.bel-order-demo .bel-order-qty::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+
 .bel-order-qty:focus{outline:2px solid #8da7c3;outline-offset:1px}
 .bel-order-actions{display:flex;justify-content:flex-start;align-items:center;gap:12px;padding:7px 12px;border-top:1px solid #e5e9ee;font-size:12px;flex-wrap:wrap}
 .bel-order-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
