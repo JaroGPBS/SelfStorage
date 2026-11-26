@@ -26,6 +26,8 @@
   const countPositions=key=>VISIT.lines.filter(line=>line[key]>0).length;
   const formatDate=value=>value.slice(8,10)+'.'+value.slice(5,7)+'.'+value.slice(0,4);
   const number=value=>value>0?String(value):'—';
+  const positionWord=value=>value===1?'pozycja':
+    (value%10>=2&&value%10<=4&&(value%100<12||value%100>14)?'pozycje':'pozycji');
   const summaryLabel=(key,label)=>'<span>'+label+': <strong>'+countPositions(key)+' poz.</strong></span>';
   const rows=VISIT.lines.map(line=>
     '<tr><td>'+esc(line.sap)+'</td><td>'+esc(line.name)+'</td>'+
@@ -43,28 +45,33 @@
       '<strong>Wizyta pokazowa · dane fikcyjne</strong>'+
       '<span>Nie wpływa na stany Belleville i nie zapisuje się do D1.</span></div>';
     if(!visible)return {html:head+'<div class="empty">Nie znaleziono wizyt.</div>',shown:0,total:1};
+    const receivedPositions=countPositions('received');
+    const issuedPositions=countPositions('issued');
+    const comment=String(VISIT.note||'').trim();
+    const commentMark=comment?'<span class="bel-service-comment-mark" title="Dodano komentarz" aria-label="Dodano komentarz">✎</span>':'';
+    const commentPanel=comment?'<aside class="bel-service-comment"><strong>Komentarz</strong><p>'+esc(comment)+'</p></aside>':'';
     const details='<tr class="bel-service-expanded-row"><td colspan="8">'+
       '<div class="bel-service-expanded">'+
-      '<div class="bel-service-expanded-head"><strong>Wizyta '+esc(VISIT.id)+'</strong>'+
-        '<span>'+esc(VISIT.note)+'</span></div>'+
+      '<div class="bel-service-expanded-head"><strong>Wizyta '+esc(VISIT.id)+'</strong></div>'+
+      '<div class="bel-service-expanded-grid">'+
       '<div class="bel-service-table-scroll"><table class="bel-service-lines"><thead>'+
       '<tr><th>Indeks SAP</th><th>Nazwa części</th><th>Przyjęto</th><th>Wydano</th></tr>'+
       '</thead><tbody>'+rows+'</tbody>'+
       '<tfoot><tr><td colspan="2">RAZEM</td>'+
       '<td class="bel-service-qty bel-service-in">'+sum('received')+'</td>'+
       '<td class="bel-service-qty bel-service-out">'+sum('issued')+'</td>'+
-      '</tr></tfoot></table></div>'+
+      '</tr></tfoot></table></div>'+commentPanel+'</div>'+
       '</div></td></tr>';
     const table='<div class="bel-service-table-scroll"><table class="table bel-service-demo-table">'+
       '<thead><tr><th>Nr</th><th>Tydzień</th><th>Data</th><th>Ekipa</th>'+
       '<th>Przyjęto</th><th>Wydano</th><th>Obsługiwał</th><th></th></tr></thead>'+
       '<tbody><tr>'+
-      '<td><strong>'+esc(VISIT.id)+'</strong></td>'+
+      '<td><strong>'+esc(VISIT.id)+'</strong>'+commentMark+'</td>'+
       '<td>'+VISIT.week+'</td>'+
       '<td>'+formatDate(VISIT.date)+' <span class="bel-service-time">'+esc(VISIT.time)+'</span></td>'+
       '<td>'+esc(VISIT.crew)+'</td>'+
-      '<td class="bel-service-in"><strong>'+sum('received')+'</strong> szt.</td>'+
-      '<td class="bel-service-out"><strong>'+sum('issued')+'</strong> szt.</td>'+
+      '<td class="bel-service-in"><strong>'+receivedPositions+'</strong> '+positionWord(receivedPositions)+'</td>'+
+      '<td class="bel-service-out"><strong>'+issuedPositions+'</strong> '+positionWord(issuedPositions)+'</td>'+
       '<td>'+esc(VISIT.worker)+'</td>'+
       '<td class="bel-service-actions">'+
       '<button type="button" class="belleville-doc-toggle" data-bel-service-toggle="'+esc(VISIT.id)+'" aria-expanded="'+String(open)+'">'+
