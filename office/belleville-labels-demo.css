@@ -85,3 +85,6 @@
 .bel-lab-module-message:empty{display:none}
 .bel-lab-queue-title{font-size:12px;font-weight:750;margin:8px 0 0}
 .bel-lab-ok{color:#277755;font-weight:800}
+
+.bel-lab-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px}
+.bel-lab-preview-head .btn{margin-left:auto;font-size:11px;min-height:28px;padding:5px 9px}
