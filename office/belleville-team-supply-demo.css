@@ -189,6 +189,31 @@
   flex-wrap:wrap;
   font-size:10px;
 }
+/* Note entered during the visit appears under the parts list, but only when present. */
+.doc-print-sheet .bel-service-print .bel-service-print-comment{
+  margin-top:10px;
+  padding:7px 10px;
+  border:1px solid #dfe5eb;
+  border-radius:4px;
+  background:#f8fafc;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.doc-print-sheet .bel-service-print .bel-service-print-comment strong{
+  display:block;
+  margin-bottom:4px;
+  font-size:10px;
+  line-height:1.2;
+  color:#303b47;
+}
+.doc-print-sheet .bel-service-print .bel-service-print-comment p{
+  margin:0;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:10px;
+  line-height:1.35;
+  color:#465366;
+}
 /* Notes and signatures stay at the A4 page foot when there is room. */
 .doc-print-sheet .bel-service-print .doc-print-bottom{
   margin-top:auto;
