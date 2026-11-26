@@ -9139,7 +9139,7 @@
 }
 .belleville-demo-print .doc-print-brand .belleville-demo-print-logo{
   display:block;
-  width:135px;
+  width:94px; /* 30% smaller than the former 135px */
   height:auto;
   max-width:100%;
 }
@@ -9377,6 +9377,134 @@
     display:table-header-group;
   }
   body.printing-office-document .belleville-demo-print .doc-print-parts tr{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+}
+
+/* PZ/WZ: same space-efficient A4 layout as the ZE preview.
+   Scoped to Belleville's fictional documents, not normal WZ/PZ/CMR. */
+.doc-print-sheet .belleville-demo-print{
+  display:flex;
+  flex-direction:column;
+  min-height:277mm; /* A4 height less top/bottom margins of 10 mm. */
+}
+.doc-print-sheet .belleville-demo-print .doc-print-letterhead{
+  align-items:center;
+  gap:20px;
+  margin:0 0 9px;
+  padding:0 0 7px;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-heading{
+  margin-left:auto;
+  flex:0 1 auto;
+  min-width:0;
+  text-align:right;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-heading h2{
+  margin:0;
+  font-size:19px;
+  line-height:1.13;
+  font-weight:850;
+  overflow-wrap:normal;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-number{
+  display:block;
+  margin-top:5px;
+  font-size:10px;
+  line-height:1.2;
+  color:#63707d;
+  font-weight:750;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-fields{
+  margin:0 0 11px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-field,
+.doc-print-sheet .belleville-demo-print .doc-print-field:last-child{
+  min-height:0;
+  padding:4px 8px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-field span{
+  font-size:8px;
+  line-height:1.1;
+  margin-bottom:2px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-field strong{
+  font-size:10px;
+  line-height:1.2;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-section{
+  margin-top:8px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-section-title{
+  margin:0 0 5px;
+  font-size:11px;
+  line-height:1.2;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-parts th,
+.doc-print-sheet .belleville-demo-print .doc-print-parts td{
+  padding:4px 6px;
+  line-height:1.2;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-parts th{
+  font-size:8px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-parts td{
+  font-size:10px;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-lower{
+  display:block;
+  margin-top:8px;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-lower .belleville-demo-print-section{
+  display:block;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-lower .doc-print-section-title,
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-lower .belleville-demo-print-parts{
+  grid-column:auto;
+  grid-row:auto;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-parts th:nth-child(1){width:23%}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-parts th:nth-child(2){width:62%}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-parts th:nth-child(3){width:15%}
+.doc-print-sheet .belleville-demo-print .doc-print-bottom{
+  margin-top:auto;
+  padding-top:14px;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-notes{
+  padding:0;
+  margin:0;
+  min-height:0;
+  border:0;
+  font-size:10px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-notes strong{
+  margin:0 0 4px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-notes p{
+  margin:0 0 4px;
+  line-height:1.3;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-write-lines{
+  margin-top:4px;
+}
+.doc-print-sheet .belleville-demo-print .belleville-demo-print-write-lines div{
+  height:19px;
+  border-bottom:1px solid #d5dbe1;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-signatures{
+  margin-top:34px;
+  gap:32px;
+}
+.doc-print-sheet .belleville-demo-print .doc-print-signature strong{font-size:10px}
+.doc-print-sheet .belleville-demo-print .doc-print-signature span{font-size:9px}
+@media print{
+  body.printing-office-document .belleville-demo-print{
+    min-height:277mm;
+  }
+  body.printing-office-document .belleville-demo-print .doc-print-bottom{
     break-inside:avoid;
     page-break-inside:avoid;
   }
