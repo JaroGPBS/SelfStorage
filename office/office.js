@@ -3944,10 +3944,41 @@ function openBellevilleDemoCmrPrint(id){
 function isBellevilleLabelsDemo(){
   return Boolean(window.GPBSBellevilleLabelsDemo&&state.view==='labels'&&state.preview?.type==='operation'&&state.preview.warehouseKey==='belleville');
 }
+let belLabelsLoaded=false;
+async function loadBellevilleLabelsDemo(){
+  const ticket=++state.requestId;
+  belLabelsLoaded=false;
+  $('tableArea').innerHTML='<div class="loading">Wczytywanie katalogu części Belleville…</div>';
+  $('tableFooter').textContent='';
+  try{
+    const warehouse=state.warehouses.find(w=>isBellevilleWarehouse(w.id));
+    const key=warehouse?.id||'FR-COMMON-CATALOG';
+    let parts;
+    if(warehouse)parts=await loadStocks(warehouse.id);
+    else{
+      if(!freshPartsCache(key)){
+        const response=await api('frCatalog');
+        if(ticket!==state.requestId)return;
+        putPartsCache(key,response.parts||[]);
+      }
+      parts=state.partsCache.get(key)||[];
+    }
+    if(ticket!==state.requestId||!isBellevilleLabelsDemo())return;
+    window.GPBSBellevilleLabelsDemo.setParts(parts||[],warehouse?.id||'',String(state.user?.id||'')+':'+key);
+    belLabelsLoaded=true;
+    drawBellevilleLabelsDemo();
+  }catch(e){
+    if(ticket!==state.requestId||!isBellevilleLabelsDemo())return;
+    errorBanner(e.message||'Nie można pobrać katalogu części.');
+    $('tableArea').innerHTML='<div class="empty">Nie udało się wczytać listy etykiet.</div>';
+    if(e.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
+  }
+}
 function drawBellevilleLabelsDemo(){
+  if(!belLabelsLoaded)return;
   errorBanner('');
   window.GPBSBellevilleLabelsDemo.render($('tableArea'),state.search);
-  $('tableFooter').textContent='Podgląd etykiet · dane fikcyjne · bez zapisu do D1.';
+  $('tableFooter').textContent='Części: wspólny katalog Belleville · Dostawy NOK: podgląd.';
   $('searchNote').classList.add('hidden');
   $('vehicleTopScroll').classList.add('hidden');
 }
@@ -4039,7 +4070,7 @@ async function render({silent=false}={}){
     if(isBellevilleOrderDemo())await loadBellevilleOrderDemo(silent);
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
-    else if(isBellevilleLabelsDemo())drawBellevilleLabelsDemo();
+    else if(isBellevilleLabelsDemo())await loadBellevilleLabelsDemo();
     else drawFrenchEmptyView();
     return;
   }
