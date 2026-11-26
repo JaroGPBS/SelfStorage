@@ -40,11 +40,15 @@
   max-height:52px;
   object-fit:contain;
 }
+/* Only the ZE print sheet uses a 1 cm upper page margin. */
+.doc-print-sheet:has(> .bel-service-print){
+  padding-top:10mm;
+}
 .doc-print-sheet .bel-service-print{
   display:flex;
   flex-direction:column;
-  /* A4 (297 mm) minus Office sheet's 17 mm top and 15 mm bottom padding. */
-  min-height:265mm;
+  /* A4 (297 mm) minus 10 mm top and 15 mm bottom padding. */
+  min-height:272mm;
 }
 .doc-print-sheet .bel-service-print .bel-service-print-heading{
   display:flex;
@@ -195,9 +199,10 @@
 @media print{
   body.printing-office-document .doc-print-sheet:has(> .bel-service-print){
     min-height:297mm!important;
+    padding-top:10mm!important;
   }
   body.printing-office-document .bel-service-print{
-    min-height:265mm;
+    min-height:272mm;
   }
   body.printing-office-document .bel-service-print .doc-print-notes,
   body.printing-office-document .bel-service-print .doc-print-signatures{
