@@ -3,11 +3,11 @@
 'use strict';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 const deliveries=[
-{id:'m1',date:'26.11.2026',type:'FM',serial:'DEMO/26-FM-001',status:'NOK'},
-{id:'m2',date:'26.11.2026',type:'LQ',serial:'DEMO/26-LQ-002',status:'NOK'},
-{id:'m3',date:'26.11.2026',type:'RQ',serial:'DEMO/26-RQ-003',status:'NOK'},
-{id:'m4',date:'25.11.2026',type:'XS',serial:'DEMO/26-XS-004',status:'NOK'},
-{id:'m5',date:'25.11.2026',type:'DUO',serial:'DEMO/26-DUO-005',status:'NOK'},
+{id:'m1',date:'26.11.2026',route:'DEMO-01',type:'FM',serial:'DEMO/26-FM-001',status:'NOK'},
+{id:'m2',date:'26.11.2026',route:'DEMO-01',type:'LQ',serial:'DEMO/26-LQ-002',status:'NOK'},
+{id:'m3',date:'26.11.2026',route:'DEMO-01',type:'RQ',serial:'DEMO/26-RQ-003',status:'NOK'},
+{id:'m4',date:'25.11.2026',route:'DEMO-02',type:'XS',serial:'DEMO/26-XS-004',status:'NOK'},
+{id:'m5',date:'25.11.2026',route:'DEMO-02',type:'DUO',serial:'DEMO/26-DUO-005',status:'NOK'},
 {id:'m6',date:'25.11.2026',type:'FM',serial:'DEMO/26-FM-006',status:'OK'},
 {id:'m7',date:'25.11.2026',type:'LQ',serial:'DEMO/26-LQ-007',status:'OK'},
 {id:'m8',date:'25.11.2026',type:'RQ',serial:'DEMO/26-RQ-008',status:'OK'},
@@ -50,7 +50,7 @@ function setParts(rows,warehouseId,scope){
  for(const id of queue.keys())if(!allowed.has(id))queue.delete(id);
 }
 const current=()=>tab==='modules'?pendingModules().filter(p=>selected.has(p.id)):parts.flatMap(p=>Array.from({length:queue.get(p.id)||0},()=>p));
-const label=(p,mode)=>mode==='modules'?'<article class="bel-lab-card"><div class="bel-lab-card-top"><img src="./gpbs-logo-print.svg?v=1" alt="GPBS"><small>DEMO · Data przyjęcia: <b>'+esc(p.date)+'</b></small></div><div class="bel-lab-module-body"><div class="bel-lab-qr" data-bel-lab-qr="'+esc(p.serial)+'"></div><div class="bel-lab-data"><small>TYP</small><strong>'+esc(p.type)+'</strong><small>S/N</small><b class="bel-lab-serial">'+esc(p.serial)+'</b><small>STATUS</small><strong class="'+(p.status==='NOK'?'bel-lab-nok':'bel-lab-ok')+'">'+esc(p.status)+'</strong></div></div></article>':'<article class="bel-lab-card bel-lab-part-card"><div class="bel-lab-part-header"><div class="bel-lab-part-name">'+esc(p.name)+'</div><img class="bel-lab-part-logo" src="./gpbs-logo-print.svg?v=1" alt="GPBS"></div><div class="bel-lab-part-body"><div class="bel-lab-part-left"><div class="bel-lab-data"><small>INDEKS GPBS</small><b>'+esc(p.code)+'</b></div><div class="bel-lab-qr" data-bel-lab-qr="'+esc(p.code)+'"></div></div><div class="bel-lab-part-photo">'+(p.photoUrl?'<img src="'+esc(p.photoUrl)+'" alt="'+esc(p.name)+'">':'<span>ZDJĘCIE</span>')+'</div></div></article>';
+const label=(p,mode)=>mode==='modules'?'<article class="bel-lab-card"><div class="bel-lab-card-top"><img src="./gpbs-logo-print.svg?v=1" alt="GPBS"><small>DEMO · Data przyjęcia: <b>'+esc(p.date)+'</b>'+(p.status==='NOK'?'<br>Numer trasy: <b>'+esc(p.route||'—')+'</b>':'')+'</small></div><div class="bel-lab-module-body"><div class="bel-lab-qr" data-bel-lab-qr="'+esc(p.serial)+'"></div><div class="bel-lab-data"><small>TYP</small><strong>'+esc(p.type)+'</strong><small>S/N</small><b class="bel-lab-serial">'+esc(p.serial)+'</b><small>STATUS</small><strong class="'+(p.status==='NOK'?'bel-lab-nok':'bel-lab-ok')+'">'+esc(p.status)+'</strong></div></div></article>':'<article class="bel-lab-card bel-lab-part-card"><div class="bel-lab-part-header"><div class="bel-lab-part-name">'+esc(p.name)+'</div><img class="bel-lab-part-logo" src="./gpbs-logo-print.svg?v=1" alt="GPBS"></div><div class="bel-lab-part-body"><div class="bel-lab-part-left"><div class="bel-lab-data"><small>INDEKS GPBS</small><b>'+esc(p.code)+'</b></div><div class="bel-lab-qr" data-bel-lab-qr="'+esc(p.code)+'"></div></div><div class="bel-lab-part-photo">'+(p.photoUrl?'<img src="'+esc(p.photoUrl)+'" alt="'+esc(p.name)+'">':'<span>ZDJĘCIE</span>')+'</div></div></article>';
 function sheets(list,mode){
  let out='';
  for(let i=0;i<list.length;i+=4){out+='<section class="bel-lab-sheet">'+Array.from({length:4},(_,j)=>list[i+j]?label(list[i+j],mode):'<div class="bel-lab-blank"></div>').join('')+'</section>';}
