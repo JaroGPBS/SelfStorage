@@ -284,13 +284,13 @@
               '<tbody>'+partLines+'</tbody>'+
             '</table>'+
           '</section>'+
+        '</div>'+
+        '<div class="doc-print-bottom">'+
           '<div class="doc-print-notes"><strong>Dodatkowe informacje</strong><p>'+
             escape(doc.comment||'Brak dodatkowych informacji.')+'</p>'+
             '<div class="belleville-demo-print-write-lines">'+
               '<div></div><div></div><div></div><div></div>'+
             '</div></div>'+
-        '</div>'+
-        '<div class="doc-print-bottom">'+
           '<div class="doc-print-signatures">'+
             signature(incoming?'Przekazujący — kierowca':'Wydający — magazynier',
               incoming?doc.driver:doc.worker)+
