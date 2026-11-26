@@ -1,0 +1,73 @@
+/* Office Belleville: small planned-loading panel, separate from historical WZ. */
+#belLoadingAdd[hidden],#belLoadingPanel[hidden],#belLoadingNotice[hidden],
+#belLoadingBody[hidden],#belLoadingError[hidden]{display:none!important}
+.bel-loading-add{white-space:nowrap;font-size:12px;padding:7px 11px;min-height:32px}
+.bel-loading-panel{
+  margin:0 12px 10px;border:1px solid #dae0e6;border-radius:8px;
+  background:#fff;overflow:hidden;flex:none;
+}
+.bel-loading-toggle{
+  appearance:none;border:0;width:100%;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;text-align:left;
+  background:#f3f5f7;color:#26313d;cursor:pointer;
+  padding:9px 13px;font:inherit;font-size:13px;font-weight:700;
+}
+.bel-loading-toggle small{font-size:12px;font-weight:500;color:#65727d;margin-left:9px}
+.bel-loading-body{padding:3px 11px 9px}
+.bel-loading-route{border-bottom:1px solid #e6eaf0}
+.bel-loading-route:last-child{border-bottom:0}
+.bel-loading-route summary{
+  list-style:none;display:flex;align-items:center;gap:16px;
+  padding:9px 6px;cursor:pointer;font-size:13px;min-height:34px;
+}
+.bel-loading-route summary::-webkit-details-marker{display:none}
+.bel-loading-week{min-width:70px;color:#5d6975;font-size:12px}
+.bel-loading-route-chevron{margin-left:auto;color:#87919b;font-size:17px}
+.bel-loading-in-progress{font-size:11px;color:#80622a}
+.bel-loading-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:3px 6px 6px}
+.bel-loading-columns section{min-width:0;border:1px solid #e4e8ed;border-radius:6px;padding:8px 10px}
+.bel-loading-columns h4{
+  margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.35px;
+  color:#616e7a;border-bottom:1px solid #e8edf1;padding-bottom:6px
+}
+.bel-loading-line{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:4px 0;font-size:12px}
+.bel-loading-line span{min-width:0;overflow-wrap:anywhere}
+.bel-loading-line strong{font-size:12px;white-space:nowrap}
+.bel-loading-empty{font-size:12px;color:#9ca5af}
+.bel-loading-route-actions{display:flex;justify-content:flex-end;padding:0 6px 9px}
+.bel-loading-edit{
+  border:1px solid #ccd4dd;border-radius:5px;background:#fff;color:#3b4652;
+  padding:4px 10px;cursor:pointer;font:inherit;font-size:12px
+}
+.bel-loading-notice{margin:8px 12px;font-size:12px;color:#a12131}
+.bel-loading-dialog{
+  border:1px solid #d8dfe7;border-radius:11px;width:min(640px,calc(100vw - 26px));
+  max-width:640px;max-height:90dvh;padding:0;color:#26313d;background:#fff;
+  box-shadow:0 20px 60px rgba(15,25,40,.27)
+}
+.bel-loading-dialog::backdrop{background:rgba(15,23,34,.62)}
+.bel-loading-form{padding:22px;display:flex;flex-direction:column;gap:12px}
+.bel-loading-form h2{margin:0 0 3px;font-size:19px}
+.bel-loading-fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(75px,1fr) minmax(85px,1fr);gap:10px}
+.bel-loading-fields label,.bel-loading-paste-label{font-size:12px;font-weight:700;color:#485563}
+.bel-loading-fields label{display:flex;flex-direction:column;gap:5px}
+.bel-loading-fields input,.bel-loading-form textarea{
+  border:1px solid #cdd5df;background:#fff;color:#222f3b;border-radius:6px;
+  padding:9px 10px;font:inherit;font-size:13px;width:100%;box-sizing:border-box
+}
+.bel-loading-form textarea{resize:vertical;min-height:150px;line-height:1.45}
+.bel-loading-help{font-size:11px;color:#65727e;line-height:1.45;margin:0}
+.bel-loading-preview{font-size:12px;color:#52606c}
+.bel-loading-paste-preview{margin-top:6px;border:1px solid #e1e6ec;border-radius:5px;max-height:160px;overflow:auto}
+.bel-loading-paste-preview>div{display:flex;justify-content:space-between;gap:12px;padding:4px 9px;border-bottom:1px solid #eef0f4}
+.bel-loading-paste-preview>div:last-child{border-bottom:0}
+.bel-loading-paste-preview b{flex:none}
+.bel-loading-paste-preview small{display:block;padding:6px 9px}
+.bel-loading-error{margin:0;color:#ab2934;font-size:12px}
+.bel-loading-dialog-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:3px}
+@media(max-width:600px){
+  .bel-loading-columns{grid-template-columns:1fr;gap:8px}
+  .bel-loading-form{padding:15px}
+  .bel-loading-fields{grid-template-columns:minmax(0,1fr) 70px 80px;gap:6px}
+  .bel-loading-panel{margin:0 7px 8px}
+}
