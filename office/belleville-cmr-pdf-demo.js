@@ -772,7 +772,8 @@
       if(snapshot.stampBase64){
         const raw=Uint8Array.from(atob(snapshot.stampBase64),c=>c.charCodeAt(0));
         const png=await pdf.embedPng(raw);
-        const frame=B(260,770,146,24);
+        // Use the blank upper area of CMR field 23, above its printed signature caption.
+        const frame=B(260,741,150,34);
         const fit=png.scaleToFit(frame.w,frame.h);
         page.drawImage(png,{
           x:frame.x+(frame.w-fit.width)/2,
