@@ -47,3 +47,30 @@
  #belLabPrintRoot .bel-lab-data b{font:800 17pt Arial,sans-serif}
  #belLabPrintRoot .bel-lab-part-name{font:800 19pt Arial,sans-serif}
 }
+
+/* Parts only: header, index and QR on the left; large photo on the right. */
+.bel-lab-card.bel-lab-part-card{padding:3% 3.5%;gap:5%;justify-content:flex-start}
+.bel-lab-part-header{display:flex;align-items:flex-start;justify-content:space-between;gap:4%;min-width:0;flex:0 0 auto}
+.bel-lab-part-header .bel-lab-part-name{flex:1;min-width:0;line-height:1.15;overflow-wrap:anywhere}
+.bel-lab-part-logo{width:17%;height:auto;max-height:24px;object-fit:contain;object-position:right top;flex-shrink:0}
+.bel-lab-part-body{display:grid;grid-template-columns:34% minmax(0,1fr);gap:4%;flex:1;min-height:0;align-items:stretch}
+.bel-lab-part-left{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:3%;padding:5% 0 0 5%;min-width:0;min-height:0}
+.bel-lab-part-left .bel-lab-data{gap:1px;max-width:100%}
+.bel-lab-part-left .bel-lab-data small{font-size:clamp(6px,.55vw,10px)}
+.bel-lab-part-left .bel-lab-data b{font-size:clamp(8px,.85vw,14px);white-space:normal;overflow-wrap:anywhere}
+.bel-lab-part-left .bel-lab-qr{width:90%;max-width:100%;padding:0;flex-shrink:1;min-height:0}
+.bel-lab-part-photo{display:flex;align-items:center;justify-content:center;min-height:0;min-width:0;overflow:hidden;border:2px solid #111;background:#fff;box-sizing:border-box}
+.bel-lab-part-photo span{font-size:clamp(9px,1vw,18px);font-weight:500}
+.bel-lab-part-photo img{width:100%;height:100%;object-fit:contain;display:block}
+@media print{
+ #belLabPrintRoot .bel-lab-part-card{padding:4mm;gap:4mm}
+ #belLabPrintRoot .bel-lab-part-header .bel-lab-part-name{font:800 19pt/1.1 Arial,sans-serif}
+ #belLabPrintRoot .bel-lab-part-logo{width:24mm;max-height:12mm}
+ #belLabPrintRoot .bel-lab-part-body{grid-template-columns:34% minmax(0,1fr);gap:4mm}
+ #belLabPrintRoot .bel-lab-part-left{padding:4mm 0 0 2mm;gap:2mm}
+ #belLabPrintRoot .bel-lab-part-left .bel-lab-data small{font:700 8pt Arial,sans-serif}
+ #belLabPrintRoot .bel-lab-part-left .bel-lab-data b{font:800 13pt Arial,sans-serif}
+ #belLabPrintRoot .bel-lab-part-left .bel-lab-qr{width:39mm;padding:2mm}
+ #belLabPrintRoot .bel-lab-part-photo{border:.8mm solid #111}
+ #belLabPrintRoot .bel-lab-part-photo span{font:400 18pt Arial,sans-serif}
+}
