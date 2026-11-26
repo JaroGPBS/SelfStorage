@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./office.css?v=191">
   <link rel="stylesheet" href="./pl-routes.css?v=61">
   <link rel="stylesheet" href="./office-labels.css?v=5">
+  <link rel="stylesheet" href="./belleville-loading-plans.css?v=1">
   <!-- Critical login layout: bundled here to avoid stale stylesheet deployments. -->
   <style>
     /* Show the lower part of the original warehouse wallpaper without stretching it. */
@@ -126,7 +127,8 @@
   <script defer src="./belleville-docs-demo.js?v=17"></script>
   <script defer src="./belleville-cmr-carriers.js?v=1"></script>
   <script defer src="./belleville-cmr-pdf-demo.js?v=12"></script>
-  <script defer src="./office.js?v=202"></script>
+  <script defer src="./office.js?v=203"></script>
+  <script defer src="./belleville-loading-plans.js?v=1"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
   <script defer src="./pl-routes.js?v=66"></script>
 </head>
@@ -430,7 +432,7 @@
             <div id="tableCaption" class="table-caption hidden">
               <strong>Aktualne stany części w magazynie</strong>
             </div>
-            <div id="receiptToolbarActions" class="receipt-toolbar-actions hidden"></div>
+            <div id="receiptToolbarActions" class="receipt-toolbar-actions hidden"><button type="button" id="belLoadingAdd" class="btn dark bel-loading-add" hidden>+ Dodaj listę załadunkową</button></div>
             <div class="tools-right" id="tableToolbarTools">
               <button class="btn subtle" id="sort" type="button">Nazwa A–Z</button>
               <button class="btn subtle" id="export" type="button" disabled title="Eksport Excel przygotujemy w kolejnym etapie">⇩ Eksport</button>
@@ -444,6 +446,14 @@
           <div id="vehicleTopScroll" class="vehicle-top-scroll hidden" role="region" aria-label="Przewijanie poziome kolumn ekip" tabindex="0">
             <div id="vehicleScrollWidth" class="vehicle-top-scroll-inner"></div>
           </div>
+          <p id="belLoadingNotice" class="bel-loading-notice" role="alert" hidden></p>
+          <section id="belLoadingPanel" class="bel-loading-panel" aria-label="Planowane listy załadunkowe" hidden>
+            <button type="button" id="belLoadingToggle" class="bel-loading-toggle" aria-expanded="false" aria-controls="belLoadingBody">
+              <span>Do załadunku <small id="belLoadingCount"></small></span>
+              <span id="belLoadingChevron" aria-hidden="true">▾</span>
+            </button>
+            <div id="belLoadingBody" class="bel-loading-body" hidden></div>
+          </section>
           <div class="table-scroll" id="tableArea"><div class="loading">Wczytywanie danych...</div></div>
           <div id="tableFooter" class="table-footer"></div>
         </section>
@@ -560,6 +570,32 @@
         <img id="plRoutePhotoZoomImage" alt="Powiększone zdjęcie dokumentu WZ">
       </div>
     </div>
+  </dialog>
+  <dialog id="belLoadingDialog" class="bel-loading-dialog" aria-labelledby="belLoadingTitle">
+    <form id="belLoadingForm" class="bel-loading-form">
+      <h2 id="belLoadingTitle">Dodaj listę załadunkową</h2>
+      <div class="bel-loading-fields">
+        <label>Trasa
+          <input id="belLoadingRoute" maxlength="40" placeholder="Np. PL1BH" autocomplete="off" required>
+        </label>
+        <label>Tydzień
+          <input id="belLoadingWeek" type="number" min="1" max="53" required>
+        </label>
+        <label>Rok
+          <input id="belLoadingYear" type="number" min="2020" max="2100" required>
+        </label>
+      </div>
+      <label class="bel-loading-paste-label" for="belLoadingPaste">Pozycje z Excela (nazwa i ilość)</label>
+      <textarea id="belLoadingPaste" spellcheck="false" rows="8" required
+        placeholder="InPost / FM&#9;2&#10;Separated modules - INDOOR&#9;3"></textarea>
+      <p class="bel-loading-help">Zaznacz w Excelu dwie kolumny, skopiuj i wklej tutaj. Plan nie zmienia stanów magazynowych.</p>
+      <div id="belLoadingPreview" class="bel-loading-preview" aria-live="polite"></div>
+      <p id="belLoadingError" class="bel-loading-error" role="alert" hidden></p>
+      <div class="bel-loading-dialog-actions">
+        <button type="button" id="belLoadingCancel" class="btn outline">Anuluj</button>
+        <button type="submit" id="belLoadingSave" class="btn dark">Zapisz listę</button>
+      </div>
+    </form>
   </dialog>
   <dialog id="officeNewPartDialog" class="office-new-part-dialog" aria-labelledby="officeNewPartTitle">
     <form id="officeNewPartForm" class="office-new-part-form">
