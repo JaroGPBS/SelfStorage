@@ -1715,25 +1715,56 @@ tr:hover td{background:#ffffff04}
   overflow-wrap:anywhere;
 }
 .loading-parts-choices{
-  max-height:230px;
-  min-height:80px;
-  padding:4px 8px;
+  max-height:190px;
+  min-height:0;
+  padding:2px 8px;
   overflow-y:auto;
   border:1px solid var(--edge2);
   border-radius:7px;
 }
-.loading-parts-option{
+/* Override the generic ".modal label" / "input" dimensions here: a picker
+   option is a horizontal row, not a full-width form field. */
+.loading-parts-dialog .loading-parts-choices .loading-parts-option{
   display:flex;
+  flex-direction:row;
   align-items:center;
-  gap:10px;
-  padding:6px 5px;
+  gap:9px;
+  width:100%;
+  min-height:31px;
+  margin:0;
+  padding:5px 4px;
   cursor:pointer;
   font-size:12px;
-  line-height:1.35;
+  font-weight:500;
+  line-height:1.3;
+  color:var(--white);
 }
-.loading-parts-option+ .loading-parts-option{border-top:1px solid var(--edge2)}
-.loading-parts-option input{flex:none;accent-color:#68a4df}
-.loading-parts-option strong{white-space:nowrap}
+.loading-parts-dialog .loading-parts-option + .loading-parts-option{
+  border-top:1px solid var(--edge2);
+}
+.loading-parts-dialog .loading-parts-option input[type="checkbox"]{
+  appearance:auto;
+  flex:0 0 16px;
+  width:16px;
+  max-width:16px;
+  min-width:16px;
+  height:16px;
+  min-height:0;
+  padding:0;
+  margin:0;
+  border-radius:3px;
+  background:initial;
+  box-shadow:none;
+  accent-color:#398bdb;
+  cursor:pointer;
+}
+.loading-parts-dialog .loading-parts-option span{
+  display:block;
+  flex:1;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.loading-parts-dialog .loading-parts-option strong{white-space:nowrap}
 :root:is([data-admin-theme="white"],[data-admin-theme="gray"])
   .loading-parts-form-fields input,
 :root:is([data-admin-theme="white"],[data-admin-theme="gray"])
