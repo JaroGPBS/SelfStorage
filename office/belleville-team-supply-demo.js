@@ -87,6 +87,11 @@
     const signature=(title,subtitle)=>'<div class="doc-print-signature">'+
       '<div class="doc-print-sign-line"></div><strong>'+esc(title)+'</strong>'+
       '<span>'+esc(subtitle)+'</span></div>';
+    const visitComment=String(VISIT.note||'').trim();
+    const printComment=visitComment
+      ?'<div class="bel-service-print-comment"><strong>Komentarz z wizyty</strong>'+
+        '<p>'+esc(visitComment)+'</p></div>'
+      :'';
     const printRows=VISIT.lines.map((line,i)=>
       '<tr><td class="doc-print-number">'+(i+1)+'</td>'+
       '<td>'+esc(line.sap)+'</td><td>'+esc(line.name)+'</td>'+
@@ -115,6 +120,7 @@
       '</tr></thead><tbody>'+printRows+'</tbody></table>'+
       '<div class="doc-print-totals"><span>Pozycji: <strong>'+VISIT.lines.length+'</strong></span>'+
         summaryLabel('received','Przyjęto')+summaryLabel('issued','Wydano')+'</div>'+
+      printComment+
       '<div class="doc-print-bottom">'+
         '<div class="doc-print-notes"><strong>Uwagi:</strong><div></div><div></div><div></div><div></div></div>'+
         '<div class="doc-print-signatures">'+
