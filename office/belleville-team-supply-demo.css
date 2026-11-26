@@ -20,11 +20,32 @@
 .bel-service-actions .belleville-doc-toggle,
 .bel-service-actions .belleville-doc-action{min-height:31px;padding:6px 9px}
 .bel-service-demo-table .bel-service-expanded-row:hover{background:transparent}
-.bel-service-demo-table .bel-service-expanded-row td{padding:0!important;background:#fbfcfd}
+.bel-service-demo-table .bel-service-expanded-row > td{padding:0!important;background:#fbfcfd}
 .bel-service-expanded{padding:12px 17px 17px}
 .bel-service-expanded-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;
   margin:0 0 9px;font-size:11px;color:#77828f;white-space:normal}
 .bel-service-expanded-head strong{color:#303b47;font-size:12px}
+.bel-service-expanded-grid{
+  display:grid;grid-template-columns:minmax(0,2fr) minmax(230px,1fr);
+  gap:16px;align-items:start
+}
+.bel-service-expanded-grid > .bel-service-table-scroll{min-width:0}
+.bel-service-comment{
+  min-width:0;padding:12px 14px;background:#fff;border:1px solid #e5e9ee;
+  border-radius:4px;white-space:normal
+}
+.bel-service-comment strong{color:#303b47;font-size:12px}
+.bel-service-comment p{
+  margin:8px 0 0;font-size:12px;line-height:1.5;color:#465366;
+  white-space:pre-wrap;overflow-wrap:anywhere
+}
+.bel-service-comment-mark{
+  display:inline-block;margin-left:7px;font-size:14px;color:#7c8794;
+  vertical-align:middle
+}
+@media (max-width:850px){
+  .bel-service-expanded-grid{grid-template-columns:minmax(0,1fr)}
+}
 .bel-service-lines{border-collapse:collapse;width:100%;min-width:510px;
   font-size:12px;background:white}
 .bel-service-lines th,.bel-service-lines td{
