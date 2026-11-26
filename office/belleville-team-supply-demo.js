@@ -23,9 +23,10 @@
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   })[char]);
   const sum=key=>VISIT.lines.reduce((total,line)=>total+line[key],0);
+  const countPositions=key=>VISIT.lines.filter(line=>line[key]>0).length;
   const formatDate=value=>value.slice(8,10)+'.'+value.slice(5,7)+'.'+value.slice(0,4);
   const number=value=>value>0?String(value):'—';
-  const summaryLabel=(key,label)=>'<span>'+label+': <strong>'+sum(key)+' szt.</strong></span>';
+  const summaryLabel=(key,label)=>'<span>'+label+': <strong>'+countPositions(key)+' poz.</strong></span>';
   const rows=VISIT.lines.map(line=>
     '<tr><td>'+esc(line.sap)+'</td><td>'+esc(line.name)+'</td>'+
     '<td class="bel-service-qty bel-service-in">'+number(line.received)+'</td>'+
@@ -106,11 +107,7 @@
       '<div class="doc-print-section-title">Części przyjęte i wydane podczas jednej wizyty</div>'+
       '<table class="doc-print-parts"><thead><tr>'+
         '<th>Lp.</th><th>Indeks SAP</th><th>Nazwa części</th><th>Przyjęto</th><th>Wydano</th>'+
-      '</tr></thead><tbody>'+printRows+
-      '<tr class="bel-service-print-total"><td colspan="3">RAZEM</td>'+
-        '<td class="doc-print-qty">'+sum('received')+'</td>'+
-        '<td class="doc-print-qty">'+sum('issued')+'</td>'+
-      '</tr></tbody></table>'+
+      '</tr></thead><tbody>'+printRows+'</tbody></table>'+
       '<div class="doc-print-totals"><span>Pozycji: <strong>'+VISIT.lines.length+'</strong></span>'+
         summaryLabel('received','Przyjęto')+summaryLabel('issued','Wydano')+'</div>'+
       '<div class="doc-print-bottom">'+
