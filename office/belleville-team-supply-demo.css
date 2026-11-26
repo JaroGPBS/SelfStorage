@@ -217,7 +217,7 @@
 /* Notes and signatures stay at the A4 page foot when there is room. */
 .doc-print-sheet .bel-service-print .doc-print-bottom{
   margin-top:auto;
-  padding-top:14px;
+  padding-top:28px;
   break-inside:avoid;
   page-break-inside:avoid;
 }
@@ -233,7 +233,7 @@
   border-bottom:1px solid #d5dbe1;
 }
 .doc-print-sheet .bel-service-print .doc-print-signatures{
-  margin-top:35px;
+  margin-top:50px;
   gap:32px;
 }
 .doc-print-sheet .bel-service-print .doc-print-signature strong{
