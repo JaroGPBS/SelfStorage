@@ -3,7 +3,7 @@
 (()=>{
   'use strict';
   const VISIT={
-    id:'ZE-DEMO-001',
+    id:'ZE-0001',
     date:'2026-11-26',
     time:'10:45',
     week:48,
