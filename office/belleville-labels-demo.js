@@ -56,7 +56,7 @@ function sheets(list,mode){
  for(let i=0;i<list.length;i+=4){out+='<section class="bel-lab-sheet">'+Array.from({length:4},(_,j)=>list[i+j]?label(list[i+j],mode):'<div class="bel-lab-blank"></div>').join('')+'</section>';}
  return out;
 }
-const OK_PER_PAGE=18;
+const OK_PER_PAGE=21;
 const printItems=mode=>mode==='ok'?(tab==='modules'?current().filter(p=>p.status==='OK'):[]):tab==='modules'?current().filter(p=>p.status==='NOK'):current();
 function okSheets(list){
  let out='';
