@@ -27,6 +27,7 @@ function parsePasted(value){
   const lines=raw.split('\n');
   if(lines.length>300)throw Error('Lista jest za długa (maksymalnie 250 pozycji).');
   const result=[];
+  let skippedWithoutQuantity=0;
   let headerColumns=null;
   const nameHeader=/^(?:nazwa(?:\s+(?:excel|części|elementu|towaru))?|name|part\s*name|description|designation|désignation|libellé|opis(?:\s+(?:części|towaru))?|product|produkt|materiał|material)$/i;
   const qtyHeader=/^(?:ilo[śs][ćc]|quantity|qty|qte|qté|quantit[ée]|amount|szt\.?|pcs)$/i;
@@ -75,20 +76,31 @@ function parsePasted(value){
       quantity=quantityCell?number(quantityCell.text):null;
     }
     name=String(name||'').replace(/\s+/g,' ').trim();
+    // A carrier's complete Excel checklist includes many named positions
+    // with a blank quantity: they are NOT scheduled for this shipment.
+    // Ignore them, rather than forcing the user to delete blank lines.
+    if(quantity===null && filled.every(cell=>number(cell.text)===null)){
+      skippedWithoutQuantity++;
+      continue;
+    }
     if(name.length<2||name.length>240||/[<>]/.test(name)||quantity===null)
       throw Error('Wiersz '+(i+1)+': nie udało się odczytać nazwy i ilości. '+
-        'Skopiuj zakres z Excela zawierający nazwę oraz ilość i sprawdź podgląd.');
+        'Sprawdź, czy ilość jest dodatnią liczbą całkowitą.');
     result.push({excelName:name,quantity});
     if(result.length>250)throw Error('Można wkleić maksymalnie 250 pozycji.');
   }
-  if(!result.length)throw Error('Nie znaleziono pozycji z nazwą i ilością.');
+  if(!result.length)throw Error('Nie znaleziono pozycji z ilością do załadunku.');
+  result.skippedWithoutQuantity=skippedWithoutQuantity;
   return result;
 }
 function preview(){
   const host=$('belLoadingPreview');
   try{
     const rows=parsePasted($('belLoadingPaste').value);
-    host.innerHTML='<strong>Podgląd · '+rows.length+' pozycji</strong>'+
+    host.innerHTML='<strong>Podgląd · '+rows.length+' pozycji do załadunku</strong>'+
+      (rows.skippedWithoutQuantity?
+        '<small class="bel-loading-preview-skipped">Pominięto '+
+        rows.skippedWithoutQuantity+' bez ilości</small>':'')+
       '<div class="bel-loading-paste-preview">'+rows.slice(0,20).map(line=>
       '<div><span>'+esc(line.excelName)+'</span><b>'+line.quantity+'</b></div>'
       ).join('')+(rows.length>20?'<small>…i '+(rows.length-20)+' kolejnych</small>':'')+
