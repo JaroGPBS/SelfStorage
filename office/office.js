@@ -1488,6 +1488,11 @@ function setHead(title,kicker,desc){
   else $('tableToolbarTools').append($('export'));
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView||vehicleView);
   $('receiptToolbarActions').classList.toggle('hidden',!compactView);
+  // Planned loading lists belong only to Belleville -> Wydania.
+  // Existing WZ display and all other warehouse views stay unchanged.
+  window.GPBSBellevilleLoadingPlans?.onViewChange(
+    state.view==='wz'&&state.preview?.type==='operation'&&
+    state.preview?.warehouseKey==='belleville');
   $('bellevilleDocCommentLegend').classList.toggle('hidden',!isBellevilleDemoDocuments());
   // The fleet scroll track is useful only when a real crew-stock table exists.
   // Do not show an empty horizontal strip above the no-data message.
