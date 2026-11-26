@@ -1458,11 +1458,12 @@ function setHead(title,kicker,desc){
   $('bovisTopDescription').classList.toggle('hidden',!isBovisOverview);
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate'].includes(state.view));
-  $('export').classList.toggle('hidden',state.view==='frMovements');
+  $('export').classList.toggle('hidden',state.view==='frMovements'||isBellevilleOrderDemo());
   $('search').closest('.search-wrap').classList.toggle('hidden',state.view==='vehicles');
   $('search').placeholder=state.view==='frMovements'?'Szukaj: ekipa, data, rejestracja, część...':state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   if(isBellevilleDemoDocuments())$('search').placeholder='Szukaj: dokument, trasa, S/N, przewoźnik, część...';
   if(isBellevilleTeamSupplyDemo())$('search').placeholder='Szukaj: numer, ekipa, SAP lub nazwa części...';
+  if(isBellevilleOrderDemo())$('search').placeholder='Szukaj po SAP, nazwie lub statusie';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
@@ -1506,6 +1507,7 @@ function setHead(title,kicker,desc){
       state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
     $('receiptToolbarInfo').querySelector('span').textContent=isBellevilleTeamSupplyDemo()
       ?'Przykładowa wizyta: przyjęcia i wydania części w jednym dokumencie.'
+      :isBellevilleOrderDemo()?'Przykładowa lista części do zamówienia.'
       :state.preview?.type==='module'?'':state.view==='frMovements'?'Wizyty ekip — pobrania i zwroty razem.'
       :state.view==='labels'?'Lista części i etykiet.'
       :aggregateView?'Porównanie stanów części pomiędzy magazynami.'
@@ -3809,6 +3811,27 @@ function drawVehicles(){
 
 // Belleville PZ/WZ layout review: client-only examples (never D1).
 // Fikcyjna wizyta zaopatrzenia jest wyłącznie przykładem wizualnym.
+function isBellevilleOrderDemo(){
+  return Boolean(window.GPBSBellevilleOrderDemo&&state.preview?.type==='module'&&
+    state.preview.key===BELLEVILLE_ORDER_LIST.key&&state.preview.warehouseKey==='belleville');
+}
+function drawBellevilleOrderDemo(){
+  const result=window.GPBSBellevilleOrderDemo.render(state.search);
+  errorBanner('');
+  const root=$('tableArea');
+  root.innerHTML=result.html;
+  $('tableFooter').textContent=result.total+' części pokazowych · bez zapisu do D1.';
+  $('searchNote').classList.toggle('hidden',!state.search.trim());
+  $('searchNote').textContent=state.search.trim()?'Znaleziono '+result.shown+' z '+result.total+' części.':'';
+  $('vehicleTopScroll').classList.add('hidden');
+  window.GPBSBellevilleOrderDemo.bind(root,content=>{
+    if(!isBellevilleOrderDemo())return;
+    $('docPrintTitle').textContent='Zamówienie części · podgląd wydruku · DANE FIKCYJNE';
+    $('docPrintSheet').innerHTML=content;
+    $('docPrintModal').classList.remove('hidden');
+    $('docPrintClose').focus();
+  });
+}
 function isBellevilleTeamSupplyDemo(){
   return Boolean(window.GPBSBellevilleTeamSupplyDemo&&
     state.preview?.type==='module'&&
@@ -3963,14 +3986,7 @@ async function render({silent=false}={}){
     return;
   }
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    if(state.preview?.type==='module'&&state.preview.key===BELLEVILLE_ORDER_LIST.key&&
-      state.preview.warehouseKey==='belleville'){
-      errorBanner('');
-      $('tableArea').innerHTML='<div class="empty">Lista „Do zamówienia” jest na razie pusta. Składanie zamówień nie jest jeszcze podłączone.</div>';
-      $('tableFooter').textContent='';
-      $('searchNote').classList.add('hidden');
-      $('vehicleTopScroll').classList.add('hidden');
-    }
+    if(isBellevilleOrderDemo())drawBellevilleOrderDemo();
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
     else drawFrenchEmptyView();
@@ -4116,14 +4132,7 @@ function filterCurrent(){
   if(state.view==='frMovements'){drawFrBoxMovements();return;}
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    if(state.preview?.type==='module'&&state.preview.key===BELLEVILLE_ORDER_LIST.key&&
-      state.preview.warehouseKey==='belleville'){
-      errorBanner('');
-      $('tableArea').innerHTML='<div class="empty">Lista „Do zamówienia” jest na razie pusta. Składanie zamówień nie jest jeszcze podłączone.</div>';
-      $('tableFooter').textContent='';
-      $('searchNote').classList.add('hidden');
-      $('vehicleTopScroll').classList.add('hidden');
-    }
+    if(isBellevilleOrderDemo())drawBellevilleOrderDemo();
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
     else drawFrenchEmptyView();
