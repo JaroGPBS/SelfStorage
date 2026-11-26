@@ -22,27 +22,67 @@ function formError(text=''){
   dialogError.textContent=text;dialogError.hidden=!text;
 }
 function parsePasted(value){
-  const raw=String(value||'').replace(/\r/g,'').trim();
-  if(!raw)throw Error('Wklej dwie kolumny z Excela: nazwa oraz ilość.');
+  const raw=String(value||'').replace(/\r/g,'');
+  if(!raw.trim())throw Error('Wklej dane z Excela: nazwa części lub modułu oraz ilość.');
   const lines=raw.split('\n');
-  if(lines.length>250)throw Error('Można wkleić maksymalnie 250 pozycji.');
-  return lines.map((line,i)=>{
-    if(!line.trim())return null;
-    const columns=line.split('\t').map(value=>value.trim());
-    // Both adjacent name+qty and source Excel B:E (blank C/D) can be pasted.
-    // A leading empty A column is also acceptable when selecting A:E.
-    const filled=columns.map((value,index)=>({value,index})).filter(item=>item.value);
-    const first=filled[0],last=filled[filled.length-1];
-    if(filled.length!==2||!first||!last||first.index===last.index||
-       columns.slice(first.index+1,last.index).some(Boolean))
-      throw Error('Wiersz '+(i+1)+': potrzebne są nazwa i ilość (puste kolumny pomiędzy są dozwolone).');
-    const name=first.value.replace(/\s+/g,' ');
-    const qty=last.value;
-    if(name.length<2||name.length>240||/[<>]/.test(name)||
-       !/^\d+$/.test(qty)||Number(qty)<1||Number(qty)>100000)
-      throw Error('Wiersz '+(i+1)+': sprawdź nazwę i ilość.');
-    return {excelName:name,quantity:Number(qty)};
-  }).filter(Boolean);
+  if(lines.length>300)throw Error('Lista jest za długa (maksymalnie 250 pozycji).');
+  const result=[];
+  let headerColumns=null;
+  const nameHeader=/^(?:nazwa(?:\s+(?:excel|części|elementu|towaru))?|name|part\s*name|description|designation|désignation|libellé|opis(?:\s+(?:części|towaru))?|product|produkt|materiał|material)$/i;
+  const qtyHeader=/^(?:ilo[śs][ćc]|quantity|qty|qte|qté|quantit[ée]|amount|szt\.?|pcs)$/i;
+  const number=value=>{
+    const v=String(value).replace(/\u00a0/g,' ').trim().replace(/\s+/g,'');
+    if(!/^\d+(?:[,.]0+)?$/.test(v))return null;
+    const number=Number(v.replace(',','.'));
+    return Number.isInteger(number)&&number>=1&&number<=100000?number:null;
+  };
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    if(!line.trim())continue;
+    let columns=line.includes('\t')?line.split('\t'):
+      line.includes(';')?line.split(';'):
+      line.includes(' | ')?line.split(/\s+\|\s+/):
+      line.trim().split(/\s{2,}/);
+    if(columns.length===1){
+      // Plain-text paste from chat/email can have a single space before quantity.
+      const match=line.trim().match(/^(.+?)\s+(\d+(?:[,.]0+)?)$/);
+      if(match)columns=[match[1],match[2]];
+    }
+    columns=columns.map(cell=>cell.trim());
+    const filled=columns.map((text,index)=>({text,index})).filter(cell=>cell.text);
+    if(!filled.length)continue;
+    if(i===0){
+      const ni=filled.find(cell=>nameHeader.test(cell.text))?.index;
+      const qi=filled.find(cell=>qtyHeader.test(cell.text))?.index;
+      if(ni!==undefined&&qi!==undefined&&ni!==qi){
+        headerColumns={name:ni,quantity:qi};
+        continue;
+      }
+    }
+    let name,quantity;
+    if(headerColumns){
+      name=columns[headerColumns.name]||'';
+      quantity=number(columns[headerColumns.quantity]||'');
+    }else{
+      // Exported Excel ranges may include filled intermediate columns (codes,
+      // comments, supplier labels). Name is the first textual column; quantity
+      // is the rightmost positive integer. The preview makes this visible.
+      const quantityCell=[...filled].reverse().find(cell=>number(cell.text)!==null);
+      const nameCell=quantityCell&&filled.find(cell=>
+        cell.index<quantityCell.index&&number(cell.text)===null&&
+        /[^\d\s.,+-]/u.test(cell.text));
+      name=nameCell?.text||'';
+      quantity=quantityCell?number(quantityCell.text):null;
+    }
+    name=String(name||'').replace(/\s+/g,' ').trim();
+    if(name.length<2||name.length>240||/[<>]/.test(name)||quantity===null)
+      throw Error('Wiersz '+(i+1)+': nie udało się odczytać nazwy i ilości. '+
+        'Skopiuj zakres z Excela zawierający nazwę oraz ilość i sprawdź podgląd.');
+    result.push({excelName:name,quantity});
+    if(result.length>250)throw Error('Można wkleić maksymalnie 250 pozycji.');
+  }
+  if(!result.length)throw Error('Nie znaleziono pozycji z nazwą i ilością.');
+  return result;
 }
 function preview(){
   const host=$('belLoadingPreview');
