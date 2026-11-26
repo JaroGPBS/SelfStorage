@@ -28,10 +28,16 @@ function parsePasted(value){
   if(lines.length>250)throw Error('Można wkleić maksymalnie 250 pozycji.');
   return lines.map((line,i)=>{
     if(!line.trim())return null;
-    const columns=line.split('\t');
-    if(columns.length<2)throw Error('Wiersz '+(i+1)+': skopiuj dwie kolumny (nazwa i ilość) z Excela.');
-    const name=columns[0].trim().replace(/\s+/g,' ');
-    const qty=columns[1].trim();
+    const columns=line.split('\t').map(value=>value.trim());
+    // Both adjacent name+qty and source Excel B:E (blank C/D) can be pasted.
+    // A leading empty A column is also acceptable when selecting A:E.
+    const filled=columns.map((value,index)=>({value,index})).filter(item=>item.value);
+    const first=filled[0],last=filled[filled.length-1];
+    if(filled.length!==2||!first||!last||first.index===last.index||
+       columns.slice(first.index+1,last.index).some(Boolean))
+      throw Error('Wiersz '+(i+1)+': potrzebne są nazwa i ilość (puste kolumny pomiędzy są dozwolone).');
+    const name=first.value.replace(/\s+/g,' ');
+    const qty=last.value;
     if(name.length<2||name.length>240||/[<>]/.test(name)||
        !/^\d+$/.test(qty)||Number(qty)<1||Number(qty)>100000)
       throw Error('Wiersz '+(i+1)+': sprawdź nazwę i ilość.');
