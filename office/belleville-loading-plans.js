@@ -158,9 +158,11 @@ async function save(event){
   if(state.editing&&!original){formError('Lista została zmieniona. Odśwież widok.');return;}
   state.busy=true;$('belLoadingSave').disabled=true;formError('');
   try{
-    await api({action:'save',id:state.editing||undefined,routeCode,year,week,lines});
+    const saved=await api({action:'save',id:state.editing||undefined,routeCode,year,week,lines});
     dialog.close();state.editing=null;state.expanded=true;
     await load();
+    if(saved.unmapped?.length)activeNote('Zapisano. '+saved.unmapped.length+
+      ' pozycji nie ma jeszcze przypisanych indeksów w Admin → Części listy załadunkowej.');
   }catch(ex){formError(ex.message||'Nie udało się zapisać listy.');}
   finally{state.busy=false;$('belLoadingSave').disabled=false;}
 }
