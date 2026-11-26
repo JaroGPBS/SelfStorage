@@ -1491,7 +1491,9 @@ function setHead(title,kicker,desc){
   if(vehicleView)$('vehicleTopExportHost').append($('export'));
   else $('tableToolbarTools').append($('export'));
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView||vehicleView);
-  $('receiptToolbarActions').classList.toggle('hidden',!compactView);
+  // Keep the toolbar compact when no action buttons are hosted here.
+  $('receiptToolbarActions').classList.toggle('hidden',
+    !compactView||!$('receiptToolbarActions').childElementCount);
   $('bellevilleDocCommentLegend').classList.toggle('hidden',!isBellevilleDemoDocuments());
   // The fleet scroll track is useful only when a real crew-stock table exists.
   // Do not show an empty horizontal strip above the no-data message.
