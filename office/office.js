@@ -1507,7 +1507,7 @@ function setHead(title,kicker,desc){
       state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
     $('receiptToolbarInfo').querySelector('span').textContent=isBellevilleTeamSupplyDemo()
       ?'Przykładowa wizyta: przyjęcia i wydania części w jednym dokumencie.'
-      :isBellevilleOrderDemo()?'Przykładowa lista części do zamówienia.'
+      :isBellevilleOrderDemo()?'Aktualne stany części i indywidualne minima.'
       :state.preview?.type==='module'?'':state.view==='frMovements'?'Wizyty ekip — pobrania i zwroty razem.'
       :state.view==='labels'?'Lista części i etykiet.'
       :aggregateView?'Porównanie stanów części pomiędzy magazynami.'
@@ -1731,19 +1731,19 @@ function noteSearch(count,total,noun){
   $('searchNote').textContent=state.search.trim()?'Znaleziono w '+count+' '+noun+' z '+total+'.':'';
 }
 function drawStocks(parts,warehouseId){
+  const compactBelleville=isBellevilleStock();
   const filtered=sortedFiltered(parts);
   const rows=filtered.map(p=>{
     const amount=p.quantity;
     return '<tr data-part-row="'+escapeHtml(p.id)+'" tabindex="0" aria-label="Szczegóły części: '+escapeHtml(p.name)+'">'+
       '<td>'+escapeHtml(p.sap_number||'—')+'</td><td><button class="row-link" data-part="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</button></td>'+
       '<td class="num">'+quantity(amount)+'</td>'+
-      '<td class="num stock-demo-order">—</td>'+
-      '<td class="num stock-demo-min">—</td></tr>';
+      (compactBelleville?'':'<td class="num stock-demo-order">—</td><td class="num stock-demo-min">—</td>')+'</tr>';
   }).join('');
   $('tableArea').innerHTML=wrapTable([
     {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true},
-    {label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}
-  ],rows,'part-stock-table')||'';
+    ...(compactBelleville?[]:[{label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}])
+  ],rows,'part-stock-table'+(compactBelleville?' bel-stock-three':''))||'';
   const fromD1=parts.filter(p=>p.stock_source==='D1').length;
   const fromSheet=parts.filter(p=>p.stock_source==='arkusz').length;
   const sourceInfo=fromSheet
@@ -3815,21 +3815,59 @@ function isBellevilleOrderDemo(){
   return Boolean(window.GPBSBellevilleOrderDemo&&state.preview?.type==='module'&&
     state.preview.key===BELLEVILLE_ORDER_LIST.key&&state.preview.warehouseKey==='belleville');
 }
+let belOrderLoaded=false;
+async function loadBellevilleOrderDemo(silent=false){
+  const ticket=++state.requestId;
+  belOrderLoaded=false;
+  if(!silent)$('tableArea').innerHTML='<div class="loading">Wczytywanie części Belleville…</div>';
+  $('tableFooter').textContent='';
+  try{
+    const warehouse=state.warehouses.find(w=>isBellevilleWarehouse(w.id));
+    const scope=String(state.user?.id||'')+':'+(warehouse?.id||'catalog');
+    let parts,minimums=[],editable=false;
+    if(warehouse){
+      parts=await loadStocks(warehouse.id);
+      const response=await fetch('/api/fr-belleville-reorder?warehouse='+encodeURIComponent(warehouse.id),{credentials:'same-origin',cache:'no-store'});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.ok)throw Object.assign(Error(data.error||'Nie można pobrać minimów.'),{status:response.status});
+      minimums=data.minimums||[];editable=true;
+    }else{
+      const data=await api('frCatalog');
+      parts=data.parts||[];
+    }
+    if(ticket!==state.requestId||!isBellevilleOrderDemo())return;
+    window.GPBSBellevilleOrderDemo.setParts(parts||[],minimums,scope,editable);
+    belOrderLoaded=true;
+    drawBellevilleOrderDemo();
+  }catch(e){
+    if(ticket!==state.requestId||!isBellevilleOrderDemo())return;
+    errorBanner(e.message||'Nie można pobrać części.');
+    $('tableArea').innerHTML='<div class="empty">Nie udało się wczytać listy do zamówienia.</div>';
+    if(e.status===401)showLogin('Sesja wygasła. Zaloguj się ponownie.');
+  }
+}
 function drawBellevilleOrderDemo(){
+  if(!belOrderLoaded)return;
   const result=window.GPBSBellevilleOrderDemo.render(state.search);
   errorBanner('');
   const root=$('tableArea');
   root.innerHTML=result.html;
-  $('tableFooter').textContent=result.total+' części pokazowych · bez zapisu do D1.';
+  $('tableFooter').textContent=result.total+' części · Belleville';
   $('searchNote').classList.toggle('hidden',!state.search.trim());
   $('searchNote').textContent=state.search.trim()?'Znaleziono '+result.shown+' z '+result.total+' części.':'';
   $('vehicleTopScroll').classList.add('hidden');
   window.GPBSBellevilleOrderDemo.bind(root,content=>{
     if(!isBellevilleOrderDemo())return;
-    $('docPrintTitle').textContent='Zamówienie części · podgląd wydruku · DANE FIKCYJNE';
+    $('docPrintTitle').textContent='Zamówienie części · podgląd wydruku';
     $('docPrintSheet').innerHTML=content;
     $('docPrintModal').classList.remove('hidden');
     $('docPrintClose').focus();
+  },async(partId,minimum)=>{
+    const warehouse=state.warehouses.find(w=>isBellevilleWarehouse(w.id));
+    if(!warehouse||!isBellevilleOrderDemo())throw Error('Brak dostępu do magazynu.');
+    const response=await fetch('/api/fr-belleville-reorder',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({warehouse:warehouse.id,partId,minimum})});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok||!result.ok)throw Error(result.error||'Nie udało się zapisać minimum.');
   });
 }
 function isBellevilleTeamSupplyDemo(){
@@ -3986,7 +4024,7 @@ async function render({silent=false}={}){
     return;
   }
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    if(isBellevilleOrderDemo())drawBellevilleOrderDemo();
+    if(isBellevilleOrderDemo())await loadBellevilleOrderDemo(silent);
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
     else drawFrenchEmptyView();
