@@ -35,3 +35,17 @@
 .doc-print-sheet .bel-order-print .doc-print-letterhead img{width:95px;max-height:40px;object-fit:contain}
 .doc-print-sheet .bel-order-print h2{font-size:18px;margin:0}
 .doc-print-sheet .bel-order-print p{font-size:11px}
+
+/* Belleville stock: compact three-column display; other warehouses unchanged. */
+.app.view-stocks:not(.view-modules) .table.part-stock-table.bel-stock-three{
+  table-layout:auto;width:max-content;min-width:0;margin:0 auto 0 0
+}
+.app.view-stocks:not(.view-modules) .table.part-stock-table.bel-stock-three th,
+.app.view-stocks:not(.view-modules) .table.part-stock-table.bel-stock-three td{
+  width:auto;min-width:0;box-sizing:border-box;height:28px;padding:2px 9px;
+  line-height:17px;white-space:nowrap;vertical-align:middle
+}
+.app.view-stocks:not(.view-modules) .table.part-stock-table.bel-stock-three th{height:26px}
+.app.view-stocks:not(.view-modules) .table.part-stock-table.bel-stock-three .row-link{line-height:17px;padding:0}
+.app.view-stocks:not(.view-modules) .table.part-stock-table.bel-stock-three td.num,
+.app.view-stocks:not(.view-modules) .table.part-stock-table.bel-stock-three th.num{text-align:center}
