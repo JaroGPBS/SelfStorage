@@ -26,7 +26,7 @@
   margin:0 0 9px;font-size:11px;color:#77828f;white-space:normal}
 .bel-service-expanded-head strong{color:#303b47;font-size:12px}
 .bel-service-expanded-grid{
-  display:grid;grid-template-columns:minmax(0,2fr) minmax(230px,1fr);
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   gap:16px;align-items:start
 }
 .bel-service-expanded-grid > .bel-service-table-scroll{min-width:0}
