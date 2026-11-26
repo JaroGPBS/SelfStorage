@@ -1462,6 +1462,7 @@ function setHead(title,kicker,desc){
   $('search').closest('.search-wrap').classList.toggle('hidden',state.view==='vehicles');
   $('search').placeholder=state.view==='frMovements'?'Szukaj: ekipa, data, rejestracja, część...':state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   if(isBellevilleDemoDocuments())$('search').placeholder='Szukaj: dokument, trasa, S/N, przewoźnik, część...';
+  if(isBellevilleTeamSupplyDemo())$('search').placeholder='Szukaj: numer, ekipa, SAP lub nazwa części...';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
@@ -1503,8 +1504,9 @@ function setHead(title,kicker,desc){
       ?state.preview.label:state.view==='frMovements'?'Ruchy magazynowe':aggregateView?'Zestawienie zbiorcze':vehicleView?'Stany samochodowe':
       inventoriesView?'Inwentaryzacje':state.view==='labels'?'Drukowanie etykiet':
       state.view==='nok'?'Części niekompletne':state.view==='pz'?'Przyjęcia':'Wydania';
-    $('receiptToolbarInfo').querySelector('span').textContent=state.preview?.type==='module'
-      ?'':state.view==='frMovements'?'Wizyty ekip — pobrania i zwroty razem.'
+    $('receiptToolbarInfo').querySelector('span').textContent=isBellevilleTeamSupplyDemo()
+      ?'Przykładowa wizyta: przyjęcia i wydania części w jednym dokumencie.'
+      :state.preview?.type==='module'?'':state.view==='frMovements'?'Wizyty ekip — pobrania i zwroty razem.'
       :state.view==='labels'?'Lista części i etykiet.'
       :aggregateView?'Porównanie stanów części pomiędzy magazynami.'
       :vehicleView?'Ewidencja części na samochodach serwisowych.'
@@ -3806,6 +3808,32 @@ function drawVehicles(){
 }
 
 // Belleville PZ/WZ layout review: client-only examples (never D1).
+// Fikcyjna wizyta zaopatrzenia jest wyłącznie przykładem wizualnym.
+function isBellevilleTeamSupplyDemo(){
+  return Boolean(window.GPBSBellevilleTeamSupplyDemo&&
+    state.preview?.type==='module'&&
+    state.preview.key===BELLEVILLE_SERVICE.key&&
+    state.preview.warehouseKey==='belleville');
+}
+function drawBellevilleTeamSupplyDemo(){
+  const result=window.GPBSBellevilleTeamSupplyDemo.render(state.search,state.expanded);
+  errorBanner('');
+  $('tableArea').innerHTML=result.html;
+  $('tableFooter').textContent='1 wizyta pokazowa · bez zapisu do D1.';
+  $('searchNote').classList.toggle('hidden',!state.search.trim());
+  $('searchNote').textContent=state.search.trim()
+    ?'Znaleziono '+result.shown+' z '+result.total+' przykładowych wizyt.':'';
+  $('vehicleTopScroll').classList.add('hidden');
+}
+function openBellevilleTeamSupplyDemoPrint(id){
+  if(!isBellevilleTeamSupplyDemo())return;
+  const html=window.GPBSBellevilleTeamSupplyDemo.printHtml(id);
+  if(!html)return;
+  $('docPrintTitle').textContent='Zaopatrzenie ekipy · podgląd wydruku · DANE FIKCYJNE';
+  $('docPrintSheet').innerHTML=html;
+  $('docPrintModal').classList.remove('hidden');
+  $('docPrintClose').focus();
+}
 function isBellevilleDemoDocuments(){
   return Boolean(window.GPBSBellevilleDocsDemo&&
     state.preview?.type==='operation'&&state.preview.warehouseKey==='belleville'&&
@@ -3944,6 +3972,7 @@ async function render({silent=false}={}){
       $('vehicleTopScroll').classList.add('hidden');
     }
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
+    else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
     else drawFrenchEmptyView();
     return;
   }
@@ -4096,6 +4125,7 @@ function filterCurrent(){
       $('vehicleTopScroll').classList.add('hidden');
     }
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
+    else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
     else drawFrenchEmptyView();
     return;
   }
@@ -4234,6 +4264,19 @@ function closeModal(){
   $('modalBody').innerHTML='';
 }
 document.addEventListener('click',e=>{
+  const supplyToggle=e.target.closest('[data-bel-service-toggle]');
+  if(supplyToggle&&isBellevilleTeamSupplyDemo()){
+    const id=supplyToggle.dataset.belServiceToggle;
+    if(id!==window.GPBSBellevilleTeamSupplyDemo.id)return;
+    state.expanded=state.expanded===id?null:id;
+    drawBellevilleTeamSupplyDemo();
+    return;
+  }
+  const supplyPrint=e.target.closest('[data-bel-service-print]');
+  if(supplyPrint&&isBellevilleTeamSupplyDemo()){
+    openBellevilleTeamSupplyDemoPrint(supplyPrint.dataset.belServicePrint);
+    return;
+  }
   const demoToggle=e.target.closest('[data-belleville-demo-toggle]');
   if(demoToggle&&isBellevilleDemoDocuments()){
     const id=demoToggle.dataset.bellevilleDemoToggle;
@@ -4867,7 +4910,7 @@ document.addEventListener('keydown',e=>{
 let searchTimer=null;
 $('search').addEventListener('input',e=>{
   state.search=e.target.value;
-  if(state.view==='pz'||state.view==='wz'){
+  if(state.view==='pz'||state.view==='wz'||isBellevilleTeamSupplyDemo()){
     clearTimeout(searchTimer);searchTimer=setTimeout(()=>render(),280);
   }else filterCurrent();
 });
