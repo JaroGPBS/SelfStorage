@@ -10,18 +10,30 @@ const deliveries=[
 {id:'m5',date:'25.11.2026',type:'DUO',serial:'DEMO/26-DUO-005',status:'NOK'},
 {id:'m6',date:'25.11.2026',type:'FM',serial:'DEMO/26-FM-006',status:'OK'},
 {id:'m7',date:'25.11.2026',type:'LQ',serial:'DEMO/26-LQ-007',status:'OK'},
-{id:'m8',date:'25.11.2026',type:'RQ',serial:'DEMO/26-RQ-008',status:'OK'}
+{id:'m8',date:'25.11.2026',type:'RQ',serial:'DEMO/26-RQ-008',status:'OK'},
+{id:'m9',date:'25.11.2026',type:'XS',serial:'DEMO/26-XS-009',status:'OK'}
 ];
 // Only this demo catalogue is used until the actual Belleville module ledger
 // and receipt workflow exist. No fictional modules are written to D1.
-const initialModuleQueue=()=>deliveries.filter(p=>p.status==='NOK').map(p=>p.id);
+// Temporary OK samples for layout review, not a change to real receipt rules.
+const demoOkIds=['m6','m7','m8','m9'];
+const initialModuleQueue=()=>deliveries.filter(p=>p.status==='NOK'||demoOkIds.includes(p.id)).map(p=>p.id);
 let parts=[],partScope='',tab='modules',moduleQueue=new Set(initialModuleQueue()),
  selected=new Set(['m1','m2','m3']),queue=new Map(),printing=false,moduleQuery='',moduleMessage='';
 function restoreDemoQueue(scope){
  moduleQueue=new Set(initialModuleQueue());selected=new Set(['m1','m2','m3']);moduleQuery='';moduleMessage='';tab='modules';
  try{
-  const saved=JSON.parse(localStorage.getItem('gpbs-bel-labels-demo-v1:'+scope)||'null');
+  const key='gpbs-bel-labels-demo-v1:'+scope;
+  const seedKey=key+':ok-four-samples';
+  const saved=JSON.parse(localStorage.getItem(key)||'null');
   if(Array.isArray(saved)){moduleQueue=new Set(saved.filter(id=>deliveries.some(p=>p.id===id)));selected.clear();}
+  // Seed the four OK rows once, even in an existing browser queue.
+  // Once confirmed, they must not reappear after refreshing.
+  if(!localStorage.getItem(seedKey)){
+   demoOkIds.forEach(id=>moduleQueue.add(id));
+   localStorage.setItem(key,JSON.stringify([...moduleQueue]));
+   localStorage.setItem(seedKey,'1');
+  }
  }catch{}
 }
 function saveDemoQueue(){
