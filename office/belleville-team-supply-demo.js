@@ -87,15 +87,13 @@
       '<td class="doc-print-qty">'+number(line.issued)+'</td></tr>'
     ).join('');
     return '<div class="bel-service-print">'+
-      '<div class="doc-print-letterhead">'+
+      '<div class="doc-print-letterhead bel-service-print-heading">'+
         '<div class="doc-print-brand"><img class="bel-service-print-logo" src="./gpbs-logo-print.svg?v=1" alt="GPBS"></div>'+
-        '<span class="doc-print-region">GPBS STORAGE · MAGAZYN BELLEVILLE</span>'+
+        '<div class="bel-service-print-title">'+
+          '<h2>ZAOPATRZENIE EKIPY</h2>'+
+          '<div class="bel-service-print-number">Nr '+esc(VISIT.id)+'</div>'+
+        '</div>'+
       '</div>'+
-      '<div class="doc-print-title-row"><div>'+
-        '<span class="doc-print-kicker">DOKUMENT MAGAZYNOWY · WZ / ZWROT</span>'+
-        '<h2>ZAOPATRZENIE EKIPY</h2>'+
-        '<div class="bel-service-print-number">Nr '+esc(VISIT.id)+'</div>'+
-      '</div><div class="doc-print-type">ZE</div></div>'+
       '<div class="bel-service-print-demo-mark">WZÓR · DANE FIKCYJNE · NIE JEST DOKUMENTEM MAGAZYNOWYM</div>'+
       '<div class="doc-print-fields">'+
         field('Magazyn',VISIT.warehouse)+
@@ -111,7 +109,7 @@
       '<div class="doc-print-totals"><span>Pozycji: <strong>'+VISIT.lines.length+'</strong></span>'+
         summaryLabel('received','Przyjęto')+summaryLabel('issued','Wydano')+'</div>'+
       '<div class="doc-print-bottom">'+
-        '<div class="doc-print-notes"><strong>Uwagi:</strong><div></div><div></div></div>'+
+        '<div class="doc-print-notes"><strong>Uwagi:</strong><div></div><div></div><div></div><div></div></div>'+
         '<div class="doc-print-signatures">'+
           signature('Magazynier — przyjął / wydał','Podpis osoby obsługującej wizytę')+
           signature('Ekipa — zwróciła / odebrała','Czytelny podpis przedstawiciela ekipy')+
