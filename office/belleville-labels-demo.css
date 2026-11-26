@@ -88,3 +88,25 @@
 
 .bel-lab-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px}
 .bel-lab-preview-head .btn{margin-left:auto;font-size:11px;min-height:28px;padding:5px 9px}
+
+/* OK-only preview is added inside the left half, leaving the original NOK
+   preview and parts layout in the same grid column and at the same width. */
+.bel-lab-left-group{min-width:0}
+.bel-lab-left-group.bel-lab-has-ok{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.bel-lab-ok-preview{min-width:0}
+.bel-lab-ok-sheet{box-sizing:border-box;aspect-ratio:210/297;background:#fff;border:1px solid #d5d9de;margin-top:8px;container-type:inline-size}
+.bel-lab-ok-grid{display:grid;grid-template-columns:repeat(3,19.0476cqw);justify-content:space-between;column-gap:0;padding:4.76cqw;box-sizing:border-box}
+.bel-lab-ok-label{box-sizing:border-box;width:19.0476cqw;height:21.4286cqw;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5cqw;border:1px dashed #c3c8ce;color:#111;overflow:hidden;background:#fff}
+.bel-lab-ok-qr{width:16.19cqw;height:16.19cqw;box-sizing:border-box;padding:.95cqw;background:#fff;flex:none}
+.bel-lab-ok-qr img,.bel-lab-ok-qr canvas{width:100%!important;height:auto!important;image-rendering:pixelated}
+.bel-lab-ok-label b{font:700 2.8cqw/1.1 Arial,sans-serif;text-align:center;overflow-wrap:anywhere;max-width:96%}
+@media(max-width:1250px){.bel-lab-left-group.bel-lab-has-ok{grid-template-columns:minmax(0,1fr)}}
+@media print{
+ body.printing-bel-labels.printing-bel-labels-ok,body.printing-bel-labels.printing-bel-labels-ok > #belLabPrintRoot{width:210mm!important}
+ #belLabPrintRoot .bel-lab-ok-sheet{width:210mm;height:297mm;aspect-ratio:auto;margin:0;border:0;container-type:normal;break-after:page;page-break-after:always;overflow:hidden}
+ #belLabPrintRoot .bel-lab-ok-sheet:last-child{break-after:auto;page-break-after:auto}
+ #belLabPrintRoot .bel-lab-ok-grid{grid-template-columns:repeat(3,40mm);padding:10mm;column-gap:0;justify-content:space-between}
+ #belLabPrintRoot .bel-lab-ok-label{width:40mm;height:45mm;border:.15mm dashed #aaa;gap:1mm}
+ #belLabPrintRoot .bel-lab-ok-qr{width:34mm;height:34mm;padding:2mm}
+ #belLabPrintRoot .bel-lab-ok-label b{font:700 7pt/1.1 Arial,sans-serif}
+}
