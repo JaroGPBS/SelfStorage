@@ -717,6 +717,42 @@
     }
   }
   function B(x,y,w,h){return {x,y,w,h};}
+  // Ignore blank transparent/white scan margins when fitting a stamp.
+  // Keep the original stored PNG unchanged and preserve the ink proportions.
+  async function croppedStampBytes(base64){
+    const original=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+    try{
+      const img=new Image();
+      img.src='data:image/png;base64,'+base64;
+      await img.decode();
+      const w=img.naturalWidth,h=img.naturalHeight;
+      if(!w||!h||w*h>2000000)return original;
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      if(!ctx)return original;
+      ctx.drawImage(img,0,0);
+      const data=ctx.getImageData(0,0,w,h).data;
+      let left=w,top=h,right=-1,bottom=-1;
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        const i=(y*w+x)*4;
+        if(data[i+3]<=12||Math.min(data[i],data[i+1],data[i+2])>=248)continue;
+        left=Math.min(left,x);top=Math.min(top,y);
+        right=Math.max(right,x);bottom=Math.max(bottom,y);
+      }
+      if(right<left||bottom<top)return original;
+      const pad=Math.max(2,Math.round(Math.min(w,h)*.025));
+      left=Math.max(0,left-pad);top=Math.max(0,top-pad);
+      right=Math.min(w-1,right+pad);bottom=Math.min(h-1,bottom+pad);
+      const cw=right-left+1,ch=bottom-top+1;
+      if(cw===w&&ch===h)return original;
+      const crop=document.createElement('canvas');crop.width=cw;crop.height=ch;
+      const cropCtx=crop.getContext('2d');if(!cropCtx)return original;
+      cropCtx.drawImage(canvas,left,top,cw,ch,0,0,cw,ch);
+      const encoded=crop.toDataURL('image/png').split(',')[1];
+      return encoded?Uint8Array.from(atob(encoded),c=>c.charCodeAt(0)):original;
+    }catch{return original;}
+  }
   async function render(){
     if(!templateBytes||!values||!recordLoaded||editorLocked||isSavingPrint||
        isLocked()||$('cmrPdfDemoModal').classList.contains('hidden'))return;
@@ -770,10 +806,10 @@
       stamp(page,B(222,742,65,15),snapshot.issueDate,
         {size:9,margin:1,label:'Data wystawienia'},fonts,lib,overflowFields);
       if(snapshot.stampBase64){
-        const raw=Uint8Array.from(atob(snapshot.stampBase64),c=>c.charCodeAt(0));
+        const raw=await croppedStampBytes(snapshot.stampBase64);
         const png=await pdf.embedPng(raw);
-        // Use the blank upper area of CMR field 23, above its printed signature caption.
-        const frame=B(260,741,150,34);
+        // Stay below the top rule of field 23 and above the signature caption.
+        const frame=B(260,762,158,35);
         const fit=png.scaleToFit(frame.w,frame.h);
         page.drawImage(png,{
           x:frame.x+(frame.w-fit.width)/2,
