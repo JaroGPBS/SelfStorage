@@ -251,13 +251,10 @@
       '<div class="belleville-demo-print">'+
         '<div class="doc-print-letterhead">'+
           '<div class="doc-print-brand"><img class="belleville-demo-print-logo" src="./gpbs-logo-print.svg?v=1" alt="Logo GPBS"></div>'+
-          '<span class="doc-print-region">Magazyn: BELLEVILLE</span>'+
-        '</div>'+
-        '<div class="doc-print-title-row">'+
           '<div class="belleville-demo-print-heading">'+
             '<h2>'+(incoming?'POTWIERDZENIE PRZYJĘCIA':'WYDANIE ZEWNĘTRZNE')+'</h2>'+
+            '<strong class="belleville-demo-print-number">'+escape(doc.id)+'</strong>'+
           '</div>'+
-          '<strong class="doc-print-type">'+escape(doc.id)+'</strong>'+
         '</div>'+
         '<div class="doc-print-fields">'+
           field('Trasa',doc.route)+
@@ -288,7 +285,10 @@
             '</table>'+
           '</section>'+
           '<div class="doc-print-notes"><strong>Dodatkowe informacje</strong><p>'+
-            escape(doc.comment||'Brak dodatkowych informacji.')+'</p></div>'+
+            escape(doc.comment||'Brak dodatkowych informacji.')+'</p>'+
+            '<div class="belleville-demo-print-write-lines">'+
+              '<div></div><div></div><div></div><div></div>'+
+            '</div></div>'+
         '</div>'+
         '<div class="doc-print-bottom">'+
           '<div class="doc-print-signatures">'+
