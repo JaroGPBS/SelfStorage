@@ -33,37 +33,175 @@
 .bel-service-lines th:nth-child(n+3){text-align:center;width:95px}
 .bel-service-lines .bel-service-qty{text-align:center;font-weight:700}
 .bel-service-lines tfoot td{background:#f4f6f8;font-weight:800}
-.bel-service-print-logo{width:148px;max-height:50px;display:block;object-fit:contain}
-.bel-service-print-number{margin-top:7px;font-size:12px;font-weight:750;color:#63707d}
-.bel-service-print-demo-mark{border:1px solid #e4b9bd;background:#fff5f6;
-  padding:7px 11px;margin:0 0 16px;text-align:center;
-  font-size:9px;font-weight:800;letter-spacing:.055em;color:#a43b47}
-/* Compact visit metadata: less padding and shorter rows on the A4 sheet. */
-.doc-print-sheet .bel-service-print .doc-print-title-row{margin:17px 0 12px}
-.doc-print-sheet .bel-service-print .bel-service-print-demo-mark{
-  padding:5px 8px;margin-bottom:10px
+/* Wydruk A4 zaopatrzenia ekipy — wyłącznie pokazowy dokument ZE. */
+.bel-service-print-logo{
+  display:block;
+  width:137px;
+  max-height:52px;
+  object-fit:contain;
 }
-.doc-print-sheet .bel-service-print .doc-print-fields{margin-bottom:13px}
+.doc-print-sheet .bel-service-print{
+  display:flex;
+  flex-direction:column;
+  /* A4 (297 mm) minus Office sheet's 17 mm top and 15 mm bottom padding. */
+  min-height:265mm;
+}
+.doc-print-sheet .bel-service-print .bel-service-print-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:0 0 7px;
+  margin:0 0 9px;
+  border-bottom:2px solid #30343b;
+}
+.doc-print-sheet .bel-service-print .bel-service-print-title{
+  min-width:0;
+  margin-left:auto;
+  text-align:right;
+  align-self:center;
+}
+.doc-print-sheet .bel-service-print .bel-service-print-title h2{
+  margin:0;
+  font-size:20px;
+  font-weight:850;
+  line-height:1.13;
+  letter-spacing:-.03em;
+  color:#242c36;
+}
+.doc-print-sheet .bel-service-print .bel-service-print-number{
+  margin-top:5px;
+  color:#63707d;
+  font-size:10px;
+  line-height:1.2;
+  font-weight:750;
+}
+.doc-print-sheet .bel-service-print .bel-service-print-demo-mark{
+  border:1px solid #e4b9bd;
+  background:#fff5f6;
+  padding:4px 8px;
+  margin:0 0 9px;
+  text-align:center;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.04em;
+  color:#a43b47;
+}
+/* Two short rows of metadata instead of three spacious rows. */
+.doc-print-sheet .bel-service-print .doc-print-fields{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  margin:0 0 11px;
+  border:1px solid #e2e6eb;
+  border-radius:4px;
+  gap:0;
+  overflow:hidden;
+}
 .doc-print-sheet .bel-service-print .doc-print-field{
-  min-height:38px;padding:5px 10px
+  grid-column:auto;
+  min-height:0;
+  padding:5px 9px 4px;
+  border-left:0;
+  border-bottom:0;
+}
+.doc-print-sheet .bel-service-print .doc-print-field:nth-child(3n+2),
+.doc-print-sheet .bel-service-print .doc-print-field:nth-child(3n+3){
+  border-left:1px solid #e8ebef;
+}
+.doc-print-sheet .bel-service-print .doc-print-field:nth-child(-n+3){
+  border-bottom:1px solid #e8ebef;
+}
+.doc-print-sheet .bel-service-print .doc-print-field:last-child{
+  grid-column:span 2;
+  border-bottom:0;
+  border-left:1px solid #e8ebef;
 }
 .doc-print-sheet .bel-service-print .doc-print-field span{
-  margin-bottom:2px;font-size:8px;line-height:1.15
+  display:block;
+  margin:0 0 2px;
+  font-size:8px;
+  line-height:1.1;
 }
 .doc-print-sheet .bel-service-print .doc-print-field strong{
-  font-size:10px;line-height:1.3
+  display:block;
+  font-size:10px;
+  line-height:1.2;
+  font-weight:750;
 }
-.doc-print-sheet .bel-service-print .doc-print-section-title{margin-bottom:7px}
+/* Compact list: small vertical padding, readable SAP and part names. */
+.doc-print-sheet .bel-service-print .doc-print-section-title{
+  font-size:11px;
+  margin:0 0 5px;
+  line-height:1.3;
+}
+.doc-print-sheet .bel-service-print .doc-print-parts{
+  table-layout:fixed;
+  width:100%;
+}
 .doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(1){width:7%}
 .doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(2){width:19%}
 .doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(3){width:48%}
 .doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(4),
-.doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(5){width:13%;text-align:center}
+.doc-print-sheet .bel-service-print .doc-print-parts th:nth-child(5){
+  width:13%;
+  text-align:center;
+}
 .doc-print-sheet .bel-service-print .doc-print-parts th,
-.doc-print-sheet .bel-service-print .doc-print-parts td{padding:8px 7px}
-.doc-print-sheet .bel-service-print .bel-service-print-total td{
-  background:#eff2f5;font-weight:850}
+.doc-print-sheet .bel-service-print .doc-print-parts td{
+  padding:4px 6px;
+  line-height:1.24;
+  vertical-align:middle;
+}
+.doc-print-sheet .bel-service-print .doc-print-parts td{
+  font-size:10px;
+}
+.doc-print-sheet .bel-service-print .doc-print-parts th{
+  font-size:8px;
+}
+.doc-print-sheet .bel-service-print .doc-print-totals{
+  padding:7px 2px 0;
+  gap:16px;
+  flex-wrap:wrap;
+  font-size:10px;
+}
+/* Notes and signatures stay at the A4 page foot when there is room. */
+.doc-print-sheet .bel-service-print .doc-print-bottom{
+  margin-top:auto;
+  padding-top:14px;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.doc-print-sheet .bel-service-print .doc-print-notes{
+  margin:0;
+  font-size:10px;
+}
+.doc-print-sheet .bel-service-print .doc-print-notes strong{
+  margin-bottom:5px;
+}
+.doc-print-sheet .bel-service-print .doc-print-notes div{
+  height:24px;
+  border-bottom:1px solid #d5dbe1;
+}
+.doc-print-sheet .bel-service-print .doc-print-signatures{
+  margin-top:35px;
+  gap:32px;
+}
+.doc-print-sheet .bel-service-print .doc-print-signature strong{
+  font-size:10px;
+}
+.doc-print-sheet .bel-service-print .doc-print-signature span{
+  font-size:9px;
+}
 @media print{
-  .doc-print-sheet .bel-service-print .bel-service-print-demo-mark{
-    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.printing-office-document .doc-print-sheet:has(> .bel-service-print){
+    min-height:297mm!important;
+  }
+  body.printing-office-document .bel-service-print{
+    min-height:265mm;
+  }
+  body.printing-office-document .bel-service-print .doc-print-notes,
+  body.printing-office-document .bel-service-print .doc-print-signatures{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
 }
