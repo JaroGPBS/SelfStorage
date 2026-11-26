@@ -1,0 +1,49 @@
+/* Isolated Belleville label preview; Polish label tool unchanged. */
+.bel-lab-tabs,.bel-lab-actions{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;padding:6px 12px}
+.bel-lab-banner{padding:5px 12px;font-size:10px;font-weight:700;color:#9d4343;background:#fafbfc;border-bottom:1px solid #e8ebef}
+.bel-lab-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:8px 12px}
+.bel-lab-list,.bel-lab-preview{min-width:0}
+.bel-lab-scroll{overflow:auto}
+.bel-lab-demo .bel-lab-table{width:max-content;min-width:0;table-layout:auto}
+.bel-lab-demo .bel-lab-table th,.bel-lab-demo .bel-lab-table td{box-sizing:border-box;padding:2px 6px;height:28px;line-height:16px;white-space:nowrap;vertical-align:middle;font-size:12px}
+.bel-lab-demo .bel-lab-table th{font-size:10px;height:26px}
+.bel-lab-actions{padding:7px 0;font-size:11px}
+.bel-lab-actions .btn,.bel-lab-tabs .btn{font-size:11px;min-height:28px;padding:5px 9px}
+.bel-lab-qty{width:50px;height:22px;text-align:center;padding:0;box-sizing:border-box;appearance:textfield;border:1px solid #d5dce3;border-radius:4px}
+.bel-lab-qty::-webkit-inner-spin-button,.bel-lab-qty::-webkit-outer-spin-button{appearance:none;margin:0}
+.bel-lab-preview>strong{font-size:11px}
+.bel-lab-sheet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));aspect-ratio:297/210;gap:1px;background:#d5d9de;border:1px solid #d5d9de;margin-top:8px;box-sizing:border-box}
+.bel-lab-card,.bel-lab-blank{background:white;min-width:0;min-height:0;box-sizing:border-box;overflow:hidden}
+.bel-lab-card{display:flex;flex-direction:column;justify-content:space-between;padding:5%;gap:3%;color:#111}
+.bel-lab-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:4%}
+.bel-lab-card-top img{width:28%;object-fit:contain}
+.bel-lab-card-top small{font-size:clamp(7px,.65vw,11px);text-align:right}
+.bel-lab-module-body{display:flex;align-items:center;gap:6%;min-height:0;flex:1}
+.bel-lab-qr{width:37%;flex-shrink:0;aspect-ratio:1;background:#fff;padding:3%;box-sizing:border-box}
+.bel-lab-qr img,.bel-lab-qr canvas{width:100%!important;height:auto!important;image-rendering:pixelated}
+.bel-lab-data{display:flex;flex-direction:column;min-width:0;gap:2px;overflow-wrap:anywhere}
+.bel-lab-data small{font-size:8px;color:#666;font-weight:700}
+.bel-lab-data strong{font-size:clamp(12px,1.25vw,22px);line-height:1.05}
+.bel-lab-data b{font-size:clamp(8px,.9vw,15px)}
+.bel-lab-nok{color:#a73535;font-weight:800}
+.bel-lab-part-name{font-size:clamp(10px,1vw,18px);font-weight:750}
+#belLabPrintRoot{display:none}
+@media(max-width:900px){.bel-lab-layout{grid-template-columns:1fr}}
+@media print{
+ body.printing-bel-labels{width:297mm!important;margin:0!important;padding:0!important;background:white!important;overflow:visible!important}
+ body.printing-bel-labels > :not(#belLabPrintRoot){display:none!important}
+ body.printing-bel-labels > #belLabPrintRoot{display:block!important;position:static!important;width:297mm!important;margin:0!important;padding:0!important}
+ body.printing-bel-labels #belLabPrintRoot *{visibility:visible!important}
+ #belLabPrintRoot .bel-lab-sheet{width:297mm;height:210mm;aspect-ratio:auto;margin:0;border:0;background:white;gap:0;grid-template-columns:148.5mm 148.5mm;grid-template-rows:105mm 105mm;break-after:page;page-break-after:always}
+ #belLabPrintRoot .bel-lab-sheet:last-child{break-after:auto;page-break-after:auto}
+ #belLabPrintRoot .bel-lab-card{margin:4mm;padding:5mm;border:.25mm solid #333;gap:2mm}
+ #belLabPrintRoot .bel-lab-card-top img{width:30mm;max-height:12mm}
+ #belLabPrintRoot .bel-lab-card-top small{font:10pt Arial,sans-serif}
+ #belLabPrintRoot .bel-lab-module-body{gap:5mm}
+ #belLabPrintRoot .bel-lab-qr{width:43mm;padding:4mm}
+ #belLabPrintRoot .bel-lab-data{gap:1.5mm}
+ #belLabPrintRoot .bel-lab-data small{font:700 10pt Arial,sans-serif}
+ #belLabPrintRoot .bel-lab-data strong{font:800 24pt Arial,sans-serif;color:#111}
+ #belLabPrintRoot .bel-lab-data b{font:800 17pt Arial,sans-serif}
+ #belLabPrintRoot .bel-lab-part-name{font:800 19pt Arial,sans-serif}
+}
