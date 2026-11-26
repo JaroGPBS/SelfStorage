@@ -1458,12 +1458,13 @@ function setHead(title,kicker,desc){
   $('bovisTopDescription').classList.toggle('hidden',!isBovisOverview);
   syncStockTabUI();
   $('sort').classList.toggle('hidden',!['stocks','aggregate'].includes(state.view));
-  $('export').classList.toggle('hidden',state.view==='frMovements'||isBellevilleOrderDemo());
+  $('export').classList.toggle('hidden',state.view==='frMovements'||isBellevilleOrderDemo()||isBellevilleLabelsDemo());
   $('search').closest('.search-wrap').classList.toggle('hidden',state.view==='vehicles');
   $('search').placeholder=state.view==='frMovements'?'Szukaj: ekipa, data, rejestracja, część...':state.view==='stocks'||state.view==='aggregate'||state.view==='vehicles'||state.view==='nok'?'Szukaj po SAP lub nazwie części':state.view==='inventories'?'Szukaj inwentaryzacji...':'Szukaj: SAP, nazwa, dostawca, pracownik...';
   if(isBellevilleDemoDocuments())$('search').placeholder='Szukaj: dokument, trasa, S/N, przewoźnik, część...';
   if(isBellevilleTeamSupplyDemo())$('search').placeholder='Szukaj: numer, ekipa, SAP lub nazwa części...';
   if(isBellevilleOrderDemo())$('search').placeholder='Szukaj po SAP, nazwie lub statusie';
+  if(isBellevilleLabelsDemo())$('search').placeholder='Szukaj po S/N, typie lub nazwie części';
   $('search').value=state.search;$('sort').textContent=state.sortReverse?'Nazwa Z–A':'Nazwa A–Z';
   const name=realWarehouse(state.warehouse)?.name||'Magazyn';
   const stockView=state.view==='stocks';
@@ -1508,6 +1509,7 @@ function setHead(title,kicker,desc){
     $('receiptToolbarInfo').querySelector('span').textContent=isBellevilleTeamSupplyDemo()
       ?'Przykładowa wizyta: przyjęcia i wydania części w jednym dokumencie.'
       :isBellevilleOrderDemo()?'Aktualne stany części i indywidualne minima.'
+      :isBellevilleLabelsDemo()?'Etykiety modułów NOK oraz części.'
       :state.preview?.type==='module'?'':state.view==='frMovements'?'Wizyty ekip — pobrania i zwroty razem.'
       :state.view==='labels'?'Lista części i etykiet.'
       :aggregateView?'Porównanie stanów części pomiędzy magazynami.'
@@ -3939,6 +3941,16 @@ function openBellevilleDemoCmrPrint(id){
   return true;
 }
 
+function isBellevilleLabelsDemo(){
+  return Boolean(window.GPBSBellevilleLabelsDemo&&state.view==='labels'&&state.preview?.type==='operation'&&state.preview.warehouseKey==='belleville');
+}
+function drawBellevilleLabelsDemo(){
+  errorBanner('');
+  window.GPBSBellevilleLabelsDemo.render($('tableArea'),state.search);
+  $('tableFooter').textContent='Podgląd etykiet · dane fikcyjne · bez zapisu do D1.';
+  $('searchNote').classList.add('hidden');
+  $('vehicleTopScroll').classList.add('hidden');
+}
 function drawFrenchEmptyView(){
   const view=state.view;
   const headers={
@@ -4027,6 +4039,7 @@ async function render({silent=false}={}){
     if(isBellevilleOrderDemo())await loadBellevilleOrderDemo(silent);
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
+    else if(isBellevilleLabelsDemo())drawBellevilleLabelsDemo();
     else drawFrenchEmptyView();
     return;
   }
@@ -4173,6 +4186,7 @@ function filterCurrent(){
     if(isBellevilleOrderDemo())drawBellevilleOrderDemo();
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
+    else if(isBellevilleLabelsDemo())drawBellevilleLabelsDemo();
     else drawFrenchEmptyView();
     return;
   }
@@ -5037,7 +5051,7 @@ async function synchronizeOffice(){
       }
     }else if(state.view==='plRoutes'){
       await window.renderPlRoutesList?.();
-    }else if(state.view==='labels'){
+    }else if(state.view==='labels'&&!isBellevilleLabelsDemo()){
       // The label component keeps the user's pending print queue intact.
       await window.GPBSOfficeLabels?.refresh();
     }else{
