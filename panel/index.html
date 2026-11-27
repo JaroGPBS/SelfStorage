@@ -8,9 +8,9 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=50">
+  <link rel="stylesheet" href="./panel.css?v=51">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=84" defer></script>
+  <script src="./panel.js?v=85" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -56,6 +56,7 @@
         <button data-view="cmrModuleWeights" class="nav-item" type="button"><span class="nav-symbol">⚖</span> Wagi modułów</button>
         <button data-view="loadingListParts" class="nav-item" type="button"><span class="nav-symbol">▦</span> Części listy załadunkowej</button>
         <button data-view="frWeeklySettings" class="nav-item" type="button"><span class="nav-symbol">♧</span> Powiadomienia FR</button>
+        <button data-view="documentEmails" class="nav-item" type="button"><span class="nav-symbol">✉</span> E-maile</button>
         <button data-view="security" class="nav-item" type="button"><span class="nav-symbol">⚿</span> Bezpieczeństwo</button>
         <button data-view="settings" class="nav-item" type="button"><span class="nav-symbol">⚙</span> Ustawienia</button>
         <button data-view="superAdmin" id="superAdminNav" class="nav-item hidden" type="button"><span class="nav-symbol">♛</span> Super Admin</button>
@@ -365,6 +366,22 @@
               </table>
             </div>
             <p id="loadingListPartStatus" class="hint" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+        <section id="documentEmailsView" class="view hidden">
+          <div class="table-panel">
+            <div class="table-title"><div><h2>Odbiorcy dokumentów — Belleville</h2><p>Domyślne adresy e-mail dla PZ, WZ i CMR. Ustawienie listy nie wysyła wiadomości.</p></div></div>
+            <form id="documentEmailsForm" class="fr-weekly-form document-email-form">
+              <label for="documentEmailsPZ">PZ — Przyjęcie</label>
+              <textarea id="documentEmailsPZ" rows="3" maxlength="5100" placeholder="Adresy odbiorców" disabled></textarea>
+              <label for="documentEmailsWZ">WZ — Wydanie</label>
+              <textarea id="documentEmailsWZ" rows="3" maxlength="5100" placeholder="Adresy odbiorców" disabled></textarea>
+              <label for="documentEmailsCMR">CMR — List przewozowy</label>
+              <textarea id="documentEmailsCMR" rows="3" maxlength="5100" placeholder="Adresy odbiorców" disabled></textarea>
+              <p class="hint">Wpisz po jednym adresie w wierszu lub oddziel adresy średnikiem. Możesz zostawić listę pustą. Maksymalnie 20 adresów na dokument.</p>
+              <button type="submit" class="btn primary" id="documentEmailsSave" disabled>Zapisz</button>
+              <p id="documentEmailsStatus" class="hint" role="status"></p>
+            </form>
           </div>
         </section>
         <section id="frWeeklySettingsView" class="view hidden">

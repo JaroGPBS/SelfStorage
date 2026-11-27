@@ -15,6 +15,7 @@ import {isFrTestAccount} from '../../lib/fr-test-store.js';
 import {ensurePlTestTable,plTestTableExists,isPlTestCrew,deletePlTestCrew} from '../../lib/pl-test-crew.js';
 import {resolveFrCarClaim} from '../../lib/fr-car-review.js';
 import {readFrWeeklySettings,saveFrWeeklySettings} from '../../lib/fr-weekly-schedule.js';
+import {readDocumentRecipients,saveDocumentRecipients} from '../../lib/belleville-document-mail-settings.js';
 import {ownerContext,ownerPasswordMatches,ownerPinMatches,changeOwnerCredential} from '../../lib/super-admin-security.js';
 import {ensureAccessTable,readUserAccess,effectiveAccessByUsers,validExtraPermissions,validAppAccess,serializeUserAccess,ownerBySymbol} from '../../lib/user-access-settings.js';
 import {getPhotoObject,readPhotoResponse,r2Ready,
@@ -509,6 +510,7 @@ async function queryPanel(env,view,url) {
   if(view==='cmrModuleWeights')return listCmrModuleWeights(env.DB);
   if(view==='loadingListParts')return listFrLoadingListCatalog(env.DB);
   if(view==='frWeeklySettings')return readFrWeeklySettings(env.DB);
+  if(view==='documentEmails')return readDocumentRecipients(env.DB);
   if(view==='boxQr')return boxQrRows(env.DB);
   if(view==='usage')return adminUsage(env,url);
   if(view==='indexMigration') {
@@ -1760,6 +1762,16 @@ async function route(request,env) {
       if(/UNIQUE constraint failed/i.test(String(error?.message||'')))
         return fail('Ten prefiks został już przypisany. Odśwież listę.',409);
       return fail('Nie udało się zapisać prefiksu modułu.',503);
+    }
+  }
+  if(body?.action==='saveDocumentEmails'){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try{
+      const recipients=await saveDocumentRecipients(env.DB,body.recipients);
+      return respond({ok:true,recipients});
+    }catch(error){
+      console.error('Document recipient settings update failed',error?.name||'Error');
+      return fail(error?.status?error.message:'Nie udało się zapisać odbiorców.',error?.status||503);
     }
   }
   if(body?.action==='setFrWeeklySettings'){

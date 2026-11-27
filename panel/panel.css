@@ -1777,3 +1777,8 @@ tr:hover td{background:#ffffff04}
   .loading-parts-form-fields{grid-template-columns:1fr}
   .loading-parts-table{min-width:680px}
 }
+
+/* Document email recipients — compact, theme-aware settings. */
+.document-email-form{max-width:680px}
+.document-email-form textarea{display:block;width:100%;min-height:74px;resize:vertical;font:inherit;line-height:1.45}
+.document-email-form #documentEmailsStatus{min-height:1.4em}

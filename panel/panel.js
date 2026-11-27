@@ -19,6 +19,7 @@
     modulePrefixes:['Prefiksy modułów','Mapowanie prefiksów numerów seryjnych na typ modułu.'],
     cmrModuleWeights:['Wagi modułów','Wagi modułów wykorzystywane w dokumentach CMR.'],
     loadingListParts:['Części listy załadunkowej','Powiązania nazw z Excela z indeksami magazynowymi.'],
+    documentEmails:['E-maile','Domyślni odbiorcy PZ, WZ i CMR w Belleville.'],
     security:['Bezpieczeństwo','Zabezpieczenie sesji administratora.'],
     settings:['Ustawienia','Wygląd i preferencje panelu administracyjnego.'],
     superAdmin:['Super Admin','Hasło i wspólny PIN głównego konta właściciela.']
@@ -104,6 +105,7 @@
 
   function logoutLocally() {
     state.loggedIn=false;
+    resetDocumentEmails();
     state.isSuperAdmin=false;
     $('superAdminNav').classList.add('hidden');
     $('superPinForm').reset();
@@ -1507,11 +1509,12 @@
     document.title='GPBS Storage - Admin';
     document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
     $('dashboardView').classList.toggle('hidden',view!=='summary');
-    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings'||view==='modulePrefixes'||view==='cmrModuleWeights'||view==='loadingListParts');
+    $('tableView').classList.toggle('hidden',view==='summary'||view==='security'||view==='indexMigration'||view==='settings'||view==='superAdmin'||view==='frWeeklySettings'||view==='documentEmails'||view==='modulePrefixes'||view==='cmrModuleWeights'||view==='loadingListParts');
     $('modulePrefixesView').classList.toggle('hidden',view!=='modulePrefixes');
     $('cmrModuleWeightsView').classList.toggle('hidden',view!=='cmrModuleWeights');
     $('loadingListPartsView').classList.toggle('hidden',view!=='loadingListParts');
     $('frWeeklySettingsView').classList.toggle('hidden',view!=='frWeeklySettings');
+    $('documentEmailsView').classList.toggle('hidden',view!=='documentEmails');
     $('indexMigrationView').classList.toggle('hidden',view!=='indexMigration');
     $('securityView').classList.toggle('hidden',view!=='security');
     $('settingsView').classList.toggle('hidden',view!=='settings');
@@ -1562,6 +1565,10 @@
       }
       if(view==='loadingListParts'){
         await refreshLoadingListParts();
+        return;
+      }
+      if(view==='documentEmails'){
+        await loadDocumentEmails();
         return;
       }
       if(view==='frWeeklySettings'){
@@ -2408,6 +2415,59 @@
     }catch(error){message(error.message||'Nie udało się usunąć prefiksu.','error');}
     finally{busy(button,false);}
   }
+  const mailTypes=['PZ','WZ','CMR'];
+  let emailViewVersion=0;
+  function resetDocumentEmails(){
+    ++emailViewVersion;
+    for(const type of mailTypes){
+      const field=$('documentEmails'+type);field.value='';field.disabled=true;
+    }
+    $('documentEmailsSave').disabled=true;
+    $('documentEmailsStatus').textContent='';
+  }
+  function applyDocumentEmails(recipients){
+    for(const type of mailTypes){
+      const field=$('documentEmails'+type);
+      field.value=(recipients[type]||[]).join('\n');
+      field.disabled=false;
+    }
+    $('documentEmailsSave').disabled=false;
+  }
+  async function loadDocumentEmails(){
+    resetDocumentEmails();
+    const version=emailViewVersion;
+    $('documentEmailsStatus').textContent='Wczytywanie…';
+    try{
+      const data=await api('documentEmails');
+      if(version!==emailViewVersion||!state.loggedIn||state.view!=='documentEmails')return;
+      applyDocumentEmails(data);
+      $('documentEmailsStatus').textContent='';
+    }catch(error){
+      if(version===emailViewVersion&&state.view==='documentEmails')
+        $('documentEmailsStatus').textContent=error.message||'Nie udało się wczytać adresów.';
+    }
+  }
+  async function saveDocumentEmails(event){
+    event.preventDefault();
+    if(!state.loggedIn||state.view!=='documentEmails'||$('documentEmailsSave').disabled)return;
+    const version=emailViewVersion;
+    const recipients=Object.fromEntries(mailTypes.map(type=>[type,$('documentEmails'+type).value]));
+    for(const type of mailTypes)$('documentEmails'+type).disabled=true;
+    $('documentEmailsSave').disabled=true;
+    $('documentEmailsStatus').textContent='Zapisywanie…';
+    try{
+      const result=await post({action:'saveDocumentEmails',recipients});
+      if(version!==emailViewVersion||!state.loggedIn||state.view!=='documentEmails')return;
+      applyDocumentEmails(result.recipients);
+      $('documentEmailsStatus').textContent='Zapisano odbiorców.';
+    }catch(error){
+      if(version===emailViewVersion&&state.loggedIn&&state.view==='documentEmails'){
+        for(const type of mailTypes)$('documentEmails'+type).disabled=false;
+        $('documentEmailsSave').disabled=false;
+        $('documentEmailsStatus').textContent=error.message||'Nie udało się zapisać adresów.';
+      }
+    }
+  }
   async function saveFrWeeklySettings(event){
     event.preventDefault();
     const button=$('frWeeklySave');busy(button,true);
@@ -2663,6 +2723,7 @@
     });
     $('loginForm').addEventListener('submit',performLogin);
     $('frWeeklySettingsForm').addEventListener('submit',saveFrWeeklySettings);
+    $('documentEmailsForm').addEventListener('submit',saveDocumentEmails);
     $('modulePrefixForm').addEventListener('submit',saveModulePrefix);
     $('cmrModuleWeightForm').addEventListener('submit',saveCmrModuleWeight);
     $('loadingListPartAdd').addEventListener('click',()=>openLoadingPartEditor());
