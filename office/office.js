@@ -460,7 +460,7 @@ function frenchStockKind(warehouseId,preview=null){
   return ['toulouse','paris'].includes(location?.key)?'box':'other';
 }
 
-const state={bellevilleModuleStatus:'ok',user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
+const state={bellevilleModuleStatus:'ok',user:null,warehouses:[],warehouse:'',preview:null,aggregateMarket:'FR',aggregateTab:'parts',frAggregateSets:null,warehouseMenus:{PL:false,FR:false},plExpanded:null,plRoutesExpanded:false,plRoutesTab:'list',archivedFrenchWarehouses:[],frExpanded:null,boxesExpanded:false,bovisExpanded:false,view:'stocks',stockTab:'parts',moduleCategory:'all',bovisParisProcess:null,vehicleTab:'detail',vehiclePreviewCrew:'demo-a',frVehicleCrew:null,frVehicleData:null,frVehicleDetailView:'stock',frVehicleHistorySearch:'',frMovementCrew:null,frBoxVisits:null,frCrewWarehouseFilter:'all',frCrewMatrixScroll:0,labelPart:null,search:'',sortReverse:false,partsCache:new Map(),docs:[],docsTotal:0,docsMatched:0,nokParts:[],inventories:[],detailCache:new Map(),expanded:null,focusDocument:null,positive:false,negative:false,requestId:0,lastSync:null,rememberWarning:''};
 // Read-only route-screen context for the separate PL routes script.
 // The Office state remains private; the API independently enforces permissions.
 window.getPlRoutesContext=()=>({
@@ -741,7 +741,7 @@ function greetingVocative(name){
 }
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
-  state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
+  state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
   state.warehouseMenus={PL:false,FR:false};state.plExpanded=null;
   state.plRoutesExpanded=false;state.plRoutesTab='list';
   state.archivedFrenchWarehouses=Array.isArray(payload.archivedFrenchWarehouses)?payload.archivedFrenchWarehouses:[];
@@ -762,7 +762,7 @@ function setLoggedIn(payload){
 function showOfficeHome(){
   // No stock data request on login: only the welcome screen.
   ++state.requestId;
-  state.view='home';state.preview=null;state.frExpanded=null;state.bovisParisProcess=null;
+  state.view='home';state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisParisProcess=null;
   $('bovisParisDemoNotice').classList.add('hidden');
   state.bovisExpanded=false;state.expanded=null;state.focusDocument=null;
   state.search='';state.vehicleSelectedInventory=0;
@@ -795,7 +795,7 @@ function showPolandHome(expandMenu=true){
   // Presentation-only market homepage; no D1 reads or stock changes.
   ++state.requestId;
   state.view='plMarketHome';
-  state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
+  state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
   state.warehouseMenus.PL=expandMenu;state.warehouseMenus.FR=false;
   state.search='';state.expanded=null;state.focusDocument=null;
   $('sidebar').classList.remove('open');
@@ -826,7 +826,7 @@ function showPolandHome(expandMenu=true){
 function showFranceHome(expandMenu=true){
   ++state.requestId;
   state.view='frMarketHome';
-  state.preview=null;state.frExpanded=null;state.bovisExpanded=false;
+  state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
   state.warehouseMenus.FR=expandMenu;state.warehouseMenus.PL=false;
   $('sidebar').classList.remove('open');
   $('app').classList.remove('view-home','view-stocks','view-bovis-overview',
@@ -895,7 +895,8 @@ function openFranceHomeWarehouse(key){
   const accessible=state.warehouses.filter(w=>w.country_code==='FR');
   const matching=accessible.find(w=>matchesFrenchWarehouse(w,layout));
   state.warehouseMenus.FR=true;
-  state.frExpanded=null;
+  state.boxesExpanded=['toulouse','paris'].includes(key);
+  state.frExpanded=state.boxesExpanded?key:null;
   state.bovisExpanded=false;
   if(matching)selectView('stocks',matching.id);
   else if(state.user?.role==='ADMIN'&&String(state.user?.nickname||'').trim().toUpperCase()==='JJ')
@@ -1014,7 +1015,7 @@ function renderMenu(){
       escapeHtml(op.label)+'</button>'
     ).join('')+'</div>';
   // French operational menu is scoped to one warehouse, never to the whole country.
-  const frenchWarehouse=(label,key,realId='',expandable=true)=>{
+  const frenchWarehouse=(label,key,realId='',expandable=true,menuLabel=label)=>{
     if(!expandable)return realId
       ?'<button type="button" class="subnav-btn" data-warehouse="'+escapeHtml(realId)+'">'+escapeHtml(label)+'</button>'
       :'<button type="button" class="subnav-btn office-preview-link" '+
@@ -1069,7 +1070,7 @@ function renderMenu(){
         'data-fr-real-id="'+escapeHtml(realId)+'" '+
         'data-fr-warehouse-name="'+escapeHtml(label)+'" '+
         'aria-expanded="'+String(open)+'" aria-controls="fr-ops-'+escapeHtml(key)+'">'+
-        '<span>'+escapeHtml(label)+'</span>'+
+        '<span>'+escapeHtml(menuLabel)+'</span>'+
         '<svg class="office-fr-warehouse-chevron" width="16" height="16" viewBox="0 0 24 24" '+
           'fill="none" stroke="currentColor" stroke-width="2.25" '+
           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
@@ -1077,6 +1078,18 @@ function renderMenu(){
       '</button>'+
       '<div id="fr-ops-'+escapeHtml(key)+'" class="office-fr-warehouse-operations'+(open?'':' hidden')+'">'+
         children+'</div></div>';
+  };
+  const boxesMenu=items=>{
+    if(!items.length)return '';
+    return '<div class="office-boxes-group">'+
+      '<button type="button" class="subnav-btn office-fr-warehouse-toggle office-boxes-toggle" '+
+        'data-boxes-toggle="1" aria-expanded="'+String(state.boxesExpanded)+'" aria-controls="officeBoxesEntries">'+
+        '<span>Boxy</span><svg class="office-fr-warehouse-chevron" width="16" height="16" '+
+          'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" '+
+          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+          '<path d="m6 9 6 6 6-6"/></svg></button>'+
+      '<div id="officeBoxesEntries" class="office-boxes-entries'+(state.boxesExpanded?'':' hidden')+'">'+
+        items.join('')+'</div></div>';
   };
   const bovisMenu=items=>{
     if(!items.length)return '';
@@ -1113,7 +1126,7 @@ function renderMenu(){
   // filtered state.warehouses by live per-user market settings.
   const plSection=pl.length?group('PL',pl.map(renderPolishWarehouse).join(''),false,false):'';
 
-  const frItems=[],bovisItems=[];
+  const frItems=[],boxItems=[],bovisItems=[];
   const pushFrench=(label,key,realId='')=>{
     if(isBovisWarehouse(label)){
       const city=label.replace(/^Bovis\s+/i,'');
@@ -1122,6 +1135,8 @@ function renderMenu(){
         :'<button type="button" class="subnav-btn office-preview-link" '+
           'data-preview-warehouse="'+escapeHtml(key)+'">'+escapeHtml(city)+'</button>';
       bovisItems.push(item);
+    }else if(key==='toulouse'||key==='paris'){
+      boxItems.push(frenchWarehouse(label,key,realId,true,key==='toulouse'?'Tuluza':'Paryż'));
     }else frItems.push(frenchWarehouse(label,key,realId,true));
   };
   if(canPreviewFrance){
@@ -1143,6 +1158,7 @@ function renderMenu(){
         warehouse.id);
     }
   }
+  if(boxItems.length)frItems.push(boxesMenu(boxItems));
   if(bovisItems.length)frItems.push(bovisMenu(bovisItems));
   const hasFrance=canPreviewFrance||frItems.length>0;
   $('warehouseMenu').innerHTML=plSection+
@@ -1203,7 +1219,7 @@ function renderMenu(){
   // keeps the usual red accent. Use DOM ancestry so PL, FR and Bovis stay in sync.
   for(const group of document.querySelectorAll(
     '#sidebar .office-pl-routes-group, #sidebar .office-pl-warehouse-group, '+
-    '#sidebar .office-fr-warehouse, #sidebar .office-bovis-group')){
+    '#sidebar .office-fr-warehouse, #sidebar .office-bovis-group, #sidebar .office-boxes-group')){
     const parent=group.querySelector(':scope > button');
     if(!parent)continue;
     const activeChild=Array.from(group.querySelectorAll('.subnav-btn.active'))
@@ -1382,6 +1398,7 @@ function showFrBoxMovements(key,realId,warehouseName){
   state.preview={type:'fr-box-movements',warehouseKey:key,warehouseName:label};
   if(real)state.warehouse=realId;
   state.frExpanded=key;
+  state.boxesExpanded=true;
   state.frBoxVisits=null;
   state.bovisExpanded=false;
   state.warehouseMenus.FR=true;
@@ -4618,9 +4635,20 @@ document.addEventListener('click',e=>{
   }
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
   if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
+  const boxesToggle=e.target.closest('[data-boxes-toggle]');
+  if(boxesToggle){
+    state.boxesExpanded=!state.boxesExpanded;
+    if(state.boxesExpanded){
+      state.bovisExpanded=false;
+      if(!['toulouse','paris'].includes(state.frExpanded))state.frExpanded=null;
+    }else if(['toulouse','paris'].includes(state.frExpanded))state.frExpanded=null;
+    renderMenu();
+    return;
+  }
   const bovisToggle=e.target.closest('[data-bovis-toggle]');
   if(bovisToggle){
     state.bovisExpanded=!state.bovisExpanded;
+    state.boxesExpanded=false;
     state.frExpanded=null;
     showBovisOverview();
     return;
@@ -4629,7 +4657,7 @@ document.addEventListener('click',e=>{
   if(frStock){
     const key=frStock.dataset.frStock;
     const realId=frStock.dataset.frRealId;
-    state.frExpanded=key;state.bovisExpanded=false;state.warehouseMenus.FR=true;
+    state.frExpanded=key;state.boxesExpanded=['toulouse','paris'].includes(key);state.bovisExpanded=false;state.warehouseMenus.FR=true;
     if(realId&&realWarehouse(realId)?.country_code==='FR'){
       selectView('stocks',realId);
     }else{
@@ -4645,6 +4673,7 @@ document.addEventListener('click',e=>{
       renderMenu();
     }else{
       state.frExpanded=key;
+      state.boxesExpanded=['toulouse','paris'].includes(key);
       state.bovisExpanded=false;
       const realId=frWarehouse.dataset.frRealId;
       if(realId)selectView('stocks',realId);
@@ -4656,7 +4685,7 @@ document.addEventListener('click',e=>{
   if(homeReal&&state.view==='frMarketHome'){
     const selected=realWarehouse(homeReal.dataset.frHomeReal);
     if(selected?.country_code==='FR'){
-      state.warehouseMenus.FR=true;state.frExpanded=null;state.bovisExpanded=false;
+      state.warehouseMenus.FR=true;state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
       selectView('stocks',selected.id);
     }
     return;
@@ -4769,7 +4798,7 @@ document.addEventListener('click',e=>{
   }
   const aggregate=e.target.closest('[data-aggregate-market]');
   if(aggregate&&aggregate.dataset.aggregateMarket==='FR'){
-    state.frExpanded=null;state.bovisExpanded=false;
+    state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
     state.aggregateMarket='FR';
     state.warehouseMenus.FR=true;
     selectView('aggregate');
@@ -4778,7 +4807,7 @@ document.addEventListener('click',e=>{
   const marketVehicles=e.target.closest('[data-market-vehicles]');
   if(marketVehicles){
     const market=marketVehicles.dataset.marketVehicles;
-    state.frExpanded=null;state.bovisExpanded=false;
+    state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
     if(market==='FR'){
       state.warehouseMenus.FR=true;
       showOfficePreview('operation','vehicles',OFFICE_OPERATION_PREVIEWS.vehicles);
@@ -4809,7 +4838,7 @@ document.addEventListener('click',e=>{
       return;
     }
     if(!OFFICE_MARKET_OPERATIONS.some(op=>op.view===view))return;
-    state.frExpanded=key;state.bovisExpanded=false;
+    state.frExpanded=key;state.boxesExpanded=['toulouse','paris'].includes(key);state.bovisExpanded=false;
     const realId=frOperation.dataset.frRealId;
     if(realId&&realWarehouse(realId)?.country_code==='FR')state.warehouse=realId;
     if(['pz','wz'].includes(view)&&['toulouse','paris'].includes(key)&&
@@ -4825,7 +4854,7 @@ document.addEventListener('click',e=>{
   }
   const service=e.target.closest('[data-belleville-service]');
   if(service){
-    state.frExpanded='belleville';state.bovisExpanded=false;
+    state.frExpanded='belleville';state.boxesExpanded=false;state.bovisExpanded=false;
     showOfficePreview('module',BELLEVILLE_SERVICE.key,BELLEVILLE_SERVICE.name,{
       warehouseKey:'belleville',warehouseName:service.dataset.frWarehouseName||'Belleville'
     });
@@ -4833,7 +4862,7 @@ document.addEventListener('click',e=>{
   }
   const orderList=e.target.closest('[data-belleville-orders]');
   if(orderList){
-    state.frExpanded='belleville';state.bovisExpanded=false;
+    state.frExpanded='belleville';state.boxesExpanded=false;state.bovisExpanded=false;
     showOfficePreview('module',BELLEVILLE_ORDER_LIST.key,BELLEVILLE_ORDER_LIST.name,{
       warehouseKey:'belleville',warehouseName:orderList.dataset.frWarehouseName||'Belleville'
     });
@@ -4841,7 +4870,7 @@ document.addEventListener('click',e=>{
   }
   const belCarrierMenu=e.target.closest('[data-belleville-carriers]');
   if(belCarrierMenu){
-    state.frExpanded='belleville';state.bovisExpanded=false;
+    state.frExpanded='belleville';state.boxesExpanded=false;state.bovisExpanded=false;
     showOfficePreview('module','carriers','Przewoźnicy',{
       warehouseKey:'belleville',warehouseName:'Belleville'
     });
