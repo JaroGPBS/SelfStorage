@@ -3,10 +3,15 @@
   'use strict';
   let entries=[];
   let loaded=false;
-  let initialized=false;
+  let page=null;
+  let generation=0;
+  let active=()=>false;
+  let onCount=()=>{};
+  let busy=false;
+  let selectionVersion=0;
   let selectedId='';
   let changedStamp=undefined;
-  const $=id=>document.getElementById(id);
+  const $=id=>page?.querySelector('#'+id);
   async function request(method,payload){
     const response=await fetch('/api/cmr-belleville'+(method==='GET'?'?view=carriers':''),{
       method,credentials:'same-origin',cache:'no-store',
@@ -33,26 +38,18 @@
     el.classList.toggle('is-error',bad);
   }
   function init(){
-    if(initialized)return;
-    initialized=true;
-    const modal=document.createElement('div');
-    modal.id='belCarrierModal';
-    modal.className='bel-carrier-modal hidden';
-    modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
-    modal.setAttribute('aria-labelledby','belCarrierHeading');
-    modal.innerHTML=[
-      '<div class="bel-carrier-overlay" data-bel-carrier-close></div>',
-      '<div class="bel-carrier-panel">',
-        '<header class="bel-carrier-header"><div>',
-          '<p>GPBS STORAGE / OFFICE / BELLEVILLE</p>',
-          '<h2 id="belCarrierHeading">Przewoźnicy</h2>',
-        '</div><button type="button" class="bel-carrier-x" data-bel-carrier-close aria-label="Zamknij">×</button></header>',
+    if(page)return;
+    page=document.createElement('section');
+    page.className='bel-carrier-page';
+    page.setAttribute('aria-label','Przewoźnicy Belleville');
+    page.innerHTML=[
         '<div class="bel-carrier-content">',
           '<div class="bel-carrier-list">',
             '<button type="button" id="belCarrierNew" class="btn dark">+ Dodaj przewoźnika</button>',
             '<div id="belCarrierRows"></div>',
           '</div>',
           '<form id="belCarrierForm" class="bel-carrier-form">',
+            '<h3 id="belCarrierDetailTitle">Dane przewoźnika</h3>',
             '<input type="hidden" id="belCarrierId">',
             '<label>Nazwa przewoźnika<input id="belCarrierName" maxlength="120" required autocomplete="off" placeholder="Np. BERNIHOL"></label>',
             '<label>Adres i dane przewoźnika<textarea id="belCarrierAddress" rows="4" maxlength="1600" placeholder="Adres firmy"></textarea></label>',
@@ -68,21 +65,19 @@
               '<button type="submit" id="belCarrierSave" class="btn dark">Zapisz</button>',
             '</div>',
           '</form>',
-        '</div>',
-      '</div>'
+        '</div>'
     ].join('');
-    document.body.append(modal);
-    for(const el of modal.querySelectorAll('[data-bel-carrier-close]'))
-      el.addEventListener('click',close);
-    $('belCarrierNew').addEventListener('click',()=>select(''));
+    $('belCarrierNew').addEventListener('click',()=>{if(!busy)select('',true);});
     $('belCarrierForm').addEventListener('submit',save);
     $('belCarrierDelete').addEventListener('click',remove);
     $('belCarrierClearStamp').addEventListener('click',()=>{
-      changedStamp='';showStamp('');
+      if(busy)return;
+      ++selectionVersion;changedStamp='';$('belCarrierStamp').value='';showStamp('');
     });
     $('belCarrierStamp').addEventListener('change',async ev=>{
       const file=ev.target.files?.[0];
-      if(!file)return;
+      if(!file||busy)return;
+      const version=++selectionVersion,token=generation;
       try{
         if(file.size>2*1024*1024||file.type!=='image/png')
           throw Error('Wybierz plik PNG, maksymalnie 2 MB.');
@@ -100,17 +95,13 @@
           ctx.drawImage(img,0,0,canvas.width,canvas.height);
           const base64=canvas.toDataURL('image/png').split(',')[1];
           if(base64.length>240000)throw Error('Pieczątka jest zbyt duża. Zapisz ją jako mniejszy PNG.');
+          if(token!==generation||version!==selectionVersion||!active())return;
           changedStamp=base64;
           showStamp(base64);
           notice('');
         }finally{URL.revokeObjectURL(url);}
-      }catch(err){notice(err.message,true);}
+      }catch(err){if(token===generation&&version===selectionVersion&&active())notice(err.message,true);}
     });
-    document.addEventListener('keydown',e=>{
-      if(e.key==='Escape'&&!modal.classList.contains('hidden')){
-        e.stopImmediatePropagation();close();
-      }
-    },true);
   }
   function showStamp(base64){
     const img=$('belCarrierStampPreview'),none=$('belCarrierStampNone');
@@ -124,28 +115,39 @@
       const btn=document.createElement('button');
       btn.className='bel-carrier-row'+(item.id===selectedId?' active':'');
       btn.type='button';btn.textContent=item.name;
-      btn.addEventListener('click',()=>select(item.id));
+      btn.disabled=busy;
+      btn.setAttribute('aria-pressed',String(item.id===selectedId));
+      btn.addEventListener('click',()=>{if(!busy)select(item.id);});
       box.append(btn);
     }
   }
-  function select(id){
+  function select(id,focus=false){
+    ++selectionVersion;
     selectedId=id;
     changedStamp=undefined;
     const selected=entries.find(x=>x.id===id);
+    $('belCarrierDetailTitle').textContent=selected?'Dane przewoźnika: '+selected.name:'Nowy przewoźnik';
     $('belCarrierId').value=id;
     $('belCarrierName').value=selected?.name||'';
     $('belCarrierAddress').value=selected?.address||'';
     $('belCarrierStamp').value='';
     showStamp(selected?.stampBase64||'');
-    $('belCarrierDelete').disabled=!id;
+    $('belCarrierDelete').disabled=busy||!id;
     notice('');
     draw();
-    if(!id)$('belCarrierName').focus();
+    onCount(entries.length);
+    if(focus)$('belCarrierName').focus();
+  }
+  function setBusy(value){
+    busy=value;
+    for(const el of page.querySelectorAll('input,textarea,button'))el.disabled=value;
+    if(!value)$('belCarrierDelete').disabled=!selectedId;
   }
   async function save(e){
     e.preventDefault();
-    const btn=$('belCarrierSave');
-    btn.disabled=true;notice('');
+    if(busy||!active())return;
+    const token=generation;
+    setBusy(true);notice('');
     try{
       const data=await request('POST',{
         action:'saveCarrier',id:$('belCarrierId').value,
@@ -153,28 +155,52 @@
         ...(changedStamp===undefined?{}:{stampBase64:changedStamp})
       });
       await list(true);
+      if(token!==generation||!active())return;
       select(data.carrier.id);
       notice('Zapisano przewoźnika w D1.');
-    }catch(err){notice(err.message,true);}
-    finally{btn.disabled=false;}
+    }catch(err){if(token===generation&&active())notice(err.message,true);}
+    finally{if(token===generation)setBusy(false);}
   }
   async function remove(){
+    if(busy||!active())return;
+    const token=generation;
     const item=entries.find(x=>x.id===selectedId);
     if(!item||!window.confirm('Usunąć przewoźnika '+item.name+'?'))return;
+    setBusy(true);
     try{
       await request('POST',{action:'deleteCarrier',id:item.id});
-      await list(true);select('');notice('Usunięto przewoźnika.');
-    }catch(err){notice(err.message,true);}
+      await list(true);
+      if(token!==generation||!active())return;
+      select(entries[0]?.id||'');notice('Usunięto przewoźnika.');
+    }catch(err){if(token===generation&&active())notice(err.message,true);}
+    finally{if(token===generation)setBusy(false);}
   }
-  async function openManager(){
+  async function openManager(host,isActive,count){
     init();
-    $('belCarrierModal').classList.remove('hidden');
+    const token=++generation;
+    active=isActive;
+    onCount=count;
+    host.replaceChildren(page);
+    setBusy(true);
+    $('belCarrierRows').replaceChildren();
+    $('belCarrierName').value='';$('belCarrierAddress').value='';
+    $('belCarrierStamp').value='';showStamp('');
+    $('belCarrierDetailTitle').textContent='Dane przewoźnika';
     notice('Wczytywanie...');
     try{
       await list(true);
-      select(selectedId&&entries.some(x=>x.id===selectedId)?selectedId:'');
-    }catch(err){notice(err.message,true);}
+      if(token!==generation||!active())return;
+      select(entries.some(x=>x.id===selectedId)?selectedId:(entries[0]?.id||''));
+      setBusy(false);
+    }catch(err){
+      if(token===generation&&active())notice(err.message,true);
+    }
   }
-  function close(){if(initialized)$('belCarrierModal').classList.add('hidden');}
-  window.GPBSBellevilleCmrCarriers={list,openManager,get:()=>entries};
+  function reset(){
+    ++generation;++selectionVersion;active=()=>false;onCount=()=>{};
+    entries=[];loaded=false;selectedId='';changedStamp=undefined;
+    if(page){page.remove();page=null;}
+    busy=false;
+  }
+  window.GPBSBellevilleCmrCarriers={list,openManager,reset,get:()=>entries};
 })();
