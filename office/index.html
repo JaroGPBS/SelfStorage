@@ -131,9 +131,9 @@
   <script defer src="./belleville-team-supply-demo.js?v=6"></script>
   <script defer src="./belleville-cmr-carriers.js?v=3"></script>
   <script defer src="./belleville-cmr-pdf-demo.js?v=20"></script>
-  <script defer src="./belleville-order-demo.js?v=2"></script>
+  <script defer src="./belleville-order-demo.js?v=3"></script>
   <script defer src="./belleville-labels-demo.js?v=11"></script>
-  <script defer src="./belleville-mail.js?v=1"></script>
+  <script defer src="./belleville-mail.js?v=2"></script>
   <script defer src="./office.js?v=221"></script>
   <script defer src="./belleville-loading-plans.js?v=5"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
@@ -654,9 +654,9 @@
   </div>
   <dialog id="documentMailDialog" class="document-mail-dialog" aria-labelledby="documentMailHeading">
     <form id="documentMailForm">
-      <h2 id="documentMailHeading">Wyślij e-mail</h2>
+      <h2 id="documentMailHeading">Generuj e-mail</h2>
       <p class="muted">Nadawca: <strong id="documentMailSender">—</strong></p>
-      <div class="document-mail-buttons"><button type="button" class="btn subtle" id="documentMailConnect">Połącz Microsoft</button><button type="button" class="btn subtle" id="documentMailRefresh">Sprawdź połączenie</button></div>
+      
       <label for="documentMailRecipients">Odbiorcy</label>
       <textarea id="documentMailRecipients" rows="2" maxlength="5100" required placeholder="Adresy oddzielone średnikami"></textarea>
       <label for="documentMailSubject">Temat</label>
@@ -665,7 +665,7 @@
       <textarea id="documentMailBody" rows="5" maxlength="10000"></textarea>
       <p>Załącznik: <strong id="documentMailAttachment"></strong></p>
       <p id="documentMailStatus" role="status" aria-live="polite"></p>
-      <div class="document-mail-buttons end"><button type="button" class="btn subtle" id="documentMailClose">Zamknij</button><button type="submit" class="btn dark" id="documentMailSend" disabled>Wyślij wiadomość</button></div>
+      <div class="document-mail-buttons end"><button type="button" class="btn subtle" id="documentMailClose">Zamknij</button><button type="submit" class="btn dark" id="documentMailSend" disabled>Zapisz plik EML</button></div>
     </form>
   </dialog>
   <div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-modal="true" aria-label="Powiększone zdjęcie części">

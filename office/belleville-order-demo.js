@@ -27,7 +27,7 @@
       '<div class="bel-order-scroll"><table class="table bel-order-table"><thead><tr><th>Indeks SAP</th><th>Nazwa części</th><th>Stan aktualny</th><th>Minimum</th><th>Status</th><th>Zamówić</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       '<div class="bel-order-actions"><strong data-bel-order-summary>Do zamówienia: '+selected().length+' poz.</strong><div class="bel-order-buttons">'+
       '<button class="btn subtle" type="button" data-bel-order-action="copy">Kopiuj zamówienie</button>'+
-      '<button class="btn subtle" type="button" data-bel-order-action="email">Utwórz e-mail</button>'+
+      '<button class="btn subtle" type="button" data-bel-order-action="email">Generuj e-mail</button>'+
       '<button class="btn dark" type="button" data-bel-order-action="print">Generuj PDF</button></div></div>'+
       '<div class="bel-order-feedback" data-bel-order-feedback role="status"></div><div class="bel-order-draft" data-bel-order-draft hidden></div></div>',shown:visible.length,total:PARTS.length};
   }
@@ -37,7 +37,7 @@
     const draft=root.querySelector('[data-bel-order-draft]');
     const sync=()=>{
       summary.textContent='Do zamówienia: '+selected().length+' poz.';
-      root.querySelectorAll('[data-bel-order-action]').forEach(b=>b.disabled=!selected().length);
+      root.querySelectorAll('[data-bel-order-action]').forEach(b=>b.disabled=!selected().length||(b.dataset.belOrderAction==='email'&&!window.GPBSBellevilleMail?.allowed()));
     };
     sync();
     root.querySelectorAll('[data-bel-order-qty]').forEach(input=>{
@@ -75,7 +75,7 @@
         try{await navigator.clipboard.writeText(orderText());feedback.textContent='Skopiowano zamówienie.';}
         catch(e){draft.hidden=false;draft.innerHTML='<textarea readonly aria-label="Lista do skopiowania">'+esc(orderText())+'</textarea>';feedback.textContent='Skopiuj listę z pola poniżej.';}
       }else if(action==='email'){
-        draft.hidden=false;draft.innerHTML='<strong>Temat: Zamówienie części – Belleville</strong><textarea readonly aria-label="Treść e-maila">'+esc(emailText())+'</textarea>';
+        if(window.GPBSBellevilleMail?.allowed())window.GPBSBellevilleMail.openOrder(selected());
       }else if(action==='print'){
         onPrint('<div class="bel-order-print"><div class="doc-print-letterhead"><img src="./gpbs-logo-print.svg?v=1" alt="GPBS"><h2>ZAMÓWIENIE CZĘŚCI</h2></div><p><strong>Magazyn: Belleville</strong></p><p>PROJEKT ZAMÓWIENIA</p>'+
           '<table class="doc-print-parts"><thead><tr><th>Indeks SAP</th><th>Nazwa części</th><th>Ilość</th></tr></thead><tbody>'+selected().map(p=>'<tr><td>'+esc(p.sap)+'</td><td>'+esc(p.name)+'</td><td class="doc-print-qty">'+p.qty+'</td></tr>').join('')+'</tbody></table></div>');

@@ -1,72 +1,79 @@
-// GPBS: owner-only delegated mail composer; no access token in browser.
+// GPBS: prepare a local unsent EML, never send or authorize Microsoft.
 (()=>{
 'use strict';
-let account=null,version=0,context=null,busy=false,popup=null;
+const FILE='GPBS Storage - Ruch magazynowy.eml';
+let account=null,version=0,context=null,busy=false;
 const $=id=>document.getElementById(id),dialog=()=>$('documentMailDialog');
 const allowed=()=>account?.role==='ADMIN'&&String(account?.nickname||'').trim().toUpperCase()==='JJ';
 function status(message,error=false){$('documentMailStatus').textContent=message;$('documentMailStatus').classList.toggle('error',error);}
 function buttons(){
- const connected=!!context?.connected,sent=!!context?.sent;
- $('documentMailConnect').disabled=busy||connected||sent;
- $('documentMailRefresh').disabled=busy||sent;
- $('documentMailSend').disabled=busy||!connected||sent;
+ $('documentMailSend').disabled=busy||!context||!allowed();
  $('documentMailClose').disabled=busy;
 }
 function reset(){
  version++;context=null;busy=false;
- if(popup&&!popup.closed)popup.close();popup=null;
  if(dialog().open)dialog().close();
- $('documentMailForm').reset();$('documentMailSend').textContent='Wyślij wiadomość';buttons();
+ $('documentMailForm').reset();buttons();status('');
 }
 function setAccount(user){reset();account=user||null;}
-async function request(action,form){
- const r=await fetch('/api/microsoft-mail'+(action?'?action='+action:''),{method:action?'POST':'GET',credentials:'same-origin',cache:'no-store',...(form?{body:form}:{})});
- const d=await r.json().catch(()=>({}));
- if(!r.ok||!d.ok)throw Error(d.error||'Poczta jest niedostępna.');
- return d;
-}
-async function refresh(load=false){
- const v=version,c=context;if(!c||busy||!allowed()||c.sent)return;
- busy=true;buttons();status('Sprawdzanie połączenia…');
+async function loadRecipients(c,v){
  try{
-  const result=await request();
+  const r=await fetch('/api/belleville-eml-settings',{credentials:'same-origin',cache:'no-store'});
+  const d=await r.json();
   if(v!==version||context!==c)return;
-  $('documentMailSender').textContent=result.email;
-  if(load)$('documentMailRecipients').value=c.test?result.email:(result.recipients?.[c.type]||[]).join('; ');
-  c.connected=result.connected;
-  status(c.connected?'Połączono z Microsoft Exchange.':'Połącz konto Microsoft, aby wysłać wiadomość.');
- }catch(e){if(v===version&&context===c){c.connected=false;status(e.message,true);}}
- finally{if(v===version&&context===c){busy=false;buttons();}}
+  if(!r.ok||!d.ok)throw Error(d.error||'Nie udało się pobrać odbiorców.');
+  if(!c.test&&!busy&&!$('documentMailRecipients').value.trim())$('documentMailRecipients').value=(d.recipients?.[c.type]||[]).join('; ');
+ }catch(e){if(v===version&&context===c&&!busy)status('Nie pobrano zapisanych odbiorców. Wpisz adres ręcznie.',true);}
 }
 function open(type,id,doc,revision){
  if(!allowed()||busy)return;
  reset();
- const test=id.includes('DEMO'),name=type==='CMR'?'CMR '+id:id;
- context={type,id,doc,revision,test,connected:false,sent:false};
- $('documentMailHeading').textContent='Wyślij e-mail · '+name;
- $('documentMailSender').textContent='—';
- $('documentMailSubject').value=(test?'TEST – ':'')+'GPBS Belleville – '+name;
- $('documentMailBody').value=(test?'Wiadomość testowa – dane fikcyjne.\n\n':'')+'Dzień dobry,\n\nw załączniku przesyłam dokument '+name+'.\n\nPozdrawiam';
- $('documentMailAttachment').textContent=(type==='CMR'?'CMR-':'')+id+'.pdf'+(test?' (dane fikcyjne)':'');
- dialog().showModal();void refresh(true);
+ const test=id.includes('DEMO'),name=type==='CMR'?'CMR '+id:id,order=type==='ORDER';
+ context={type,id,doc,revision,test};
+ $('documentMailHeading').textContent='Generuj e-mail · '+name;
+ $('documentMailSender').textContent='Konto wybrane w Outlooku';
+ $('documentMailSubject').value=order?'Zamówienie części – Belleville':(test?'TEST – ':'')+'GPBS Belleville – '+name;
+ $('documentMailBody').value=order?'Dzień dobry,\n\nw załączniku przesyłam zamówienie części do magazynu Belleville.\n\nPozdrawiam':(test?'Wiadomość testowa – dane fikcyjne.\n\n':'')+'Dzień dobry,\n\nw załączniku przesyłam dokument '+name+'.\n\nPozdrawiam';
+ $('documentMailAttachment').textContent=attachmentName(context)+(test?' (dane fikcyjne)':'');
+ dialog().showModal();buttons();status('Wpisz adres testowy lub docelowy. Wiadomość wyślesz ręcznie w Outlooku.');
+ if(!test&&!order)void loadRecipients(context,version);
 }
-async function connect(){
- if(!context||busy||!allowed())return;
- const v=version,c=context;
- popup=window.open('about:blank','gpbsMicrosoftMail','popup,width=560,height=760');
- if(!popup){status('Zezwól na wyskakujące okna w przeglądarce.',true);return;}
- const win=popup;
- try{win.opener=null;}catch{}
- busy=true;buttons();status('Otwieranie logowania Microsoft…');
- try{
-  const result=await request('start');
-  if(v!==version||context!==c){win.close();return;}
-  const target=new URL(result.url);
-  if(target.origin!=='https://login.microsoftonline.com')throw Error('Nieprawidłowy adres autoryzacji.');
-  win.location.replace(target.href);
-  status('Zaloguj się do Microsoftu, zamknij okno i kliknij Sprawdź połączenie.');
- }catch(e){win.close();if(v===version)status(e.message,true);}
- finally{if(v===version){busy=false;buttons();}}
+function openOrder(parts){
+ const doc={id:'Zamowienie_Belleville',direction:'ORDER',modules:[],parts:parts.map(p=>({sap:p.sap,name:p.name,qty:p.qty}))};
+ open('ORDER',doc.id,doc);
+}
+function attachmentName(c){return (c.type==='CMR'?'CMR-':'')+c.id+'.pdf';}
+const utf8=new TextEncoder();
+function base64(bytes){
+ let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(binary);
+}
+const wrap64=s=>(s.match(/.{1,76}/g)||[]).join('\r\n');
+function encodedSubject(s){
+ const words=[];let chunk='';
+ for(const ch of s){if(utf8.encode(chunk+ch).length>42&&chunk){words.push(chunk);chunk='';}chunk+=ch;}
+ if(chunk)words.push(chunk);
+ return words.map(w=>'=?UTF-8?B?'+base64(utf8.encode(w))+'?=').join('\r\n ');
+}
+function emlBlob(recipients,subject,body,pdfBytes,name){
+ const boundary='gpbs_'+crypto.randomUUID().replace(/-/g,'');
+ const safeName=name.replace(/[^A-Za-z0-9._-]/g,'_');
+ const lines=['X-Unsent: 1','To: '+recipients.join(',\r\n '),'Subject: '+encodedSubject(subject),'MIME-Version: 1.0','Content-Type: multipart/mixed; boundary="'+boundary+'"','',
+ '--'+boundary,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',wrap64(base64(utf8.encode(body.replace(/\r?\n/g,'\r\n')))),
+ '--'+boundary,'Content-Type: application/pdf; name="'+safeName+'"','Content-Transfer-Encoding: base64','Content-Disposition: attachment; filename="'+safeName+'"','',wrap64(base64(pdfBytes)),'--'+boundary+'--',''];
+ return new Blob([lines.join('\r\n')],{type:'message/rfc822'});
+}
+async function pdfFor(c){
+ if(c.type!=='CMR')return documentPdf(c.doc);
+ const url='/api/cmr-belleville-document?documentId='+encodeURIComponent(c.id);
+ const r=await fetch(url+'&view=pdf',{credentials:'same-origin',cache:'no-store'});
+ if(!r.ok||!r.headers.get('Content-Type')?.startsWith('application/pdf'))throw Error('Nie udało się pobrać zapisanego CMR.');
+ return new Uint8Array(await r.arrayBuffer());
+}
+function download(blob){
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=FILE;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 async function documentPdf(doc){
  if(!doc||!Array.isArray(doc.modules)||!Array.isArray(doc.parts))throw Error('Brak danych dokumentu.');
@@ -113,6 +120,16 @@ async function documentPdf(doc){
   }
  }
  newPage();
+ if(doc.direction==='ORDER'){
+  paragraph('ZAMÓWIENIE CZĘŚCI',17,bold);
+  paragraph('Magazyn: Belleville');
+  paragraph('PROJEKT ZAMÓWIENIA');
+  y-=8;
+  tableRow(['Indeks SAP','Nazwa części','Ilość'],[100,355,56],[bold,bold,bold]);
+  for(const p of doc.parts)tableRow([p.sap,p.name,p.qty],[100,355,56]);
+  pdf.getPages().forEach((p,i)=>p.drawText((i+1)+' / '+pdf.getPageCount(),{x:535,y:25,size:8,font:reg,color:gray}));
+  return await pdf.save();
+ }
  paragraph(doc.direction==='PZ'?'POTWIERDZENIE PRZYJĘCIA':'WYDANIE ZEWNĘTRZNE',17,bold);
  if(doc.id.includes('DEMO'))paragraph('DANE FIKCYJNE – DOKUMENT TESTOWY',10,bold);y-=8;
  const fields=[['Trasa',doc.route,'Tydzień',doc.week],['Data',doc.date+' '+(doc.time||''),doc.direction==='PZ'?'Przyjął':'Wydał',doc.worker],['Przewoźnik',doc.carrier,'Kierowca',doc.driver],['Samochód',doc.truck,'Przyczepa / naczepa',doc.trailer]];
@@ -139,32 +156,43 @@ async function documentPdf(doc){
  pdf.getPages().forEach((p,i)=>p.drawText((i+1)+' / '+pdf.getPageCount(),{x:535,y:25,size:8,font:reg,color:gray}));
  return await pdf.save();
 }
-async function send(event){
- event.preventDefault();const c=context,v=version;if(!c?.connected||busy||c.sent||!allowed())return;
- const recipients=$('documentMailRecipients').value.trim(),subject=$('documentMailSubject').value.trim(),body=$('documentMailBody').value;
- if(!recipients||!subject){status('Podaj odbiorców i temat.',true);return;}
- if(!window.confirm((c.test?'Dokument testowy. ':'')+'Wysłać wiadomość do: '+recipients+'?'))return;
- busy=true;buttons();status('Przygotowywanie dokumentu…');
+async function save(event){
+ event.preventDefault();const c=context,v=version;if(!c||busy||!allowed())return;
+ const recipients=$('documentMailRecipients').value.split(/[;,\s]+/).filter(Boolean);
+ const subject=$('documentMailSubject').value.trim(),body=$('documentMailBody').value;
+ if(!recipients.length||recipients.length>50||recipients.some(a=>!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+$/.test(a))||!subject||/[\r\n]/.test(subject)){
+  status('Podaj poprawny adres odbiorcy i temat.',true);return;
+ }
+ busy=true;buttons();status('Wybierz miejsce zapisu wiadomości…');
  try{
-  const form=new FormData();
-  for(const [k,val] of Object.entries({type:c.type,documentId:c.id,recipients,subject,body,revision:c.revision||0}))form.append(k,String(val));
-  if(c.type!=='CMR'){
-   const bytes=await documentPdf(c.doc);if(bytes.length>2700000)throw Error('PDF przekracza limit 2,7 MB.');
-   form.append('pdf',new Blob([bytes],{type:'application/pdf'}),c.id+'.pdf');
+  let handle=null;
+  if(typeof window.showSaveFilePicker==='function'){
+   try{
+    handle=await window.showSaveFilePicker({id:'gpbs-eml',startIn:'downloads',suggestedName:FILE,types:[{description:'Wiadomość e-mail',accept:{'message/rfc822':['.eml']}}]});
+   }catch(e){
+    if(e.name==='AbortError'){status('Anulowano zapis.');return;}
+    if(e.name!=='SecurityError'&&e.name!=='NotSupportedError')throw e;
+   }
   }
   if(v!==version||context!==c||!allowed())return;
-  status('Wysyłanie przez Exchange…');await request('send',form);
-  if(v!==version||context!==c)return;
-  c.sent=true;status('Microsoft przyjął wiadomość do wysłania. Sprawdź Elementy wysłane w Outlooku.');
-  $('documentMailSend').textContent='Przyjęto do wysłania';
- }catch(e){if(v===version&&context===c){status(e.message,true);c.connected=false;}}
+  status('Przygotowywanie PDF i wiadomości…');
+  const bytes=await pdfFor(c);
+  if(v!==version||context!==c||!allowed())return;
+  const blob=emlBlob(recipients,subject,body,bytes,attachmentName(c));
+  if(handle){
+   const stream=await handle.createWritable();
+   try{await stream.write(blob);await stream.close();}catch(e){try{await stream.abort();}catch{}throw e;}
+   status('Zapisano plik EML. Otwórz go w Outlooku i kliknij Wyślij.');
+  }else{
+   download(blob);
+   status('Pobrano EML. Przeglądarka może dopisać numer do nazwy. Otwórz plik w Outlooku i kliknij Wyślij.');
+  }
+ }catch(e){if(v===version&&context===c)status(e.message||'Nie udało się zapisać wiadomości.',true);}
  finally{if(v===version&&context===c){busy=false;buttons();}}
 }
 function close(){if(!busy)reset();}
-$('documentMailForm').addEventListener('submit',send);
-$('documentMailConnect').addEventListener('click',connect);
-$('documentMailRefresh').addEventListener('click',()=>void refresh());
+$('documentMailForm').addEventListener('submit',save);
 $('documentMailClose').addEventListener('click',close);
 dialog().addEventListener('cancel',e=>{e.preventDefault();close();});
-window.GPBSBellevilleMail={setAccount,allowed,open,disconnect:()=>allowed()?request('disconnect').catch(()=>{}):Promise.resolve()};
+window.GPBSBellevilleMail={setAccount,allowed,open,openOrder,disconnect:()=>Promise.resolve()};
 })();
