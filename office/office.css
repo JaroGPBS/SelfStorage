@@ -10209,5 +10209,9 @@
 .stock-part-pane .part-meta-item{padding:8px 10px}
 .stock-part-pane h2{font-size:21px}
 .stock-part-pane .modal-actions{margin-top:12px}
+/* Keep the Belleville label button anchored while its queue status changes. */
+.stock-part-pane .modal-actions:has([data-bel-part-queue]){flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:4px}
+.stock-part-pane [data-bel-part-queue-status]{display:block;min-height:1.4em;font-size:12px;line-height:1.4;text-align:right;max-width:100%;overflow-wrap:anywhere}
+
 @media(min-width:1450px){.stock-part-pane .part-detail-layout{grid-template-columns:minmax(0,1fr) minmax(0,.85fr)}.stock-part-pane .part-detail-data{display:flex}}
 @media(max-width:1000px){.stock-parts-split{grid-template-columns:minmax(0,1fr);padding:0 8px 8px;gap:8px}.stock-parts-list{max-height:48dvh}.stock-part-pane{position:static}}
