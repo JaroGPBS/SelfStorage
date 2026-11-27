@@ -257,8 +257,10 @@
   }
   // Printable Belleville document prototype; mock data only, with the same
   // grouping and original receipt-condition status used by Office PZ/WZ.
-  function printHtml(id){
-    const doc=byId(id);
+  function printHtml(id,driverOverride){
+    const source=byId(id);
+    const doc=source&&source.direction==='PZ'&&typeof driverOverride==='string'
+      ?{...source,driver:driverOverride.trim()||'—'}:source;
     if(!doc)return null;
     const incoming=doc.direction==='PZ';
     const groups=groupModules(doc.modules);
