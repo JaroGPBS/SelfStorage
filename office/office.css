@@ -9489,6 +9489,8 @@
 }
 .doc-print-sheet .belleville-demo-print .belleville-demo-print-write-lines{
   margin-top:4px;
+  height:auto;
+  border-bottom:0;
 }
 .doc-print-sheet .belleville-demo-print .belleville-demo-print-write-lines div{
   height:19px;
@@ -10182,3 +10184,8 @@
   font-size:11px;
   padding:6px 10px;
 }
+
+/* Belleville PZ: driver entry is part of the preview controls, never printed. */
+.belleville-print-driver{display:flex;align-items:center;gap:8px;flex:1;min-width:0;font-size:12px;font-weight:650;flex-wrap:wrap}
+.belleville-print-driver[hidden]{display:none!important}
+.belleville-print-driver input{flex:1;min-width:140px;max-width:320px;box-sizing:border-box;padding:7px 9px;border:1px solid #ccd3da;border-radius:4px;font:inherit}
