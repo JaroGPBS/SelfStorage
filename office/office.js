@@ -1807,7 +1807,7 @@ function drawStocks(parts,warehouseId){
     if(inlinePartScope!==scope){resetInlinePart();inlinePartScope=scope;}
     let split=area.querySelector('.stock-parts-split');
     if(!split){
-      area.innerHTML='<div class="stock-parts-split"><div class="stock-parts-list"></div>'+
+      area.innerHTML='<div class="stock-parts-split'+(isBellevilleStock()?'':' stock-parts-split-pl')+'"><div class="stock-parts-list"></div>'+
         '<aside class="stock-part-pane part-detail-card" aria-label="Karta części" aria-live="polite">'+
         '<div class="empty">Wybierz część z listy.</div></aside></div>';
       split=area.querySelector('.stock-parts-split');
