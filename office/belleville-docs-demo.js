@@ -259,7 +259,7 @@
   // grouping and original receipt-condition status used by Office PZ/WZ.
   function printHtml(id,driverOverride){
     const source=byId(id);
-    const doc=source&&source.direction==='PZ'&&typeof driverOverride==='string'
+    const doc=source&&['PZ','WZ'].includes(source.direction)&&typeof driverOverride==='string'
       ?{...source,driver:driverOverride.trim()||'—'}:source;
     if(!doc)return null;
     const incoming=doc.direction==='PZ';
