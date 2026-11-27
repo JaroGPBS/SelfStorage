@@ -94,7 +94,42 @@
   const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   })[char]);
-  const byId=id=>DEMO_DOCUMENTS.find(doc=>doc.id===id)||null;
+  // Imported PZ records are kept only in the current page's memory, never
+  // committed to source, browser storage, D1, or transmitted to a server.
+  const localDocuments=new Map();
+  const byId=id=>localDocuments.get(id)||DEMO_DOCUMENTS.find(doc=>doc.id===id)||null;
+  function importPz(raw){
+    const value=typeof raw==='string'?JSON.parse(raw):raw;
+    if(!value||value.direction!=='PZ'||typeof value.id!=='string'||!/^PZ-\d{4,8}$/.test(value.id))
+      throw Error('Nieprawidłowy numer lub typ dokumentu PZ.');
+    const str=(v,max=500)=>{
+      if(v==null)return '';
+      if(typeof v!=='string'||v.length>max)throw Error('Nieprawidłowe pole dokumentu PZ.');
+      return v;
+    };
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(value.date)||!Number.isInteger(value.week)||value.week<1||value.week>53||
+       !/^\d{2}:\d{2}(?::\d{2})?$/.test(value.time)||
+       !Array.isArray(value.modules)||value.modules.length>1000||
+       !Array.isArray(value.parts)||value.parts.length>1000)
+      throw Error('Nieprawidłowa data lub lista pozycji PZ.');
+    const modules=value.modules.map(m=>{
+      if(!m||!['OK','NOK'].includes(m.status)||!m.type||!m.serial)
+        throw Error('Nieprawidłowy moduł.');
+      return {type:str(m.type,40),serial:str(m.serial,150),status:m.status};
+    });
+    const parts=value.parts.map(p=>{
+      if(!p||!p.name||!Number.isSafeInteger(p.qty)||p.qty<=0)
+        throw Error('Nieprawidłowa część lub ilość.');
+      return {sap:str(p.sap,80)||'—',name:str(p.name,250),qty:p.qty};
+    });
+    const doc={id:value.id,direction:'PZ',visit:null,week:value.week,date:value.date,time:value.time,
+      route:str(value.route,100),carrier:str(value.carrier,200),driver:str(value.driver,150)||'—',
+      truck:str(value.truck,80),trailer:str(value.trailer,80),worker:str(value.worker,150),
+      comment:str(value.comment,4000),modules,parts,localImport:true};
+    localDocuments.set(doc.id,doc);
+    return doc.id;
+  }
+  function clearLocal(){localDocuments.clear();}
   const related=doc=>doc.visit
     ?DEMO_DOCUMENTS.find(item=>item.visit===doc.visit&&item.direction!==doc.direction):null;
   const groupModules=modules=>{
@@ -137,7 +172,7 @@
       :'<p class="belleville-doc-muted">Brak części w tej operacji.</p>';
     return '<div class="belleville-doc-detail">'+
       '<div class="belleville-doc-detail-head"><strong>'+escape(doc.id)+'</strong>'+
-      '<span>DANE FIKCYJNE · PODGLĄD</span></div>'+
+      '<span>'+(doc.localImport?'IMPORT LOKALNY · DO WYDRUKU':'DANE FIKCYJNE · PODGLĄD')+'</span></div>'+
       '<div class="belleville-doc-top-grid">'+
         '<div class="belleville-doc-meta">'+
           '<div class="belleville-doc-field-carrier"><span>Przewoźnik</span><strong>'+escape(doc.carrier)+'</strong></div>'+
@@ -173,7 +208,8 @@
   };
   function render(view,search,expanded){
     const direction=view==='wz'?'WZ':'PZ';
-    const list=DEMO_DOCUMENTS.filter(d=>d.direction===direction)
+    const documents=[...localDocuments.values(),...DEMO_DOCUMENTS].filter(d=>d.direction===direction);
+    const list=documents
       .filter(d=>matches(d,String(search||'').trim().toLocaleLowerCase('pl')))
       .sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
     const rows=list.map(doc=>{
@@ -208,7 +244,7 @@
     }).join('')||'<tr><td class="belleville-doc-no-results" colspan="'+(direction==='WZ'?'10':'9')+'">Brak pasujących dokumentów pokazowych.</td></tr>';
     return {
       html:'<div class="belleville-doc-demo">'+
-        '<p class="belleville-doc-banner">DANE FIKCYJNE — PODGLĄD UKŁADU. Nic nie zapisuje się do D1 ani nie zmienia stanów magazynowych.</p>'+
+        '<p class="belleville-doc-banner">'+(direction==='PZ'?'DOKUMENTY POKAZOWE / IMPORT LOKALNY. Bez zapisu do D1 i zmiany stanów. <button type="button" class="belleville-doc-action" data-belleville-import-pz>Wczytaj PZ z pliku</button><input type="file" accept=".json,application/json" data-belleville-import-file hidden>':'DANE FIKCYJNE — PODGLĄD UKŁADU. Nic nie zapisuje się do D1 ani nie zmienia stanów magazynowych.')+'</p>'+
         '<div class="belleville-doc-table-scroll">'+
         '<table class="table belleville-doc-table"><thead><tr>'+
         '<th>Numer '+direction+'</th><th>Tydz.</th><th>Trasa</th>'+
@@ -216,7 +252,7 @@
         '<th>'+(direction==='PZ'?'Przyjął':'Wydał')+'</th><th></th><th></th>'+
         (direction==='WZ'?'<th></th>':'')+
         '</tr></thead><tbody>'+rows+'</tbody></table></div></div>',
-      shown:list.length,total:3
+      shown:list.length,total:documents.length
     };
   }
   // Printable Belleville document prototype; mock data only, with the same
@@ -247,7 +283,7 @@
     ).join('')||'<tr><td colspan="3">Brak części</td></tr>';
     const ok=doc.modules.filter(item=>item.status==='OK').length;
     const nok=doc.modules.filter(item=>item.status==='NOK').length;
-    return {direction:doc.direction,html:
+    return {direction:doc.direction,localImport:!!doc.localImport,html:
       '<div class="belleville-demo-print">'+
         '<div class="doc-print-letterhead">'+
           '<div class="doc-print-brand"><img class="belleville-demo-print-logo" src="./gpbs-logo-print.svg?v=1" alt="Logo GPBS"></div>'+
@@ -461,5 +497,5 @@
       '</div>'
     };
   }
-  window.GPBSBellevilleDocsDemo={render,printHtml,cmrHtml,find:byId};
+  window.GPBSBellevilleDocsDemo={render,printHtml,cmrHtml,find:byId,importPz,clearLocal};
 })();
