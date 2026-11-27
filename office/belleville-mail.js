@@ -33,7 +33,7 @@ function open(type,id,doc,revision){
  $('documentMailHeading').textContent='Generuj e-mail · '+name;
  $('documentMailSender').textContent='Konto wybrane w Outlooku';
  $('documentMailSubject').value=order?'Zamówienie części – Belleville':(test?'TEST – ':'')+'GPBS Belleville – '+name;
- $('documentMailBody').value=order?'Dzień dobry,\n\nw załączniku przesyłam zamówienie części do magazynu Belleville.\n\nPozdrawiam':(test?'Wiadomość testowa – dane fikcyjne.\n\n':'')+'Dzień dobry,\n\nw załączniku przesyłam dokument '+name+'.\n\nPozdrawiam';
+ $('documentMailBody').value=order?'Dzień dobry,\n\nw załączniku przesyłam zamówienie części do magazynu Belleville.':(test?'Wiadomość testowa – dane fikcyjne.\n\n':'')+'Dzień dobry,\n\nw załączniku przesyłam dokument '+name+'.';
  $('documentMailAttachment').textContent=attachmentName(context)+(test?' (dane fikcyjne)':'');
  dialog().showModal();buttons();status('Wpisz adres testowy lub docelowy. Wiadomość wyślesz ręcznie w Outlooku.');
  if(!test&&!order)void loadRecipients(context,version);
@@ -55,11 +55,47 @@ function encodedSubject(s){
  if(chunk)words.push(chunk);
  return words.map(w=>'=?UTF-8?B?'+base64(utf8.encode(w))+'?=').join('\r\n ');
 }
-function emlBlob(recipients,subject,body,pdfBytes,name){
+const SIGNATURE_LINES=['Pozdrawiam / Best regards,','Jarosław Juszczyk','','GPBS Sp. z o.o.','ul. Nad Jeziorem 85','43-100 Tychy, POLAND','NIP / VAT ID / SIRET: 6462932155'];
+const escapeHtml=value=>String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]);
+async function signatureLogo(){
+ const image=new Image();
+ await new Promise((resolve,reject)=>{
+  image.onload=resolve;
+  image.onerror=()=>reject(Error('Nie udało się wczytać logo GPBS.'));
+  image.src='./gpbs-logo-print.svg?v=1';
+ });
+ const canvas=document.createElement('canvas');
+ canvas.width=300;canvas.height=130;
+ const ctx=canvas.getContext('2d');
+ if(!ctx)throw Error('Nie udało się przygotować logo GPBS.');
+ ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+ const scale=Math.min(canvas.width/image.naturalWidth,canvas.height/image.naturalHeight);
+ const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
+ ctx.drawImage(image,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
+ const png=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('Nie udało się zapisać logo GPBS.')),'image/png'));
+ return new Uint8Array(await png.arrayBuffer());
+}
+function emlBlob(recipients,subject,body,pdfBytes,name,logoBytes){
  const boundary='gpbs_'+crypto.randomUUID().replace(/-/g,'');
+ const alt=boundary+'_alt',related=boundary+'_related',cid=boundary+'@gpbs-storage';
  const safeName=name.replace(/[^A-Za-z0-9._-]/g,'_');
+ const cleanBody=body.trimEnd().replace(/(?:^|\r?\n)[ \t]*Pozdrawiam(?:[ \t]*\/[ \t]*Best regards)?[,.]?[ \t]*$/i,'').trimEnd();
+ const plain=(cleanBody?cleanBody+'\n\n':'')+SIGNATURE_LINES.join('\n');
+ const formatted='<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:Arial,Calibri,sans-serif;font-size:11pt;color:#222222;">'+
+  '<div style="font-family:Arial,Calibri,sans-serif;font-size:11pt;line-height:1.4;">'+escapeHtml(cleanBody).replace(/\r\n|\r|\n/g,'<br>')+'</div><br><br>'+
+  '<div style="font-family:Arial,Calibri,sans-serif;font-size:10pt;color:#334155;">Pozdrawiam / Best regards,</div>'+
+  '<div style="font-family:Arial,Calibri,sans-serif;font-size:11pt;font-weight:bold;color:#1e293b;">Jarosław Juszczyk</div><br>'+
+  '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,Calibri,sans-serif;"><tr>'+
+  '<td valign="middle" style="vertical-align:middle;font-family:Arial,Calibri,sans-serif;font-size:8pt;line-height:12pt;color:#596273;">GPBS Sp. z o.o.<br>ul. Nad Jeziorem 85<br>43-100 Tychy, POLAND<br>NIP / VAT ID / SIRET: 6462932155</td>'+
+  '<td width="20" style="width:20px;">&nbsp;</td><td valign="middle" style="vertical-align:middle;"><img src="cid:'+cid+'" width="100" height="43" alt="GPBS – Global Post Box Service" style="display:block;width:100px;height:43px;border:0;"></td></tr></table></body></html>';
+ const encodedText=value=>wrap64(base64(utf8.encode(value.replace(/\r?\n/g,'\r\n'))));
  const lines=['X-Unsent: 1','To: '+recipients.join(',\r\n '),'Subject: '+encodedSubject(subject),'MIME-Version: 1.0','Content-Type: multipart/mixed; boundary="'+boundary+'"','',
- '--'+boundary,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',wrap64(base64(utf8.encode(body.replace(/\r?\n/g,'\r\n')))),
+ '--'+boundary,'Content-Type: multipart/alternative; boundary="'+alt+'"','',
+ '--'+alt,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',encodedText(plain),
+ '--'+alt,'Content-Type: multipart/related; type="text/html"; boundary="'+related+'"','',
+ '--'+related,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',encodedText(formatted),
+ '--'+related,'Content-Type: image/png; name="GPBS-logo.png"','Content-Transfer-Encoding: base64','Content-ID: <'+cid+'>','Content-Disposition: inline; filename="GPBS-logo.png"','',wrap64(base64(logoBytes)),
+ '--'+related+'--','--'+alt+'--',
  '--'+boundary,'Content-Type: application/pdf; name="'+safeName+'"','Content-Transfer-Encoding: base64','Content-Disposition: attachment; filename="'+safeName+'"','',wrap64(base64(pdfBytes)),'--'+boundary+'--',''];
  return new Blob([lines.join('\r\n')],{type:'message/rfc822'});
 }
@@ -186,9 +222,9 @@ async function save(event){
   }
   if(v!==version||context!==c||!allowed())return;
   status('Przygotowywanie PDF i wiadomości…');
-  const bytes=await pdfFor(c);
+  const [bytes,logoBytes]=await Promise.all([pdfFor(c),signatureLogo()]);
   if(v!==version||context!==c||!allowed())return;
-  const blob=emlBlob(recipients,subject,body,bytes,attachmentName(c));
+  const blob=emlBlob(recipients,subject,body,bytes,attachmentName(c),logoBytes);
   if(handle){
    const stream=await handle.createWritable();
    try{await stream.write(blob);await stream.close();}catch(e){try{await stream.abort();}catch{}throw e;}
