@@ -192,13 +192,26 @@ async function documentPdf(doc){
  pdf.getPages().forEach((p,i)=>p.drawText((i+1)+' / '+pdf.getPageCount(),{x:535,y:25,size:8,font:reg,color:gray}));
  return await pdf.save();
 }
+// Hide both windows before the native browser save prompt. Restore on cancellation/error.
+function suspendSaveWindows(c){
+ const preview=c.type==='CMR'?$('cmrPdfDemoModal'):(c.type==='PZ'||c.type==='WZ')?$('docPrintModal'):null;
+ c.savePreview=preview&&!preview.classList.contains('hidden')?preview:null;
+ if(dialog().open)dialog().close();
+ c.savePreview?.classList.add('hidden');
+}
+function restoreSaveWindows(c,v){
+ if(v!==version||context!==c||!allowed())return;
+ c.savePreview?.classList.remove('hidden');
+ c.savePreview=null;
+ if(!dialog().open)dialog().showModal();
+}
 function finishSave(c,v){
  if(v!==version||context!==c)return;
- const type=c.type;
+ const type=c.type,preview=c.savePreview;
  reset();
- if(type==='PZ'||type==='WZ'){
-  if(!$('docPrintModal')?.classList.contains('hidden'))$('docPrintClose')?.click();
- }else if(type==='CMR'){
+ if(preview&&(type==='PZ'||type==='WZ')){
+  document.dispatchEvent(new Event('gpbs:close-document-print'));
+ }else if(preview&&type==='CMR'){
   window.GPBSBellevilleCmrPdfDemo?.reset();
  }
 }
@@ -211,12 +224,13 @@ async function save(event){
  }
  busy=true;buttons();status('Wybierz miejsce zapisu wiadomości…');
  try{
+  suspendSaveWindows(c);
   let handle=null;
   if(typeof window.showSaveFilePicker==='function'){
    try{
     handle=await window.showSaveFilePicker({id:'gpbs-eml',startIn:'downloads',suggestedName:FILE,types:[{description:'Wiadomość e-mail',accept:{'message/rfc822':['.eml']}}]});
    }catch(e){
-    if(e.name==='AbortError'){status('Anulowano zapis.');return;}
+    if(e.name==='AbortError'){restoreSaveWindows(c,v);status('Anulowano zapis.');return;}
     if(e.name!=='SecurityError'&&e.name!=='NotSupportedError')throw e;
    }
   }
@@ -233,7 +247,7 @@ async function save(event){
    download(blob);
    finishSave(c,v);
   }
- }catch(e){if(v===version&&context===c)status(e.message||'Nie udało się zapisać wiadomości.',true);}
+ }catch(e){if(v===version&&context===c){restoreSaveWindows(c,v);status(e.message||'Nie udało się zapisać wiadomości.',true);}}
  finally{if(v===version&&context===c){busy=false;buttons();}}
 }
 function close(){if(!busy)reset();}

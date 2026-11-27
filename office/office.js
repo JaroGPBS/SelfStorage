@@ -2908,6 +2908,7 @@ function closeDocumentPrint(){
   $('docPrintSheet').innerHTML='';
   $('tableArea').querySelector('[data-doc-print]')?.focus();
 }
+document.addEventListener('gpbs:close-document-print',closeDocumentPrint);
 function printOfficeDocument(){
   if($('docPrintModal').classList.contains('hidden'))return;
   clearOfficePrintStyle();
