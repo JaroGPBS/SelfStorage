@@ -689,6 +689,7 @@ async function saveOfficeNewPart(event){
 }
 function errorBanner(message){$('errorBanner').textContent=message||'';$('errorBanner').classList.toggle('hidden',!message);}
 function showLogin(message=''){
+  window.GPBSBellevilleMail?.setAccount(null);
   resetInlinePart();
   window.GPBSBellevilleCmrCarriers?.reset();
   window.GPBSBellevilleCmrPdfDemo?.reset();
@@ -741,7 +742,7 @@ function greetingVocative(name){
 }
 function setLoggedIn(payload){
   if(!payload?.user||!Array.isArray(payload.warehouses))throw Error('Nieprawidłowe dane konta.');
-  state.user=payload.user;state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
+  state.user=payload.user;window.GPBSBellevilleMail?.setAccount(state.user);state.warehouses=payload.warehouses;state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
   state.warehouseMenus={PL:false,FR:false};state.plExpanded=null;
   state.plRoutesExpanded=false;state.plRoutesTab='list';
   state.archivedFrenchWarehouses=Array.isArray(payload.archivedFrenchWarehouses)?payload.archivedFrenchWarehouses:[];
@@ -2900,6 +2901,8 @@ function clearOfficePrintStyle(){
   document.getElementById('officeDocumentPageStyle')?.remove();
 }
 function closeDocumentPrint(){
+  $('docPrintEmail').classList.add('hidden');
+  delete $('docPrintEmail').dataset.documentId;
   clearOfficePrintStyle();
   $('docPrintModal').classList.add('hidden');
   $('docPrintSheet').innerHTML='';
@@ -4019,6 +4022,11 @@ function openBellevilleDemoDocumentPrint(id){
   $('docPrintTitle').textContent='Podgląd '+sheet.direction+(sheet.localImport?' · IMPORT LOKALNY':' · DANE FIKCYJNE');
   $('docPrintSheet').innerHTML=sheet.html;
   $('docPrintSheet').dataset.localPz=sheet.localImport?'1':'0';
+  const mail=$('docPrintEmail');
+  mail.classList.remove('hidden');
+  mail.disabled=!window.GPBSBellevilleMail?.allowed();
+  mail.title=mail.disabled?'Brak uprawnień':'Wyślij dokument jako PDF';
+  mail.dataset.documentId=id;
   $('docPrintModal').classList.remove('hidden');
   $('docPrintClose').focus();
   return true;
@@ -5155,6 +5163,11 @@ $('officeNewPartPhoto').addEventListener('change',async()=>{
   }
 });
 $('modalClose').addEventListener('click',closeModal);
+$('docPrintEmail').addEventListener('click',()=>{
+  if(!isBellevilleDemoDocuments()||!window.GPBSBellevilleMail?.allowed())return;
+  const id=$('docPrintEmail').dataset.documentId,doc=window.GPBSBellevilleDocsDemo?.find(id);
+  if(doc)window.GPBSBellevilleMail.open(doc.direction,id,doc);
+});
 $('docPrintButton').addEventListener('click',printOfficeDocument);
 window.addEventListener('afterprint',clearOfficePrintStyle);
 window.addEventListener('afterprint',clearVehicleInventoryPrintStyle);
@@ -5296,6 +5309,7 @@ $('refresh').addEventListener('click',()=>synchronizeOffice());
 $('mobileMenu').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
 $('logout').addEventListener('click',async()=>{
   try{
+    await window.GPBSBellevilleMail?.disconnect();
     // Clear long-term office cookie first; failure must not silently report logout.
     const remembered=await fetch('/api/office',{method:'POST',credentials:'same-origin',
       headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'forget'})});

@@ -10228,3 +10228,8 @@
 @media(max-width:1000px){
   .stock-parts-split-pl{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Document mail composer — native modal above print previews. */
+.document-mail-dialog{width:min(580px,calc(100% - 24px));max-height:90dvh;overflow:auto;border:1px solid #d6dde4;border-radius:10px;padding:20px;background:#fff;color:#253242;box-shadow:0 12px 50px #0005}
+.document-mail-dialog::backdrop{background:#15202c88}
+.document-mail-dialog form{display:grid;gap:8px}.document-mail-dialog h2{font-size:20px;margin-bottom:4px}.document-mail-dialog label{font-size:12px;font-weight:650}.document-mail-dialog input,.document-mail-dialog textarea{width:100%;border:1px solid #cbd4de;border-radius:5px;padding:8px;font:inherit;color:inherit;background:#fff;resize:vertical}.document-mail-dialog p{font-size:12px}.document-mail-buttons{display:flex;gap:8px;flex-wrap:wrap}.document-mail-buttons.end{justify-content:flex-end}.document-mail-dialog #documentMailStatus{min-height:20px;color:#425466}.document-mail-dialog #documentMailStatus.error{color:#b72b39}

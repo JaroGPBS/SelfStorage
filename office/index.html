@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=199">
+  <link rel="stylesheet" href="./office.css?v=200">
   <link rel="stylesheet" href="./pl-routes.css?v=61">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <link rel="stylesheet" href="./belleville-loading-plans.css?v=1">
@@ -130,10 +130,11 @@
   <script defer src="./belleville-docs-demo.js?v=24"></script>
   <script defer src="./belleville-team-supply-demo.js?v=6"></script>
   <script defer src="./belleville-cmr-carriers.js?v=3"></script>
-  <script defer src="./belleville-cmr-pdf-demo.js?v=19"></script>
+  <script defer src="./belleville-cmr-pdf-demo.js?v=20"></script>
   <script defer src="./belleville-order-demo.js?v=2"></script>
   <script defer src="./belleville-labels-demo.js?v=11"></script>
-  <script defer src="./office.js?v=220"></script>
+  <script defer src="./belleville-mail.js?v=1"></script>
+  <script defer src="./office.js?v=221"></script>
   <script defer src="./belleville-loading-plans.js?v=5"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
   <script defer src="./pl-routes.js?v=66"></script>
@@ -646,10 +647,27 @@
         <div id="docPrintSheet" class="doc-print-sheet"></div>
       </div>
       <div class="doc-print-actions">
+        <button type="button" class="btn subtle hidden" id="docPrintEmail" disabled>Wyślij e-mail</button>
         <button type="button" class="btn dark" id="docPrintButton">Drukuj</button>
       </div>
     </div>
   </div>
+  <dialog id="documentMailDialog" class="document-mail-dialog" aria-labelledby="documentMailHeading">
+    <form id="documentMailForm">
+      <h2 id="documentMailHeading">Wyślij e-mail</h2>
+      <p class="muted">Nadawca: <strong id="documentMailSender">—</strong></p>
+      <div class="document-mail-buttons"><button type="button" class="btn subtle" id="documentMailConnect">Połącz Microsoft</button><button type="button" class="btn subtle" id="documentMailRefresh">Sprawdź połączenie</button></div>
+      <label for="documentMailRecipients">Odbiorcy</label>
+      <textarea id="documentMailRecipients" rows="2" maxlength="5100" required placeholder="Adresy oddzielone średnikami"></textarea>
+      <label for="documentMailSubject">Temat</label>
+      <input id="documentMailSubject" maxlength="240" required>
+      <label for="documentMailBody">Wiadomość</label>
+      <textarea id="documentMailBody" rows="5" maxlength="10000"></textarea>
+      <p>Załącznik: <strong id="documentMailAttachment"></strong></p>
+      <p id="documentMailStatus" role="status" aria-live="polite"></p>
+      <div class="document-mail-buttons end"><button type="button" class="btn subtle" id="documentMailClose">Zamknij</button><button type="submit" class="btn dark" id="documentMailSend" disabled>Wyślij wiadomość</button></div>
+    </form>
+  </dialog>
   <div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-modal="true" aria-label="Powiększone zdjęcie części">
     <div class="photo-viewer-backdrop" data-photo-close="1"></div>
     <button type="button" class="photo-viewer-close" id="photoViewerClose" data-photo-close="1" aria-label="Zamknij zdjęcie">×</button>

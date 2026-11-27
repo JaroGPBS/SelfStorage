@@ -376,6 +376,11 @@
     }
   }
   function lockStatus(){
+    const mail=$('cmrPdfDemoEmail');
+    if(mail){
+      mail.disabled=!window.GPBSBellevilleMail?.allowed()||!printRecord||isSavingPrint;
+      mail.title=!window.GPBSBellevilleMail?.allowed()?'Brak uprawnień':!printRecord?'Najpierw zapisz CMR':'Wyślij ostatnią zapisaną wersję CMR';
+    }
     if(!initialized)return;
     const status=$('cmrPdfDemoLockStatus');
     const button=$('cmrPdfDemoPrint');
@@ -514,6 +519,7 @@
             '<h2 id="cmrPdfDemoTitle">Podgląd CMR</h2></div>',
           '<div class="cmr-pdf-demo-actions">',
             '<button type="button" id="cmrPdfDemoChoose" class="btn">Wgraj / zmień wzór PDF</button>',
+            '<button type="button" id="cmrPdfDemoEmail" class="btn subtle" disabled>Wyślij e-mail</button>',
             '<button type="button" id="cmrPdfDemoPrint" class="btn dark" disabled>Zapisz i drukuj</button>',
             '<button type="button" id="cmrPdfDemoClose" class="cmr-pdf-demo-close" title="Zamknij podgląd" aria-label="Zamknij podgląd">×</button>',
           '</div>',
@@ -631,6 +637,10 @@
         scheduleRender(0);
         try{await idb('put',bytes);}catch(_){setHint('Nie udało się zapisać wzoru lokalnie. Wczytaj go ponownie po odświeżeniu strony.');}
       }catch(err){showError(err.message||'Nie udało się wczytać CMR PDF.');setHint('');}
+    });
+    $('cmrPdfDemoEmail').addEventListener('click',()=>{
+      if(!printRecord||isSavingPrint||!window.GPBSBellevilleMail?.allowed())return;
+      window.GPBSBellevilleMail.open('CMR',currentId,null,Number(printRecord.revision));
     });
     $('cmrPdfDemoPrint').addEventListener('click',()=>{void saveAndPrint();});
   }
@@ -938,5 +948,5 @@
     }
     return true;
   }
-  window.GPBSBellevilleCmrPdfDemo={open,reset:()=>{if(initialized)close();}};
+  window.GPBSBellevilleCmrPdfDemo={open,reset:()=>{if(initialized)close();},pdfResources:async()=>{const [lib,fontkit,fontBytes]=await Promise.all([loadLib(),loadFontkit(),loadFontBytes()]);return {lib,fontkit,fontBytes};}};
 })();
