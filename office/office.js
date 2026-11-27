@@ -689,6 +689,7 @@ async function saveOfficeNewPart(event){
 }
 function errorBanner(message){$('errorBanner').textContent=message||'';$('errorBanner').classList.toggle('hidden',!message);}
 function showLogin(message=''){
+  window.GPBSBellevilleCmrCarriers?.reset();
   resetBellevillePrintDriver();
   window.GPBSBellevilleDocsDemo?.clearLocal();
   if($('docPrintSheet')?.dataset.localPz==='1'){
@@ -1182,6 +1183,7 @@ function renderMenu(){
     const isService=Boolean(el.dataset.bellevilleService)&&
       state.preview?.type==='module'&&state.preview?.key===BELLEVILLE_SERVICE.key&&
       state.preview?.warehouseKey==='belleville';
+    const isCarriers=Boolean(el.dataset.bellevilleCarriers)&&isBellevilleCarriers();
     const isOrderList=Boolean(el.dataset.bellevilleOrders)&&
       state.preview?.type==='module'&&state.preview?.key===BELLEVILLE_ORDER_LIST.key&&
       state.preview?.warehouseKey==='belleville';
@@ -1193,7 +1195,7 @@ function renderMenu(){
           realWarehouse(state.warehouse)?.country_code==='PL':false;
      const isPlRoutesTab=el.hasAttribute('data-pl-routes-tab')&&
       state.view==='plRoutes'&&el.dataset.plRoutesTab===state.plRoutesTab;
-    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isOrderList||isMarketVehicles||isPolishScoped||isPlRoutesTab));
+    el.classList.toggle('active',Boolean(isReal||isPreview||isAggregate||isMarketView||isView||isFrStock||isFrOperation||isService||isOrderList||isCarriers||isMarketVehicles||isPolishScoped||isPlRoutesTab));
     if(el.dataset.frWarehouseToggle)el.classList.toggle('is-expanded',isFrWarehouseExpanded);
   }
   // Parent section shows an understated white selection while its active child
@@ -1496,7 +1498,7 @@ function setHead(title,kicker,desc){
     realWarehouse(state.warehouse)?.country_code==='PL';
   $('vehicleDemoBanner').classList.toggle('hidden',!fictionalFleet);
   $('vehicleTopExportHost').classList.toggle('hidden',!vehicleView&&!isBovisOverview);
-  $('officeTableCard').querySelector('.table-toolbar').classList.toggle('hidden',vehicleView);
+  $('officeTableCard').querySelector('.table-toolbar').classList.toggle('hidden',vehicleView||isBellevilleCarriers());
   if(vehicleView)$('vehicleTopExportHost').append($('export'));
   else $('tableToolbarTools').append($('export'));
   $('receiptToolbarInfo').classList.toggle('hidden',!compactView||vehicleView);
@@ -3825,6 +3827,19 @@ function drawVehicles(){
 
 // Belleville PZ/WZ layout review: client-only examples (never D1).
 // Fikcyjna wizyta zaopatrzenia jest wyłącznie przykładem wizualnym.
+function isBellevilleCarriers(){
+  return Boolean(window.GPBSBellevilleCmrCarriers&&state.preview?.type==='module'&&
+    state.preview.key==='carriers'&&state.preview.warehouseKey==='belleville');
+}
+async function loadBellevilleCarriers(){
+  const preview=state.preview,user=state.user;
+  const active=()=>state.user===user&&state.preview===preview&&isBellevilleCarriers();
+  errorBanner('');
+  $('tableFooter').textContent='';
+  await window.GPBSBellevilleCmrCarriers.openManager($('tableArea'),active,count=>{
+    if(active())$('tableFooter').textContent='Przewoźnicy: '+count;
+  });
+}
 function isBellevilleOrderDemo(){
   return Boolean(window.GPBSBellevilleOrderDemo&&state.preview?.type==='module'&&
     state.preview.key===BELLEVILLE_ORDER_LIST.key&&state.preview.warehouseKey==='belleville');
@@ -4090,7 +4105,8 @@ async function render({silent=false}={}){
     return;
   }
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
-    if(isBellevilleOrderDemo())await loadBellevilleOrderDemo(silent);
+    if(isBellevilleCarriers())await loadBellevilleCarriers();
+    else if(isBellevilleOrderDemo())await loadBellevilleOrderDemo(silent);
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
     else if(isBellevilleLabelsDemo())await loadBellevilleLabelsDemo();
@@ -4237,6 +4253,7 @@ function filterCurrent(){
   if(state.view==='frMovements'){drawFrBoxMovements();return;}
   if(state.view==='vehicles'){drawVehicles();return;}
   if(state.preview?.type==='operation'||state.preview?.type==='module'){
+    if(isBellevilleCarriers())return;
     if(isBellevilleOrderDemo())drawBellevilleOrderDemo();
     else if(isBellevilleDemoDocuments())drawBellevilleDemoDocuments();
     else if(isBellevilleTeamSupplyDemo())drawBellevilleTeamSupplyDemo();
@@ -4823,8 +4840,10 @@ document.addEventListener('click',e=>{
   }
   const belCarrierMenu=e.target.closest('[data-belleville-carriers]');
   if(belCarrierMenu){
-    if(window.GPBSBellevilleCmrCarriers)
-      void window.GPBSBellevilleCmrCarriers.openManager().catch(err=>errorBanner(err.message));
+    state.frExpanded='belleville';state.bovisExpanded=false;
+    showOfficePreview('module','carriers','Przewoźnicy',{
+      warehouseKey:'belleville',warehouseName:'Belleville'
+    });
     return;
   }
   const plRoutesToggle=e.target.closest('[data-pl-routes-toggle]');
@@ -5106,7 +5125,9 @@ async function synchronizeOffice(){
   }
   try{
     invalidateOfficeReadCache(); // Current view reloads now; others on demand.
-    if(['home','plMarketHome','frMarketHome','bovisOverview'].includes(state.view)||
+    if(isBellevilleCarriers()){
+      await loadBellevilleCarriers();
+    }else if(['home','plMarketHome','frMarketHome','bovisOverview'].includes(state.view)||
        state.preview?.type==='module'||
        (state.preview?.type==='operation'&&state.view!=='vehicles')){
       // Welcome and not-yet-connected sections: update warehouse navigation,
