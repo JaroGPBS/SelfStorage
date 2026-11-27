@@ -751,7 +751,7 @@
     // Bounds measured on the supplied CMR Belleville template preview.
     const left=112*sx,right=271*sx,top=height-927*sy,bottom=height-970*sy;
     const clipped=await pdf.embedPage(originalPage,{left,right,top,bottom});
-    const scale=1.10;
+    const scale=1.28;
     const w=(right-left)*scale,h=(top-bottom)*scale;
     const x=(left+right-w)/2;
     const y=height-926.5*sy-h;
@@ -831,6 +831,9 @@
       const stamped=new Uint8Array(await response.arrayBuffer());
       if(sequence!==renderCounter||docId!==currentId||
         $('cmrPdfDemoModal').classList.contains('hidden'))return;
+      // A regenerated layout must not silently print a previously saved PDF.
+      // Locked archived documents still bypass rendering entirely.
+      values.stampLayoutVersion=3;
       cleanPdfBytes=data;
       setPdfPreview(stamped,'draft');
       if(overflowFields.length){
