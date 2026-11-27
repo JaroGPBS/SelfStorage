@@ -739,26 +739,6 @@
     }
   }
   function B(x,y,w,h){return {x,y,w,h};}
-  // Field 22 in the existing Belleville template already contains the
-  // sender stamp. Copy only that region from an untouched source page,
-  // cover its original position, and enlarge uniformly without changing
-  // the saved blank template or recreating any stamp text.
-  async function enlargeSenderStamp(pdf,page,source,lib){
-    const original=await lib.PDFDocument.load(source);
-    const originalPage=original.getPages()[0];
-    const {width,height}=originalPage.getSize();
-    const sx=width/768,sy=height/1024;
-    // Bounds measured on the supplied CMR Belleville template preview.
-    const left=112*sx,right=271*sx,top=height-927*sy,bottom=height-970*sy;
-    const clipped=await pdf.embedPage(originalPage,{left,right,top,bottom});
-    const scale=1.28;
-    const w=(right-left)*scale,h=(top-bottom)*scale;
-    const x=(left+right-w)/2;
-    const y=height-926.5*sy-h;
-    page.drawRectangle({x:left,y:bottom,width:right-left,height:top-bottom,
-      color:lib.rgb(1,1,1),borderWidth:0});
-    page.drawPage(clipped,{x,y,width:w,height:h});
-  }
   async function render(){
     if(!templateBytes||!values||!recordLoaded||editorLocked||isSavingPrint||
        isLocked()||$('cmrPdfDemoModal').classList.contains('hidden'))return;
@@ -789,8 +769,6 @@
       };
       if(sequence!==renderCounter)return;
       const page=pdf.getPages()[0];
-      await enlargeSenderStamp(pdf,page,source,lib);
-      if(sequence!==renderCounter)return;
       // Center the value in physical CMR column 7, vertically alongside
       // the module serial list in column 6 (not next to the parts list).
       const moduleCount=Number(snapshot.moduleCount)||0;
@@ -833,7 +811,7 @@
         $('cmrPdfDemoModal').classList.contains('hidden'))return;
       // A regenerated layout must not silently print a previously saved PDF.
       // Locked archived documents still bypass rendering entirely.
-      values.stampLayoutVersion=3;
+      values.stampLayoutVersion=4;
       cleanPdfBytes=data;
       setPdfPreview(stamped,'draft');
       if(overflowFields.length){
