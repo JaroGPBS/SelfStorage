@@ -10191,3 +10191,23 @@
 .office-boxes-entries{display:grid;gap:1px;min-width:0;margin:2px 0 7px 13px;padding-left:9px;border-left:1px solid rgba(255,255,255,.1)}
 .office-market-list .office-boxes-entries .office-fr-warehouse-toggle{min-height:33px;padding:6px 9px;font-size:13px}
 .office-boxes-entries .office-fr-warehouse-operations{margin-left:7px;padding-left:6px}
+
+/* Belleville and Tychy: compact stock list with persistent inline part details. */
+.stock-parts-split{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-items:start;gap:14px;padding:0 12px 12px 0;min-width:0}
+.stock-parts-list{min-width:0;max-width:100%;overflow:auto;max-height:calc(100dvh - 220px)}
+.stock-parts-list .table.part-stock-table.bel-stock-three{margin:0}
+.stock-parts-list .table thead th{position:sticky;top:0;z-index:1}
+.stock-parts-list .table tr.part-row-selected{background:#fff0f1!important;box-shadow:inset 3px 0 #c52e3a}
+.stock-parts-list .table tr.part-row-selected .row-link{color:#ad2935}
+.stock-part-pane{min-width:0;position:sticky;top:0;border:1px solid #e3e7ec;border-radius:8px;padding:18px;background:#fff;overflow-wrap:anywhere;box-sizing:border-box}
+.stock-part-pane .part-detail-layout{grid-template-columns:minmax(0,1fr);gap:12px}
+.stock-part-pane .part-photo-section,.stock-part-pane .part-photo-zoom,.stock-part-pane .part-photo-empty{min-height:180px}
+.stock-part-pane .part-photo-zoom img{height:clamp(180px,23vw,300px)}
+.stock-part-pane .part-detail-data{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.stock-part-pane .part-stock-block{padding:12px;grid-column:1/-1}
+.stock-part-pane .part-sap-line{margin-bottom:12px!important}
+.stock-part-pane .part-meta-item{padding:8px 10px}
+.stock-part-pane h2{font-size:21px}
+.stock-part-pane .modal-actions{margin-top:12px}
+@media(min-width:1450px){.stock-part-pane .part-detail-layout{grid-template-columns:minmax(0,1fr) minmax(0,.85fr)}.stock-part-pane .part-detail-data{display:flex}}
+@media(max-width:1000px){.stock-parts-split{grid-template-columns:minmax(0,1fr);padding:0 8px 8px;gap:8px}.stock-parts-list{max-height:48dvh}.stock-part-pane{position:static}}
