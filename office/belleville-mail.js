@@ -156,6 +156,16 @@ async function documentPdf(doc){
  pdf.getPages().forEach((p,i)=>p.drawText((i+1)+' / '+pdf.getPageCount(),{x:535,y:25,size:8,font:reg,color:gray}));
  return await pdf.save();
 }
+function finishSave(c,v){
+ if(v!==version||context!==c)return;
+ const type=c.type;
+ reset();
+ if(type==='PZ'||type==='WZ'){
+  if(!$('docPrintModal')?.classList.contains('hidden'))$('docPrintClose')?.click();
+ }else if(type==='CMR'){
+  window.GPBSBellevilleCmrPdfDemo?.reset();
+ }
+}
 async function save(event){
  event.preventDefault();const c=context,v=version;if(!c||busy||!allowed())return;
  const recipients=$('documentMailRecipients').value.split(/[;,\s]+/).filter(Boolean);
@@ -182,10 +192,10 @@ async function save(event){
   if(handle){
    const stream=await handle.createWritable();
    try{await stream.write(blob);await stream.close();}catch(e){try{await stream.abort();}catch{}throw e;}
-   status('Zapisano plik EML. Otwórz go w Outlooku i kliknij Wyślij.');
+   finishSave(c,v);
   }else{
    download(blob);
-   status('Pobrano EML. Przeglądarka może dopisać numer do nazwy. Otwórz plik w Outlooku i kliknij Wyślij.');
+   finishSave(c,v);
   }
  }catch(e){if(v===version&&context===c)status(e.message||'Nie udało się zapisać wiadomości.',true);}
  finally{if(v===version&&context===c){busy=false;buttons();}}
