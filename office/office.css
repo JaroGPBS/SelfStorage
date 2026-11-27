@@ -10215,3 +10215,16 @@
 
 @media(min-width:1450px){.stock-part-pane .part-detail-layout{grid-template-columns:minmax(0,1fr) minmax(0,.85fr)}.stock-part-pane .part-detail-data{display:flex}}
 @media(max-width:1000px){.stock-parts-split{grid-template-columns:minmax(0,1fr);padding:0 8px 8px;gap:8px}.stock-parts-list{max-height:48dvh}.stock-part-pane{position:static}}
+
+/* Tychy: reserve space for both native and overlay vertical scrollbars.
+   Intrinsic list width includes the gutter, so reopening stock or replacing
+   the card does not pull the quantity column under the scrollbar. */
+.stock-parts-split-pl{grid-template-columns:fit-content(65%) minmax(0,1fr)}
+.stock-parts-split-pl .stock-parts-list{
+  width:max-content;max-width:100%;box-sizing:border-box;
+  overflow:auto;scrollbar-gutter:stable;padding-right:16px;
+}
+.stock-parts-split-pl .stock-part-pane{width:100%;min-width:0}
+@media(max-width:1000px){
+  .stock-parts-split-pl{grid-template-columns:minmax(0,1fr)}
+}
