@@ -689,6 +689,11 @@ async function saveOfficeNewPart(event){
 }
 function errorBanner(message){$('errorBanner').textContent=message||'';$('errorBanner').classList.toggle('hidden',!message);}
 function showLogin(message=''){
+  window.GPBSBellevilleDocsDemo?.clearLocal();
+  if($('docPrintSheet')?.dataset.localPz==='1'){
+    $('docPrintSheet').replaceChildren();delete $('docPrintSheet').dataset.localPz;
+    $('docPrintModal').classList.add('hidden');
+  }
   invalidateOfficeReadCache();
   state.user=null;
   try{sessionStorage.removeItem(OFFICE_SYNC_STAMP_KEY);}catch{}
@@ -3909,7 +3914,7 @@ function drawBellevilleDemoDocuments(){
   errorBanner('');
   $('tableArea').innerHTML=result.html;
   $('tableFooter').textContent=result.shown+' z '+result.total+
-    ' dokumentów pokazowych · brak zapisu do D1.';
+    (state.view==='pz'?' dokumentów · brak zapisu do D1.':' dokumentów pokazowych · brak zapisu do D1.');
   $('searchNote').classList.toggle('hidden',!state.search.trim());
   $('searchNote').textContent=state.search.trim()
     ?'Znaleziono '+result.shown+' z '+result.total+' przykładów.':'';
@@ -3919,8 +3924,9 @@ function openBellevilleDemoDocumentPrint(id){
   if(!isBellevilleDemoDocuments())return false;
   const sheet=window.GPBSBellevilleDocsDemo.printHtml(id);
   if(!sheet||sheet.direction!==(state.view==='pz'?'PZ':'WZ'))return false;
-  $('docPrintTitle').textContent='Podgląd '+sheet.direction+' · DANE FIKCYJNE';
+  $('docPrintTitle').textContent='Podgląd '+sheet.direction+(sheet.localImport?' · IMPORT LOKALNY':' · DANE FIKCYJNE');
   $('docPrintSheet').innerHTML=sheet.html;
+  $('docPrintSheet').dataset.localPz=sheet.localImport?'1':'0';
   $('docPrintModal').classList.remove('hidden');
   $('docPrintClose').focus();
   return true;
@@ -4355,6 +4361,21 @@ function closeModal(){
   bovisParisExportSelection=null;
   $('modalBody').innerHTML='';
 }
+document.addEventListener('change',async e=>{
+  if(!e.target.matches('[data-belleville-import-file]')||!isBellevilleDemoDocuments()||state.view!=='pz'||!state.user)return;
+  const file=e.target.files?.[0],user=state.user;
+  if(!file)return;
+  try{
+    if(file.size>500000)throw Error('Plik PZ jest zbyt duży.');
+    const raw=await file.text();
+    if(state.user!==user||!isBellevilleDemoDocuments()||state.view!=='pz')return;
+    const id=window.GPBSBellevilleDocsDemo.importPz(raw);
+    state.expanded=id;
+    state.search='';drawBellevilleDemoDocuments();
+    openBellevilleDemoDocumentPrint(id);
+  }catch(ex){errorBanner(ex.message||'Nie udało się wczytać PZ.');}
+  finally{e.target.value='';}
+});
 document.addEventListener('click',e=>{
   const supplyToggle=e.target.closest('[data-bel-service-toggle]');
   if(supplyToggle&&isBellevilleTeamSupplyDemo()){
@@ -4368,6 +4389,9 @@ document.addEventListener('click',e=>{
   if(supplyPrint&&isBellevilleTeamSupplyDemo()){
     openBellevilleTeamSupplyDemoPrint(supplyPrint.dataset.belServicePrint);
     return;
+  }
+  if(e.target.closest('[data-belleville-import-pz]')&&isBellevilleDemoDocuments()&&state.view==='pz'){
+    $('tableArea').querySelector('[data-belleville-import-file]')?.click();return;
   }
   const demoToggle=e.target.closest('[data-belleville-demo-toggle]');
   if(demoToggle&&isBellevilleDemoDocuments()){
