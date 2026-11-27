@@ -65,6 +65,18 @@ function okSheets(list){
  }
  return out;
 }
+// Print each front followed by its matching tape-alignment back.
+// Keep the Office preview front-only. Back rows use the same height as the labels.
+function okPrintSheets(list){
+ let out='';
+ for(let i=0;i<list.length;i+=OK_PER_PAGE){
+  const batch=list.slice(i,i+OK_PER_PAGE);
+  const rows=Math.ceil(batch.length/3);
+  out+=okSheets(batch)+'<section class="bel-lab-ok-sheet bel-lab-ok-back" aria-label="Linie do taśmy dwustronnej">'+
+   Array.from({length:rows},()=>'<div class="bel-lab-ok-back-row"></div>').join('')+'</section>';
+ }
+ return out;
+}
 function okPreview(list){
  return '<div class="bel-lab-ok-preview"><div class="bel-lab-preview-head"><strong>QR OK · A4 pionowo</strong><button type="button" class="btn dark" data-bel-lab-print-ok>Drukuj QR OK</button></div>'+okSheets(list)+'</div>';
 }
@@ -157,7 +169,7 @@ async function print(mode='main'){
  if(printing||!items.length)return;
  if(typeof QRCode!=='function'){alert('Nie wczytano generatora QR.');return;}
  printing=true;
- const root=document.createElement('div');root.id='belLabPrintRoot';root.innerHTML=mode==='ok'?okSheets(items):sheets(items,tab);document.body.append(root);qr(root);bindPhotos(root);
+ const root=document.createElement('div');root.id='belLabPrintRoot';root.innerHTML=mode==='ok'?okPrintSheets(items):sheets(items,tab);document.body.append(root);qr(root);bindPhotos(root);
  const style=document.createElement('style');style.id='belLabPageStyle';style.textContent=mode==='ok'?'@page{size:A4 portrait;margin:0}':'@page{size:A4 landscape;margin:0}';document.head.append(style);
  try{await Promise.all([...root.querySelectorAll('img')].map(img=>img.decode?.().catch(()=>photoFallback(img))));document.body.classList.add('printing-bel-labels');if(mode==='ok')document.body.classList.add('printing-bel-labels-ok');window.print();}
  catch(e){cleanup();alert('Nie udało się przygotować wydruku.');}
