@@ -689,6 +689,7 @@ async function saveOfficeNewPart(event){
 }
 function errorBanner(message){$('errorBanner').textContent=message||'';$('errorBanner').classList.toggle('hidden',!message);}
 function showLogin(message=''){
+  resetInlinePart();
   window.GPBSBellevilleCmrCarriers?.reset();
   window.GPBSBellevilleCmrPdfDemo?.reset();
   resetBellevillePrintDriver();
@@ -760,6 +761,7 @@ function setLoggedIn(payload){
   showOfficeHome();
 }
 function showOfficeHome(){
+  resetInlinePart();
   // No stock data request on login: only the welcome screen.
   ++state.requestId;
   state.view='home';state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisParisProcess=null;
@@ -792,6 +794,7 @@ function showOfficeHome(){
 }
 
 function showPolandHome(expandMenu=true){
+  resetInlinePart();
   // Presentation-only market homepage; no D1 reads or stock changes.
   ++state.requestId;
   state.view='plMarketHome';
@@ -824,6 +827,7 @@ function showPolandHome(expandMenu=true){
   renderMenu();
 }
 function showFranceHome(expandMenu=true){
+  resetInlinePart();
   ++state.requestId;
   state.view='frMarketHome';
   state.preview=null;state.frExpanded=null;state.boxesExpanded=false;state.bovisExpanded=false;
@@ -1231,6 +1235,7 @@ function renderMenu(){
   }
 }
 function showOfficePreview(type,key,label,warehouseContext=null){
+  resetInlinePart();
   if(type==='warehouse'){
     // Unconnected French warehouses use exactly the same stock layout as Tychy.
     // No D1 request or invented stock quantities are made for a layout-only entry.
@@ -1639,6 +1644,7 @@ function setBellevilleStockTab(tab){
   if(state.stockTab===next&&(tab==='parts'||state.bellevilleModuleStatus===tab)&&
     state.moduleCategory==='all')return;
   // Invalidate a pending parts request when switching to a module view.
+  resetInlinePart();
   ++state.requestId;
   state.stockTab=next;
   state.bellevilleModuleStatus=tab;
@@ -1654,6 +1660,7 @@ function setStockTab(tab){
   const polish=!state.preview&&realWarehouse(state.warehouse)?.country_code==='PL';
   if(!['parts',polish?'nok':'modules'].includes(tab)||state.view!=='stocks'||(state.stockTab===tab&&!state.bovisParisProcess)||
     (tab==='modules'&&frenchStockKind(state.warehouse,state.preview)==='box'))return;
+  resetInlinePart();
   state.bovisParisProcess=null;state.stockTab=tab;state.moduleCategory='all';state.search='';state.expanded=null;
   if(isBovisParisStock())state.bovisParisSnStatus='ok';
   $('search').value='';
@@ -1670,6 +1677,7 @@ function setModuleCategory(category){
   drawModules();
 }
 function selectView(view,warehouse,focusDocument=null){
+  resetInlinePart();
   const targetWarehouse=warehouse||state.warehouse;
   if(view==='plRoutes')++state.requestId;
   // Real box data follows the same five-minute cache as other stocks.
@@ -1758,8 +1766,30 @@ function noteSearch(count,total,noun){
   $('searchNote').classList.toggle('hidden',!state.search.trim());
   $('searchNote').textContent=state.search.trim()?'Znaleziono w '+count+' '+noun+' z '+total+'.':'';
 }
+let inlinePartId=null,inlinePartScope='',partDetailRequest=0,photoTrigger=null;
+function inlineStockParts(){
+  if(state.view!=='stocks'||state.stockTab!=='parts')return false;
+  const w=realWarehouse(state.warehouse);
+  return isBellevilleStock()||(!state.preview&&w?.country_code==='PL'&&
+    (w.id==='PL-TYCHY'||/tychy/i.test(w.name||'')));
+}
+function partScope(){
+  return inlineStockParts()?String(state.user?.id||'')+':'+
+    (state.preview?.type==='warehouse'?'preview:'+state.preview.key:state.warehouse):'';
+}
+function resetInlinePart(){
+  ++partDetailRequest;inlinePartId=null;inlinePartScope='';
+  state.labelPart=null;
+}
+function markInlinePart(){
+  for(const row of $('tableArea').querySelectorAll('tr[data-part-row]')){
+    const selected=row.dataset.partRow===inlinePartId;
+    row.classList.toggle('part-row-selected',selected);
+    row.setAttribute('aria-selected',String(selected));
+  }
+}
 function drawStocks(parts,warehouseId){
-  const compactBelleville=isBellevilleStock();
+  const compactBelleville=inlineStockParts();
   const filtered=sortedFiltered(parts);
   const rows=filtered.map(p=>{
     const amount=p.quantity;
@@ -1768,10 +1798,39 @@ function drawStocks(parts,warehouseId){
       '<td class="num">'+quantity(amount)+'</td>'+
       (compactBelleville?'':'<td class="num stock-demo-order">—</td><td class="num stock-demo-min">—</td>')+'</tr>';
   }).join('');
-  $('tableArea').innerHTML=wrapTable([
+  const table=wrapTable([
     {label:'Indeks SAP'},{label:'Nazwa części'},{label:'Stan',numeric:true},
     ...(compactBelleville?[]:[{label:'Zamówić',numeric:true},{label:'Stan min.',numeric:true}])
-  ],rows,'part-stock-table'+(compactBelleville?' bel-stock-three':''))||'';
+  ],rows,'part-stock-table'+(compactBelleville?' bel-stock-three':''));
+  if(compactBelleville){
+    const scope=partScope(),area=$('tableArea');
+    if(inlinePartScope!==scope){resetInlinePart();inlinePartScope=scope;}
+    let split=area.querySelector('.stock-parts-split');
+    if(!split){
+      area.innerHTML='<div class="stock-parts-split"><div class="stock-parts-list"></div>'+
+        '<aside class="stock-part-pane part-detail-card" aria-label="Karta części" aria-live="polite">'+
+        '<div class="empty">Wybierz część z listy.</div></aside></div>';
+      split=area.querySelector('.stock-parts-split');
+      split.querySelector('.stock-parts-list').innerHTML=table;
+      if(inlinePartId&&parts.some(p=>p.id===inlinePartId))void openPart(inlinePartId);
+    }else{
+      split.querySelector('.stock-parts-list').innerHTML=table;
+      const selected=parts.find(p=>p.id===inlinePartId);
+      if(inlinePartId&&!selected){
+        resetInlinePart();inlinePartScope=scope;
+        split.querySelector('.stock-part-pane').innerHTML='<div class="empty">Wybierz część z listy.</div>';
+      }else if(selected){
+        const amount=split.querySelector('.part-stock-block strong');
+        if(amount)amount.innerHTML=quantity(selected.quantity)+
+          (selected.quantity==null?'':' <span>szt.</span>');
+        if(state.labelPart?.id===selected.id)state.labelPart.quantity=selected.quantity;
+      }
+    }
+    markInlinePart();
+  }else{
+    resetInlinePart();
+    $('tableArea').innerHTML=table;
+  }
   const fromD1=parts.filter(p=>p.stock_source==='D1').length;
   const fromSheet=parts.filter(p=>p.stock_source==='arkusz').length;
   const sourceInfo=fromSheet
@@ -4319,17 +4378,28 @@ async function expandRow(id){
   if(state.expanded===id)filterCurrent();
 }
 async function openPart(id){
-  const modal=$('modal'),body=$('modalBody');
-  modal.classList.remove('hidden');
-  modal.querySelector('.modal-card').classList.add('part-detail-card');
-  body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><div class="loading">Wczytywanie...</div>';
+  const modal=$('modal');
+  const pane=inlineStockParts()?$('tableArea').querySelector('.stock-part-pane'):null;
+  const inline=Boolean(pane),scope=partScope(),token=++partDetailRequest,user=state.user;
+  const body=pane||$('modalBody');
+  if(inline){
+    inlinePartId=id;inlinePartScope=scope;state.labelPart=null;markInlinePart();
+    if(window.innerWidth<=1000)pane.scrollIntoView({block:'nearest'});
+  }else{
+    modal.classList.remove('hidden');
+    modal.querySelector('.modal-card').classList.add('part-detail-card');
+  }
+  const active=()=>token===partDetailRequest&&user===state.user&&
+    (inline?body.isConnected&&partScope()===scope&&inlinePartId===id:!modal.classList.contains('hidden'));
+  const heading=inline?'stockPartTitle':'modalTitle';
+  body.innerHTML='<h2 id="'+heading+'">Szczegóły części</h2><div class="loading">Wczytywanie...</div>';
   try{
     const warehouse=state.warehouse;
     const virtualFrench=state.preview?.type==='warehouse';
     const payload=virtualFrench
       ?await api('frCatalog',{part:id})
       :await api('part',{warehouse,part:id});
-    if(modal.classList.contains('hidden'))return;
+    if(!active())return;
     const p=payload.part;
     const selectedBox=virtualFrench?
       (state.preview?.key==='toulouse'?'FR-TOULOUSE':
@@ -4357,7 +4427,7 @@ async function openPart(id){
     const deliveryQuantity=payload.delivery?'Przyjęto '+escapeHtml(payload.delivery.quantity)+' szt.':'Brak danych';
     body.innerHTML=
       '<div class="kicker">KARTA CZĘŚCI</div>'+
-      '<h2 id="modalTitle">'+escapeHtml(p.name)+'</h2>'+
+      '<h2 id="'+heading+'">'+escapeHtml(p.name)+'</h2>'+
       '<p class="muted part-sap-line">Indeks SAP: '+escapeHtml(p.sap_number||'—')+'</p>'+
       '<div class="part-detail-layout">'+
         '<div class="part-photo-section">'+photo+'</div>'+
@@ -4388,13 +4458,14 @@ async function openPart(id){
       target.replaceWith(placeholder);
     },{once:true});
   }catch(ex){
-    body.innerHTML='<h2 id="modalTitle">Szczegóły części</h2><p class="error">'+escapeHtml(ex.message)+'</p>';
+    if(active())body.innerHTML='<h2 id="'+heading+'">Szczegóły części</h2><p class="error">'+escapeHtml(ex.message)+'</p>';
   }
 }
-function openPhotoViewer(){
+function openPhotoViewer(trigger){
   const viewer=$('photoViewer');
-  const image=$('modalBody').querySelector('[data-photo-open] img');
+  const image=trigger?.querySelector('img');
   if(!image)return;
+  photoTrigger=trigger;
   $('photoViewerImage').src=image.src;
   viewer.classList.remove('hidden');
   $('photoViewerClose').focus();
@@ -4402,9 +4473,11 @@ function openPhotoViewer(){
 function closePhotoViewer(){
   $('photoViewer').classList.add('hidden');
   $('photoViewerImage').removeAttribute('src');
-  $('modalBody').querySelector('[data-photo-open]')?.focus();
+  if(photoTrigger?.isConnected)photoTrigger.focus();
+  photoTrigger=null;
 }
 function closeModal(){
+  if(!$('modal').classList.contains('hidden'))++partDetailRequest;
   state.vehicleReportContext=null;
   clearVehicleInventoryPrintStyle();
   if(!$('photoViewer').classList.contains('hidden'))closePhotoViewer();
@@ -4634,7 +4707,8 @@ document.addEventListener('click',e=>{
     return;
   }
   if(e.target.closest('[data-photo-close]')){closePhotoViewer();return;}
-  if(e.target.closest('[data-photo-open]')){openPhotoViewer();return;}
+  const photoOpen=e.target.closest('[data-photo-open]');
+  if(photoOpen){openPhotoViewer(photoOpen);return;}
   const boxesToggle=e.target.closest('[data-boxes-toggle]');
   if(boxesToggle){
     state.boxesExpanded=!state.boxesExpanded;
