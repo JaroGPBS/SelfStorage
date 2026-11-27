@@ -536,8 +536,8 @@
               '<strong>Przewoźnik z bazy Belleville</strong>',
               '<label>Wybierz firmę<select id="cmrPdfDemoCarrierSelect"><option value="">— Wybierz przewoźnika —</option></select></label>',
               '<label>Kierowca<input id="cmrPdfDemoDriver" autocomplete="off" placeholder="Imię i nazwisko"></label>',
-              '<label>Tablica pojazdu<input id="cmrPdfDemoPlate" autocomplete="off" placeholder="Nr rejestracyjny"></label>',
-              '<label>Tablica naczepy<input id="cmrPdfDemoTrailer" autocomplete="off" placeholder="Nr rejestracyjny naczepy"></label>',
+              '<label>Tablica pojazdu<input id="cmrPdfDemoPlate" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Nr rejestracyjny"></label>',
+              '<label>Tablica naczepy<input id="cmrPdfDemoTrailer" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Nr rejestracyjny naczepy"></label>',
             '</section>',
             '<div id="cmrPdfDemoFields"></div>',
             '<p id="cmrPdfDemoHint" class="cmr-pdf-demo-hint"></p>',
@@ -574,7 +574,19 @@
     ]){
       $(id).addEventListener('input',()=>{
         if(!values||!recordLoaded||editorLocked||isSavingPrint)return;
-        values[key]=$(id).value;
+        const input=$(id);
+        if(key==='plate'||key==='trailer'){
+          const original=input.value;
+          const upper=original.toUpperCase();
+          if(upper!==original){
+            const start=input.selectionStart,end=input.selectionEnd,direction=input.selectionDirection;
+            input.value=upper;
+            if(start!==null&&end!==null)input.setSelectionRange(
+              original.slice(0,start).toUpperCase().length,
+              original.slice(0,end).toUpperCase().length,direction||'none');
+          }
+        }
+        values[key]=input.value;
         composeCarrier();
       });
     }
