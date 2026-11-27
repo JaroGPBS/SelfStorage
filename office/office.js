@@ -4059,6 +4059,11 @@ function openBellevilleDemoCmrPrint(id){
 function isBellevilleLabelsDemo(){
   return Boolean(window.GPBSBellevilleLabelsDemo&&state.view==='labels'&&state.preview?.type==='operation'&&state.preview.warehouseKey==='belleville');
 }
+function bellevilleLabelScope(){
+  const warehouse=state.warehouses.find(w=>isBellevilleWarehouse(w.id));
+  const key=warehouse?.id||'FR-COMMON-CATALOG';
+  return {warehouse,key,scope:String(state.user?.id||'')+':'+key};
+}
 let belLabelsLoaded=false;
 async function loadBellevilleLabelsDemo(){
   const ticket=++state.requestId;
@@ -4066,8 +4071,7 @@ async function loadBellevilleLabelsDemo(){
   $('tableArea').innerHTML='<div class="loading">Wczytywanie katalogu części Belleville…</div>';
   $('tableFooter').textContent='';
   try{
-    const warehouse=state.warehouses.find(w=>isBellevilleWarehouse(w.id));
-    const key=warehouse?.id||'FR-COMMON-CATALOG';
+    const {warehouse,key,scope}=bellevilleLabelScope();
     let parts;
     if(warehouse)parts=await loadStocks(warehouse.id);
     else{
@@ -4079,7 +4083,7 @@ async function loadBellevilleLabelsDemo(){
       parts=state.partsCache.get(key)||[];
     }
     if(ticket!==state.requestId||!isBellevilleLabelsDemo())return;
-    window.GPBSBellevilleLabelsDemo.setParts(parts||[],warehouse?.id||'',String(state.user?.id||'')+':'+key);
+    window.GPBSBellevilleLabelsDemo.setParts(parts||[],warehouse?.id||'',scope);
     belLabelsLoaded=true;
     drawBellevilleLabelsDemo();
   }catch(e){
@@ -4441,9 +4445,15 @@ async function openPart(id){
           ))+
         '</div>'+
       '</div>'+
-      (virtualFrench?'':'<div class="modal-actions">'+
-        '<button type="button" class="btn dark" data-label-add-current="1">Drukuj etykietę</button>'+
-      '</div>');
+      (isBellevilleStock()?
+        (state.user?.features?.labels===false?'':'<div class="modal-actions">'+
+          '<button type="button" class="btn dark" data-bel-part-queue="1" '+
+          (String(p.part_number||'').trim()?'':'disabled')+'>Dodaj do druku</button>'+
+          '<span data-bel-part-queue-status role="status" class="muted">'+
+          (String(p.part_number||'').trim()?'':'Brak indeksu GPBS')+'</span></div>')
+        :virtualFrench?'':'<div class="modal-actions">'+
+          '<button type="button" class="btn dark" data-label-add-current="1">Drukuj etykietę</button>'+
+        '</div>');
     // A saved photo can exist in the catalogue even if the browser cannot decode it.
     // Show a readable error instead of a broken or invisible image.
     const partImage=body.querySelector('.part-photo-zoom img');
@@ -4689,6 +4699,20 @@ document.addEventListener('click',e=>{
   const belleTab=e.target.closest('[data-belleville-stock]');
   if(belleTab){setBellevilleStockTab(belleTab.dataset.bellevilleStock);return;}
   const tab=e.target.closest('[data-stock-tab]');if(tab){setStockTab(tab.dataset.stockTab);return;}
+  const belPartQueue=e.target.closest('[data-bel-part-queue]');
+  if(belPartQueue){
+    const part=state.labelPart;
+    if(!state.user||!isBellevilleStock()||state.stockTab!=='parts'||
+       state.user.features?.labels===false||!part||belPartQueue.disabled)return;
+    const status=belPartQueue.parentElement.querySelector('[data-bel-part-queue-status]');
+    try{
+      const service=window.GPBSBellevilleLabelsDemo;
+      if(!service?.enqueuePart)throw Error('Odśwież Office i spróbuj ponownie.');
+      const result=service.enqueuePart(part,bellevilleLabelScope().scope);
+      status.textContent=result.added?'Dodano do druku · '+result.count+' szt. w kolejce':'W kolejce jest już maks. 20 szt.';
+    }catch(err){status.textContent=err.message||'Nie udało się dodać etykiety.';}
+    return;
+  }
   if(e.target.closest('[data-label-add-current]')){
     const part=state.labelPart;
     if(!part)return;
