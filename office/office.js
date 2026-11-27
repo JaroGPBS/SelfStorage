@@ -3935,7 +3935,7 @@ function openBellevilleDemoDocumentPrint(id){
   $('docPrintSheet').innerHTML=sheet.html;
   $('docPrintSheet').dataset.localPz=sheet.localImport?'1':'0';
   $('docPrintModal').classList.remove('hidden');
-  if(sheet.direction==='PZ'){
+  if(['PZ','WZ'].includes(sheet.direction)){
     const driver=$('docPrintDriver');
     const original=window.GPBSBellevilleDocsDemo.find(id)?.driver||'';
     driver.value=original==='—'||original==='-'?'':original;
@@ -5029,7 +5029,7 @@ $('docPrintDriver').addEventListener('input',()=>{
   const input=$('docPrintDriver');
   if($('docPrintDriverWrap').hidden||$('docPrintModal').classList.contains('hidden')||!input.dataset.pzId)return;
   const sheet=window.GPBSBellevilleDocsDemo?.printHtml(input.dataset.pzId,input.value);
-  if(sheet?.direction==='PZ')$('docPrintSheet').innerHTML=sheet.html;
+  if(sheet&&['PZ','WZ'].includes(sheet.direction))$('docPrintSheet').innerHTML=sheet.html;
 });
 $('docPrintButton').addEventListener('click',printOfficeDocument);
 window.addEventListener('afterprint',clearOfficePrintStyle);
