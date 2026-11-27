@@ -689,6 +689,7 @@ async function saveOfficeNewPart(event){
 }
 function errorBanner(message){$('errorBanner').textContent=message||'';$('errorBanner').classList.toggle('hidden',!message);}
 function showLogin(message=''){
+  resetBellevillePrintDriver();
   window.GPBSBellevilleDocsDemo?.clearLocal();
   if($('docPrintSheet')?.dataset.localPz==='1'){
     $('docPrintSheet').replaceChildren();delete $('docPrintSheet').dataset.localPz;
@@ -2820,7 +2821,13 @@ function clearOfficePrintStyle(){
   document.body.classList.remove('printing-office-document');
   document.getElementById('officeDocumentPageStyle')?.remove();
 }
+function resetBellevillePrintDriver(){
+  $('docPrintDriverWrap').hidden=true;
+  $('docPrintDriver').value='';
+  delete $('docPrintDriver').dataset.pzId;
+}
 function closeDocumentPrint(){
+  resetBellevillePrintDriver();
   clearOfficePrintStyle();
   $('docPrintModal').classList.add('hidden');
   $('docPrintSheet').innerHTML='';
@@ -3928,7 +3935,17 @@ function openBellevilleDemoDocumentPrint(id){
   $('docPrintSheet').innerHTML=sheet.html;
   $('docPrintSheet').dataset.localPz=sheet.localImport?'1':'0';
   $('docPrintModal').classList.remove('hidden');
-  $('docPrintClose').focus();
+  if(sheet.direction==='PZ'){
+    const driver=$('docPrintDriver');
+    const original=window.GPBSBellevilleDocsDemo.find(id)?.driver||'';
+    driver.value=original==='—'||original==='-'?'':original;
+    driver.dataset.pzId=id;
+    $('docPrintDriverWrap').hidden=false;
+    driver.focus();
+  }else{
+    resetBellevillePrintDriver();
+    $('docPrintClose').focus();
+  }
   return true;
 }
 function openBellevilleDemoCmrPrint(id){
@@ -5008,6 +5025,12 @@ $('officeNewPartPhoto').addEventListener('change',async()=>{
   }
 });
 $('modalClose').addEventListener('click',closeModal);
+$('docPrintDriver').addEventListener('input',()=>{
+  const input=$('docPrintDriver');
+  if($('docPrintDriverWrap').hidden||$('docPrintModal').classList.contains('hidden')||!input.dataset.pzId)return;
+  const sheet=window.GPBSBellevilleDocsDemo?.printHtml(input.dataset.pzId,input.value);
+  if(sheet?.direction==='PZ')$('docPrintSheet').innerHTML=sheet.html;
+});
 $('docPrintButton').addEventListener('click',printOfficeDocument);
 window.addEventListener('afterprint',clearOfficePrintStyle);
 window.addEventListener('afterprint',clearVehicleInventoryPrintStyle);
