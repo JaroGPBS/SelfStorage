@@ -186,7 +186,7 @@ function openDialog(plan=null){
   $('belLoadingTitle').textContent=plan?'Edytuj listę załadunkową':'Dodaj listę załadunkową';
   const next=new Date();next.setDate(next.getDate()+7);
   const defaultWeek=toWeek(next);
-  $('belLoadingRoute').value=plan?.routeCode||'';
+  $('belLoadingRoute').value=String(plan?.routeCode||'').toUpperCase();
   $('belLoadingWeek').value=plan?.week||defaultWeek.week;
   $('belLoadingYear').value=plan?.year||defaultWeek.year;
   $('belLoadingPaste').value=(plan?.lines||[]).map(line=>
@@ -227,6 +227,16 @@ body.addEventListener('click',event=>{
   if(!edit)return;
   const plan=state.plans.find(row=>row.id===edit.dataset.belLoadingEdit);
   if(plan)openDialog(plan);
+});
+$('belLoadingRoute').addEventListener('input',()=>{
+  const input=$('belLoadingRoute');
+  const original=input.value,upper=original.toUpperCase();
+  if(original===upper)return;
+  const start=input.selectionStart,end=input.selectionEnd,direction=input.selectionDirection;
+  input.value=upper;
+  if(start!==null&&end!==null)input.setSelectionRange(
+    original.slice(0,start).toUpperCase().length,
+    original.slice(0,end).toUpperCase().length,direction||'none');
 });
 form.addEventListener('submit',save);
 $('belLoadingCancel').addEventListener('click',()=>dialog.close());
