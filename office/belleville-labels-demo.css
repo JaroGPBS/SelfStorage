@@ -107,6 +107,8 @@
  #belLabPrintRoot .bel-lab-ok-sheet{width:210mm;height:297mm;aspect-ratio:auto;margin:0;border:0;container-type:normal;break-after:page;page-break-after:always;overflow:hidden}
  #belLabPrintRoot .bel-lab-ok-sheet:last-child{break-after:auto;page-break-after:auto}
  #belLabPrintRoot .bel-lab-ok-grid{grid-template-columns:repeat(3,70mm);padding:0;gap:0}
+ #belLabPrintRoot .bel-lab-ok-back-row{box-sizing:border-box;width:100%;height:39mm;border:0;border-bottom:.15mm solid #aaa}
+ #belLabPrintRoot .bel-lab-ok-back-row:first-child{border-top:.15mm solid #aaa}
  #belLabPrintRoot .bel-lab-ok-label{width:70mm;height:39mm;border:0;border-right:.15mm solid #aaa;border-bottom:.15mm solid #aaa;gap:.8mm}
  #belLabPrintRoot .bel-lab-ok-label:nth-child(-n+3){border-top:.15mm solid #aaa}
  #belLabPrintRoot .bel-lab-ok-qr{width:28mm;height:28mm;padding:2.5mm}
