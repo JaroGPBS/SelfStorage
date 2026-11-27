@@ -42,8 +42,21 @@ function saveDemoQueue(){
 const pendingModules=()=>deliveries.filter(p=>moduleQueue.has(p.id));
 const moduleMatches=()=>moduleQuery.trim()?deliveries.filter(p=>p.serial.toLocaleLowerCase('pl').includes(moduleQuery.trim().toLocaleLowerCase('pl'))):[];
 const moduleStatus=p=>'<span class="'+(p.status==='NOK'?'bel-lab-nok':'bel-lab-ok')+'">'+esc(p.status)+'</span>';
+function usePartScope(scope){
+ if(partScope!==scope){queue.clear();parts=[];partScope=scope;restoreDemoQueue(scope);}
+}
+function enqueuePart(part,scope){
+ const id=String(part?.id||'');
+ if(!scope||!id||!String(part?.part_number||'').trim())throw Error('Część nie ma indeksu GPBS.');
+ usePartScope(scope);
+ const old=queue.get(id)||0;
+ const count=Math.min(20,old+1);
+ queue.set(id,count);
+ tab='parts';
+ return {count,added:count>old};
+}
 function setParts(rows,warehouseId,scope){
- if(partScope!==scope){queue.clear();partScope=scope;restoreDemoQueue(scope);}
+ usePartScope(scope);
  parts=rows.map(p=>({id:String(p.id),name:String(p.name||''),code:String(p.part_number||'').trim(),sap:String(p.sap_number||''),photoUrl:'/api/office?view='+(warehouseId?'partPhoto&warehouse='+encodeURIComponent(warehouseId):'frCatalogPhoto')+'&part='+encodeURIComponent(p.id)}))
   .sort((a,b)=>a.name.localeCompare(b.name,'pl',{sensitivity:'base'}));
  const allowed=new Set(parts.filter(p=>p.code).map(p=>p.id));
@@ -176,5 +189,5 @@ async function print(mode='main'){
 }
 function cleanup(){if(!printing)return;document.body.classList.remove('printing-bel-labels','printing-bel-labels-ok');document.getElementById('belLabPrintRoot')?.remove();document.getElementById('belLabPageStyle')?.remove();printing=false;}
 window.addEventListener('afterprint',cleanup);
-window.GPBSBellevilleLabelsDemo={render,setParts};
+window.GPBSBellevilleLabelsDemo={render,setParts,enqueuePart};
 })();
