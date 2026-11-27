@@ -9,7 +9,7 @@
   <title>GPBS Storage - Office</title>
   <link rel="icon" href="/icons/app-icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./office.css?v=192">
+  <link rel="stylesheet" href="./office.css?v=193">
   <link rel="stylesheet" href="./pl-routes.css?v=61">
   <link rel="stylesheet" href="./office-labels.css?v=5">
   <link rel="stylesheet" href="./belleville-loading-plans.css?v=1">
@@ -127,13 +127,13 @@
   <script defer src="./qrcode.min.js?v=1"></script>
   <script defer src="./office-labels.js?v=6"></script>
   <script defer src="./vehicle-report-export.js?v=11"></script>
-  <script defer src="./belleville-docs-demo.js?v=19"></script>
+  <script defer src="./belleville-docs-demo.js?v=20"></script>
   <script defer src="./belleville-team-supply-demo.js?v=6"></script>
   <script defer src="./belleville-cmr-carriers.js?v=1"></script>
   <script defer src="./belleville-cmr-pdf-demo.js?v=14"></script>
   <script defer src="./belleville-order-demo.js?v=2"></script>
   <script defer src="./belleville-labels-demo.js?v=9"></script>
-  <script defer src="./office.js?v=211"></script>
+  <script defer src="./office.js?v=212"></script>
   <script defer src="./belleville-loading-plans.js?v=4"></script>
   <script defer src="./pl-routes-export.js?v=5"></script>
   <script defer src="./pl-routes.js?v=66"></script>
@@ -646,6 +646,9 @@
         <div id="docPrintSheet" class="doc-print-sheet"></div>
       </div>
       <div class="doc-print-actions">
+        <label id="docPrintDriverWrap" class="belleville-print-driver" hidden>Imię i nazwisko kierowcy
+          <input type="text" id="docPrintDriver" maxlength="150" autocomplete="off" placeholder="Wpisz imię i nazwisko">
+        </label>
         <button type="button" class="btn dark" id="docPrintButton">Drukuj</button>
       </div>
     </div>
