@@ -690,6 +690,7 @@ async function saveOfficeNewPart(event){
 function errorBanner(message){$('errorBanner').textContent=message||'';$('errorBanner').classList.toggle('hidden',!message);}
 function showLogin(message=''){
   window.GPBSBellevilleCmrCarriers?.reset();
+  window.GPBSBellevilleCmrPdfDemo?.reset();
   resetBellevillePrintDriver();
   window.GPBSBellevilleDocsDemo?.clearLocal();
   if($('docPrintSheet')?.dataset.localPz==='1'){

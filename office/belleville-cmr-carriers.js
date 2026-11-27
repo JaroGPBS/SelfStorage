@@ -3,6 +3,8 @@
   'use strict';
   let entries=[];
   let loaded=false;
+  let canManage=false;
+  let sessionVersion=0;
   let page=null;
   let generation=0;
   let active=()=>false;
@@ -25,7 +27,10 @@
   }
   async function list(force=false){
     if(!loaded||force){
+      const version=sessionVersion;
       const data=await request('GET');
+      if(version!==sessionVersion)return [];
+      canManage=data.canManage===true;
       entries=data.carriers||[];
       loaded=true;
     }
@@ -71,12 +76,12 @@
     $('belCarrierForm').addEventListener('submit',save);
     $('belCarrierDelete').addEventListener('click',remove);
     $('belCarrierClearStamp').addEventListener('click',()=>{
-      if(busy)return;
+      if(busy||!canManage)return;
       ++selectionVersion;changedStamp='';$('belCarrierStamp').value='';showStamp('');
     });
     $('belCarrierStamp').addEventListener('change',async ev=>{
       const file=ev.target.files?.[0];
-      if(!file||busy)return;
+      if(!file||busy||!canManage)return;
       const version=++selectionVersion,token=generation;
       try{
         if(file.size>2*1024*1024||file.type!=='image/png')
@@ -131,21 +136,31 @@
     $('belCarrierName').value=selected?.name||'';
     $('belCarrierAddress').value=selected?.address||'';
     $('belCarrierStamp').value='';
-    showStamp(selected?.stampBase64||'');
+    showStamp(canManage?selected?.stampBase64||'':'');
     $('belCarrierDelete').disabled=busy||!id;
     notice('');
     draw();
     onCount(entries.length);
     if(focus)$('belCarrierName').focus();
   }
+  function applyPermissions(){
+    for(const el of [
+      $('belCarrierNew'),$('belCarrierStamp').closest('label'),
+      $('belCarrierStampPreview').closest('.bel-carrier-stamp-preview'),
+      $('belCarrierSave').closest('.bel-carrier-form-actions')
+    ]){el.hidden=!canManage;el.style.display=canManage?'':'none';}
+    $('belCarrierName').readOnly=!canManage;
+    $('belCarrierAddress').readOnly=!canManage;
+    if(!canManage){changedStamp=undefined;$('belCarrierStamp').value='';showStamp('');}
+  }
   function setBusy(value){
     busy=value;
     for(const el of page.querySelectorAll('input,textarea,button'))el.disabled=value;
-    if(!value)$('belCarrierDelete').disabled=!selectedId;
+    if(!value)$('belCarrierDelete').disabled=!selectedId||!canManage;
   }
   async function save(e){
     e.preventDefault();
-    if(busy||!active())return;
+    if(busy||!active()||!canManage)return;
     const token=generation;
     setBusy(true);notice('');
     try{
@@ -162,7 +177,7 @@
     finally{if(token===generation)setBusy(false);}
   }
   async function remove(){
-    if(busy||!active())return;
+    if(busy||!active()||!canManage)return;
     const token=generation;
     const item=entries.find(x=>x.id===selectedId);
     if(!item||!window.confirm('Usunąć przewoźnika '+item.name+'?'))return;
@@ -181,6 +196,7 @@
     active=isActive;
     onCount=count;
     host.replaceChildren(page);
+    canManage=false;applyPermissions();
     setBusy(true);
     $('belCarrierRows').replaceChildren();
     $('belCarrierName').value='';$('belCarrierAddress').value='';
@@ -190,6 +206,7 @@
     try{
       await list(true);
       if(token!==generation||!active())return;
+      applyPermissions();
       select(entries.some(x=>x.id===selectedId)?selectedId:(entries[0]?.id||''));
       setBusy(false);
     }catch(err){
@@ -198,6 +215,7 @@
   }
   function reset(){
     ++generation;++selectionVersion;active=()=>false;onCount=()=>{};
+    ++sessionVersion;canManage=false;
     entries=[];loaded=false;selectedId='';changedStamp=undefined;
     if(page){page.remove();page=null;}
     busy=false;

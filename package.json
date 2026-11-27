@@ -1,0 +1,8 @@
+{
+  "name": "gpbs-storage",
+  "private": true,
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "@pdf-lib/upng": "1.0.1"
+  }
+}

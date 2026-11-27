@@ -23,7 +23,7 @@ export async function onRequestGet({request,env}){
   try{
     const action=new URL(request.url).searchParams.get('view')||'carriers';
     if(action==='carriers')
-      return workerJson({ok:true,carriers:await listCmrCarriers(env.DB)});
+      return workerJson({ok:true,canManage:user.role==='ADMIN',carriers:await listCmrCarriers(env.DB,user.role==='ADMIN')});
     if(action==='weights'){
       // D1 schema setup runs once per table; avoid concurrent CREATE TABLE
       // operations on the first request after deployment.
@@ -46,8 +46,8 @@ export async function onRequestPost({request,env}){
   let user;
   try{user=await allowedUser(request,env);}catch(_){return fail('Błąd sesji.',503);}
   if(!user)return fail('Brak dostępu do Office Francja.',403);
-  // A signed-in Belleville Office warehouse clerk can maintain carriers too.
-  if(!['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER'].includes(user.role))
+  // Only ADMIN may modify a carrier, including deleting its stamp indirectly.
+  if(user.role!=='ADMIN')
     return fail('Brak uprawnień do edycji przewoźników.',403);
   let body;
   try{

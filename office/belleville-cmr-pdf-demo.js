@@ -21,6 +21,7 @@
   let initialized=false;
   let weightManuallyEdited=false;
   let currentPdfBytes=null;
+  let cleanPdfBytes=null;
   let pdfMode='draft';
   let printRecord=null;
   let lastSavedSnapshot=null;
@@ -163,7 +164,7 @@
       driver:doc.driver||'',
       plate:doc.truck||'',
       trailer:doc.trailer&&doc.trailer!=='—'?doc.trailer:'',
-      stampBase64:'',
+      carrierId:null,
       carrier:[doc.carrier,doc.truck&&'Nr rej.: '+doc.truck+
         (doc.trailer&&doc.trailer!=='—'?' / '+doc.trailer:''),doc.driver&&'Kierowca: '+doc.driver]
         .filter(Boolean).join('\n'),
@@ -232,10 +233,10 @@
     const item=(window.GPBSBellevilleCmrCarriers?.get()||[]).find(c=>c.id===id);
     if(item){
       values.carrierBase=[item.name,item.address].filter(Boolean).join('\n');
-      values.stampBase64=item.stampBase64||'';
+      values.carrierId=item.id;
     }else{
       values.carrierBase='';
-      values.stampBase64='';
+      values.carrierId='';
     }
     composeCarrier();
   }
@@ -251,7 +252,11 @@
       select.replaceChildren(new Option('— Wybierz przewoźnika —',''));
       for(const carrier of carriers)select.add(new Option(carrier.name,carrier.id));
       const matched=carriers.find(x=>x.name.toUpperCase()===String(doc.carrier||'').toUpperCase());
-      if(matched&&!restore){select.value=matched.id;selectCmrCarrier();}
+      if(restore){
+        const selected=carriers.find(x=>x.id===values.carrierId)||
+          (values.carrierId==null?carriers.find(x=>x.name.toUpperCase()===String(values.carrierBase||'').split('\n')[0].trim().toUpperCase()):null);
+        if(selected)select.value=selected.id;
+      }else if(matched){select.value=matched.id;selectCmrCarrier();}
     }catch(_){
       // CMR remains editable even if the Office carrier list is unavailable.
     }
@@ -444,13 +449,13 @@
       showError('Aby zapisać poprawki, najpierw wczytaj pusty szablon PDF.');
       return;
     }
-    if(!currentPdfBytes||pdfMode!=='draft'||!values||renderTimer||renderInProgress){
+    if(!currentPdfBytes||!cleanPdfBytes||pdfMode!=='draft'||!values||renderTimer||renderInProgress){
       showError('Zaczekaj na aktualny podgląd CMR przed wydrukiem.');
       return;
     }
     const id=currentId,token=viewToken,operation=++printRequestVersion;
     const snapshot={...values};
-    const pdf=new Blob([currentPdfBytes],{type:'application/pdf'});
+    const pdf=new Blob([cleanPdfBytes],{type:'application/pdf'});
     isSavingPrint=true;
     setEditorBusy(true);
     $('cmrPdfDemoPrint').disabled=true;
@@ -472,8 +477,11 @@
       serverClockOffset=Number(data.serverNow)-Date.now();
       showError('');
       lockStatus();
-      setHint('PDF zapisany. Możesz wydrukować dokument.');
-      printPdf();
+      await readStoredPdf(id,token);
+      if(token===viewToken&&currentId===id&&pdfMode==='stored'&&currentPdfBytes){
+        setHint('PDF zapisany. Możesz wydrukować dokument.');
+        printPdf();
+      }
     }catch(err){
       if(token===viewToken&&currentId===id){
         showError(err.message||'Nie udało się zapisać CMR. Wydruk wstrzymany.');
@@ -640,6 +648,8 @@
     $('cmrPdfDemoModal').classList.add('hidden');
     if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl='';}
     currentPdfBytes=null;
+    cleanPdfBytes=null;
+    values=null;
     pdfMode='draft';
     $('cmrPdfDemoFrame').removeAttribute('src');
     $('cmrPdfDemoPrint').disabled=true;
@@ -729,42 +739,6 @@
     }
   }
   function B(x,y,w,h){return {x,y,w,h};}
-  // Ignore blank transparent/white scan margins when fitting a stamp.
-  // Keep the original stored PNG unchanged and preserve the ink proportions.
-  async function croppedStampBytes(base64){
-    const original=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
-    try{
-      const img=new Image();
-      img.src='data:image/png;base64,'+base64;
-      await img.decode();
-      const w=img.naturalWidth,h=img.naturalHeight;
-      if(!w||!h||w*h>2000000)return original;
-      const canvas=document.createElement('canvas');
-      canvas.width=w;canvas.height=h;
-      const ctx=canvas.getContext('2d',{willReadFrequently:true});
-      if(!ctx)return original;
-      ctx.drawImage(img,0,0);
-      const data=ctx.getImageData(0,0,w,h).data;
-      let left=w,top=h,right=-1,bottom=-1;
-      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-        const i=(y*w+x)*4;
-        if(data[i+3]<=12||Math.min(data[i],data[i+1],data[i+2])>=248)continue;
-        left=Math.min(left,x);top=Math.min(top,y);
-        right=Math.max(right,x);bottom=Math.max(bottom,y);
-      }
-      if(right<left||bottom<top)return original;
-      const pad=Math.max(2,Math.round(Math.min(w,h)*.025));
-      left=Math.max(0,left-pad);top=Math.max(0,top-pad);
-      right=Math.min(w-1,right+pad);bottom=Math.min(h-1,bottom+pad);
-      const cw=right-left+1,ch=bottom-top+1;
-      if(cw===w&&ch===h)return original;
-      const crop=document.createElement('canvas');crop.width=cw;crop.height=ch;
-      const cropCtx=crop.getContext('2d');if(!cropCtx)return original;
-      cropCtx.drawImage(canvas,left,top,cw,ch,0,0,cw,ch);
-      const encoded=crop.toDataURL('image/png').split(',')[1];
-      return encoded?Uint8Array.from(atob(encoded),c=>c.charCodeAt(0)):original;
-    }catch{return original;}
-  }
   async function render(){
     if(!templateBytes||!values||!recordLoaded||editorLocked||isSavingPrint||
        isLocked()||$('cmrPdfDemoModal').classList.contains('hidden'))return;
@@ -817,23 +791,26 @@
       // The final "CMR Belleville.pdf" has a blank date field.
       stamp(page,B(222,742,65,15),snapshot.issueDate,
         {size:9,margin:1,label:'Data wystawienia'},fonts,lib,overflowFields);
-      if(snapshot.stampBase64){
-        const raw=await croppedStampBytes(snapshot.stampBase64);
-        const png=await pdf.embedPng(raw);
-        // Stay below the top rule of field 23 and above the signature caption.
-        const frame=B(260,762,158,35);
-        const fit=png.scaleToFit(frame.w,frame.h);
-        page.drawImage(png,{
-          x:frame.x+(frame.w-fit.width)/2,
-          y:page.getHeight()-frame.y-frame.h+(frame.h-fit.height)/2,
-          width:fit.width,height:fit.height
-        });
-      }
       if(sequence!==renderCounter)return;
-      const data=await pdf.save();
+      const data=new Uint8Array(await pdf.save());
+      if(sequence!==renderCounter||docId!==currentId)return;
+      const form=new FormData();
+      form.append('documentId',docId);
+      form.append('revision',String(printRecord?.revision||0));
+      form.append('fields',JSON.stringify(snapshot));
+      form.append('pdf',new Blob([data],{type:'application/pdf'}),docId+'.pdf');
+      const response=await fetch(documentApi(docId)+'&view=preview',{
+        method:'POST',credentials:'same-origin',cache:'no-store',body:form
+      });
+      if(!response.ok){
+        const failure=await response.json().catch(()=>({}));
+        throw Error(failure.error||'Nie udało się przygotować podglądu CMR.');
+      }
+      const stamped=new Uint8Array(await response.arrayBuffer());
       if(sequence!==renderCounter||docId!==currentId||
         $('cmrPdfDemoModal').classList.contains('hidden'))return;
-      setPdfPreview(new Uint8Array(data),'draft');
+      cleanPdfBytes=data;
+      setPdfPreview(stamped,'draft');
       if(overflowFields.length){
         showError('Tekst nie mieści się w polu: '+overflowFields.join(', ')+
           '. W podglądzie pokazano tylko część. Skróć wpis lub podziel dane — drukowanie jest wstrzymane do poprawy.');
@@ -879,6 +856,7 @@
     renderCounter++;
     renderQueued=false;
     currentId=id;
+    cleanPdfBytes=null;
     values=next;
     printRecord=null;
     lastSavedSnapshot=null;
@@ -913,6 +891,8 @@
       serverClockOffset=Number(data.serverNow)-Date.now();
       if(printRecord){
         values={...next,...printRecord.fields};
+        delete values.stampBase64;
+        lastSavedSnapshot=JSON.stringify(values);
         weightManuallyEdited=true;
       }
       recordLoaded=true;
@@ -955,5 +935,5 @@
     }
     return true;
   }
-  window.GPBSBellevilleCmrPdfDemo={open};
+  window.GPBSBellevilleCmrPdfDemo={open,reset:()=>{if(initialized)close();}};
 })();

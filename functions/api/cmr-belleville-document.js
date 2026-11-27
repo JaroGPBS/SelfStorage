@@ -7,6 +7,8 @@ import {
   r2Ready,ensurePhotoTables,reservePhotoWrite,releasePhotoBytes,recordPhotoRead
 } from '../../lib/pl-r2-photos.js';
 
+import {cmrPublicFields,stampCmrPdf} from '../../lib/cmr-belleville-stamp.js';
+
 const WINDOW_MS=60*60*1000;
 const MAX_PDF=6*1024*1024;
 const MAX_FIELDS=240000;
@@ -43,7 +45,7 @@ function publicRecord(row,now){
     documentId:row.document_id,firstPrintedAtMs:Number(row.started_at_ms),
     lockedAtMs:Number(row.locked_at_ms),revision:Number(row.revision),
     locked:now>=Number(row.locked_at_ms),
-    fields:JSON.parse(row.fields_json)
+    fields:cmrPublicFields(JSON.parse(row.fields_json))
   };
 }
 function documentId(request){
@@ -100,7 +102,8 @@ export async function onRequestPost({request,env}){
   try{user=await authorize(request,env);}
   catch(_){return fail('Nie udało się zweryfikować sesji.',503);}
   if(!user)return fail('Brak dostępu do Office Francja.',403);
-  if(!r2Ready(env))return fail('Archiwum R2 nie jest skonfigurowane. Nie można zatwierdzić wydruku.',503);
+  const previewOnly=url.searchParams.get('view')==='preview';
+  if(!previewOnly&&!r2Ready(env))return fail('Archiwum R2 nie jest skonfigurowane. Nie można zatwierdzić wydruku.',503);
   if(Number(request.headers.get('Content-Length')||0)>MAX_PDF+MAX_FIELDS+16384)
     return fail('Dokument CMR jest zbyt duży.',413);
   let form;
@@ -124,11 +127,24 @@ export async function onRequestPost({request,env}){
        typeof fields.loadingDate!=='string'||typeof fields.issueDate!=='string')
       throw Error();
   }catch(_){return fail('Nieprawidłowe pola CMR.',400);}
-  const bytes=new Uint8Array(await file.arrayBuffer());
+  if(Object.prototype.hasOwnProperty.call(fields,'stampBase64'))
+    return fail('Odśwież Office, aby użyć nowego zabezpieczenia CMR.',409);
+  let bytes=new Uint8Array(await file.arrayBuffer());
   const pdfHead=new TextDecoder().decode(bytes.slice(0,5));
   const pdfTail=new TextDecoder().decode(bytes.slice(-1024));
   if(pdfHead!=='%PDF-'||!pdfTail.includes('%%EOF'))
     return fail('Wysłany plik nie jest prawidłowym PDF-em.',415);
+  if(previewOnly){
+    try{
+      const result=await stampCmrPdf(env.DB,bytes,fields);
+      if(result.byteLength>MAX_PDF)return fail('Dokument CMR jest zbyt duży.',413);
+      return pdfResponse(result,id);
+    }catch(err){
+      console.error('Belleville CMR preview failed',err?.name||'Error');
+      return fail(err?.status?err.message:'Nie udało się przygotować podglądu CMR.',err?.status||503);
+    }
+  }
+  const cleanFields=JSON.stringify(cmrPublicFields(fields));
   let reserved=false,uploaded=false,stored=false;
   const objectKey='cmr/belleville/'+id+'/'+crypto.randomUUID()+'.pdf';
   let previous=null;
@@ -140,6 +156,8 @@ export async function onRequestPost({request,env}){
       return fail('Minęło 60 minut od pierwszego wydruku. CMR jest zablokowana.',423);
     if(revision!==(previous?Number(previous.revision):0))
       return fail('CMR została zmieniona na innym urządzeniu. Otwórz ją ponownie.',409);
+    bytes=await stampCmrPdf(env.DB,bytes,fields);
+    if(bytes.byteLength>MAX_PDF)return fail('Dokument CMR jest zbyt duży.',413);
     await ensurePhotoTables(env.DB);
     await reservePhotoWrite(env.DB,bytes.byteLength);
     reserved=true;
@@ -154,12 +172,12 @@ export async function onRequestPost({request,env}){
       outcome=await env.DB.prepare('UPDATE cmr_belleville_documents SET '+
         'object_key=?,size_bytes=?,fields_json=?,revision=revision+1,updated_at_ms=? '+
         'WHERE document_id=? AND revision=? AND locked_at_ms>?')
-        .bind(objectKey,bytes.byteLength,raw,writtenAt,id,revision,writtenAt).run();
+        .bind(objectKey,bytes.byteLength,cleanFields,writtenAt,id,revision,writtenAt).run();
     }else{
       outcome=await env.DB.prepare('INSERT OR IGNORE INTO cmr_belleville_documents '+
         '(document_id,started_at_ms,locked_at_ms,object_key,size_bytes,'+
         'fields_json,revision,updated_at_ms) VALUES (?,?,?,?,?,?,1,?)')
-        .bind(id,writtenAt,writtenAt+WINDOW_MS,objectKey,bytes.byteLength,raw,writtenAt).run();
+        .bind(id,writtenAt,writtenAt+WINDOW_MS,objectKey,bytes.byteLength,cleanFields,writtenAt).run();
     }
     if(Number(outcome?.meta?.changes||0)!==1)
       throw Object.assign(Error('CMR została właśnie zmieniona albo zablokowana. Otwórz ją ponownie.'),{status:409});
