@@ -193,15 +193,9 @@ function enterBellevilleOperation(direction){
 function renderBellevilleRows(){
  const s=getBellevilleSession();if(!s)return;
  const op=s.operations[belDirection],receipt=belDirection==='PZ';
- bel('bellevilleOperationTitle').textContent=receipt?'Przyjęcie':'Wydanie';
+ bel('belFinishLabel').textContent=receipt?'Zakończ przyjęcie':'Zakończ wydanie';
  bel('bellevilleOperationRoute').textContent=s.route;
- bel('belOperationFinish').textContent=receipt?'Zakończ przyjęcie':'Zakończ wydanie';
- bel('belPlanBar').classList.toggle('hidden',receipt);
- // Move plan next to finish in the WZ header; restore the single finish button in PZ.
- const head=bel('belOperationFinish').parentElement;
- const planBar=bel('belPlanBar');
- if(!receipt&&head!==planBar)planBar.append(bel('belOperationFinish'));
- if(receipt&&head===planBar)document.querySelector('.bel-work-head').insertBefore(bel('belOperationFinish'),bel('bellevilleOperationRoute'));
+ bel('belPlanOpen').classList.toggle('hidden',receipt);
  for(const button of document.querySelectorAll('[data-bel-tab]')){
   const type=button.dataset.belTab;button.textContent=(type==='modules'?'Moduły':'Części')+' ('+op[type].length+')';
   button.classList.toggle('active',type===belTab);button.setAttribute('aria-pressed',String(type===belTab));
@@ -320,7 +314,8 @@ function planProgress(){
 function renderBellevillePlan(){
  if(!bel('belPlanOpen'))return;
  const lines=planProgress(),total=lines.reduce((sum,x)=>sum+x.quantity,0),done=lines.reduce((sum,x)=>sum+x.done,0);
- bel('belPlanOpen').textContent=belPlan?'Lista '+done+'/'+total:'Lista załadunkowa';
+ bel('belPlanCount').textContent=belPlan?done+'/'+total:'';
+ bel('belPlanCount').classList.toggle('hidden',!belPlan);
  bel('belPlanStatus').textContent=belPlan?belPlanState+' • '+done+'/'+total:belPlanState;
  const root=bel('belPlanRows');root.replaceChildren();
  if(!belPlan)return;

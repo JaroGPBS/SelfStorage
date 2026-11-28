@@ -615,19 +615,18 @@ body:has(#screenBelleville.active) .app-signature {
 #screenBelleville:has(#bellevilleOperationView:not(.hidden))>.bel-main-head{display:none}
 body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden))::before{background:linear-gradient(180deg,rgba(7,9,11,.76),rgba(7,9,11,.86)),url("../images/warehouse-background.jpg?v=2") center/cover no-repeat}
 body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-shell{display:flex;flex-direction:column}
-body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header{flex:0 0 auto;height:50px}
-body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header .brand-mark{height:42px!important;width:76px!important;flex-basis:76px!important}
-body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header .brand-mark img{max-height:40px!important}
-body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header .brand-copy strong{font-size:18px!important}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header{display:none!important}
 body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-main{height:auto;flex:1;min-height:0;padding:4px 0 8px}
 body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-signature{display:none}
-#screenBelleville .belleville-operation-view{display:flex;flex:1;min-height:0;flex-direction:column;gap:5px;padding:0}
-#screenBelleville .bel-work-head{display:flex;align-items:center;gap:6px;min-height:42px;flex-shrink:0}
-#screenBelleville .bel-work-head h3{margin:0;font-size:17px;white-space:nowrap}
-#screenBelleville .bel-work-head .instruction-link-btn{font-size:22px;padding:4px;min-width:24px}
-#screenBelleville .bel-work-head .btn{width:auto;flex:1;min-width:0;min-height:44px;font-size:13px;padding:5px 6px;margin:0}
-#screenBelleville .bel-route{font-size:11px;color:var(--muted);max-width:24%;overflow-wrap:anywhere;text-align:right}
-#screenBelleville #belPlanBar .btn{min-height:38px;margin:0;padding:5px 8px;font-size:13px}
+#screenBelleville .belleville-operation-view{display:flex;flex:1;min-height:0;flex-direction:column;gap:4px;padding:0}
+#screenBelleville .bel-work-head{display:flex;align-items:stretch;gap:5px;min-height:44px;flex-shrink:0}
+#screenBelleville .bel-work-head #bellevilleOperationBackBtn{flex:0 0 44px;width:44px;min-width:44px;min-height:44px;padding:5px;display:grid;place-items:center}
+#screenBelleville .bel-work-head .btn{width:auto;min-width:0;min-height:44px;font-size:13px;padding:5px 6px;margin:0;line-height:1.16}
+#screenBelleville .bel-work-head #belPlanOpen{flex:0 0 clamp(80px,25%,112px);display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:12px}
+#screenBelleville .bel-work-head #belPlanOpen small{font-size:10px;font-weight:600;opacity:.8}
+#screenBelleville .bel-work-head #belOperationFinish{flex:1 1 0;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;align-items:baseline;column-gap:5px;row-gap:2px;font-size:clamp(12px,3.8vw,16px)}
+#screenBelleville .bel-work-head #belFinishLabel{max-width:100%;text-align:center}
+#screenBelleville .bel-work-head .bel-route{font-size:.82em;font-weight:500;max-width:100%;overflow-wrap:anywhere;color:var(--text);opacity:.85}
 #screenBelleville .bel-tabs{flex-shrink:0;padding:3px;gap:5px;margin:0}
 #screenBelleville .bel-tabs button{min-height:36px;font-size:13px}
 #screenBelleville .bel-list-head,#screenBelleville .bel-row{display:grid;grid-template-columns:minmax(0,1fr) 44px 42px 32px;gap:5px;align-items:center}
@@ -652,9 +651,4 @@ body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-si
 #screenBelleville .bel-plan-filter{font-size:13px;display:flex;align-items:center;gap:6px;margin:8px 0}
 #screenBelleville .bel-plan-row{display:grid;grid-template-columns:minmax(0,1fr) 40px 42px 48px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
 #screenBelleville .bel-plan-row span:not(:first-child){text-align:right}
-@media(max-width:350px){#screenBelleville .bel-work-head h3{font-size:15px}#screenBelleville .bel-work-head .btn{font-size:12px}}
-
-#screenBelleville #belPlanBar:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0}
-#screenBelleville #belPlanBar .btn{width:100%;min-height:44px;font-size:13px;margin:0;padding:5px 6px}
-#screenBelleville .bel-work-head .bel-route{margin-left:auto}
-#screenBelleville #belPlanBar .gpbs-menu-btn{font-size:13px}
+@media(max-width:350px){#screenBelleville .bel-work-head #belPlanOpen{font-size:11px}#screenBelleville .bel-work-head #belOperationFinish{font-size:12px}}

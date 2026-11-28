@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=7">
   <link rel="stylesheet" href="./css/warehouse.css?v=22">
-  <link rel="stylesheet" href="./css/theme-gpbs.css?v=8">
+  <link rel="stylesheet" href="./css/theme-gpbs.css?v=9">
   <style>
     .toast {
       top: 40%;
@@ -160,12 +160,12 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=84"></script>
+  <script type="module" src="./js/app.js?v=85"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js?v=3"></script>
-  <script type="module" src="./js/admin-ui.js?v=12"></script>
+  <script type="module" src="./js/admin-ui.js?v=13"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -304,8 +304,11 @@
           <button id="belVisitFinish" class="btn belleville-end-session" type="button">Zakończ wizytę</button>
         </div>
         <div id="bellevilleOperationView" class="belleville-operation-view hidden">
-          <div class="bel-work-head"><button id="bellevilleOperationBackBtn" class="instruction-link-btn" type="button" aria-label="Wróć do wizyty">←</button><h3 id="bellevilleOperationTitle"></h3><button id="belOperationFinish" class="btn gpbs-menu-btn" type="button">Zakończ</button><span id="bellevilleOperationRoute" class="bel-route"></span></div>
-          <div id="belPlanBar" class="hidden"><button id="belPlanOpen" class="btn btn-secondary" type="button">Lista załadunkowa</button></div>
+          <div class="bel-work-head">
+            <button id="bellevilleOperationBackBtn" class="instruction-link-btn" type="button" aria-label="Wróć do wizyty"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg></button>
+            <button id="belPlanOpen" class="btn gpbs-menu-btn hidden" type="button"><span>Lista załadunkowa</span><small id="belPlanCount" class="hidden"></small></button>
+            <button id="belOperationFinish" class="btn gpbs-menu-btn" type="button"><span id="belFinishLabel">Zakończ</span> <span id="bellevilleOperationRoute" class="bel-route"></span></button>
+          </div>
           <div class="operation-tabs bel-tabs">
             <button class="operation-tab return active" type="button" data-bel-tab="modules">Moduły (0)</button>
             <button class="operation-tab pick" type="button" data-bel-tab="parts">Części (0)</button>
