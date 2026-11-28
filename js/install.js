@@ -4,15 +4,26 @@ function isStandaloneMode() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 
-async function lockPortraitOrientation() {
+// Keep the app in portrait by default. Only an active OCR camera may rotate.
+let ocrOrientationActive = false;
+let orientationRequest = 0;
+async function syncAppOrientation() {
+  const request = ++orientationRequest;
   if (!screen.orientation?.lock) return;
-
   try {
-    await screen.orientation.lock('portrait-primary');
-  } catch {
-    // W zwykłej karcie przeglądarki blokada może być niedostępna.
-    // Manifest PWA nadal wymusza pion po uruchomieniu zainstalowanej aplikacji.
+    await screen.orientation.lock(ocrOrientationActive ? 'any' : 'portrait-primary');
+  } catch (error) {
+    if(request!==orientationRequest)return;
+    // Some browsers do not support orientation locking in a normal tab.
+    // The device's auto-rotate setting then controls the viewport.
+    if(ocrOrientationActive)console.warn('Zmiana orientacji OCR niedostępna.',error);
   }
+}
+export function setOcrOrientation(active) {
+  const next=Boolean(active);
+  if(next===ocrOrientationActive)return;
+  ocrOrientationActive=next;
+  void syncAppOrientation();
 }
 
 function ensureInstallButton() {
@@ -74,17 +85,17 @@ window.addEventListener('beforeinstallprompt', event => {
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   updateInstallButton();
-  lockPortraitOrientation();
+  syncAppOrientation();
 });
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
-    lockPortraitOrientation();
+    syncAppOrientation();
   }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   ensureInstallButton();
   updateInstallButton();
-  lockPortraitOrientation();
+  syncAppOrientation();
 });

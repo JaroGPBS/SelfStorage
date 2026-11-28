@@ -1,6 +1,6 @@
 import { loadState } from './storage.js';
-import './install.js';
-import {startModuleCapture,stopModuleCapture,captureModuleOcr} from './belleville-module-scan.js?v=2';
+import './install.js?v=1';
+import {startModuleCapture,stopModuleCapture,captureModuleOcr} from './belleville-module-scan.js?v=3';
 
 function normalizeRoleLabel(value) {
   const role = String(value || '').trim().toUpperCase();
@@ -309,15 +309,6 @@ function refreshTransportModuleTypes(preserve=true){
  select.value=previous&&result.some(p=>p.moduleType===previous)?previous:matches.length===1?matches[0].moduleType:'';
  bel('belModuleTypeHint').textContent=matches.length>1?'Prefiks pasuje do kilku typów. Wybierz właściwy.':serial&&matches.length===0?'Nie rozpoznano prefiksu. Wybierz typ ręcznie.':'';
 }
-function renderTransportModulePlan(){
- const panel=bel('belModulePlan'),root=bel('belModulePlanRows');
- panel.classList.toggle('hidden',belDirection!=='WZ');root.replaceChildren();
- if(belDirection!=='WZ')return;
- if(!belPlan){root.textContent=belPlanState||'Brak wybranej listy.';return;}
- const lines=planProgress().filter(x=>x.remaining>0);
- if(!lines.length){root.textContent='Wszystkie pozycje zostały wydane.';return;}
- for(const x of lines){const row=node('div',null,'bel-plan-row');row.append(node('span',x.displayName),node('strong',String(x.remaining),'bel-plan-qty'));root.append(row);}
-}
 function openTransportModule(scan=true,existingSerial=null){
  const s=getBellevilleSession();if(!s||bellevilleView!=='operation'||belTab!=='modules'||!canBellevilleOperation(belDirection))return;
  const existing=existingSerial?s.operations[belDirection].modules.find(x=>x.serial===existingSerial):null;
@@ -333,8 +324,7 @@ function openTransportModule(scan=true,existingSerial=null){
  bel('belModuleScanStatus').textContent=scan?'Wybierz OCR lub kod QR.':'Wpisz numer seryjny.';
  bel('belModuleCapture').disabled=false;
  for(const b of document.querySelectorAll('[data-bel-module-mode]'))b.setAttribute('aria-pressed','false');
- bel('belModulePlan').open=false;
- refreshTransportModuleTypes();renderTransportModulePlan();
+ refreshTransportModuleTypes();
  bel('belModuleScanDialog').showModal();
  if(!scan)bel('belModuleSerial').focus();else bel('belModuleOcrMode').focus();
 }
@@ -484,7 +474,6 @@ function renderBellevillePlan(){
  select.value=belPlan?.id||'';
  bel('belPlanReload').disabled=belPlanLoading;
  const root=bel('belPlanRows');root.replaceChildren();
- if(bel('belModuleScanDialog')?.open)renderTransportModulePlan();
  if(!belPlan)return;
  const remainingLines=lines.filter(x=>x.remaining>0);
  if(!remainingLines.length){root.append(node('p','Wszystkie pozycje zostały wydane.','bel-plan-complete'));return;}

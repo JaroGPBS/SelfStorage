@@ -763,6 +763,16 @@ body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden))::before{
 #screenBelleville #belModuleScanStatus,#screenBelleville #belModuleTypeHint{font-size:12px;color:var(--text);margin:7px 0}
 #screenBelleville #belModuleTypeHint:empty{display:none}
 #screenBelleville .bel-module-approve{background:#215c38;border-color:#449d66;color:#fff}
-#screenBelleville .bel-module-plan{margin:10px 0 3px;padding:8px;border:1px solid var(--line);border-radius:8px}
-#screenBelleville .bel-module-plan summary{cursor:pointer;font-size:14px;font-weight:600}
 #screenBelleville #belRows .bel-transport-serial{font-size:inherit;font-weight:400;line-height:1.25;color:var(--text);text-align:left;overflow-wrap:anywhere;min-width:0;font-variant-numeric:tabular-nums}
+
+/* OCR only: landscape camera stage, with a wide horizontal serial guide. */
+@media (orientation:landscape) and (max-height:600px){
+ #screenBelleville #belModuleScanDialog.ocr-active{width:min(calc(100% - 24px),740px);max-height:calc(100dvh - 16px);padding:10px 14px}
+ #screenBelleville #belModuleScanDialog.ocr-active h3{font-size:17px;margin:0 0 5px}
+ #screenBelleville #belModuleScanDialog.ocr-active .bel-module-modes{margin-bottom:5px}
+ #screenBelleville #belModuleScanDialog.ocr-active .bel-module-modes .btn{min-height:36px;padding:5px}
+ #screenBelleville #belModuleScanDialog.ocr-active .bel-module-ocr-frame{height:clamp(85px,30dvh,175px)}
+ #screenBelleville #belModuleScanDialog.ocr-active #belModuleReview{display:none}
+ #screenBelleville #belModuleScanDialog.ocr-active #belModuleScanStatus{margin:4px 0}
+ #screenBelleville #belModuleScanDialog.ocr-active button[data-bel-close="belModuleScanDialog"]{min-height:36px;margin-top:3px}
+}

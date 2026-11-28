@@ -1,3 +1,4 @@
+import {setOcrOrientation} from './install.js?v=1';
 // Single module capture. Camera stays off until a mode is chosen.
 // OCR runs on the phone in a WebAssembly worker; no picture is sent to the API.
 const QR_SRC='https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
@@ -30,7 +31,7 @@ async function stopQr(){
  if(current){try{if(current.isScanning)await current.stop();}catch(e){console.warn('QR stop',e);}try{current.clear();}catch{}}
 }
 function endWorker(){const w=worker;worker=null;if(w)void w.terminate().catch(()=>{});}
-function hideCamera(){el('belModuleQrReader').classList.add('hidden');el('belModuleOcrFrame').classList.add('hidden');el('belModuleCapture').classList.add('hidden');}
+function hideCamera(){el('belModuleQrReader').classList.add('hidden');el('belModuleOcrFrame').classList.add('hidden');el('belModuleCapture').classList.add('hidden');el('belModuleScanDialog').classList.remove('ocr-active');setOcrOrientation(false);}
 function enqueue(fn){queue=queue.catch(()=>{}).then(fn);return queue;}
 export function stopModuleCapture(){
  generation++;ocrMode=null;busy=false;stopTracks();endWorker();hideCamera();
@@ -63,7 +64,7 @@ export function startModuleCapture(mode,onResult,onStatus){
     const camera=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
     if(!alive()){camera.getTracks().forEach(t=>t.stop());return;}
     stream=camera;const video=el('belModuleVideo');video.srcObject=camera;
-    el('belModuleOcrFrame').classList.remove('hidden');await video.play();
+    el('belModuleOcrFrame').classList.remove('hidden');el('belModuleScanDialog').classList.add('ocr-active');setOcrOrientation(true);await video.play();
     if(!alive()){stopTracks();return;}
     ocrMode={token,onResult,onStatus};el('belModuleCapture').classList.remove('hidden');
     el('belModuleScanDialog').scrollTop=0;
