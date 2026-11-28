@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=8">
   <link rel="stylesheet" href="./css/warehouse.css?v=22">
-  <link rel="stylesheet" href="./css/theme-gpbs.css?v=19">
+  <link rel="stylesheet" href="./css/theme-gpbs.css?v=20">
   <style>
     .toast {
       top: 40%;
@@ -161,12 +161,12 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=99"></script>
+  <script type="module" src="./js/app.js?v=100"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js?v=3"></script>
-  <script type="module" src="./js/admin-ui.js?v=24"></script>
+  <script type="module" src="./js/admin-ui.js?v=25"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -381,6 +381,30 @@
             <button id="belMessageNo" type="button" class="btn btn-ghost">Nie</button>
             <button id="belMessageYes" type="button" class="btn gpbs-menu-btn">Tak</button>
           </div>
+        </dialog>
+        <dialog id="belModuleScanDialog" class="bel-dialog" aria-labelledby="belModuleScanTitle">
+          <form id="belModuleScanForm">
+            <h3 id="belModuleScanTitle">Skanowanie modułu</h3>
+            <div id="belModuleScanModes" class="bel-module-modes">
+              <button id="belModuleOcrMode" class="btn gpbs-menu-btn" type="button" data-bel-module-mode="OCR" aria-pressed="false">OCR</button>
+              <button class="btn gpbs-menu-btn" type="button" data-bel-module-mode="QR" aria-pressed="false">Kod QR</button>
+            </div>
+            <div id="belModuleQrReader" class="hidden"></div>
+            <div id="belModuleOcrFrame" class="bel-module-ocr-frame hidden"><video id="belModuleVideo" autoplay playsinline muted></video><span aria-hidden="true"></span></div>
+            <button id="belModuleCapture" class="btn gpbs-menu-btn hidden" type="button">Odczytaj</button>
+            <p id="belModuleScanStatus" role="status"></p>
+            <label class="field-label" for="belModuleSerial">Numer seryjny</label>
+            <div id="belModuleSerialPreview" class="bel-module-serial-preview" aria-hidden="true">—</div>
+            <input id="belModuleSerial" class="text-input" type="text" required maxlength="100" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Wpisz lub popraw numer">
+            <div class="bel-module-type-state">
+              <div><label class="field-label" for="belModuleType">Typ modułu</label><select id="belModuleType" required></select></div>
+              <div><label class="field-label" for="belModuleState">Stan</label><select id="belModuleState" required><option value="OK">OK</option><option value="NOK">NOK</option></select></div>
+            </div>
+            <p id="belModuleTypeHint"></p>
+            <button class="btn gpbs-menu-btn bel-module-approve" type="submit">Zatwierdź</button>
+            <details id="belModulePlan" class="bel-module-plan hidden"><summary>Lista załadunkowa</summary><div id="belModulePlanRows"></div></details>
+            <button class="btn btn-ghost" type="button" data-bel-close="belModuleScanDialog">Anuluj</button>
+          </form>
         </dialog>
         <dialog id="belEntryDialog" class="bel-dialog">
           <form id="belEntryForm"><h3 id="belEntryTitle"></h3><div id="belEntryFields"></div><button class="btn gpbs-menu-btn" type="submit">Dodaj</button><button class="btn btn-ghost" type="button" data-bel-close="belEntryDialog">Anuluj</button></form>

@@ -744,3 +744,24 @@ body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden))::before{
 #belInvChoices{display:grid;gap:8px;margin:8px 0 14px;max-height:50dvh;overflow:auto}
 #belInvChoices .bel-inv-choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:8px}
 #belInvChoices .bel-inv-choice small{font-size:11px;font-weight:500;opacity:.8}
+
+/* Single-machine QR/OCR capture for Belleville PZ/WZ. */
+#screenBelleville #belModuleScanDialog{padding:14px;width:min(calc(100% - 24px),480px)}
+#screenBelleville .bel-module-modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+#screenBelleville .bel-module-modes .btn{margin:0}
+#screenBelleville .bel-module-modes .btn[aria-pressed="true"]{border-color:#5fafff;box-shadow:0 0 8px #5fafff50}
+#belModuleQrReader{width:100%;overflow:hidden;border-radius:8px;background:#090b0e}
+#belModuleQrReader video{max-width:100%}
+.bel-module-ocr-frame{position:relative;overflow:hidden;border-radius:8px;background:#090b0e}
+.bel-module-ocr-frame video{display:block;width:100%;height:auto}
+.bel-module-ocr-frame span{position:absolute;inset:37% 8%;border:2px solid #6be69c;border-radius:5px;pointer-events:none;box-shadow:0 0 0 100vmax #0006}
+#screenBelleville .bel-module-serial-preview{font-size:clamp(17px,5.4vw,25px);font-weight:400;text-align:center;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;padding:7px 0}
+#screenBelleville .bel-module-serial-preview strong,#screenBelleville .bel-transport-serial strong{font-weight:800}
+#screenBelleville #belModuleSerial{font-size:15px}
+#screenBelleville .bel-module-type-state{display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:8px}
+#screenBelleville #belModuleScanStatus,#screenBelleville #belModuleTypeHint{font-size:12px;color:var(--text);margin:7px 0}
+#screenBelleville #belModuleTypeHint:empty{display:none}
+#screenBelleville .bel-module-approve{background:#215c38;border-color:#449d66;color:#fff}
+#screenBelleville .bel-module-plan{margin:10px 0 3px;padding:8px;border:1px solid var(--line);border-radius:8px}
+#screenBelleville .bel-module-plan summary{cursor:pointer;font-size:14px;font-weight:600}
+#screenBelleville #belRows .bel-transport-serial{font-size:inherit;font-weight:400;line-height:1.25;color:var(--text);text-align:left;overflow-wrap:anywhere;min-width:0;font-variant-numeric:tabular-nums}

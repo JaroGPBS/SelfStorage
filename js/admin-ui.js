@@ -1,5 +1,6 @@
 import { loadState } from './storage.js';
 import './install.js';
+import {startModuleCapture,stopModuleCapture,captureModuleOcr} from './belleville-module-scan.js?v=1';
 
 function normalizeRoleLabel(value) {
   const role = String(value || '').trim().toUpperCase();
@@ -243,6 +244,7 @@ function enterBellevilleOperation(direction){
  belDirection=direction;belTab='modules';
  showBellevilleView('operation');renderBellevilleRows();
  if(direction==='WZ')void loadBellevillePlan();
+ if(navigator.onLine&&typeof window.gpbsRefreshModulePrefixes==='function')void window.gpbsRefreshModulePrefixes().then(()=>{if(bel('belModuleScanDialog').open)refreshTransportModuleTypes();}).catch(error=>console.warn('Nie udało się odświeżyć katalogu modułów.',error));
 }
 function renderBellevilleRows(){
  const s=getBellevilleSession();if(!s)return;
@@ -261,7 +263,12 @@ function renderBellevilleRows(){
  if(!op[belTab].length)rows.append(node('p',modules?'Brak modułów. Dodaj ręcznie pozycje testowe.':'Brak części. Dodaj ręcznie pozycje testowe.','bel-empty'));
  for(const [i,row] of op[belTab].entries()){
   const line=node('div',null,'bel-row');
-  if(modules)line.append(node('span',row.type),node('span',row.serial),node('span',row.status,row.status.toLowerCase()));
+  if(modules){
+   const edit=node('button',null,'bel-transport-serial');edit.type='button';edit.setAttribute('aria-label','Edytuj moduł '+row.serial);
+   fillTransportSerial(edit,row.serial);edit.onclick=()=>openTransportModule(false,row.serial);
+   const catalogue=loadState()?.startData?.moduleCatalogTypes||[],type=catalogue.find(t=>t.scannerLabel===row.type);
+   line.append(node('span',type?.name||row.type),edit,node('span',row.status,row.status.toLowerCase()));
+  }
   else line.append(node('span',row.name),node('span',String(row.qty)),node('span',''));
   const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń pozycję');remove.onclick=async()=>{
    if(!await belConfirm('Czy usunąć pozycję?'))return;
@@ -272,39 +279,109 @@ function renderBellevilleRows(){
  }
  renderBellevillePlan();
 }
+let transportModuleEdit=null;
+function transportSerialDisplay(value){
+ const serial=moduleInvSerial(value),match=serial.match(/^(.*?)(\d{6,})([A-Z]*)$/);
+ if(!match)return {leading:serial,emphasis:'',suffix:''};
+ const [,prefix,digits,suffix]=match,head=digits.slice(0,-6),tail=digits.slice(-6);
+ return {leading:[prefix,head.replace(/\B(?=(\d{3})+(?!\d))/g,' ')].filter(Boolean).join(' ')+(prefix||head?' ':''),emphasis:tail.slice(0,3)+' '+tail.slice(3),suffix:suffix?' '+suffix:''};
+}
+function fillTransportSerial(root,value){
+ const d=transportSerialDisplay(value);root.replaceChildren(document.createTextNode(d.leading));
+ if(d.emphasis)root.append(node('strong',d.emphasis));
+ if(d.suffix)root.append(document.createTextNode(d.suffix));
+}
+function transportModuleOptions(serial,existing=''){
+ const matches=moduleInvMatches(serial),catalogue=loadState()?.startData?.moduleCatalogTypes||[];
+ const all=[...catalogue.map(t=>({moduleType:t.scannerLabel,typeName:t.name,groupName:t.groupName})),...moduleInvPrefixes(),...(!catalogue.length?MODULE_INV_TYPES.map(t=>({moduleType:t})):[])];
+ const rows=matches.length?matches:all;
+ const result=[...new Map(rows.filter(p=>p.moduleType).map(p=>[p.moduleType,p])).values()];
+ if(existing&&!result.some(p=>p.moduleType===existing))result.push({moduleType:existing});
+ return {matches,result};
+}
+function refreshTransportModuleTypes(preserve=true){
+ const input=bel('belModuleSerial'),select=bel('belModuleType'),serial=moduleInvSerial(input.value),previous=preserve?select.value:'';
+ fillTransportSerial(bel('belModuleSerialPreview'),serial);
+ if(!serial)bel('belModuleSerialPreview').textContent='—';
+ const {matches,result}=transportModuleOptions(serial,previous&&transportModuleEdit?.originalSerial===serial?previous:'');
+ select.replaceChildren(new Option('Wybierz typ modułu',''));
+ for(const p of result)select.append(new Option(p.groupName?p.groupName+' · '+(p.typeName||p.moduleType):p.typeName||p.moduleType,p.moduleType));
+ select.value=previous&&result.some(p=>p.moduleType===previous)?previous:matches.length===1?matches[0].moduleType:'';
+ bel('belModuleTypeHint').textContent=matches.length>1?'Prefiks pasuje do kilku typów. Wybierz właściwy.':serial&&matches.length===0?'Nie rozpoznano prefiksu. Wybierz typ ręcznie.':'';
+}
+function renderTransportModulePlan(){
+ const panel=bel('belModulePlan'),root=bel('belModulePlanRows');
+ panel.classList.toggle('hidden',belDirection!=='WZ');root.replaceChildren();
+ if(belDirection!=='WZ')return;
+ if(!belPlan){root.textContent=belPlanState||'Brak wybranej listy.';return;}
+ const lines=planProgress().filter(x=>x.remaining>0);
+ if(!lines.length){root.textContent='Wszystkie pozycje zostały wydane.';return;}
+ for(const x of lines){const row=node('div',null,'bel-plan-row');row.append(node('span',x.displayName),node('strong',String(x.remaining),'bel-plan-qty'));root.append(row);}
+}
+function openTransportModule(scan=true,existingSerial=null){
+ const s=getBellevilleSession();if(!s||bellevilleView!=='operation'||belTab!=='modules'||!canBellevilleOperation(belDirection))return;
+ const existing=existingSerial?s.operations[belDirection].modules.find(x=>x.serial===existingSerial):null;
+ if(existingSerial&&!existing)return;
+ transportModuleEdit={teamId:s.teamId,startedAt:s.startedAt,direction:belDirection,originalSerial:existing?.serial||null};
+ bel('belModuleScanTitle').textContent=existing?'Edytuj moduł':scan?'Skanowanie modułu':'Dodaj moduł ręcznie';
+ bel('belModuleScanModes').classList.toggle('hidden',!scan);
+ bel('belModuleSerial').value=existing?.serial||'';
+ bel('belModuleType').replaceChildren(new Option('Wybierz typ modułu',''));
+ if(existing)bel('belModuleType').append(new Option(existing.type,existing.type));
+ bel('belModuleType').value=existing?.type||'';
+ bel('belModuleState').value=existing?.status||'OK';
+ bel('belModuleScanStatus').textContent=scan?'Wybierz OCR lub kod QR.':'Wpisz numer seryjny.';
+ bel('belModuleCapture').disabled=false;
+ for(const b of document.querySelectorAll('[data-bel-module-mode]'))b.setAttribute('aria-pressed','false');
+ bel('belModulePlan').open=false;
+ refreshTransportModuleTypes();renderTransportModulePlan();
+ bel('belModuleScanDialog').showModal();
+ if(!scan)bel('belModuleSerial').focus();else bel('belModuleOcrMode').focus();
+}
+function chooseTransportScanMode(mode){
+ if(!transportModuleEdit||!bel('belModuleScanDialog').open)return;
+ for(const b of document.querySelectorAll('[data-bel-module-mode]'))b.setAttribute('aria-pressed',String(b.dataset.belModuleMode===mode));
+ bel('belModuleCapture').disabled=false;
+ void startModuleCapture(mode,value=>{
+  if(!bel('belModuleScanDialog').open)return;
+  const serial=moduleInvSerial(value);
+  if(!moduleInvValidSerial(serial)||!/\d/.test(serial)){bel('belModuleScanStatus').textContent='Nieprawidłowy numer. Wpisz go ręcznie lub zeskanuj ponownie.';return;}
+  if(supplyCatalog().some(p=>(p.kody||[]).some(k=>moduleInvSerial(k)===serial))){bel('belModuleScanStatus').textContent='To kod części, nie modułu.';return;}
+  bel('belModuleSerial').value=serial;refreshTransportModuleTypes(false);
+  bel('belModuleScanStatus').textContent='Sprawdź numer i zatwierdź.';
+  for(const b of document.querySelectorAll('[data-bel-module-mode]'))b.setAttribute('aria-pressed','false');
+ },status=>{if(bel('belModuleScanDialog').open)bel('belModuleScanStatus').textContent=status;});
+}
+function submitTransportModule(event){
+ event.preventDefault();const s=getBellevilleSession(),edit=transportModuleEdit;
+ if(!edit||!s||bellevilleView!=='operation'||belDirection!==edit.direction||s.teamId!==edit.teamId||s.startedAt!==edit.startedAt||!canBellevilleOperation(edit.direction))return;
+ const serial=moduleInvSerial(bel('belModuleSerial').value),type=bel('belModuleType').value,status=bel('belModuleState').value;
+ if(!moduleInvValidSerial(serial)||!/\d/.test(serial)||!type||!['OK','NOK'].includes(status)){bel('belModuleScanStatus').textContent='Sprawdź numer seryjny, typ i stan.';return;}
+ if(supplyCatalog().some(p=>(p.kody||[]).some(k=>moduleInvSerial(k)===serial))){bel('belModuleScanStatus').textContent='To kod części, nie modułu.';return;}
+ const op=s.operations[edit.direction],index=edit.originalSerial?op.modules.findIndex(x=>x.serial===edit.originalSerial):-1;
+ if(edit.originalSerial&&index<0)return;
+ if(op.modules.some((x,i)=>i!==index&&moduleInvSerial(x.serial)===serial)){bel('belModuleScanStatus').textContent='Ten moduł jest już na liście.';return;}
+ const row={serial,type,status};if(index>=0)op.modules[index]=row;else op.modules.push(row);
+ op.done=false;
+ if(saveBellevilleSession(s)){void stopModuleCapture();bel('belModuleScanDialog').close();transportModuleEdit=null;renderBellevilleRows();}
+}
 function openBellevilleEntry(){
  if(!canBellevilleOperation(belDirection)||!getBellevilleSession())return;
- const mod=belTab==='modules';bel('belEntryTitle').textContent=mod?'Dodaj moduł ręcznie':'Dodaj część ręcznie';
+ if(belTab==='modules'){openTransportModule(false);return;}
+ bel('belEntryTitle').textContent='Dodaj część ręcznie';
  const fields=bel('belEntryFields');fields.replaceChildren();
  function input(label,id,attrs={}){const l=node('label',label,'field-label');l.htmlFor=id;const el=node('input');el.id=id;el.className='text-input';Object.assign(el,attrs);fields.append(l,el);return el;}
- if(mod){
-  input('Numer seryjny','belEntrySerial',{required:true,maxLength:100,autocomplete:'off'});
-  const type=input('Typ modułu','belEntryType',{required:true,maxLength:40,autocomplete:'off'});
-  const types=node('datalist');types.id='belTypeSuggestions';for(const val of ['FM','LQ','RQ','XS','ODL','ODR','CU','DUO','HI UNO','HICU']){const opt=node('option');opt.value=val;types.append(opt);}
-  type.setAttribute('list',types.id);fields.append(types);
-  const label=node('label','Stan','field-label');label.htmlFor='belEntryState';const select=node('select');select.id='belEntryState';
-  for(const val of ['OK','NOK']){const opt=node('option',val);opt.value=val;select.append(opt);}fields.append(label,select);
- }else{
-  const name=input('Nazwa lub indeks części','belEntryPart',{required:true,maxLength:140,autocomplete:'off'});
-  if(belPlan?.lines?.length){const list=node('datalist');list.id='belPartSuggestions';for(const line of belPlan.lines.filter(x=>x.kind==='PART')){const opt=node('option');opt.value=line.displayName;list.append(opt);}name.setAttribute('list',list.id);fields.append(list);}
-  input('Ilość','belEntryQty',{required:true,type:'number',min:'1',max:'100000',step:'1',value:'',inputMode:'numeric'});
- }
+ const name=input('Nazwa lub indeks części','belEntryPart',{required:true,maxLength:140,autocomplete:'off'});
+ if(belPlan?.lines?.length){const list=node('datalist');list.id='belPartSuggestions';for(const line of belPlan.lines.filter(x=>x.kind==='PART')){const opt=node('option');opt.value=line.displayName;list.append(opt);}name.setAttribute('list',list.id);fields.append(list);}
+ input('Ilość','belEntryQty',{required:true,type:'number',min:'1',max:'100000',step:'1',value:'',inputMode:'numeric'});
  bel('belEntryDialog').showModal();
 }
 function saveBellevilleEntry(event){
- event.preventDefault();const s=getBellevilleSession();if(!s||!canBellevilleOperation(belDirection))return;
- const op=s.operations[belDirection];
- if(belTab==='modules'){
-  const serial=bel('belEntrySerial').value.trim().toUpperCase(),type=bel('belEntryType').value.trim().toUpperCase(),status=bel('belEntryState').value;
-  if(!serial||!type)return;
-  if(op.modules.some(x=>x.serial===serial)){belAlert('Ten numer seryjny jest już na liście.');return;}
-  op.modules.push({serial,type,status});
- }else{
-  const name=bel('belEntryPart').value.trim(),qty=Number(bel('belEntryQty').value);
-  if(!name||!Number.isSafeInteger(qty)||qty<1||qty>100000)return;
-  const found=op.parts.find(x=>x.name.toUpperCase()===name.toUpperCase());
-  if(found)found.qty+=qty;else op.parts.push({name,qty});
- }
+ event.preventDefault();const s=getBellevilleSession();if(!s||!canBellevilleOperation(belDirection)||belTab!=='parts')return;
+ const op=s.operations[belDirection],name=bel('belEntryPart').value.trim(),qty=Number(bel('belEntryQty').value);
+ if(!name||!Number.isSafeInteger(qty)||qty<1||qty>100000)return;
+ const found=op.parts.find(x=>x.name.toUpperCase()===name.toUpperCase());
+ if(found)found.qty+=qty;else op.parts.push({name,qty});
  op.done=false;
  if(saveBellevilleSession(s)){bel('belEntryDialog').close();renderBellevilleRows();}
 }
@@ -373,13 +450,26 @@ async function loadBellevillePlan(){
  }catch(e){if(token!==belPlanToken)return;belPlanState=e.message||'Nie udało się pobrać listy.';}
  finally{if(token===belPlanToken){belPlanLoading=false;renderBellevillePlan();}}
 }
+function planModuleKey(value,excelName=''){
+ const clean=v=>String(v||'').trim().toUpperCase(),compact=v=>clean(v).replace(/[\s._-]/g,'');
+ const catalogue=loadState()?.startData?.moduleCatalogTypes||[],raw=clean(value);
+ const groupOf=g=>{const key=compact(g);return ['BQ','BLOQIT'].includes(key)?'BQ':['NG','NEWGEN'].includes(key)?'NEWGEN':'INPOST';};
+ if(excelName){
+  const family=String(excelName).split('/')[0];
+  return groupOf(family)+':'+compact(raw.replace(/^(?:INDOOR|OUTDOOR|BQ|BLOQ\.?IT|NEW GEN)\s+/,''));
+ }
+ const found=catalogue.find(t=>clean(t.scannerLabel)===raw);
+ if(found)return groupOf(found.groupName)+':'+compact(found.name);
+ const prefix=raw.match(/^(INDOOR|OUTDOOR|BQ|BLOQ\.?IT|NEW GEN)\s+(.+)$/);
+ return prefix?groupOf(prefix[1])+':'+compact(prefix[2]):'INPOST:'+compact(raw);
+}
 function planProgress(){
  const s=getBellevilleSession(),op=s?.operations.WZ;if(!op||!belPlan)return [];
  const key=v=>String(v||'').trim().replace(/\s+/g,' ').toUpperCase();
  const totals=new Map();
- for(const x of op.modules){const k='MODULE:'+key(x.type);totals.set(k,(totals.get(k)||0)+1);}
+ for(const x of op.modules){const k='MODULE:'+planModuleKey(x.type);totals.set(k,(totals.get(k)||0)+1);}
  for(const x of op.parts){const k='PART:'+key(x.name);totals.set(k,(totals.get(k)||0)+x.qty);}
- return belPlan.lines.map(x=>{const k=x.kind+':'+key(x.displayName),available=totals.get(k)||0,done=Math.min(x.quantity,available);totals.set(k,available-done);return {...x,done,remaining:x.quantity-done};});
+ return belPlan.lines.map(x=>{const k=x.kind+':'+(x.kind==='MODULE'?planModuleKey(x.displayName,x.excelName):key(x.displayName)),available=totals.get(k)||0,done=Math.min(x.quantity,available);totals.set(k,available-done);return {...x,done,remaining:x.quantity-done};});
 }
 function renderBellevillePlan(){
  if(!bel('belPlanOpen'))return;
@@ -394,6 +484,7 @@ function renderBellevillePlan(){
  select.value=belPlan?.id||'';
  bel('belPlanReload').disabled=belPlanLoading;
  const root=bel('belPlanRows');root.replaceChildren();
+ if(bel('belModuleScanDialog')?.open)renderTransportModulePlan();
  if(!belPlan)return;
  const remainingLines=lines.filter(x=>x.remaining>0);
  if(!remainingLines.length){root.append(node('p','Wszystkie pozycje zostały wydane.','bel-plan-complete'));return;}
@@ -832,7 +923,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-bel-close]').forEach(b=>b.addEventListener('click',()=>bel(b.dataset.belClose).close()));
   document.querySelectorAll('[data-bel-ocr]').forEach(b=>b.addEventListener('click',()=>belAlert('OCR tablic zostanie podłączony później.')));
   bel('belManual').addEventListener('click',openBellevilleEntry);
-  bel('belScan').addEventListener('click',()=>belAlert('GPBS Scanner zostanie podłączony później. Na razie użyj opcji Ręcznie.'));
+  bel('belScan').addEventListener('click',()=>{if(belTab==='modules')openTransportModule(true);else belAlert('Skanowanie części zostanie podłączone osobno. Na razie użyj opcji Ręcznie.');});
+  document.querySelectorAll('[data-bel-module-mode]').forEach(b=>b.addEventListener('click',()=>chooseTransportScanMode(b.dataset.belModuleMode)));
+  bel('belModuleCapture').addEventListener('click',captureModuleOcr);
+  bel('belModuleSerial').addEventListener('input',()=>refreshTransportModuleTypes());
+  bel('belModuleScanForm').addEventListener('submit',submitTransportModule);
+  bel('belModuleScanDialog').addEventListener('close',()=>{void stopModuleCapture();transportModuleEdit=null;});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&bel('belModuleScanDialog').open){void stopModuleCapture();bel('belModuleScanStatus').textContent='Aparat wyłączony. Wybierz ponownie OCR lub QR.';}});
+  window.addEventListener('pagehide',()=>{if(bel('belModuleScanDialog').open)void stopModuleCapture();});
   bel('belEntryForm').addEventListener('submit',saveBellevilleEntry);
   bel('belOperationFinish').addEventListener('click',finishBellevilleOperation);
   bel('belOther').addEventListener('click',continueBellevilleOther);

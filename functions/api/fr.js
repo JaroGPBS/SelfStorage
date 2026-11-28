@@ -584,7 +584,7 @@ async function action(db,user,body){
     const bellevilleAccess=user.role!=='EKIPA'&&(user.features?.pz!==false||user.features?.wz!==false)&&
       (isOwnerAdmin(user)||warehouses.some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')));
     const inventoryAccess=user.role!=='EKIPA'&&user.features?.inventory!==false&&(isOwnerAdmin(user)||warehouses.some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')));
-    const moduleScannerCatalog=inventoryAccess?await readModuleScannerCatalog(db):{};
+    const moduleScannerCatalog=(inventoryAccess||bellevilleAccess)?await readModuleScannerCatalog(db):{};
     const bellevilleParts=bellevilleAccess?[...new Map(catalog.map(p=>[p.id,p])).values()].map(p=>({
       id:p.id,nazwa:p.name,indeks:p.new_index||p.part_number||p.id,sap:p.sap_number||'',
       kody:[...new Set([p.id,p.part_number,p.sap_number,p.source_code,p.old_index,p.new_index].filter(Boolean).map(entryCode))]
@@ -663,7 +663,7 @@ export async function onRequestPost({request,env}){
     if(!user.apps?.mobile||!user.markets?.FR)return fail('Brak dostępu do aplikacji mobilnej lub rynku francuskiego.',403);
     const operation=entryCode(body.action);
     if(operation==='POBIERZ_PREFIKSY_MODULOW'){
-      if(user.role==='EKIPA'||user.features?.inventory===false)return fail('Brak uprawnień do inwentaryzacji.',403);
+      if(user.role==='EKIPA'||(user.features?.inventory===false&&user.features?.pz===false&&user.features?.wz===false))return fail('Brak uprawnień do obsługi modułów.',403);
       if(!isOwnerAdmin(user)&&!(await mobileWarehouses(env.DB,user)).some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')))return fail('Brak dostępu do Belleville.',403);
       const moduleScannerCatalog=await readModuleScannerCatalog(env.DB);
       return workerJson({ok:true,...moduleScannerCatalog});
