@@ -732,6 +732,7 @@ body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden))::before{
 #screenBelleville .bel-inv-tabs [data-bel-inv-status="OK"][aria-pressed="true"]{border:2px solid #45cf77;background:#20462f;box-shadow:0 0 9px #45cf7740}
 #screenBelleville .bel-inv-tabs [data-bel-inv-status="NOK"][aria-pressed="true"]{border:2px solid #ff5050;background:#522629;box-shadow:0 0 9px #ff505040}
 #screenBelleville #belInvRows .bel-row{font-size:14px}
-#screenBelleville #belInvRows .bel-inv-edit{font-size:inherit;color:var(--text);text-align:left;overflow-wrap:anywhere;min-width:0}
+#screenBelleville #belInvRows .bel-inv-edit{font-size:inherit;font-weight:400;font-variant-numeric:tabular-nums;color:var(--text);text-align:left;overflow-wrap:anywhere;min-width:0}
+#screenBelleville #belInvRows .bel-inv-serial-emphasis{font-weight:800}
 #screenBelleville #belInvScan[data-status="OK"]{border-color:#45cf77;box-shadow:0 0 9px #45cf7740}
 #screenBelleville #belInvScan[data-status="NOK"]{border-color:#ff5050;box-shadow:0 0 9px #ff505040}

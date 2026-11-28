@@ -519,7 +519,15 @@ async function openModuleInventory(){
   finally{if(moduleInvRefresh===pending){moduleInvRefresh=null;if(bellevilleView==='moduleInventory')renderModuleInventory();}}
  }
 }
-function moduleInvSerial(x){return String(x||'').replace(/\u0000/g,'').trim().toUpperCase();}
+function moduleInvSerial(x){return String(x||'').replace(/[\u0000\s]/g,'').toUpperCase();}
+function moduleInvDisplaySerial(value){
+ const serial=moduleInvSerial(value);
+ const match=serial.match(/^(.*?)(\d+)$/);
+ if(!match||match[2].length<6)return {leading:serial,emphasis:''};
+ const prefix=match[1],digits=match[2],head=digits.slice(0,-6),tail=digits.slice(-6);
+ const grouped=head.replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+ return {leading:[prefix,grouped].filter(Boolean).join(' ')+(prefix||head?' ':''),emphasis:tail.slice(0,3)+' '+tail.slice(3)};
+}
 function moduleInvValidSerial(s){return s.length>0&&s.length<=100&&/^[A-Z0-9][A-Z0-9 ._/-]*$/.test(s)&&!s.includes('://');}
 function moduleInvPrefixes(){const p=loadState()?.startData?.modulePrefixes;return Array.isArray(p)?p:[];}
 function moduleInvType(serial){
@@ -541,7 +549,9 @@ function renderModuleInventory(){
  const visible=d.rows.filter(r=>r.status===d.status);
  if(!visible.length)root.append(node('p',d.status?'Brak zeskanowanych modułów '+d.status+'.':'Wybierz OK lub NOK.','bel-empty'));
  for(const r of [...visible].reverse()){
-  const line=node('div',null,'bel-row'),edit=node('button',r.serial,'bel-inv-edit');edit.type='button';edit.setAttribute('aria-label','Edytuj moduł '+r.serial);edit.onclick=()=>openModuleInvEntry(r.serial,r);
+  const line=node('div',null,'bel-row'),edit=node('button',null,'bel-inv-edit'),display=moduleInvDisplaySerial(r.serial);
+  edit.append(document.createTextNode(display.leading));if(display.emphasis)edit.append(node('strong',display.emphasis,'bel-inv-serial-emphasis'));
+  edit.type='button';edit.setAttribute('aria-label','Edytuj moduł '+r.serial);edit.onclick=()=>openModuleInvEntry(r.serial,r);
   const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń moduł '+r.serial);remove.onclick=async()=>{
    if(!await belConfirm('Czy usunąć pozycję?'))return;
    const current=getModuleInventory();if(!current)return;current.rows=current.rows.filter(x=>x.serial!==r.serial);if(saveModuleInventory(current))renderModuleInventory();
@@ -566,7 +576,7 @@ function openModuleInvEntry(serial='',existing=null){
 }
 function addModuleInvRow(serial,type,status,edit=null){
  const d=getModuleInventory();if(!d||!moduleInvValidSerial(serial)||!type||!['OK','NOK'].includes(status))return false;
- const duplicate=d.rows.find(r=>r.serial===serial&&r.serial!==edit);
+ const duplicate=d.rows.find(r=>moduleInvSerial(r.serial)===serial&&r.serial!==edit);
  if(duplicate){belAlert('Ten moduł jest już na liście '+duplicate.status+'.');return false;}
  const row={serial,type,status};
  if(edit){const i=d.rows.findIndex(r=>r.serial===edit);if(i<0)return false;d.rows[i]=row;}else d.rows.push(row);
@@ -587,7 +597,7 @@ function scanModuleInventory(){
   const serial=moduleInvSerial(code);
   if(!moduleInvValidSerial(serial)){belAlert('Nieprawidłowy kod QR modułu.');return;}
   if(supplyCatalog().some(p=>(p.kody||[]).some(k=>moduleInvSerial(k)===serial))){belAlert('To kod części, nie modułu.');return;}
-  const existing=current.rows.find(r=>r.serial===serial);if(existing){belAlert('Ten moduł jest już na liście '+existing.status+'.');return;}
+  const existing=current.rows.find(r=>moduleInvSerial(r.serial)===serial);if(existing){belAlert('Ten moduł jest już na liście '+existing.status+'.');return;}
   const type=moduleInvType(serial);
   if(type){addModuleInvRow(serial,type,status);return;}
   openModuleInvEntry(serial);
