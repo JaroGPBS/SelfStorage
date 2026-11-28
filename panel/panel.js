@@ -2360,7 +2360,7 @@
       const header=tr.insertCell();header.colSpan=3;
       const bar=document.createElement('div');bar.className='module-catalog-group-bar';
       const title=document.createElement('strong');title.textContent=g.name;bar.append(title);
-      bar.append(catalogButton('Edytuj grupę',()=>openModuleCatalogEditor('group',g)),catalogButton('+ Typ modułu',()=>openModuleCatalogEditor('type',g)));header.append(bar);
+      bar.append(catalogButton('Edytuj grupę',()=>openModuleCatalogEditor('group',g),'btn mini ghost catalog-edit'),catalogButton('+ Typ modułu',()=>openModuleCatalogEditor('type',g),'btn mini ghost catalog-add'));header.append(bar);
       const entries=types.filter(t=>t.groupId===g.id);
       if(!entries.length){const empty=target.insertRow().insertCell();empty.colSpan=3;empty.className='module-prefix-empty';empty.textContent='Brak typów modułów.';}
       for(const t of entries){
@@ -2368,8 +2368,10 @@
         row.append(td(t.name+(Number(t.active)?'':' · ARCHIWUM'),'module-prefix-type'));
         const codes=row.insertCell();codes.className='module-prefix-code';codes.append(catalogChips(prefixes.filter(p=>p.typeId===t.id),g,t));
         const actions=row.insertCell();actions.className='module-prefix-actions';
-        if(Number(t.active))actions.append(catalogButton('+ Prefiks',()=>openModuleCatalogEditor('prefix',g,t)),catalogButton('Edytuj',()=>openModuleCatalogEditor('type',g,t)));
-        actions.append(catalogButton(Number(t.active)?'Archiwizuj':'Przywróć',b=>archiveModuleType(t,b)));
+        const actionGrid=document.createElement('div');actionGrid.className='module-catalog-action-grid';
+        if(Number(t.active))actionGrid.append(catalogButton('+ Prefiks',()=>openModuleCatalogEditor('prefix',g,t),'btn mini ghost catalog-add'),catalogButton('Edytuj',()=>openModuleCatalogEditor('type',g,t),'btn mini ghost catalog-edit'));
+        actionGrid.append(catalogButton(Number(t.active)?'Archiwizuj':'Przywróć',b=>archiveModuleType(t,b),'btn mini ghost catalog-archive-slot '+(Number(t.active)?'catalog-archive':'catalog-add')));
+        actions.append(actionGrid);
       }
     }
     const unassigned=prefixes.filter(p=>!p.typeId);
@@ -2378,7 +2380,7 @@
       for(const p of unassigned){
         const row=target.insertRow();row.append(td(p.moduleType,'module-prefix-type'));
         const codes=row.insertCell();codes.className='module-prefix-code';codes.append(catalogChips([p],null,null));
-        const actions=row.insertCell();actions.append(catalogButton('Przypisz do typu',()=>openModuleCatalogEditor('prefix',null,null,p)));
+        const actions=row.insertCell();actions.append(catalogButton('Przypisz do typu',()=>openModuleCatalogEditor('prefix',null,null,p),'btn mini ghost catalog-edit'));
       }
     }
     $('modulePrefixStatus').textContent='Grupy: '+groups.length+' · Typy: '+types.filter(t=>Number(t.active)).length+' · Prefiksy: '+prefixes.length+(unassigned.length?' · Do przypisania: '+unassigned.length:'');

@@ -1806,3 +1806,32 @@ tr:hover td{background:#ffffff04}
 .module-catalog-archived .module-prefix-type{opacity:.55}
 .module-catalog-unassigned{color:#efb46f;font-weight:700;background:rgba(239,180,111,.08)}
 #modulePrefixesView .module-prefix-actions .btn,#modulePrefixesView .module-catalog-group-bar .btn{min-height:28px;padding:4px 8px}
+
+/* Catalogue: consistent columns and contrast across all Admin themes. */
+#modulePrefixesView .module-catalog-table{table-layout:fixed;min-width:660px}
+#modulePrefixesView .module-catalog-table th:first-child{width:15%}
+#modulePrefixesView .module-catalog-table th:last-child{width:44%;white-space:normal}
+#modulePrefixesView .module-catalog-table td{overflow-wrap:anywhere}
+#modulePrefixesView .module-catalog-group-bar strong{color:var(--white);font-size:calc(15px + var(--admin-font-delta,0px));font-weight:650;letter-spacing:.35px}
+#modulePrefixesView .module-prefix-type,#modulePrefixesView .module-prefix-code{color:var(--white)}
+#modulePrefixesView .module-prefix-fields label{color:var(--white)}
+#modulePrefixesView .module-prefix-fields select{color:var(--white);background:var(--surface2);border:1px solid var(--edge);border-radius:8px}
+#modulePrefixesView .module-catalog-group-row td{background:var(--surface2)}
+#modulePrefixesView .module-catalog-action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(8px,1.3vw,20px);align-items:center}
+#modulePrefixesView .module-catalog-action-grid .btn{width:100%;margin:0;white-space:nowrap;min-width:0}
+#modulePrefixesView .module-catalog-action-grid .catalog-add{grid-column:1}
+#modulePrefixesView .module-catalog-action-grid .catalog-edit{grid-column:2}
+#modulePrefixesView .module-catalog-action-grid .catalog-archive-slot{grid-column:3;grid-row:1}
+#modulePrefixesView{--catalog-add-ink:#83d6ae;--catalog-add-bg:#19382c;--catalog-add-border:#3b7558;--catalog-edit-ink:#a8cdfb;--catalog-edit-bg:#20364c;--catalog-edit-border:#476b91;--catalog-archive-ink:#f0bb83;--catalog-archive-bg:#3d2c20;--catalog-archive-border:#8b6744}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) #modulePrefixesView{
+  --catalog-add-ink:#165d3d;--catalog-add-bg:#e1f3e8;--catalog-add-border:#8bc5a2;
+  --catalog-edit-ink:#1d5489;--catalog-edit-bg:#e3effb;--catalog-edit-border:#9fbddd;
+  --catalog-archive-ink:#79430f;--catalog-archive-bg:#fff0dd;--catalog-archive-border:#d9b17d;
+}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) #modulePrefixesView .module-catalog-group-bar strong{color:#111}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) #modulePrefixesView .module-prefix-remove{color:#a62332}
+:root:is([data-admin-theme="white"],[data-admin-theme="gray"]) #modulePrefixesView .module-catalog-unassigned{color:#79430f;background:#fff0dd}
+#modulePrefixesView .btn.catalog-add{color:var(--catalog-add-ink);background:var(--catalog-add-bg);border-color:var(--catalog-add-border)}
+#modulePrefixesView .btn.catalog-edit{color:var(--catalog-edit-ink);background:var(--catalog-edit-bg);border-color:var(--catalog-edit-border)}
+#modulePrefixesView .btn.catalog-archive{color:var(--catalog-archive-ink);background:var(--catalog-archive-bg);border-color:var(--catalog-archive-border)}
+#modulePrefixesView .btn:is(.catalog-add,.catalog-edit,.catalog-archive):hover{filter:brightness(.93)}
