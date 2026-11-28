@@ -1,5 +1,6 @@
 // GPBS Storage FR: D1-only mobile gateway. Never reads Google Sheets / Apps Script.
 // The signed D1 PIN cookie is issued by /api/pl/auth; FR-only crews use it here.
+import {readModuleScannerCatalog} from '../../lib/module-catalog.js';
 import {verifyWorkerSession,workerJson} from '../../lib/pl-worker-auth.js';
 import {getVehicleCatalogue} from '../../lib/vehicle-catalogue-service.js';
 import {ensureFrCarClaims,normalPlate} from '../../lib/fr-car-claims.js';
@@ -583,7 +584,7 @@ async function action(db,user,body){
     const bellevilleAccess=user.role!=='EKIPA'&&(user.features?.pz!==false||user.features?.wz!==false)&&
       (isOwnerAdmin(user)||warehouses.some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')));
     const inventoryAccess=user.role!=='EKIPA'&&user.features?.inventory!==false&&(isOwnerAdmin(user)||warehouses.some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')));
-    const modulePrefixes=inventoryAccess&&await db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='module_serial_prefixes'").first()?(await db.prepare('SELECT prefix,module_type AS moduleType FROM module_serial_prefixes ORDER BY length(prefix) DESC').all()).results||[]:[];
+    const moduleScannerCatalog=inventoryAccess?await readModuleScannerCatalog(db):{};
     const bellevilleParts=bellevilleAccess?[...new Map(catalog.map(p=>[p.id,p])).values()].map(p=>({
       id:p.id,nazwa:p.name,indeks:p.new_index||p.part_number||p.id,sap:p.sap_number||'',
       kody:[...new Set([p.id,p.part_number,p.sap_number,p.source_code,p.old_index,p.new_index].filter(Boolean).map(entryCode))]
@@ -591,7 +592,7 @@ async function action(db,user,body){
     return {ok:true,ekipa:mobileIdentity(user),
       samochod:car?.registration_number||'',
       ...(bellevilleAccess?{czesciBelleville:bellevilleParts}:{}),
-      ...(inventoryAccess?{modulePrefixes}:{}),
+      ...moduleScannerCatalog,
       wersjaKataloguBox:BOX_CATALOG_VERSION+'-'+(()=>{
         let hash=2166136261;
         const ids=activeBoxItems.map(x=>x.part_id).sort().join('|');
@@ -664,9 +665,8 @@ export async function onRequestPost({request,env}){
     if(operation==='POBIERZ_PREFIKSY_MODULOW'){
       if(user.role==='EKIPA'||user.features?.inventory===false)return fail('Brak uprawnień do inwentaryzacji.',403);
       if(!isOwnerAdmin(user)&&!(await mobileWarehouses(env.DB,user)).some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')))return fail('Brak dostępu do Belleville.',403);
-      const exists=await env.DB.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='module_serial_prefixes'").first();
-      const modulePrefixes=exists?(await env.DB.prepare('SELECT prefix,module_type AS moduleType FROM module_serial_prefixes ORDER BY length(prefix) DESC').all()).results||[]:[];
-      return workerJson({ok:true,modulePrefixes});
+      const moduleScannerCatalog=await readModuleScannerCatalog(env.DB);
+      return workerJson({ok:true,...moduleScannerCatalog});
     }
     // The existing vehicle-based write API is a different workflow from the
     // future warehouse employee transport API. Never write fictitious car stock.

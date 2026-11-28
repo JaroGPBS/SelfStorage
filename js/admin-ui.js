@@ -529,14 +529,31 @@ function moduleInvDisplaySerial(value){
  return {leading:[prefix,grouped].filter(Boolean).join(' ')+(prefix||head?' ':''),emphasis:tail.slice(0,3)+' '+tail.slice(3)};
 }
 function moduleInvValidSerial(s){return s.length>0&&s.length<=100&&/^[A-Z0-9][A-Z0-9 ._/-]*$/.test(s)&&!s.includes('://');}
-function moduleInvPrefixes(){const p=loadState()?.startData?.modulePrefixes;return Array.isArray(p)?p:[];}
-function moduleInvType(serial){
- const normalized=moduleInvSerial(serial);
- // Labels may start with a 2- or 4-digit year followed by a slash.
- const afterYear=normalized.replace(/^(?:[0-9]{4}|[0-9]{2})\s*\/\s*/,'');
- const find=value=>moduleInvPrefixes().filter(p=>p.prefix&&p.moduleType&&value.startsWith(String(p.prefix).trim().toUpperCase())).sort((a,b)=>b.prefix.length-a.prefix.length);
- const matches=afterYear!==normalized?find(afterYear):find(normalized);
- return matches[0]?String(matches[0].moduleType).trim().toUpperCase():'';
+function moduleInvPrefixes(){const d=loadState()?.startData;const p=d?.modulePrefixCandidates??d?.modulePrefixes;return Array.isArray(p)?p:[];}
+function moduleInvMatches(serial){
+ const afterYear=moduleInvSerial(serial).replace(/^(?:[0-9]{4}|[0-9]{2})\//,'');
+ const matches=moduleInvPrefixes().filter(p=>p.prefix&&p.moduleType&&afterYear.startsWith(String(p.prefix).trim().toUpperCase())).map(p=>({...p,prefix:String(p.prefix).trim().toUpperCase(),moduleType:String(p.moduleType).trim().toUpperCase()}));
+ const max=Math.max(0,...matches.map(p=>p.prefix.length));
+ return [...new Map(matches.filter(p=>p.prefix.length===max).map(p=>[p.typeId||p.moduleType,p])).values()];
+}
+function moduleInvType(serial){const matches=moduleInvMatches(serial);return matches.length===1?matches[0].moduleType:'';}
+function openModuleInvChoices(serial,status,matches){
+ const dialog=bel('belInvChoiceDialog'),root=bel('belInvChoices'),d=getModuleInventory();
+ if(!d)return;
+ const display=moduleInvDisplaySerial(serial);bel('belInvChoiceSerial').textContent=display.leading+display.emphasis;
+ root.replaceChildren();
+ for(const p of matches){
+  const button=node('button',null,'btn gpbs-menu-btn bel-inv-choice');button.type='button';
+  button.append(node('strong',p.typeName||p.moduleType));
+  if(p.groupName)button.append(node('small',p.groupName));
+  button.onclick=()=>{
+   const current=getModuleInventory();
+   if(bellevilleView!=='moduleInventory'||current?.owner!==d.owner||current?.startedAt!==d.startedAt){dialog.close();return;}
+   if(addModuleInvRow(serial,p.moduleType,status))dialog.close();
+  };
+  root.append(button);
+ }
+ dialog.showModal();
 }
 function renderModuleInventory(){
  const d=getModuleInventory();if(!d){showBellevilleView('inventory');return;}
@@ -568,7 +585,8 @@ function openModuleInvEntry(serial='',existing=null){
  bel('belInvEntryTitle').textContent=existing?'Edytuj moduł':serial?'Wybierz typ modułu':'Dodaj moduł ręcznie';
  bel('belInvSerial').value=serial;
  const types=bel('belInvType');types.replaceChildren(new Option('Wybierz typ',''));
- const options=[...new Set([...MODULE_INV_TYPES,...moduleInvPrefixes().map(p=>String(p.moduleType||'').trim().toUpperCase()),existing?.type].filter(Boolean))];
+ const catalogue=loadState()?.startData?.moduleCatalogTypes;
+  const options=[...new Set([...(Array.isArray(catalogue)&&catalogue.length?catalogue.map(t=>t.scannerLabel):MODULE_INV_TYPES),...moduleInvPrefixes().map(p=>String(p.moduleType||'').trim().toUpperCase()),existing?.type].filter(Boolean))];
  for(const type of options)types.append(new Option(type,type));
  types.value=existing?.type||moduleInvType(serial)||'';
  bel('belInvState').value=existing?.status||d.status||'';
@@ -598,8 +616,9 @@ function scanModuleInventory(){
   if(!moduleInvValidSerial(serial)){belAlert('Nieprawidłowy kod QR modułu.');return;}
   if(supplyCatalog().some(p=>(p.kody||[]).some(k=>moduleInvSerial(k)===serial))){belAlert('To kod części, nie modułu.');return;}
   const existing=current.rows.find(r=>moduleInvSerial(r.serial)===serial);if(existing){belAlert('Ten moduł jest już na liście '+existing.status+'.');return;}
-  const type=moduleInvType(serial);
-  if(type){addModuleInvRow(serial,type,status);return;}
+  const matches=moduleInvMatches(serial);
+   if(matches.length===1){addModuleInvRow(serial,matches[0].moduleType,status);return;}
+   if(matches.length>1){openModuleInvChoices(serial,status,matches);return;}
   openModuleInvEntry(serial);
   bel('belInvState').value=status;
  });

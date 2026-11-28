@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.78';
+const APP_VERSION = '0.79';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -408,7 +408,7 @@ window.gpbsRefreshModulePrefixes=async()=>{
   const data=await response.json();
   if(!response.ok||!data.ok||!Array.isArray(data.modulePrefixes))throw Error(data.error||'Nie udało się pobrać prefiksów.');
   if(state.team?.id!==teamId)return;
-  state.startData={...(state.startData||{}),modulePrefixes:data.modulePrefixes};
+  state.startData={...(state.startData||{}),modulePrefixes:data.modulePrefixes,modulePrefixCandidates:Array.isArray(data.modulePrefixCandidates)?data.modulePrefixCandidates:data.modulePrefixes,moduleCatalogTypes:Array.isArray(data.moduleCatalogTypes)?data.moduleCatalogTypes:[]};
   saveCachedStartData(teamId,state.startData);persist();
  }finally{clearTimeout(timer);}
 };

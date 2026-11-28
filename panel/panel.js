@@ -2327,7 +2327,7 @@
     const isPrefix=mode==='prefix',isGroup=mode==='group';
     const fixedType=isPrefix&&!!type;
     const unassigned=isPrefix&&!type;
-    moduleCatalogEdit={mode,groupId:group?.id||'',typeId:type?.id||'',oldPrefix:prefix?.prefix||''};
+    moduleCatalogEdit={mode,groupId:group?.id||'',typeId:type?.id||'',oldPrefix:prefix?.prefix||'',oldTypeId:prefix?.typeId||''};
     $('moduleCatalogEditorTitle').textContent=isPrefix?(prefix?(fixedType?'Edytuj prefiks':'Przypisz prefiks'):'Dodaj prefiks') : isGroup?(group?'Edytuj grupę':'Nowa grupa'):(type?'Edytuj typ modułu':'Nowy typ — '+group.name);
     const name=$('moduleCatalogName'),code=$('modulePrefixCode'),target=$('moduleCatalogTarget');
     $('moduleCatalogNameWrap').classList.toggle('hidden',isPrefix);name.required=!isPrefix;name.disabled=isPrefix;
@@ -2415,7 +2415,7 @@
     let payload;
     if(edit.mode==='group')payload={action:'moduleCatalogGroupSave',groupId:edit.groupId,name};
     else if(edit.mode==='type')payload={action:'moduleCatalogTypeSave',groupId:edit.groupId,typeId:edit.typeId,name};
-    else payload={action:'moduleCatalogPrefixSave',typeId,prefix,oldPrefix:edit.oldPrefix};
+    else payload={action:'moduleCatalogPrefixSave',typeId,prefix,oldPrefix:edit.oldPrefix,oldTypeId:edit.oldTypeId};
     moduleCatalogSaving=true;busy(button,true);busy($('modulePrefixCancel'),true);
     try{
       await post(payload);
@@ -2432,8 +2432,8 @@
     busy(button,true);try{await post({action:'moduleCatalogTypeArchive',typeId:t.id,active});resetModulePrefixEditor();await refreshModulePrefixes();message('Zapisano zmianę.','success');}catch(error){message(error.message,'error');}finally{busy(button,false);}
   }
   async function removeModulePrefix(item,button){
-    if(!await confirmAction({title:'Usunąć prefiks '+item.prefix+'?',description:'Skaner przestanie rozpoznawać moduły na podstawie tego prefiksu. Nie zmieni to historii ani stanów.',confirmLabel:'Usuń prefiks',danger:true}))return;
-    busy(button,true);try{await post({action:'moduleCatalogPrefixDelete',prefix:item.prefix});resetModulePrefixEditor();await refreshModulePrefixes();message('Usunięto prefiks.','success');}catch(error){message(error.message,'error');}finally{busy(button,false);}
+    if(!await confirmAction({title:'Usunąć prefiks '+item.prefix+'?',description:'Usunięte zostanie tylko to przypisanie. Pozostałe typy z tym prefiksem pozostaną bez zmian.',confirmLabel:'Usuń prefiks',danger:true}))return;
+    busy(button,true);try{await post({action:'moduleCatalogPrefixDelete',prefix:item.prefix,typeId:item.typeId||''});resetModulePrefixEditor();await refreshModulePrefixes();message('Usunięto prefiks.','success');}catch(error){message(error.message,'error');}finally{busy(button,false);}
   }
   const mailTypes=['PZ','WZ','CMR'];
   let emailViewVersion=0;
