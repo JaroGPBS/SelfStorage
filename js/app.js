@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.70';
+const APP_VERSION = '0.71';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -2267,10 +2267,12 @@ async function startVisit(code) {
   }
 }
 
+let supplyScannerMatch=null;
+window.gpbsOpenSupplyScanner=match=>{if(getActiveScreenId()!=='screenBelleville'||typeof match!=='function')return;supplyScannerMatch=match;void openCodeScanner('supply');};
 async function openCodeScanner(mode) {
   scannerMode = mode;
 
-  const isPart = mode === 'part';
+  const isPart = mode === 'part' || mode === 'supply';
   $('scannerTitle').textContent = isPart ? 'Kod części' : 'Kod QR magazynu';
   $('scannerNote').textContent = isPart
     ? 'Skieruj aparat na kod QR lub Code128 części.'
@@ -2283,6 +2285,11 @@ async function openCodeScanner(mode) {
     await startScanner(async code => {
       const activeMode = scannerMode;
 
+      if(activeMode==='supply'){
+        const open=supplyScannerMatch?.(code);
+        if(!open){showToast('Nie rozpoznano jednoznacznie kodu części. Zeskanuj ponownie.',true);return false;}
+        await closeScanner();open();return true;
+      }
       if (activeMode === 'part') {
         const result = findPart(code);
 
@@ -2318,6 +2325,7 @@ async function closeScanner() {
   }
 
   scannerMode = null;
+  supplyScannerMatch=null;
   $('scannerModal').classList.remove('show');
   $('scannerModal').setAttribute('aria-hidden', 'true');
 }

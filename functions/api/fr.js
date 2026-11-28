@@ -579,8 +579,16 @@ async function action(db,user,body){
     if(boxList.some(x=>!x)||boxList.length!==activeBoxItems.length)
       throw Error('Lista części BOX jest niekompletna. Skontaktuj się z administratorem.');
     const car=await vehicle(db,user.id);
+    const warehouses=await mobileWarehouses(db,user);
+    const bellevilleAccess=user.role!=='EKIPA'&&(user.features?.pz!==false||user.features?.wz!==false)&&
+      (isOwnerAdmin(user)||warehouses.some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')));
+    const bellevilleParts=bellevilleAccess?[...new Map(catalog.map(p=>[p.id,p])).values()].map(p=>({
+      id:p.id,nazwa:p.name,indeks:p.new_index||p.part_number||p.id,sap:p.sap_number||'',
+      kody:[...new Set([p.id,p.part_number,p.sap_number,p.source_code,p.old_index,p.new_index].filter(Boolean).map(entryCode))]
+    })):undefined;
     return {ok:true,ekipa:mobileIdentity(user),
       samochod:car?.registration_number||'',
+      ...(bellevilleAccess?{czesciBelleville:bellevilleParts}:{}),
       wersjaKataloguBox:BOX_CATALOG_VERSION+'-'+(()=>{
         let hash=2166136261;
         const ids=activeBoxItems.map(x=>x.part_id).sort().join('|');
@@ -591,7 +599,7 @@ async function action(db,user,body){
         return hash.toString(16);
       })(),
       czesci:boxList,
-      magazyny:await mobileWarehouses(db,user),
+      magazyny:warehouses,
       ustawienia:{logowanieOfflineDni:0,autoSynchronizacja:true,whatsappAlert:false}};
   }
   if(type==='POBIERZ_STANY_BOX'){

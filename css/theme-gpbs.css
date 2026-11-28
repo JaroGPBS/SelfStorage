@@ -656,3 +656,28 @@ body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-si
 #screenBelleville .bel-plan-row{display:grid;grid-template-columns:minmax(0,1fr) 40px 42px 48px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
 #screenBelleville .bel-plan-row span:not(:first-child){text-align:right}
 @media(max-width:350px){#screenBelleville .bel-work-head #belPlanOpen{font-size:11px}#screenBelleville .bel-work-head #belOperationFinish{font-size:12px}}
+
+/* Belleville team supply, same visual system as PZ/WZ. */
+#screenBelleville:has(#belSupplyWork:not(.hidden))>.bel-main-head{display:none}
+body:has(#screenBelleville.active #belSupplyWork:not(.hidden)) .app-shell{display:flex;flex-direction:column}
+body:has(#screenBelleville.active #belSupplyWork:not(.hidden)) .app-header,body:has(#screenBelleville.active #belSupplyWork:not(.hidden)) .app-signature{display:none!important}
+body:has(#screenBelleville.active #belSupplyWork:not(.hidden)) .app-main{height:auto;flex:1;min-height:0;padding:4px 0 23px!important}
+body:has(#screenBelleville.active #belSupplyWork:not(.hidden))::before{background:linear-gradient(180deg,rgba(7,9,11,.76),rgba(7,9,11,.86)),url("../images/warehouse-background.jpg?v=2") center/cover no-repeat}
+#screenBelleville #belSupplyBack{flex:0 0 44px;width:44px;min-height:44px;display:grid;place-items:center;padding:5px}
+#screenBelleville #belSupplyFinish{flex:1;font-size:clamp(13px,3.8vw,16px)}
+#screenBelleville .bel-supply-search{position:relative;flex-shrink:0}
+#screenBelleville .bel-supply-search input{min-height:48px;padding:0 49px 0 12px;font-size:16px;background:rgba(19,22,27,.94)}
+#screenBelleville .bel-supply-search input::-webkit-search-cancel-button{display:none}
+#screenBelleville .bel-supply-matches{flex:0 1 auto;min-height:0;max-height:42%;overflow-y:auto;border:1px solid var(--line);border-radius:10px;background:rgba(28,32,38,.96)}
+#screenBelleville .bel-supply-match{display:flex;width:100%;text-align:left;flex-direction:column;gap:2px;min-height:44px;padding:6px 10px;background:transparent;color:var(--text);border-bottom:1px solid var(--line);font-size:14px}
+#screenBelleville .bel-supply-match small{color:var(--muted);font-size:11px}
+#screenBelleville .bel-supply-status{margin:4px 0;font-size:12px;flex-shrink:0}
+#screenBelleville .bel-supply-head,#screenBelleville .bel-supply-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 32px;gap:6px;align-items:center}
+#screenBelleville .bel-supply-head{font-size:11px;color:var(--muted);padding:4px;flex-shrink:0}
+#screenBelleville .bel-supply-row{padding:3px 4px;min-height:37px;border-bottom:1px solid var(--line);font-size:13px}
+#screenBelleville .bel-supply-row button{background:transparent;color:var(--text);text-align:left;padding:3px 0;overflow-wrap:anywhere;min-height:30px}
+#screenBelleville .bel-supply-row button:last-child{font-size:20px;color:#ef9696;text-align:center}
+#screenBelleville .bel-supply-row span:nth-child(2){font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+#screenBelleville .bel-supply-row .pz{color:#7bd29d}#screenBelleville .bel-supply-row .wz{color:#ef9696}
+#screenBelleville .bel-supply-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#screenBelleville .bel-supply-actions .btn{min-height:48px;margin:0}

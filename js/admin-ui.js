@@ -176,10 +176,11 @@ function clearBellevilleSession(){
 }
 function showBellevilleView(view){
  bellevilleView=view;
- const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView'};
+ const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView',supplyForm:'belSupplyForm',supply:'belSupplyWork'};
  for(const [name,id] of Object.entries(sections))bel(id).classList.toggle('hidden',name!==view);
  if(view==='menu'){
   bel('belStartVisit').textContent=getBellevilleSession()?'Wznów wizytę':'Rozpocznij wizytę';
+  bel('belSupplyStart').textContent=getSupplyDraft()?'Wznów zaopatrzenie ekip':'Zaopatrzenie ekip';
  }else if(view==='visit'){
   const s=getBellevilleSession();if(!s){showBellevilleView('menu');return;}
   bel('belVisitRoute').textContent=s.route;
@@ -187,7 +188,7 @@ function showBellevilleView(view){
    const dir=button.dataset.belEnter;button.classList.toggle('hidden',!canBellevilleOperation(dir));
    button.textContent=(dir==='PZ'?'Przyjęcie':'Wydanie')+(s.operations[dir].done?' ✓':'');
   }
- }
+ }else if(view==='supply'){renderSupply();}
 }
 function backBellevilleView(){
  const open=document.querySelector('#screenBelleville dialog[open]');if(open){open.close();return true;}
@@ -198,8 +199,8 @@ function chooseBellevilleOperation(operation){
  if(!canBellevilleOperation(operation))return;
  bel('bellevilleInfo').classList.add('hidden');
  if(operation==='EKIPY'){
-  bel('bellevilleInfo').textContent='Zaopatrzenie ekip zostanie dodane w kolejnym etapie.';
-  bel('bellevilleInfo').classList.remove('hidden');return;
+  if(getSupplyDraft()){openSupplyWork();return;}
+  bel('belSupplyForm').reset();showBellevilleView('supplyForm');return;
  }
  if(operation!=='VISIT')return;
  if(getBellevilleSession()){showBellevilleView('visit');return;}
@@ -365,6 +366,108 @@ function closeBellevilleScreen(){
  if(backBellevilleView())return;
  document.querySelectorAll('.screen').forEach(screen=>screen.classList.toggle('active',screen.id==='screenWarehouse'));
  updateRoleControls();
+}
+
+
+const SUPPLY_PREFIX='gpbs-belleville-supply-draft-v1:';
+let supplySelection=null;
+function supplyKey(){const id=loadState()?.team?.id;return id?SUPPLY_PREFIX+encodeURIComponent(String(id)):null;}
+function getSupplyDraft(){
+ if(!canBellevilleOperation('EKIPY'))return null;
+ try{const key=supplyKey(),d=key?JSON.parse(localStorage.getItem(key)||'null'):null;return d?.owner===String(loadState()?.team?.id)&&Array.isArray(d.lines)&&d.team?d:null;}catch{return null;}
+}
+function saveSupplyDraft(d){
+ const key=supplyKey();if(!key||!canBellevilleOperation('EKIPY')||d.owner!==String(loadState()?.team?.id))return false;
+ try{localStorage.setItem(key,JSON.stringify(d));return true;}catch{alert('Nie udało się zapisać danych w pamięci telefonu.');return false;}
+}
+function supplyCatalog(){const items=loadState()?.startData?.czesciBelleville;return Array.isArray(items)?items:[];}
+function supplyNorm(x){return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/gi,'l').toLowerCase().trim();}
+function supplyMatches(query){
+ const q=supplyNorm(query);if(!q)return [];
+ const words=q.split(/\s+/);
+ return supplyCatalog().map(p=>{const name=supplyNorm(p.nazwa),codes=[p.indeks,p.sap,...(p.kody||[])].map(supplyNorm);const hay=[name,...codes].join(' ');
+ if(words.every(w=>hay.includes(w)))return {p,score:codes.includes(q)?0:name.startsWith(q)?1:2};
+ // Match one omitted/substituted letter only in a name word, never in an index.
+ if(words.length===1&&q.length>=3&&name.split(/[^a-z0-9]+/).some(w=>{
+   const n=w.slice(0,q.length+1);for(const candidate of [n,n.slice(0,q.length),n.slice(0,q.length-1)]){
+    if(!candidate||Math.abs(candidate.length-q.length)>1)continue;
+    let a=0,b=0,d=0;while(a<q.length&&b<candidate.length){if(q[a]===candidate[b]){a++;b++;continue;}if(++d>1)break;if(q.length>candidate.length)a++;else if(q.length<candidate.length)b++;else{a++;b++;}}
+    if(d+(q.length-a)+(candidate.length-b)<=1)return true;
+   }return false;
+ }))return {p,score:3};
+ return null;}).filter(Boolean).sort((a,b)=>a.score-b.score||a.p.nazwa.localeCompare(b.p.nazwa,'pl')).map(x=>x.p).slice(0,30);
+}
+function startSupply(event){
+ event.preventDefault();if(!canBellevilleOperation('EKIPY'))return;
+ if(getSupplyDraft()){openSupplyWork();return;}
+ const team=bel('belSupplyTeam').value.trim().toUpperCase();if(!team)return;
+ const owner=String(loadState()?.team?.id||'');if(!owner)return;
+ if(saveSupplyDraft({owner,team,startedAt:new Date().toISOString(),lines:[]}))openSupplyWork();
+}
+function openSupplyWork(){supplySelection=null;bel('belSupplyQuery').value='';showBellevilleView('supply');}
+function renderSupplyMatches(){
+ const box=bel('belSupplyMatches'),q=bel('belSupplyQuery').value.trim(),catalog=supplyCatalog();box.replaceChildren();box.classList.toggle('hidden',!q||!catalog.length);
+ if(!q||!catalog.length)return;
+ const matches=supplyMatches(q);if(!matches.length){box.append(node('p','Brak pasujących części.','bel-empty'));return;}
+ for(const p of matches){
+  const button=node('button',null,'bel-supply-match');button.type='button';button.append(node('span',p.nazwa),node('small',[p.indeks,p.sap&&p.sap!==p.indeks?'SAP '+p.sap:''].filter(Boolean).join(' · ')));
+  button.addEventListener('click',()=>selectSupplyPart(p));box.append(button);
+ }
+}
+function renderSupply(){
+ const d=getSupplyDraft();if(!d){showBellevilleView('menu');return;}
+ bel('belSupplyCode').textContent=d.team;
+ const catalog=supplyCatalog(),status=bel('belSupplyStatus');status.classList.toggle('hidden',!!catalog.length);
+ status.textContent=catalog.length?'':'Brak katalogu części. Wróć do menu i odśwież aplikację przy połączeniu z internetem.';
+ bel('belSupplyScan').disabled=!catalog.length;
+ const root=bel('belSupplyRows');root.replaceChildren();
+ if(!d.lines.length)root.append(node('p','Brak zarejestrowanych pozycji','bel-empty'));
+ for(const [i,l] of d.lines.entries()){
+  const row=node('div',null,'bel-supply-row'),edit=node('button',l.name);edit.type='button';edit.setAttribute('aria-label','Edytuj '+l.name);edit.onclick=()=>selectSupplyPart({id:l.partId,nazwa:l.name,indeks:l.index},i);
+  const qty=node('span',(l.direction==='PZ'?'+':'−')+l.qty,l.direction.toLowerCase());
+  const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń '+l.name);remove.onclick=()=>{
+   if(!confirm('Usunąć tę pozycję?'))return;
+   const current=getSupplyDraft();if(!current)return;current.lines.splice(i,1);if(saveSupplyDraft(current))renderSupply();
+  };row.append(edit,qty,remove);root.append(row);
+ }
+ renderSupplyMatches();
+}
+function selectSupplyPart(part,index=null){
+ const d=getSupplyDraft();if(!d||!part?.id)return;
+ supplySelection={part,index,owner:d.owner,team:d.team};
+ bel('belSupplyPartName').textContent=part.nazwa;
+ const qty=bel('belSupplyQty');qty.value=index===null?'':String(d.lines[index]?.qty||'');
+ for(const [id,direction] of [['belSupplyPz','PZ'],['belSupplyWz','WZ']])bel(id).classList.toggle('hidden',!canBellevilleOperation(direction));
+ bel('belSupplyQtyDialog').showModal();qty.focus();
+}
+function submitSupplyQty(event){
+ event.preventDefault();const d=getSupplyDraft(),selection=supplySelection;
+ const dir=event.submitter?.value;if(!d||!selection||selection.owner!==d.owner||selection.team!==d.team||!['PZ','WZ'].includes(dir)||!canBellevilleOperation(dir))return;
+ const qty=Number(bel('belSupplyQty').value);
+ if(!Number.isSafeInteger(qty)||qty<1||qty>100000)return;
+ const p=selection.part,line={partId:p.id,name:p.nazwa,index:p.indeks||'',direction:dir,qty};
+ if(selection.index===null)d.lines.push(line);else if(d.lines[selection.index])d.lines[selection.index]=line;else return;
+ if(!saveSupplyDraft(d))return;
+ bel('belSupplyQtyDialog').close();supplySelection=null;bel('belSupplyQuery').value='';renderSupply();
+}
+function scanSupply(){
+ if(!getSupplyDraft()||!supplyCatalog().length)return;
+ window.gpbsOpenSupplyScanner?.(code=>{
+  const q=String(code||'').replace(/\u0000/g,'').trim().toUpperCase();
+  const matches=supplyCatalog().filter(p=>(p.kody||[]).some(k=>String(k).toUpperCase()===q));
+  if(matches.length!==1)return null;
+  return ()=>selectSupplyPart(matches[0]);
+ });
+}
+function finishSupply(){
+ const d=getSupplyDraft();if(!d)return;
+ bel('belSupplySummary').textContent='Ekipa '+d.team+' · Przyjęcie: '+d.lines.filter(x=>x.direction==='PZ').reduce((n,x)=>n+x.qty,0)+' szt. · Wydanie: '+d.lines.filter(x=>x.direction==='WZ').reduce((n,x)=>n+x.qty,0)+' szt.';
+ bel('belSupplyFinishDialog').showModal();
+}
+function confirmSupply(){
+ const d=getSupplyDraft(),key=supplyKey();if(!d||!key)return;
+ try{localStorage.removeItem(key);}catch{alert('Nie udało się zakończyć zaopatrzenia.');return;}
+ bel('belSupplyFinishDialog').close();supplySelection=null;showBellevilleView('menu');bel('bellevilleInfo').textContent='Zaopatrzenie testowe zakończone.';bel('bellevilleInfo').classList.remove('hidden');
 }
 
 function renderAdminWarehousePicker(saved) {
@@ -551,6 +654,15 @@ document.addEventListener('DOMContentLoaded', () => {
   bel('belFinalConfirm').addEventListener('click',confirmBellevilleFinish);
   bel('belPlanOpen').addEventListener('click',()=>{renderBellevillePlan();bel('belPlanDialog').showModal();});
   bel('belRemainingOnly').addEventListener('change',renderBellevillePlan);
+  bel('belSupplyTeam').addEventListener('input',()=>{bel('belSupplyTeam').value=bel('belSupplyTeam').value.toUpperCase();});
+  bel('belSupplyForm').addEventListener('submit',startSupply);
+  bel('belSupplyBack').addEventListener('click',backBellevilleView);
+  bel('belSupplyQuery').addEventListener('input',renderSupplyMatches);
+  bel('belSupplyScan').addEventListener('click',scanSupply);
+  bel('belSupplyQty').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();event.currentTarget.blur();}});
+  bel('belSupplyQtyForm').addEventListener('submit',submitSupplyQty);
+  bel('belSupplyFinish').addEventListener('click',finishSupply);
+  bel('belSupplyConfirm').addEventListener('click',confirmSupply);
   window.gpbsBellevilleBack = backBellevilleView;
   updateRoleControls();
   observeVisitScreen();
