@@ -1,4 +1,4 @@
-const CACHE_NAME = 'selfstorage-shell-v177';
+const CACHE_NAME = 'selfstorage-shell-v178';
 const SCANNER_LIBRARY_URL = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LOCAL_DATA_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const API_CACHE_DB = 'selfstorage-api-cache-v1';
@@ -16,7 +16,7 @@ const APP_SHELL = [
   './css/app.css?v=7',
   './css/warehouse.css?v=22',
   './css/theme-gpbs.css?v=8',
-  './js/app.js?v=83',
+  './js/app.js?v=84',
   './js/pl-integration.js?v=26',
   './js/api.js?v=4',
   './js/api.js',
@@ -551,7 +551,7 @@ async function cacheScannerLibrary(cache) {
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async cache => {
-      await cache.addAll(APP_SHELL);
+      await cache.addAll(APP_SHELL.map(url=>new Request(url,{cache:'reload'})));
       await cacheScannerLibrary(cache);
     })
   );
@@ -594,7 +594,8 @@ self.addEventListener('fetch', event => {
 
   // Never cache per-team missed-week status or the live reminder text.
   if (url.pathname === '/api/fr-weekly' ||
-      url.pathname === '/api/fr-weekly-message') return;
+      url.pathname === '/api/fr-weekly-message' ||
+      url.pathname === '/api/fr-loading-plans') return;
 
   if (request.method !== 'GET') return;
 
@@ -622,7 +623,7 @@ self.addEventListener('fetch', event => {
     const cache = await caches.open(CACHE_NAME);
 
     try {
-      const response = await fetch(request);
+      const response = await fetch(request, request.mode==='navigate'||['script','style'].includes(request.destination)?{cache:'no-store'}:{});
       if (response && response.ok) {
         await cache.put(request, response.clone());
       }

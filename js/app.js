@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.65';
+const APP_VERSION = '0.66';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -3030,6 +3030,41 @@ function bindEvents() {
   window.addEventListener('offline', updateNetworkUi);
 }
 
+let manualAppRefresh = false;
+async function refreshAppManually() {
+  if (manualAppRefresh) return;
+  if (!navigator.onLine) { showToast('Brak internetu. Połącz się z siecią, aby odświeżyć aplikację.', true); return; }
+  const screen=getActiveScreenId();
+  const safe=screen==='screenLogin'||screen==='screenWarehouse'||
+    (screen==='screenBelleville'&&['bellevilleMenuView','bellevilleVisitView'].some(id=>!$(id)?.classList.contains('hidden')));
+  if(!safe||state.visit?.idWizyty||state.pendingStart||hasVehicleManualChanges()||
+     document.querySelector('dialog[open], .modal.show')||$('loading')?.classList.contains('show')){
+    showToast('Najpierw zakończ otwartą operację.',true);return;
+  }
+  manualAppRefresh=true;
+  const btn=$('appRefreshBtn'); if(btn)btn.disabled=true;
+  showToast('Sprawdzanie aktualizacji…');
+  try {
+    if('serviceWorker' in navigator){
+      const registration=await navigator.serviceWorker.getRegistration();
+      if(registration){
+        await registration.update();
+        const worker=registration.installing||registration.waiting;
+        if(worker&&worker.state!=='activated'){
+          await new Promise(resolve=>{
+            let timer;
+            const done=()=>{clearTimeout(timer);worker.removeEventListener('statechange',check);resolve();};
+            const check=()=>{if(['activated','redundant'].includes(worker.state))done();};
+            timer=setTimeout(done,8000);worker.addEventListener('statechange',check);check();
+          });
+        }
+      }
+    }
+  } catch(error){console.warn('Nie udało się sprawdzić aktualizacji.',error);}
+  // Do not clear local/session storage, pending queues or login cookies.
+  sessionStorage.setItem('selfstorage_reload_for_update','1');
+  window.location.reload();
+}
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
@@ -3040,13 +3075,14 @@ async function registerServiceWorker() {
     registration.update().catch(() => {});
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!hadController) return;
+      if (!hadController || manualAppRefresh) return;
       if (sessionStorage.getItem('selfstorage_reload_for_update') === '1') return;
 
       const activeScreen = getActiveScreenId();
       const unsafeToReload =
         Boolean(state.visit?.idWizyty) ||
         activeScreen === 'screenOperation' ||
+        activeScreen === 'screenBelleville' ||
         activeScreen === 'screenVehicleInventory' ||
         (activeScreen === 'screenVehicle' && hasVehicleManualChanges());
 
@@ -3097,6 +3133,7 @@ async function init() {
   sessionStorage.removeItem('selfstorage_reload_for_update');
   restore();
   bindEvents();
+  $('appRefreshBtn')?.addEventListener('click',refreshAppManually);
   updateNetworkUi();
   registerServiceWorker();
 

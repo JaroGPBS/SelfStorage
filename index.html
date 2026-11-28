@@ -43,6 +43,20 @@
       transform: scale(.98);
     }
 
+    #appRefreshBtn {
+      display: none; flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px;
+      padding: 6px; align-items: center; justify-content: center;
+      color: #e0e5eb; border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px; background: rgba(16,20,24,.72);
+    }
+    body:has(#screenLogin.active) #appRefreshBtn,
+    body:has(#screenWarehouse.active) #appRefreshBtn,
+    body:has(#screenBelleville.active #bellevilleMenuView:not(.hidden)) #appRefreshBtn,
+    body:has(#screenBelleville.active #bellevilleVisitView:not(.hidden)) #appRefreshBtn { display: flex; }
+    body:has(#screenLogin.active) .app-header,
+    body:has(#screenWarehouse.active) .app-header,
+    body:has(#screenBelleville.active) .app-header { gap: 6px; }
+    #appRefreshBtn:disabled { opacity: .5; }
     .login-instruction-wrap {
       display: flex;
       justify-content: center;
@@ -146,7 +160,7 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=83"></script>
+  <script type="module" src="./js/app.js?v=84"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
@@ -166,6 +180,9 @@
         <span class="network-dot"></span>
         <span id="networkText">Online</span>
       </div>
+      <button id="appRefreshBtn" type="button" aria-label="Odśwież aplikację" title="Odśwież aplikację">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 8a7 7 0 0 1 11.6-2.7L20 12M4 12l2.9 6.7A7 7 0 0 0 18.5 16"/></svg>
+      </button>
     </header>
 
     <main class="app-main">
