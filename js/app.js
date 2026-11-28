@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.84';
+const APP_VERSION = '0.85';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.

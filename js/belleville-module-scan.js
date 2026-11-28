@@ -1,4 +1,3 @@
-import {setOcrOrientation} from './install.js?v=1';
 // Single module capture. Camera stays off until a mode is chosen.
 // OCR runs on the phone in a WebAssembly worker; no picture is sent to the API.
 const QR_SRC='https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
@@ -6,6 +5,57 @@ const OCR_SRC='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.mi
 const loads=new Map();
 const el=id=>document.getElementById(id);
 let generation=0,queue=Promise.resolve(),qr=null,stream=null,worker=null,ocrMode=null,busy=false;
+let orientationMode='auto',sensorAngle=0,ocrAngle=0,orientationWatching=false;
+const orientationLabels={auto:'Auto',right:'Prawo',left:'Lewo',upright:'Pion'};
+function effectiveOcrAngle(mode,angle,landscape){
+ if(mode==='right')return 90;
+ if(mode==='left')return -90;
+ if(mode==='upright'||landscape)return 0;
+ return angle;
+}
+function applyOcrOrientation(){
+ if(!orientationWatching)return;
+ const landscape=window.matchMedia('(orientation: landscape)').matches;
+ ocrAngle=effectiveOcrAngle(orientationMode,sensorAngle,landscape);
+ el('belModuleOcrFrame').classList.toggle('ocr-turned',ocrAngle!==0);
+ el('belModuleRotate').textContent='Obrót: '+orientationLabels[orientationMode];
+ el('belModuleRotate').setAttribute('aria-label','Obrót ramki OCR: '+orientationLabels[orientationMode]+'. Naciśnij, aby zmienić.');
+}
+function onOcrTilt(event){
+ if(orientationMode!=='auto'||!Number.isFinite(event.gamma))return;
+ const gamma=event.gamma;
+ // Hysteresis prevents the guide from flickering near the switching angle.
+ if(gamma>55)sensorAngle=90;
+ else if(gamma< -55)sensorAngle=-90;
+ else if(Math.abs(gamma)<30)sensorAngle=0;
+ applyOcrOrientation();
+}
+function startOcrOrientation(){
+ orientationMode='auto';sensorAngle=0;ocrAngle=0;orientationWatching=true;
+ window.addEventListener('deviceorientation',onOcrTilt);
+ window.addEventListener('resize',applyOcrOrientation);
+ el('belModuleRotate').classList.remove('hidden');
+ applyOcrOrientation();
+}
+function stopOcrOrientation(){
+ orientationWatching=false;orientationMode='auto';sensorAngle=0;ocrAngle=0;
+ window.removeEventListener('deviceorientation',onOcrTilt);
+ window.removeEventListener('resize',applyOcrOrientation);
+ el('belModuleOcrFrame').classList.remove('ocr-turned');
+ el('belModuleRotate').classList.add('hidden');
+}
+export function rotateModuleOcr(){
+ if(!orientationWatching)return;
+ const modes=['auto','right','left','upright'];
+ orientationMode=modes[(modes.indexOf(orientationMode)+1)%modes.length];
+ applyOcrOrientation();
+}
+export function requestModuleTiltPermission(){
+ const sensor=window.DeviceOrientationEvent;
+ if(typeof sensor?.requestPermission==='function'){
+  try{void sensor.requestPermission().catch(()=>{});}catch{}
+ }
+}
 function loadScript(src,globalName){
  if(window[globalName])return Promise.resolve(window[globalName]);
  if(loads.has(src))return loads.get(src);
@@ -31,7 +81,7 @@ async function stopQr(){
  if(current){try{if(current.isScanning)await current.stop();}catch(e){console.warn('QR stop',e);}try{current.clear();}catch{}}
 }
 function endWorker(){const w=worker;worker=null;if(w)void w.terminate().catch(()=>{});}
-function hideCamera(){el('belModuleQrReader').classList.add('hidden');el('belModuleOcrFrame').classList.add('hidden');el('belModuleCapture').classList.add('hidden');el('belModuleScanDialog').classList.remove('ocr-active');setOcrOrientation(false);}
+function hideCamera(){stopOcrOrientation();el('belModuleQrReader').classList.add('hidden');el('belModuleOcrFrame').classList.add('hidden');el('belModuleCapture').classList.add('hidden');el('belModuleScanDialog').classList.remove('ocr-active');}
 function enqueue(fn){queue=queue.catch(()=>{}).then(fn);return queue;}
 export function stopModuleCapture(){
  generation++;ocrMode=null;busy=false;stopTracks();endWorker();hideCamera();
@@ -64,11 +114,11 @@ export function startModuleCapture(mode,onResult,onStatus){
     const camera=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
     if(!alive()){camera.getTracks().forEach(t=>t.stop());return;}
     stream=camera;const video=el('belModuleVideo');video.srcObject=camera;
-    el('belModuleOcrFrame').classList.remove('hidden');el('belModuleScanDialog').classList.add('ocr-active');setOcrOrientation(true);await video.play();
+    el('belModuleOcrFrame').classList.remove('hidden');el('belModuleScanDialog').classList.add('ocr-active');await video.play();
     if(!alive()){stopTracks();return;}
-    ocrMode={token,onResult,onStatus};el('belModuleCapture').classList.remove('hidden');
+    ocrMode={token,onResult,onStatus};el('belModuleCapture').classList.remove('hidden');startOcrOrientation();
     el('belModuleScanDialog').scrollTop=0;
-    onStatus('Ustaw sam numer seryjny w ramce i naciśnij Odczytaj.');
+    onStatus('Ustaw numer w ramce. Obróć telefon lub użyj przycisku Obrót.');
    }
   }catch(e){if(alive()){stopTracks();await stopQr();hideCamera();onStatus(e?.message||'Nie udało się uruchomić aparatu.');}}
  });
@@ -106,9 +156,13 @@ export async function captureModuleOcr(){
   const view=video.getBoundingClientRect(),guide=el('belModuleOcrFrame').querySelector('span').getBoundingClientRect();
   const {sx,sy,sw,sh}=moduleOcrCrop(w,h,view,guide);
   if(sw<=0||sh<=0)throw Error('Nieprawidłowa ramka OCR.');
-  const canvas=document.createElement('canvas'),scale=Math.min(2,1800/sw);
-  canvas.width=Math.max(1,Math.round(sw*scale));canvas.height=Math.max(1,Math.round(sh*scale));
-  const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.25)';ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+  const angle=ocrAngle,turned=angle!==0;
+  const canvas=document.createElement('canvas'),scale=Math.min(2,1800/Math.max(sw,sh));
+  const dw=Math.max(1,Math.round(sw*scale)),dh=Math.max(1,Math.round(sh*scale));
+  canvas.width=turned?dh:dw;canvas.height=turned?dw:dh;
+  const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.25)';
+  ctx.translate(canvas.width/2,canvas.height/2);ctx.rotate(angle*Math.PI/180);
+  ctx.drawImage(video,sx,sy,sw,sh,-dw/2,-dh/2,dw,dh);
   stopTracks();ocrMode=null;hideCamera();onStatus('Odczytywanie numeru seryjnego…');
   const T=await loadScript(OCR_SRC,'Tesseract');if(!alive())return;
   localWorker=await T.createWorker('eng',1,{workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',logger:m=>{if(alive()&&m.status==='recognizing text')onStatus('Odczytywanie… '+Math.round((m.progress||0)*100)+'%');}});

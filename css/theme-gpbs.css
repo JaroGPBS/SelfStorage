@@ -776,3 +776,11 @@ body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden))::before{
  #screenBelleville #belModuleScanDialog.ocr-active #belModuleScanStatus{margin:4px 0}
  #screenBelleville #belModuleScanDialog.ocr-active button[data-bel-close="belModuleScanDialog"]{min-height:36px;margin-top:3px}
 }
+
+/* OCR rotates its guide and captured pixels even when the PWA is portrait-locked. */
+#screenBelleville .bel-module-ocr-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:6px}
+#screenBelleville .bel-module-ocr-actions .btn{min-height:44px;margin-top:5px}
+#screenBelleville .bel-module-ocr-actions .btn.hidden{display:none!important}
+#screenBelleville #belModuleScanDialog.ocr-active #belModuleReview{display:none}
+#screenBelleville .bel-module-ocr-frame.ocr-turned{height:clamp(170px,35dvh,290px)}
+#screenBelleville .bel-module-ocr-frame.ocr-turned span{inset:6% 39%}

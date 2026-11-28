@@ -1,6 +1,6 @@
 import { loadState } from './storage.js';
 import './install.js?v=1';
-import {startModuleCapture,stopModuleCapture,captureModuleOcr} from './belleville-module-scan.js?v=3';
+import {startModuleCapture,stopModuleCapture,captureModuleOcr,rotateModuleOcr,requestModuleTiltPermission} from './belleville-module-scan.js?v=4';
 
 function normalizeRoleLabel(value) {
   const role = String(value || '').trim().toUpperCase();
@@ -330,6 +330,7 @@ function openTransportModule(scan=true,existingSerial=null){
 }
 function chooseTransportScanMode(mode){
  if(!transportModuleEdit||!bel('belModuleScanDialog').open)return;
+ if(mode==='OCR')requestModuleTiltPermission();
  for(const b of document.querySelectorAll('[data-bel-module-mode]'))b.setAttribute('aria-pressed',String(b.dataset.belModuleMode===mode));
  bel('belModuleCapture').disabled=false;
  void startModuleCapture(mode,value=>{
@@ -915,6 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bel('belScan').addEventListener('click',()=>{if(belTab==='modules')openTransportModule(true);else belAlert('Skanowanie części zostanie podłączone osobno. Na razie użyj opcji Ręcznie.');});
   document.querySelectorAll('[data-bel-module-mode]').forEach(b=>b.addEventListener('click',()=>chooseTransportScanMode(b.dataset.belModuleMode)));
   bel('belModuleCapture').addEventListener('click',captureModuleOcr);
+  bel('belModuleRotate').addEventListener('click',rotateModuleOcr);
   bel('belModuleSerial').addEventListener('input',()=>refreshTransportModuleTypes());
   bel('belModuleScanForm').addEventListener('submit',submitTransportModule);
   bel('belModuleScanDialog').addEventListener('close',()=>{void stopModuleCapture();transportModuleEdit=null;});
