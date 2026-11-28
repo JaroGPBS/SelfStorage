@@ -126,24 +126,54 @@ function canBellevilleOperation(operation,saved=loadState()){
  return operation==='PZ'?features.pz!==false:operation==='WZ'?features.wz!==false:
   ['VISIT','EKIPY'].includes(operation)?(features.pz!==false||features.wz!==false):false;
 }
-const BELLEVILLE_SESSION_STORAGE_KEY='gpbs-belleville-transport-session-v1';
+// One persistent local draft per authenticated warehouse employee.
+const BELLEVILLE_LEGACY_SESSION_KEY='gpbs-belleville-transport-session-v1';
+const BELLEVILLE_DRAFT_PREFIX='gpbs-belleville-transport-draft-v2:';
 const bel=id=>document.getElementById(id);
 let bellevilleView='menu',belDirection='PZ',belTab='modules',belPlan=null,belPlanState='',belPlanToken=0;
+function belDraftKey(teamId){return BELLEVILLE_DRAFT_PREFIX+encodeURIComponent(String(teamId));}
 function getBellevilleSession(){
  const team=loadState()?.team;
  if(!canBelleville()||!team?.id)return null;
+ const teamId=String(team.id);
  try{
-  const saved=JSON.parse(sessionStorage.getItem(BELLEVILLE_SESSION_STORAGE_KEY)||'null');
-  if(saved?.teamId!==String(team.id)||!saved.route||!saved.plate)return null;
+  const key=belDraftKey(teamId);
+  let saved=JSON.parse(localStorage.getItem(key)||'null');
+  // Migrate an existing open draft if its old browser session still exists.
+  if(!saved){
+   const legacy=JSON.parse(sessionStorage.getItem(BELLEVILLE_LEGACY_SESSION_KEY)||'null');
+   if(legacy?.teamId===teamId&&legacy.route&&legacy.plate){
+    saved=legacy;
+    try{
+     localStorage.setItem(key,JSON.stringify(saved));
+     sessionStorage.removeItem(BELLEVILLE_LEGACY_SESSION_KEY);
+    }catch(error){console.warn('Nie udało się przenieść dotychczasowej wizyty do trwałej pamięci.',error);}
+   }
+  }
+  if(saved?.teamId!==teamId||!saved.route||!saved.plate)return null;
   saved.operations??={PZ:{modules:[],parts:[],done:false},WZ:{modules:[],parts:[],done:false}};
   return saved;
- }catch{return null;}
+ }catch(error){console.warn('Nie udało się odczytać wizyty Belleville.',error);return null;}
 }
 function saveBellevilleSession(session){
- try{sessionStorage.setItem(BELLEVILLE_SESSION_STORAGE_KEY,JSON.stringify(session));return true;}
- catch{alert('Nie udało się zapisać danych testowych w pamięci telefonu.');return false;}
+ const teamId=String(loadState()?.team?.id||'');
+ if(!teamId||session.teamId!==teamId||!canBelleville())return false;
+ try{
+  localStorage.setItem(belDraftKey(teamId),JSON.stringify(session));
+  return true;
+ }catch(error){console.warn('Błąd zapisu wizyty Belleville.',error);alert('Nie udało się zapisać wizyty w trwałej pamięci telefonu. Pozycja nie została zapisana.');return false;}
 }
-function clearBellevilleSession(){sessionStorage.removeItem(BELLEVILLE_SESSION_STORAGE_KEY);belPlanToken++;belPlan=null;belPlanState='';}
+function clearBellevilleSession(){
+ const teamId=String(loadState()?.team?.id||'');
+ if(!teamId||!canBelleville())return false;
+ try{
+  // Remove only this employee's draft; do not touch other local data.
+  const legacy=JSON.parse(sessionStorage.getItem(BELLEVILLE_LEGACY_SESSION_KEY)||'null');
+  if(legacy?.teamId===teamId)sessionStorage.removeItem(BELLEVILLE_LEGACY_SESSION_KEY);
+  localStorage.removeItem(belDraftKey(teamId));
+ }catch(error){console.warn('Błąd zamknięcia wizyty Belleville.',error);alert('Nie udało się zakończyć wizyty w pamięci telefonu. Spróbuj ponownie.');return false;}
+ belPlanToken++;belPlan=null;belPlanState='';return true;
+}
 function showBellevilleView(view){
  bellevilleView=view;
  const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView'};
@@ -280,7 +310,8 @@ function continueBellevilleOther(){
 }
 function confirmBellevilleFinish(){
  if(!getBellevilleSession())return;
- bel('belFinishDialog').close();clearBellevilleSession();showBellevilleView('menu');
+ if(!clearBellevilleSession())return;
+ bel('belFinishDialog').close();showBellevilleView('menu');
  bel('bellevilleInfo').textContent='Wizyta testowa zakończona.';
  bel('bellevilleInfo').classList.remove('hidden');
 }

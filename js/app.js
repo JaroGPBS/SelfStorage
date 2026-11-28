@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.67';
+const APP_VERSION = '0.68';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -3114,10 +3114,10 @@ function updateAppVersionBadge() {
     versionEl.style.right = '10px';
     versionEl.style.bottom = 'max(6px, env(safe-area-inset-bottom))';
     versionEl.style.zIndex = '20';
-    versionEl.style.fontSize = '10px';
+    versionEl.style.fontSize = '13px';
     versionEl.style.lineHeight = '1';
-    versionEl.style.color = '#78818c';
-    versionEl.style.opacity = '.65';
+    versionEl.style.color = '#b7c0ca';
+    versionEl.style.opacity = '.95';
     versionEl.style.pointerEvents = 'none';
     versionEl.style.userSelect = 'none';
     document.body.appendChild(versionEl);
