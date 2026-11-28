@@ -652,9 +652,11 @@ body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-si
 #screenBelleville .bel-dialog .field-label{margin:9px 0 4px}
 #screenBelleville .bel-dialog .text-input{min-height:44px}
 #screenBelleville .bel-dialog select{width:100%;background:#1b1f24;color:var(--text);border:1px solid var(--line);padding:10px;border-radius:10px}
-#screenBelleville .bel-plan-filter{font-size:13px;display:flex;align-items:center;gap:6px;margin:8px 0}
-#screenBelleville .bel-plan-row{display:grid;grid-template-columns:minmax(0,1fr) 40px 42px 48px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
-#screenBelleville .bel-plan-row span:not(:first-child){text-align:right}
+#screenBelleville .bel-plan-row{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+#screenBelleville .bel-plan-row > :last-child{text-align:right;font-variant-numeric:tabular-nums}
+#screenBelleville .bel-plan-header{font-size:12px;font-weight:600}
+#screenBelleville .bel-plan-qty{font-size:16px;font-weight:750}
+#screenBelleville .bel-plan-complete{text-align:center}
 @media(max-width:350px){#screenBelleville .bel-work-head #belPlanOpen{font-size:11px}#screenBelleville .bel-work-head #belOperationFinish{font-size:12px}}
 
 /* Belleville team supply, same visual system as PZ/WZ. */

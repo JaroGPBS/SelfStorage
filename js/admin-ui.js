@@ -383,22 +383,23 @@ function planProgress(){
 }
 function renderBellevillePlan(){
  if(!bel('belPlanOpen'))return;
- const lines=planProgress(),total=lines.reduce((sum,x)=>sum+x.quantity,0),done=lines.reduce((sum,x)=>sum+x.done,0);
- bel('belPlanCount').textContent=belPlan?done+'/'+total:'';
+ const lines=planProgress(),remaining=lines.reduce((sum,x)=>sum+x.remaining,0);
+ bel('belPlanCount').textContent=belPlan?String(remaining):'';
  bel('belPlanCount').classList.toggle('hidden',!belPlan);
- bel('belPlanStatus').textContent=belPlan?belPlanState+' • '+done+'/'+total:belPlanState;
+ bel('belPlanStatus').textContent=belPlanState;
  const picker=bel('belPlanPicker'),select=bel('belPlanSelect');
  picker.classList.toggle('hidden',belPlanOptions.length<2&&!(belPlanOptions.length===1&&!belPlan));
  select.replaceChildren(new Option('Wybierz listę',''));
  for(const p of belPlanOptions)select.append(new Option('Tydzień '+p.week+'/'+p.year+' · '+p.routeCode,p.id));
  select.value=belPlan?.id||'';
  bel('belPlanReload').disabled=belPlanLoading;
- bel('belRemainingOnly').parentElement.classList.toggle('hidden',!belPlan);
  const root=bel('belPlanRows');root.replaceChildren();
  if(!belPlan)return;
- const header=node('div',null,'bel-plan-row');for(const v of ['Pozycja','Plan','Wyd.','Brak'])header.append(node('span',v));root.append(header);
- for(const x of lines.filter(x=>!bel('belRemainingOnly').checked||x.remaining>0)){
-  const row=node('div',null,'bel-plan-row');for(const v of [x.displayName,x.quantity,x.done,x.remaining])row.append(node('span',String(v)));root.append(row);
+ const remainingLines=lines.filter(x=>x.remaining>0);
+ if(!remainingLines.length){root.append(node('p','Wszystkie pozycje zostały wydane.','bel-plan-complete'));return;}
+ const header=node('div',null,'bel-plan-row bel-plan-header');for(const v of ['Pozycja','Do wydania'])header.append(node('span',v));root.append(header);
+ for(const x of remainingLines){
+  const row=node('div',null,'bel-plan-row');row.append(node('span',x.displayName),node('strong',String(x.remaining),'bel-plan-qty'));root.append(row);
  }
 }
 function openBellevilleScreen(){
@@ -839,7 +840,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bel('belPlanOpen').addEventListener('click',()=>{renderBellevillePlan();bel('belPlanDialog').showModal();if(!belPlan&&!belPlanOptions.length&&!belPlanLoading)void loadBellevillePlan();});
   bel('belPlanSelect').addEventListener('change',()=>{const id=bel('belPlanSelect').value;if(id)chooseBellevillePlan(id);else renderBellevillePlan();});
   bel('belPlanReload').addEventListener('click',()=>{if(!belPlanLoading)void loadBellevillePlan();});
-  bel('belRemainingOnly').addEventListener('change',renderBellevillePlan);
   bel('belSupplyTeam').addEventListener('input',()=>{bel('belSupplyTeam').value=bel('belSupplyTeam').value.toUpperCase();});
   bel('belSupplyForm').addEventListener('submit',startSupply);
   bel('belSupplyBack').addEventListener('click',backBellevilleView);
