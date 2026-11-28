@@ -2727,6 +2727,19 @@
     $('loginForm').addEventListener('submit',performLogin);
     $('frWeeklySettingsForm').addEventListener('submit',saveFrWeeklySettings);
     $('documentEmailsForm').addEventListener('submit',saveDocumentEmails);
+    for(const id of ['modulePrefixType','modulePrefixCode']){
+      const field=$(id);
+      const uppercase=event=>{
+        if(event.isComposing)return;
+        const value=field.value, upper=value.toUpperCase();
+        if(value===upper)return;
+        const start=field.selectionStart,end=field.selectionEnd,direction=field.selectionDirection;
+        field.value=upper;
+        if(start!==null&&end!==null)field.setSelectionRange(value.slice(0,start).toUpperCase().length,value.slice(0,end).toUpperCase().length,direction);
+      };
+      field.addEventListener('input',uppercase);
+      field.addEventListener('compositionend',uppercase);
+    }
     $('modulePrefixForm').addEventListener('submit',saveModulePrefix);
     $('cmrModuleWeightForm').addEventListener('submit',saveCmrModuleWeight);
     $('loadingListPartAdd').addEventListener('click',()=>openLoadingPartEditor());
