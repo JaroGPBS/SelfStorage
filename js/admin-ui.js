@@ -124,181 +124,221 @@ function canBellevilleOperation(operation,saved=loadState()){
  if(!canBelleville(saved))return false;
  const features=saved.team.features||{};
  return operation==='PZ'?features.pz!==false:operation==='WZ'?features.wz!==false:
-  operation==='EKIPY'?(features.pz!==false||features.wz!==false):false;
+  ['VISIT','EKIPY'].includes(operation)?(features.pz!==false||features.wz!==false):false;
 }
-const BELLEVILLE_SESSION_STORAGE_KEY = 'gpbs-belleville-transport-session-v1';
-let bellevilleSession = null;
-let bellevilleView = 'menu';
-let bellevilleTargetOperation = null;
-
-function getBellevilleSession() {
-  const team = loadState()?.team;
-  if (!canBelleville() || !team?.id) return null;
-  const teamId = String(team.id);
-  if (bellevilleSession?.teamId === teamId) return bellevilleSession;
-
-  bellevilleSession = null;
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(BELLEVILLE_SESSION_STORAGE_KEY) || 'null');
-    if (saved?.teamId === teamId && saved.route && saved.plate) {
-      bellevilleSession = saved;
-    }
-  } catch (error) {
-    console.warn('Nie udało się odczytać sesji Belleville.', error);
+const BELLEVILLE_SESSION_STORAGE_KEY='gpbs-belleville-transport-session-v1';
+const bel=id=>document.getElementById(id);
+let bellevilleView='menu',belDirection='PZ',belTab='modules',belPlan=null,belPlanState='',belPlanToken=0;
+function getBellevilleSession(){
+ const team=loadState()?.team;
+ if(!canBelleville()||!team?.id)return null;
+ try{
+  const saved=JSON.parse(sessionStorage.getItem(BELLEVILLE_SESSION_STORAGE_KEY)||'null');
+  if(saved?.teamId!==String(team.id)||!saved.route||!saved.plate)return null;
+  saved.operations??={PZ:{modules:[],parts:[],done:false},WZ:{modules:[],parts:[],done:false}};
+  return saved;
+ }catch{return null;}
+}
+function saveBellevilleSession(session){
+ try{sessionStorage.setItem(BELLEVILLE_SESSION_STORAGE_KEY,JSON.stringify(session));return true;}
+ catch{alert('Nie udało się zapisać danych testowych w pamięci telefonu.');return false;}
+}
+function clearBellevilleSession(){sessionStorage.removeItem(BELLEVILLE_SESSION_STORAGE_KEY);belPlanToken++;belPlan=null;belPlanState='';}
+function showBellevilleView(view){
+ bellevilleView=view;
+ const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView'};
+ for(const [name,id] of Object.entries(sections))bel(id).classList.toggle('hidden',name!==view);
+ if(view==='menu'){
+  bel('belStartVisit').textContent=getBellevilleSession()?'Wznów wizytę':'Rozpocznij wizytę';
+ }else if(view==='visit'){
+  const s=getBellevilleSession();if(!s){showBellevilleView('menu');return;}
+  bel('belVisitRoute').textContent=s.route;
+  for(const button of document.querySelectorAll('[data-bel-enter]')){
+   const dir=button.dataset.belEnter;button.classList.toggle('hidden',!canBellevilleOperation(dir));
+   button.textContent=(dir==='PZ'?'Przyjęcie':'Wydanie')+(s.operations[dir].done?' ✓':'');
   }
-  return bellevilleSession;
+ }
 }
-
-function saveBellevilleSession(session) {
-  bellevilleSession = session;
-  try {
-    sessionStorage.setItem(BELLEVILLE_SESSION_STORAGE_KEY, JSON.stringify(session));
-  } catch (error) {
-    console.warn('Nie udało się zapamiętać sesji Belleville w przeglądarce.', error);
-  }
+function backBellevilleView(){
+ const open=document.querySelector('#screenBelleville dialog[open]');if(open){open.close();return true;}
+ if(bellevilleView==='menu')return false;
+ showBellevilleView(bellevilleView==='operation'?'visit':'menu');return true;
 }
-
-function clearBellevilleSession() {
-  bellevilleSession = null;
-  try {
-    sessionStorage.removeItem(BELLEVILLE_SESSION_STORAGE_KEY);
-  } catch (error) {
-    console.warn('Nie udało się usunąć sesji Belleville z przeglądarki.', error);
-  }
+function chooseBellevilleOperation(operation){
+ if(!canBellevilleOperation(operation))return;
+ bel('bellevilleInfo').classList.add('hidden');
+ if(operation==='EKIPY'){
+  bel('bellevilleInfo').textContent='Zaopatrzenie ekip zostanie dodane w kolejnym etapie.';
+  bel('bellevilleInfo').classList.remove('hidden');return;
+ }
+ if(operation!=='VISIT')return;
+ if(getBellevilleSession()){showBellevilleView('visit');return;}
+ bel('bellevilleTransportForm').reset();showBellevilleView('form');
 }
-
-function renderBellevilleSessionInfo() {
-  const session = getBellevilleSession();
-  document.getElementById('bellevilleSessionCard')?.classList.toggle('hidden', !session);
-  document.getElementById('bellevilleEndSessionBtn')?.classList.toggle('hidden', !session);
-  if (!session) return;
-
-  for (const id of ['bellevilleSessionRoute', 'bellevilleOperationRoute']) {
-    const target = document.getElementById(id);
-    if (target) target.textContent = 'Trasa: ' + session.route;
-  }
-  const details = [session.plate, session.trailer ? 'Naczepa: ' + session.trailer : '', session.carrier].filter(Boolean).join(' • ');
-  for (const id of ['bellevilleSessionPlate', 'bellevilleOperationPlate']) {
-    const target = document.getElementById(id);
-    if (target) target.textContent = details;
-  }
+function startBellevilleSession(event){
+ event.preventDefault();if(!canBellevilleOperation('VISIT')||getBellevilleSession())return;
+ const value=id=>bel(id).value.trim(),route=value('bellevilleRouteInput').toUpperCase(),plate=value('bellevillePlateInput').toUpperCase();
+ if(!route||!plate){alert('Wpisz numer trasy i tablicę samochodu.');return;}
+ const s={teamId:String(loadState().team.id),route,plate,carrier:value('bellevilleCarrierInput'),driver:value('bellevilleDriverInput'),trailer:value('bellevilleTrailerInput').toUpperCase(),startedAt:new Date().toISOString(),
+ operations:{PZ:{modules:[],parts:[],done:false},WZ:{modules:[],parts:[],done:false}}};
+ if(saveBellevilleSession(s)){belPlanToken++;belPlan=null;belPlanState='';showBellevilleView('visit');}
 }
-
-function showBellevilleView(view) {
-  bellevilleView = view;
-  const sections = {
-    menu: 'bellevilleMenuView',
-    form: 'bellevilleTransportForm',
-    operation: 'bellevilleOperationView'
-  };
-  for (const [name, id] of Object.entries(sections)) {
-    document.getElementById(id)?.classList.toggle('hidden', name !== view);
-  }
-  if (view === 'menu') renderBellevilleSessionInfo();
-  window.scrollTo(0, 0);
+function node(tag,text,cls){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;}
+function enterBellevilleOperation(direction){
+ if(!canBellevilleOperation(direction)||!getBellevilleSession())return;
+ belDirection=direction;belTab='modules';
+ showBellevilleView('operation');renderBellevilleRows();
+ if(direction==='WZ')void loadBellevillePlan();
 }
-
-function backBellevilleView() {
-  if (bellevilleView === 'menu') return false;
-  bellevilleTargetOperation = null;
-  showBellevilleView('menu');
-  return true;
+function renderBellevilleRows(){
+ const s=getBellevilleSession();if(!s)return;
+ const op=s.operations[belDirection],receipt=belDirection==='PZ';
+ bel('bellevilleOperationTitle').textContent=receipt?'Przyjęcie':'Wydanie';
+ bel('bellevilleOperationRoute').textContent=s.route;
+ bel('belOperationFinish').textContent=receipt?'Zakończ przyjęcie':'Zakończ wydanie';
+ bel('belPlanBar').classList.toggle('hidden',receipt);
+ // Move plan next to finish in the WZ header; restore the single finish button in PZ.
+ const head=bel('belOperationFinish').parentElement;
+ const planBar=bel('belPlanBar');
+ if(!receipt&&head!==planBar)planBar.append(bel('belOperationFinish'));
+ if(receipt&&head===planBar)document.querySelector('.bel-work-head').insertBefore(bel('belOperationFinish'),bel('bellevilleOperationRoute'));
+ for(const button of document.querySelectorAll('[data-bel-tab]')){
+  const type=button.dataset.belTab;button.textContent=(type==='modules'?'Moduły':'Części')+' ('+op[type].length+')';
+  button.classList.toggle('active',type===belTab);button.setAttribute('aria-pressed',String(type===belTab));
+ }
+ const modules=belTab==='modules';
+ bel('belScan').querySelector('span').textContent=modules?'Skanuj moduł':'Skanuj część';
+ const header=bel('belListHead');header.replaceChildren(...(modules?['Numer seryjny','Typ','Stan','']:['Nazwa / indeks części','Ilość','','']).map(v=>node('span',v)));
+ const rows=bel('belRows');rows.replaceChildren();
+ if(!op[belTab].length)rows.append(node('p',modules?'Brak modułów. Dodaj ręcznie pozycje testowe.':'Brak części. Dodaj ręcznie pozycje testowe.','bel-empty'));
+ for(const [i,row] of op[belTab].entries()){
+  const line=node('div',null,'bel-row');
+  if(modules)line.append(node('span',row.serial),node('span',row.type),node('span',row.status,row.status.toLowerCase()));
+  else line.append(node('span',row.name),node('span',String(row.qty)),node('span',''));
+  const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń pozycję');remove.onclick=()=>{
+   if(!confirm('Usunąć tę pozycję?'))return;
+   const current=getBellevilleSession();if(!current)return;
+   current.operations[belDirection][belTab].splice(i,1);current.operations[belDirection].done=false;
+   if(saveBellevilleSession(current))renderBellevilleRows();
+  };line.append(remove);rows.append(line);
+ }
+ renderBellevillePlan();
 }
-
-function enterBellevilleOperation(operation) {
-  const session = getBellevilleSession();
-  if (!session) return;
-  const title = document.getElementById('bellevilleOperationTitle');
-  if (title) title.textContent = operation === 'PZ' ? 'Przyjęcia' : 'Wydania';
-  renderBellevilleSessionInfo();
-  bellevilleTargetOperation = null;
-  showBellevilleView('operation');
+function openBellevilleEntry(){
+ if(!canBellevilleOperation(belDirection)||!getBellevilleSession())return;
+ const mod=belTab==='modules';bel('belEntryTitle').textContent=mod?'Dodaj moduł ręcznie':'Dodaj część ręcznie';
+ const fields=bel('belEntryFields');fields.replaceChildren();
+ function input(label,id,attrs={}){const l=node('label',label,'field-label');l.htmlFor=id;const el=node('input');el.id=id;el.className='text-input';Object.assign(el,attrs);fields.append(l,el);return el;}
+ if(mod){
+  input('Numer seryjny','belEntrySerial',{required:true,maxLength:100,autocomplete:'off'});
+  const type=input('Typ modułu','belEntryType',{required:true,maxLength:40,autocomplete:'off'});
+  const types=node('datalist');types.id='belTypeSuggestions';for(const val of ['FM','LQ','RQ','XS','ODL','ODR','CU','DUO','HI UNO','HICU']){const opt=node('option');opt.value=val;types.append(opt);}
+  type.setAttribute('list',types.id);fields.append(types);
+  const label=node('label','Stan','field-label');label.htmlFor='belEntryState';const select=node('select');select.id='belEntryState';
+  for(const val of ['OK','NOK']){const opt=node('option',val);opt.value=val;select.append(opt);}fields.append(label,select);
+ }else{
+  const name=input('Nazwa lub indeks części','belEntryPart',{required:true,maxLength:140,autocomplete:'off'});
+  if(belPlan?.lines?.length){const list=node('datalist');list.id='belPartSuggestions';for(const line of belPlan.lines.filter(x=>x.kind==='PART')){const opt=node('option');opt.value=line.displayName;list.append(opt);}name.setAttribute('list',list.id);fields.append(list);}
+  input('Ilość','belEntryQty',{required:true,type:'number',min:'1',max:'100000',step:'1',value:'1',inputMode:'numeric'});
+ }
+ bel('belEntryDialog').showModal();
 }
-
-function chooseBellevilleOperation(operation) {
-  if (!canBellevilleOperation(operation)) return;
-  const info = document.getElementById('bellevilleInfo');
-  info?.classList.add('hidden');
-  if (operation === 'EKIPY') {
-    if (!info) return;
-    info.textContent = 'Funkcję „Zaopatrzenie ekip” dodamy w kolejnym kroku.';
-    info.classList.remove('hidden');
-    return;
-  }
-  if (operation !== 'PZ' && operation !== 'WZ') return;
-
-  bellevilleTargetOperation = operation;
-  if (getBellevilleSession()) {
-    enterBellevilleOperation(operation);
-    return;
-  }
-  document.getElementById('bellevilleTransportForm')?.reset();
-  showBellevilleView('form');
+function saveBellevilleEntry(event){
+ event.preventDefault();const s=getBellevilleSession();if(!s||!canBellevilleOperation(belDirection))return;
+ const op=s.operations[belDirection];
+ if(belTab==='modules'){
+  const serial=bel('belEntrySerial').value.trim().toUpperCase(),type=bel('belEntryType').value.trim().toUpperCase(),status=bel('belEntryState').value;
+  if(!serial||!type)return;
+  if(op.modules.some(x=>x.serial===serial)){alert('Ten numer seryjny jest już na liście.');return;}
+  op.modules.push({serial,type,status});
+ }else{
+  const name=bel('belEntryPart').value.trim(),qty=Number(bel('belEntryQty').value);
+  if(!name||!Number.isSafeInteger(qty)||qty<1||qty>100000)return;
+  const found=op.parts.find(x=>x.name.toUpperCase()===name.toUpperCase());
+  if(found)found.qty+=qty;else op.parts.push({name,qty});
+ }
+ op.done=false;
+ if(saveBellevilleSession(s)){bel('belEntryDialog').close();renderBellevilleRows();}
 }
-
-function startBellevilleSession(event) {
-  event.preventDefault();
-  if (!canBellevilleOperation(bellevilleTargetOperation)) return;
-  if (bellevilleTargetOperation !== 'PZ' && bellevilleTargetOperation !== 'WZ') return;
-  const routeInput = document.getElementById('bellevilleRouteInput');
-  const plateInput = document.getElementById('bellevillePlateInput');
-  const carrierInput = document.getElementById('bellevilleCarrierInput');
-  const trailerInput = document.getElementById('bellevilleTrailerInput');
-  if (!routeInput || !plateInput || !carrierInput || !trailerInput) return;
-
-  const route = routeInput.value.trim().toUpperCase();
-  const plate = plateInput.value.trim().toUpperCase();
-  if (!route) {
-    routeInput.value = '';
-    routeInput.reportValidity();
-    return;
-  }
-  if (!plate) {
-    plateInput.value = '';
-    plateInput.reportValidity();
-    return;
-  }
-  const teamId = String(loadState()?.team?.id || '');
-  if (!teamId) return;
-
-  const operation = bellevilleTargetOperation;
-  saveBellevilleSession({
-    teamId,
-    route,
-    plate,
-    carrier: carrierInput.value.trim().toUpperCase(),
-    trailer: trailerInput.value.trim().toUpperCase(),
-    startedAt: new Date().toISOString()
-  });
-  enterBellevilleOperation(operation);
+function finishBellevilleOperation(){
+ const s=getBellevilleSession();if(!s||!canBellevilleOperation(belDirection))return;
+ const receipt=belDirection==='PZ',op=s.operations[belDirection],other=receipt?'WZ':'PZ';
+ bel('belFinishTitle').textContent=receipt?'Zakończenie przyjęcia':'Zakończenie wydania';
+ bel('belFinishSummary').textContent='Moduły: '+op.modules.length+'  •  Pozycje części: '+op.parts.length;
+ const offer=canBellevilleOperation(other)&&!s.operations[other].done;
+ bel('belFinishQuestion').textContent=offer?(receipt?'Czy będziesz jeszcze wydawać moduły lub części na tę trasę?':'Czy będziesz jeszcze przyjmować moduły lub części z tej trasy?'):'Zakończyć wizytę?';
+ bel('belOther').classList.toggle('hidden',!offer);bel('belOther').textContent=receipt?'Przejdź do wydania':'Przejdź do przyjęcia';
+ bel('belFinishExplain').textContent=(offer?'Jeżeli nie, zakończ wizytę. ':'')+'W wersji testowej dane nie są wysyłane do Office.';
+ bel('belFinishDialog').dataset.from='operation';bel('belFinishDialog').showModal();
 }
-
-function finishBellevilleSession() {
-  if (!getBellevilleSession()) return;
-  if (!window.confirm('Zakończyć sesję samochodu? Dane formularza zostaną wyczyszczone.')) return;
-  clearBellevilleSession();
-  bellevilleTargetOperation = null;
-  showBellevilleView('menu');
+function finishBellevilleSession(){
+ const s=getBellevilleSession();if(!s)return;
+ bel('belFinishTitle').textContent='Zakończenie wizyty';
+ bel('belFinishSummary').textContent='Przyjęcie: '+s.operations.PZ.modules.length+' mod. / '+s.operations.PZ.parts.length+' poz. • Wydanie: '+s.operations.WZ.modules.length+' mod. / '+s.operations.WZ.parts.length+' poz.';
+ bel('belFinishQuestion').textContent='Czy zakończyć tę wizytę?';
+ bel('belOther').classList.add('hidden');bel('belFinishExplain').textContent='Dane testowe zostaną wyczyszczone. Nic nie trafi do Office.';
+ bel('belFinishDialog').dataset.from='visit';bel('belFinishDialog').showModal();
 }
-
-function openBellevilleScreen() {
-  const saved = loadState();
-  if (!canBelleville(saved)) return;
-  document.querySelectorAll('#screenBelleville .belleville-option').forEach(button=>button.classList.toggle('hidden',!canBellevilleOperation(button.dataset.bellevilleOperation,saved)));
-
-  document.querySelectorAll('.screen').forEach(screen => {
-    screen.classList.toggle('active', screen.id === 'screenBelleville');
-  });
-  showBellevilleView('menu');
+function continueBellevilleOther(){
+ const s=getBellevilleSession(),other=belDirection==='PZ'?'WZ':'PZ';if(!s||!canBellevilleOperation(other))return;
+ s.operations[belDirection].done=true;if(!saveBellevilleSession(s))return;
+ bel('belFinishDialog').close();enterBellevilleOperation(other);
 }
-
-function closeBellevilleScreen() {
-  if (backBellevilleView()) return;
-  document.querySelectorAll('.screen').forEach(screen => {
-    screen.classList.toggle('active', screen.id === 'screenWarehouse');
-  });
-  window.scrollTo(0, 0);
-  updateRoleControls();
+function confirmBellevilleFinish(){
+ if(!getBellevilleSession())return;
+ bel('belFinishDialog').close();clearBellevilleSession();showBellevilleView('menu');
+ bel('bellevilleInfo').textContent='Wizyta testowa zakończona.';
+ bel('bellevilleInfo').classList.remove('hidden');
+}
+function weekOf(date){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'numeric',day:'numeric'}).formatToParts(new Date(date));
+ const n=type=>Number(parts.find(p=>p.type===type)?.value);
+ const d=new Date(Date.UTC(n('year'),n('month')-1,n('day')));d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
+ return {year:d.getUTCFullYear(),week:Math.ceil(((d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/86400000+1)/7)};
+}
+async function loadBellevillePlan(){
+ const s=getBellevilleSession();if(!s||!canBellevilleOperation('WZ'))return;
+ const token=++belPlanToken;belPlan=null;belPlanState='Pobieranie listy…';renderBellevillePlan();
+ try{
+  const {year,week}=weekOf(s.startedAt);
+  const params=new URLSearchParams({mobile:'1',route:s.route,year:String(year),week:String(week)});
+  const res=await fetch('/api/fr-loading-plans?'+params,{credentials:'same-origin',cache:'no-store'});
+  const data=await res.json();if(token!==belPlanToken)return;
+  if(!res.ok||!data.ok)throw Error(data.error||'Nie udało się pobrać listy.');
+  belPlan=data.plans?.[0]||null;belPlanState=belPlan?'Tydzień '+week+' · '+s.route:'Brak listy załadunkowej dla tej trasy w bieżącym tygodniu.';
+ }catch(e){if(token!==belPlanToken)return;belPlanState=e.message||'Nie udało się pobrać listy.';}
+ renderBellevillePlan();
+}
+function planProgress(){
+ const s=getBellevilleSession(),op=s?.operations.WZ;if(!op||!belPlan)return [];
+ const key=v=>String(v||'').trim().replace(/\s+/g,' ').toUpperCase();
+ const totals=new Map();
+ for(const x of op.modules){const k='MODULE:'+key(x.type);totals.set(k,(totals.get(k)||0)+1);}
+ for(const x of op.parts){const k='PART:'+key(x.name);totals.set(k,(totals.get(k)||0)+x.qty);}
+ return belPlan.lines.map(x=>{const k=x.kind+':'+key(x.displayName),available=totals.get(k)||0,done=Math.min(x.quantity,available);totals.set(k,available-done);return {...x,done,remaining:x.quantity-done};});
+}
+function renderBellevillePlan(){
+ if(!bel('belPlanOpen'))return;
+ const lines=planProgress(),total=lines.reduce((sum,x)=>sum+x.quantity,0),done=lines.reduce((sum,x)=>sum+x.done,0);
+ bel('belPlanOpen').textContent=belPlan?'Lista '+done+'/'+total:'Lista załadunkowa';
+ bel('belPlanStatus').textContent=belPlan?belPlanState+' • '+done+'/'+total:belPlanState;
+ const root=bel('belPlanRows');root.replaceChildren();
+ if(!belPlan)return;
+ const header=node('div',null,'bel-plan-row');for(const v of ['Pozycja','Plan','Wyd.','Brak'])header.append(node('span',v));root.append(header);
+ for(const x of lines.filter(x=>!bel('belRemainingOnly').checked||x.remaining>0)){
+  const row=node('div',null,'bel-plan-row');for(const v of [x.displayName,x.quantity,x.done,x.remaining])row.append(node('span',String(v)));root.append(row);
+ }
+}
+function openBellevilleScreen(){
+ const saved=loadState();if(!canBelleville(saved))return;
+ document.querySelectorAll('#screenBelleville .belleville-option').forEach(button=>button.classList.toggle('hidden',!canBellevilleOperation(button.dataset.bellevilleOperation,saved)));
+ document.querySelectorAll('.screen').forEach(screen=>screen.classList.toggle('active',screen.id==='screenBelleville'));
+ bel('bellevilleInfo').classList.add('hidden');showBellevilleView('menu');
+}
+function closeBellevilleScreen(){
+ if(backBellevilleView())return;
+ document.querySelectorAll('.screen').forEach(screen=>screen.classList.toggle('active',screen.id==='screenWarehouse'));
+ updateRoleControls();
 }
 
 function renderAdminWarehousePicker(saved) {
@@ -460,6 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.querySelectorAll('#bellevilleTransportForm .text-input').forEach(input => {
     input.addEventListener('input', () => {
+      if(input.id==='bellevilleDriverInput')return;
       const uppercase = input.value.toUpperCase();
       if (input.value === uppercase) return;
       const start = input.selectionStart;
@@ -471,7 +512,19 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('bellevilleTransportForm')?.addEventListener('submit', startBellevilleSession);
   document.getElementById('bellevilleCancelFormBtn')?.addEventListener('click', backBellevilleView);
   document.getElementById('bellevilleOperationBackBtn')?.addEventListener('click', backBellevilleView);
-  document.getElementById('bellevilleEndSessionBtn')?.addEventListener('click', finishBellevilleSession);
+  bel('belVisitFinish').addEventListener('click',finishBellevilleSession);
+  document.querySelectorAll('[data-bel-enter]').forEach(b=>b.addEventListener('click',()=>enterBellevilleOperation(b.dataset.belEnter)));
+  document.querySelectorAll('[data-bel-tab]').forEach(b=>b.addEventListener('click',()=>{belTab=b.dataset.belTab;renderBellevilleRows();}));
+  document.querySelectorAll('[data-bel-close]').forEach(b=>b.addEventListener('click',()=>bel(b.dataset.belClose).close()));
+  document.querySelectorAll('[data-bel-ocr]').forEach(b=>b.addEventListener('click',()=>alert('OCR tablic zostanie podłączony później.')));
+  bel('belManual').addEventListener('click',openBellevilleEntry);
+  bel('belScan').addEventListener('click',()=>alert('GPBS Scanner zostanie podłączony później. Na razie użyj opcji Ręcznie.'));
+  bel('belEntryForm').addEventListener('submit',saveBellevilleEntry);
+  bel('belOperationFinish').addEventListener('click',finishBellevilleOperation);
+  bel('belOther').addEventListener('click',continueBellevilleOther);
+  bel('belFinalConfirm').addEventListener('click',confirmBellevilleFinish);
+  bel('belPlanOpen').addEventListener('click',()=>{renderBellevillePlan();bel('belPlanDialog').showModal();});
+  bel('belRemainingOnly').addEventListener('change',renderBellevillePlan);
   window.gpbsBellevilleBack = backBellevilleView;
   updateRoleControls();
   observeVisitScreen();

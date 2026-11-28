@@ -597,3 +597,64 @@ body:has(#screenBelleville.active) .app-signature {
     min-height: 54px;
   }
 }
+
+/* Belleville transport preview: keep existing GPBS theme, scroll only records. */
+#screenBelleville .bel-main-head{align-items:center;gap:12px}
+#screenBelleville .bel-main-head h2{margin:0}
+#screenBelleville .belleville-menu{grid-template-columns:1fr}
+#screenBelleville .belleville-transport-form{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+#screenBelleville .belleville-transport-form .field-label{margin-top:7px;margin-bottom:3px}
+#screenBelleville .belleville-transport-form .text-input{height:42px}
+#screenBelleville #bellevilleDriverInput{text-transform:none}
+#screenBelleville .bel-plate-field{position:relative}
+#screenBelleville .bel-plate-field input{padding-right:52px}
+#screenBelleville .bel-ocr{position:absolute;right:2px;top:0;height:100%;width:46px;color:#dce2e8;background:transparent;display:grid;place-items:center;border-left:1px solid var(--line)}
+#screenBelleville .bel-visit-label{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
+#screenBelleville .bel-visit-label strong{color:var(--text);overflow-wrap:anywhere}
+#screenBelleville .bel-visit-menu{margin-top:16px}
+#screenBelleville:has(#bellevilleOperationView:not(.hidden))>.bel-main-head{display:none}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden))::before{background:linear-gradient(180deg,rgba(7,9,11,.76),rgba(7,9,11,.86)),url("../images/warehouse-background.jpg?v=2") center/cover no-repeat}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-shell{display:flex;flex-direction:column}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header{flex:0 0 auto;height:50px}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header .brand-mark{height:42px!important;width:76px!important;flex-basis:76px!important}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header .brand-mark img{max-height:40px!important}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-header .brand-copy strong{font-size:18px!important}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-main{height:auto;flex:1;min-height:0;padding:4px 0 8px}
+body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-signature{display:none}
+#screenBelleville .belleville-operation-view{display:flex;flex:1;min-height:0;flex-direction:column;gap:5px;padding:0}
+#screenBelleville .bel-work-head{display:flex;align-items:center;gap:6px;min-height:42px;flex-shrink:0}
+#screenBelleville .bel-work-head h3{margin:0;font-size:17px;white-space:nowrap}
+#screenBelleville .bel-work-head .instruction-link-btn{font-size:22px;padding:4px;min-width:24px}
+#screenBelleville .bel-work-head .btn{width:auto;flex:1;min-width:0;min-height:44px;font-size:13px;padding:5px 6px;margin:0}
+#screenBelleville .bel-route{font-size:11px;color:var(--muted);max-width:24%;overflow-wrap:anywhere;text-align:right}
+#screenBelleville #belPlanBar .btn{min-height:38px;margin:0;padding:5px 8px;font-size:13px}
+#screenBelleville .bel-tabs{flex-shrink:0;padding:3px;gap:5px;margin:0}
+#screenBelleville .bel-tabs button{min-height:36px;font-size:13px}
+#screenBelleville .bel-list-head,#screenBelleville .bel-row{display:grid;grid-template-columns:minmax(0,1fr) 44px 42px 32px;gap:5px;align-items:center}
+#screenBelleville .bel-list-head{font-size:11px;color:var(--muted);padding:3px 4px;flex-shrink:0}
+#screenBelleville .bel-rows{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#screenBelleville .bel-row{padding:3px 4px;border-bottom:1px solid var(--line);font-size:13px;min-height:34px}
+#screenBelleville .bel-row span:first-child{overflow-wrap:anywhere}
+#screenBelleville .bel-row .ok{color:#7bd29d}#screenBelleville .bel-row .nok{color:#ef9696}
+#screenBelleville .bel-row button{color:#ef9696;background:transparent;min-height:32px;font-size:20px;padding:0}
+#screenBelleville .bel-empty{font-size:13px;text-align:center;padding:18px 4px}
+#screenBelleville .bel-bottom{flex-shrink:0;display:grid;grid-template-columns:minmax(0,3fr) minmax(0,7fr);gap:6px;padding-top:4px;border-top:1px solid var(--line)}
+#screenBelleville .bel-bottom .btn{min-height:52px;margin:0;padding:7px 5px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:7px}
+#screenBelleville .bel-dialog{width:min(calc(100% - 28px),440px);max-height:85dvh;overflow-y:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);padding:18px;box-shadow:var(--shadow)}
+#screenBelleville .bel-dialog::backdrop{background:rgba(0,0,0,.7)}
+#screenBelleville .bel-dialog h3{font-size:20px;margin:0 0 12px}
+#screenBelleville .bel-dialog p{font-size:14px;margin:8px 0}
+#screenBelleville .bel-dialog .btn{margin-top:8px;min-height:44px;font-size:14px;padding:8px}
+#screenBelleville .bel-dialog .belleville-end-session{margin-top:5px}
+#screenBelleville .bel-dialog .field-label{margin:9px 0 4px}
+#screenBelleville .bel-dialog .text-input{min-height:44px}
+#screenBelleville .bel-dialog select{width:100%;background:#1b1f24;color:var(--text);border:1px solid var(--line);padding:10px;border-radius:10px}
+#screenBelleville .bel-plan-filter{font-size:13px;display:flex;align-items:center;gap:6px;margin:8px 0}
+#screenBelleville .bel-plan-row{display:grid;grid-template-columns:minmax(0,1fr) 40px 42px 48px;gap:4px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
+#screenBelleville .bel-plan-row span:not(:first-child){text-align:right}
+@media(max-width:350px){#screenBelleville .bel-work-head h3{font-size:15px}#screenBelleville .bel-work-head .btn{font-size:12px}}
+
+#screenBelleville #belPlanBar:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0}
+#screenBelleville #belPlanBar .btn{width:100%;min-height:44px;font-size:13px;margin:0;padding:5px 6px}
+#screenBelleville .bel-work-head .bel-route{margin-left:auto}
+#screenBelleville #belPlanBar .gpbs-menu-btn{font-size:13px}

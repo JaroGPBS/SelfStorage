@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=7">
   <link rel="stylesheet" href="./css/warehouse.css?v=22">
-  <link rel="stylesheet" href="./css/theme-gpbs.css?v=7">
+  <link rel="stylesheet" href="./css/theme-gpbs.css?v=8">
   <style>
     .toast {
       top: 40%;
@@ -146,12 +146,12 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=82"></script>
+  <script type="module" src="./js/app.js?v=83"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js?v=3"></script>
-  <script type="module" src="./js/admin-ui.js?v=10"></script>
+  <script type="module" src="./js/admin-ui.js?v=11"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -253,50 +253,59 @@
       </section>
 
       <section id="screenBelleville" class="screen">
-        <div class="section-head" style="align-items:center;gap:12px;">
-          <h2 style="margin:0;">Belleville</h2>
-          <button id="bellevilleBackBtn" class="instruction-link-btn" type="button">← Wróć</button>
+        <div class="section-head bel-main-head">
+          <h2>Belleville</h2><button id="bellevilleBackBtn" class="instruction-link-btn" type="button">← Wróć</button>
         </div>
-
         <div id="bellevilleMenuView">
-          <div id="bellevilleSessionCard" class="belleville-session-card hidden" aria-live="polite">
-            <span>AKTYWNA SESJA</span>
-            <strong id="bellevilleSessionRoute"></strong>
-            <small id="bellevilleSessionPlate"></small>
-          </div>
           <div class="belleville-menu">
-            <button class="btn gpbs-menu-btn belleville-option" type="button" data-belleville-operation="PZ">Przyjęcia</button>
-            <button class="btn gpbs-menu-btn belleville-option" type="button" data-belleville-operation="WZ">Wydania</button>
+            <button id="belStartVisit" class="btn gpbs-menu-btn belleville-option" type="button" data-belleville-operation="VISIT">Rozpocznij wizytę</button>
             <button class="btn gpbs-menu-btn belleville-option" type="button" data-belleville-operation="EKIPY">Zaopatrzenie ekip</button>
           </div>
-          <button id="bellevilleEndSessionBtn" class="btn belleville-end-session hidden" type="button">Zakończ sesję</button>
           <p id="bellevilleInfo" class="belleville-info hidden" role="status" aria-live="polite"></p>
         </div>
-
         <form id="bellevilleTransportForm" class="belleville-transport-form hidden">
-          <h3 id="bellevilleFormTitle">Wpisz dane transportu</h3>
+          <h3>Dane transportu</h3>
           <label class="field-label" for="bellevilleRouteInput">Numer trasy *</label>
-          <input id="bellevilleRouteInput" class="text-input" name="route" type="text" required maxlength="60" autocapitalize="characters" autocomplete="off" placeholder="Np. PL1BH">
-          <label class="field-label" for="bellevillePlateInput">Numer rejestracyjny samochodu *</label>
-          <input id="bellevillePlateInput" class="text-input" name="plate" type="text" required maxlength="25" autocapitalize="characters" autocomplete="off" placeholder="Np. SK 123 BE">
-          <label class="field-label" for="bellevilleCarrierInput">Przewoźnik <span>(opcjonalnie)</span></label>
-          <input id="bellevilleCarrierInput" class="text-input" name="carrier" type="text" maxlength="100" autocapitalize="characters" autocomplete="off" placeholder="Nazwa przewoźnika">
-          <label class="field-label" for="bellevilleTrailerInput">Numer rejestracyjny naczepy <span>(opcjonalnie)</span></label>
-          <input id="bellevilleTrailerInput" class="text-input" name="trailer" type="text" maxlength="25" autocapitalize="characters" autocomplete="off" placeholder="Numer naczepy">
-          <button class="btn gpbs-menu-btn belleville-start-btn" type="submit">Rozpocznij sesję</button>
+          <input id="bellevilleRouteInput" class="text-input" name="route" required maxlength="60" autocapitalize="characters" autocomplete="off" placeholder="Np. PL1BH">
+          <label class="field-label" for="bellevilleCarrierInput">Przewoźnik</label>
+          <input id="bellevilleCarrierInput" class="text-input" name="carrier" maxlength="100" autocomplete="organization" placeholder="Nazwa przewoźnika">
+          <label class="field-label" for="bellevilleDriverInput">Imię i nazwisko kierowcy</label>
+          <input id="bellevilleDriverInput" class="text-input" name="driver" maxlength="100" autocomplete="off" placeholder="Imię i nazwisko">
+          <label class="field-label" for="bellevillePlateInput">Nr rejestracyjny samochodu *</label>
+          <div class="bel-plate-field"><input id="bellevillePlateInput" class="text-input" name="plate" type="text" required maxlength="25" autocapitalize="characters" autocomplete="off" placeholder="Nr rejestracyjny"><button type="button" class="bel-ocr" data-bel-ocr aria-label="Skanuj tablicę rejestracyjną"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 9h10M7 12h10M7 15h7"/></svg></button></div>
+          <label class="field-label" for="bellevilleTrailerInput">Nr rejestracyjny naczepy</label>
+          <div class="bel-plate-field"><input id="bellevilleTrailerInput" class="text-input" name="trailer" type="text" maxlength="25" autocapitalize="characters" autocomplete="off" placeholder="Nr rejestracyjny"><button type="button" class="bel-ocr" data-bel-ocr aria-label="Skanuj tablicę rejestracyjną"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 9h10M7 12h10M7 15h7"/></svg></button></div>
+          <button class="btn gpbs-menu-btn belleville-start-btn" type="submit">Rozpocznij wizytę</button>
           <button id="bellevilleCancelFormBtn" class="btn btn-ghost belleville-cancel-btn" type="button">Anuluj</button>
         </form>
-
-        <div id="bellevilleOperationView" class="belleville-operation-view hidden">
-          <h3 id="bellevilleOperationTitle"></h3>
-          <div class="belleville-session-card">
-            <span>AKTYWNA SESJA</span>
-            <strong id="bellevilleOperationRoute"></strong>
-            <small id="bellevilleOperationPlate"></small>
+        <div id="bellevilleVisitView" class="hidden">
+          <div class="bel-visit-label"><span>Aktywna wizyta</span><strong id="belVisitRoute"></strong></div>
+          <div class="belleville-menu bel-visit-menu">
+            <button class="btn gpbs-menu-btn" type="button" data-bel-enter="PZ">Przyjęcie</button>
+            <button class="btn gpbs-menu-btn" type="button" data-bel-enter="WZ">Wydanie</button>
           </div>
-          <p class="belleville-operation-note">Sesja jest rozpoczęta. Obsługę skanowania dodamy w następnym kroku.</p>
-          <button id="bellevilleOperationBackBtn" class="btn gpbs-menu-btn" type="button">Wróć do Belleville</button>
+          <button id="belVisitFinish" class="btn belleville-end-session" type="button">Zakończ wizytę</button>
         </div>
+        <div id="bellevilleOperationView" class="belleville-operation-view hidden">
+          <div class="bel-work-head"><button id="bellevilleOperationBackBtn" class="instruction-link-btn" type="button" aria-label="Wróć do wizyty">←</button><h3 id="bellevilleOperationTitle"></h3><button id="belOperationFinish" class="btn gpbs-menu-btn" type="button">Zakończ</button><span id="bellevilleOperationRoute" class="bel-route"></span></div>
+          <div id="belPlanBar" class="hidden"><button id="belPlanOpen" class="btn btn-secondary" type="button">Lista załadunkowa</button></div>
+          <div class="operation-tabs bel-tabs">
+            <button class="operation-tab return active" type="button" data-bel-tab="modules">Moduły (0)</button>
+            <button class="operation-tab pick" type="button" data-bel-tab="parts">Części (0)</button>
+          </div>
+          <div id="belListHead" class="bel-list-head"></div>
+          <div id="belRows" class="bel-rows" aria-live="polite"></div>
+          <div class="bel-bottom"><button id="belManual" class="btn btn-secondary" type="button">Ręcznie</button><button id="belScan" class="btn gpbs-menu-btn" type="button"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 9h10M7 12h10M7 15h7"/></svg><span>Skanuj moduł</span></button></div>
+        </div>
+        <dialog id="belEntryDialog" class="bel-dialog">
+          <form id="belEntryForm"><h3 id="belEntryTitle"></h3><div id="belEntryFields"></div><button class="btn gpbs-menu-btn" type="submit">Dodaj</button><button class="btn btn-ghost" type="button" data-bel-close="belEntryDialog">Anuluj</button></form>
+        </dialog>
+        <dialog id="belFinishDialog" class="bel-dialog">
+          <h3 id="belFinishTitle"></h3><p id="belFinishSummary"></p><p id="belFinishQuestion"></p><button id="belOther" class="btn gpbs-menu-btn" type="button"></button><p id="belFinishExplain">Po zakończeniu wizyty dane zostaną zapisane w systemie. W tej wersji testowej zapis do Office jest wyłączony.</p><button id="belFinalConfirm" class="btn belleville-end-session" type="button">Zakończ wizytę</button><button class="btn btn-ghost" type="button" data-bel-close="belFinishDialog">Wróć</button>
+        </dialog>
+        <dialog id="belPlanDialog" class="bel-dialog">
+          <h3>Lista załadunkowa</h3><p id="belPlanStatus" role="status"></p><label class="bel-plan-filter"><input id="belRemainingOnly" type="checkbox" checked> Tylko pozostałe do wydania</label><div id="belPlanRows"></div><button class="btn btn-ghost" type="button" data-bel-close="belPlanDialog">Wróć do wydania</button>
+        </dialog>
       </section>
 
       <section id="screenVehicle" class="screen vehicle-screen">

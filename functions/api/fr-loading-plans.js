@@ -7,12 +7,12 @@ import {ensureFrLoadingListCatalog} from '../../lib/fr-loading-list-catalog.js';
 const error=(message,status=400)=>workerJson({ok:false,error:message},status);
 const UUID=/^[0-9a-f-]{36}$/i;
 const ROLES=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
-async function session(request,env){
+async function session(request,env,mobile=false){
   if(!workerAuthReady(env))throw Object.assign(Error('Panel nie jest skonfigurowany.'),{status:503});
   const user=await verifyWorkerSession(request,env)||
-    await verifyRememberSession(request,env);
+    (!mobile?await verifyRememberSession(request,env):null);
   if(!user)throw Object.assign(Error('Zaloguj się ponownie.'),{status:401});
-  if(!user.apps?.office||!ROLES.has(user.role)||user.markets?.FR!==true||
+  if(!(mobile?user.apps?.mobile:user.apps?.office)||!ROLES.has(user.role)||user.markets?.FR!==true||
      user.features?.wz===false)
     throw Object.assign(Error('Brak uprawnień do planowania wydań Belleville.'),{status:403});
   const owner=user.role==='ADMIN'&&String(user.nickname||'').trim().toUpperCase()==='JJ';
@@ -73,14 +73,17 @@ async function mappedLines(db,lines){
 }
 export async function onRequestGet({request,env}){
   try{
-    await session(request,env);
+    const url=new URL(request.url),mobile=url.searchParams.get('mobile')==='1';
+    await session(request,env,mobile);
+    const route=String(url.searchParams.get('route')||'').trim().toUpperCase();
+    const year=Number(url.searchParams.get('year')),week=Number(url.searchParams.get('week'));
+    if(mobile&&(!route||route.length>60||!Number.isInteger(year)||year<2020||year>2100||!Number.isInteger(week)||week<1||week>53))
+      return error('Nieprawidłowa trasa lub tydzień.');
     await ensure(env.DB);
-    const plans=(await env.DB.prepare(
-      "SELECT id,route_code AS routeCode,iso_year AS year,week_number AS week,"+
-      "status,created_at AS createdAt,updated_at AS updatedAt "+
-      "FROM fr_loading_plans WHERE status IN ('PLANNED','IN_PROGRESS') "+
-      'ORDER BY iso_year DESC,week_number DESC,route_code COLLATE NOCASE LIMIT 300'
-    ).all()).results||[];
+    const sql="SELECT id,route_code AS routeCode,iso_year AS year,week_number AS week,"+
+      "status,created_at AS createdAt,updated_at AS updatedAt FROM fr_loading_plans WHERE status IN ('PLANNED','IN_PROGRESS')";
+    const plans=(mobile?await env.DB.prepare(sql+' AND route_code=? COLLATE NOCASE AND iso_year=? AND week_number=? LIMIT 1').bind(route,year,week).all():
+      await env.DB.prepare(sql+' ORDER BY iso_year DESC,week_number DESC,route_code COLLATE NOCASE LIMIT 300').all()).results||[];
     if(!plans.length)return workerJson({ok:true,plans:[]});
     const rows=(await env.DB.prepare(
       'SELECT plan_id AS planId,position,excel_name AS excelName,'+
