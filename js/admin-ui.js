@@ -123,7 +123,7 @@ function canBelleville(saved=loadState()){
 function canBellevilleOperation(operation,saved=loadState()){
  if(!canBelleville(saved))return false;
  const features=saved.team.features||{};
- return operation==='PZ'?features.pz!==false:operation==='WZ'?features.wz!==false:
+ return operation==='INVENTORY'?features.inventory!==false:operation==='PZ'?features.pz!==false:operation==='WZ'?features.wz!==false:
   ['VISIT','EKIPY'].includes(operation)?(features.pz!==false||features.wz!==false):false;
 }
 // One persistent local draft per authenticated warehouse employee.
@@ -194,7 +194,8 @@ function clearBellevilleSession(){
 }
 function showBellevilleView(view){
  bellevilleView=view;
- const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView',supplyForm:'belSupplyForm',supply:'belSupplyWork'};
+ bel('belMainTitle').textContent=view==='inventory'?'Inwentaryzacja':'Belleville';
+ const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView',supplyForm:'belSupplyForm',supply:'belSupplyWork',inventory:'belInventoryMenu'};
  for(const [name,id] of Object.entries(sections))bel(id).classList.toggle('hidden',name!==view);
  if(view==='menu'){
   bel('belStartVisit').textContent=getBellevilleSession()?'Wznów wizytę':'Rozpocznij wizytę';
@@ -217,6 +218,7 @@ function backBellevilleView(){
 function chooseBellevilleOperation(operation){
  if(!canBellevilleOperation(operation))return;
  bel('bellevilleInfo').classList.add('hidden');
+ if(operation==='INVENTORY'){showBellevilleView('inventory');return;}
  if(operation==='EKIPY'){
   if(getSupplyDraft()){openSupplyWork();return;}
   bel('belSupplyForm').reset();showBellevilleView('supplyForm');return;
@@ -686,6 +688,8 @@ document.addEventListener('DOMContentLoaded', () => {
   bel('belMessageYes').addEventListener('click',()=>bel('belMessageDialog').close('yes'));
   bel('belMessageDialog').addEventListener('cancel',event=>{event.preventDefault();bel('belMessageDialog').close('no');});
   bel('belMessageDialog').addEventListener('close',()=>{const dialog=bel('belMessageDialog'),resolve=belMessageResolve;belMessageResolve=null;resolve?.(dialog.returnValue==='yes');});
+  bel('belInventoryModules').addEventListener('click',()=>{if(canBellevilleOperation('INVENTORY'))belAlert('Inwentaryzacja modułów zostanie przygotowana w kolejnym etapie.');});
+  bel('belInventoryParts').addEventListener('click',()=>{if(canBellevilleOperation('INVENTORY'))belAlert('Inwentaryzacja części zostanie przygotowana w kolejnym etapie.');});
   window.gpbsBellevilleBack = backBellevilleView;
   updateRoleControls();
   observeVisitScreen();

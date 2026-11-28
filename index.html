@@ -161,12 +161,12 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=92"></script>
+  <script type="module" src="./js/app.js?v=93"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js?v=3"></script>
-  <script type="module" src="./js/admin-ui.js?v=17"></script>
+  <script type="module" src="./js/admin-ui.js?v=18"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -272,14 +272,21 @@
 
       <section id="screenBelleville" class="screen">
         <div class="section-head bel-main-head">
-          <h2>Belleville</h2><button id="bellevilleBackBtn" class="instruction-link-btn" type="button" aria-label="Wróć"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg></button>
+          <h2 id="belMainTitle">Belleville</h2><button id="bellevilleBackBtn" class="instruction-link-btn" type="button" aria-label="Wróć"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 5-7 7 7 7M5 12h14"/></svg></button>
         </div>
         <div id="bellevilleMenuView">
           <div class="belleville-menu">
             <button id="belStartVisit" class="btn gpbs-menu-btn belleville-option" type="button" data-belleville-operation="VISIT">Rozpocznij wizytę</button>
             <button class="btn gpbs-menu-btn belleville-option" type="button" data-belleville-operation="EKIPY" id="belSupplyStart">Zaopatrzenie ekip</button>
+            <button id="belInventoryStart" class="btn gpbs-menu-btn belleville-option" type="button" data-belleville-operation="INVENTORY">Inwentaryzacja</button>
           </div>
           <p id="bellevilleInfo" class="belleville-info hidden" role="status" aria-live="polite"></p>
+        </div>
+        <div id="belInventoryMenu" class="hidden">
+          <div class="belleville-menu">
+            <button id="belInventoryModules" class="btn gpbs-menu-btn" type="button">Moduły</button>
+            <button id="belInventoryParts" class="btn gpbs-menu-btn" type="button">Części</button>
+          </div>
         </div>
         <form id="bellevilleTransportForm" class="belleville-transport-form hidden">
           <h3>Dane transportu</h3>
@@ -640,7 +647,7 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <div id="appVersion" style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:13px;font-weight:600;line-height:1;color:#b7c0ca;opacity:.95;pointer-events:none;user-select:none;">v0.74</div>
+  <div id="appVersion" style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:13px;font-weight:600;line-height:1;color:#b7c0ca;opacity:.95;pointer-events:none;user-select:none;">v0.75</div>
 
   <script>
     (() => {
