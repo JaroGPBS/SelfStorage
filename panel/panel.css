@@ -1782,3 +1782,10 @@ tr:hover td{background:#ffffff04}
 .document-email-form{max-width:680px}
 .document-email-form textarea{display:block;width:100%;min-height:74px;resize:vertical;font:inherit;line-height:1.45}
 .document-email-form #documentEmailsStatus{min-height:1.4em}
+
+/* Grouped prefix registry: one row per module type. */
+.module-prefix-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.module-prefix-chip{display:inline-flex;align-items:center;border:1px solid var(--edge);background:rgba(255,255,255,.035);border-radius:7px;overflow:hidden}
+.module-prefix-chip button{font:inherit;background:transparent;border:0;color:inherit;cursor:pointer;padding:5px 8px}
+.module-prefix-chip .module-prefix-remove{color:#ff9299;border-left:1px solid var(--edge);font-size:15px;line-height:1}
+.module-prefix-chip button:hover{background:rgba(255,255,255,.08)}

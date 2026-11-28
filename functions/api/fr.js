@@ -661,6 +661,13 @@ export async function onRequestPost({request,env}){
     if(!user)return fail('Sesja wygasła. Zaloguj się ponownie.',401);
     if(!user.apps?.mobile||!user.markets?.FR)return fail('Brak dostępu do aplikacji mobilnej lub rynku francuskiego.',403);
     const operation=entryCode(body.action);
+    if(operation==='POBIERZ_PREFIKSY_MODULOW'){
+      if(user.role==='EKIPA'||user.features?.inventory===false)return fail('Brak uprawnień do inwentaryzacji.',403);
+      if(!isOwnerAdmin(user)&&!(await mobileWarehouses(env.DB,user)).some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')))return fail('Brak dostępu do Belleville.',403);
+      const exists=await env.DB.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='module_serial_prefixes'").first();
+      const modulePrefixes=exists?(await env.DB.prepare('SELECT prefix,module_type AS moduleType FROM module_serial_prefixes ORDER BY length(prefix) DESC').all()).results||[]:[];
+      return workerJson({ok:true,modulePrefixes});
+    }
     // The existing vehicle-based write API is a different workflow from the
     // future warehouse employee transport API. Never write fictitious car stock.
     if(user.role!=='EKIPA'&&!isOwnerAdmin(user)&&!['LOGIN','POBIERZ_DANE_STARTOWE','POBIERZ_STANY_BOX','PING'].includes(operation))

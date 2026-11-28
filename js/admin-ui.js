@@ -507,16 +507,27 @@ function saveModuleInventory(d){
  if(!canBellevilleOperation('INVENTORY')||!moduleInvOwner()||d.owner!==moduleInvOwner())return false;
  try{localStorage.setItem(moduleInvKey(),JSON.stringify(d));return true;}catch{belAlert('Nie udało się zapisać inwentaryzacji w pamięci telefonu.');return false;}
 }
-function openModuleInventory(){
+let moduleInvRefresh=null;
+async function openModuleInventory(){
  if(!canBellevilleOperation('INVENTORY'))return;
  if(!getModuleInventory()&&!saveModuleInventory({owner:moduleInvOwner(),startedAt:new Date().toISOString(),status:null,rows:[]}))return;
  showBellevilleView('moduleInventory');
+ if(navigator.onLine&&typeof window.gpbsRefreshModulePrefixes==='function'){
+  const pending=window.gpbsRefreshModulePrefixes();moduleInvRefresh=pending;
+  bel('belInvScan').disabled=true;
+  try{await pending;}catch(error){console.warn('Nie udało się odświeżyć prefiksów modułów.',error);}
+  finally{if(moduleInvRefresh===pending){moduleInvRefresh=null;if(bellevilleView==='moduleInventory')renderModuleInventory();}}
+ }
 }
 function moduleInvSerial(x){return String(x||'').replace(/\u0000/g,'').trim().toUpperCase();}
 function moduleInvValidSerial(s){return s.length>0&&s.length<=100&&/^[A-Z0-9][A-Z0-9 ._/-]*$/.test(s)&&!s.includes('://');}
 function moduleInvPrefixes(){const p=loadState()?.startData?.modulePrefixes;return Array.isArray(p)?p:[];}
 function moduleInvType(serial){
- const matches=moduleInvPrefixes().filter(p=>p.prefix&&p.moduleType&&serial.startsWith(String(p.prefix).toUpperCase())).sort((a,b)=>b.prefix.length-a.prefix.length);
+ const normalized=moduleInvSerial(serial);
+ // Labels may start with a 2- or 4-digit year followed by a slash.
+ const afterYear=normalized.replace(/^(?:[0-9]{4}|[0-9]{2})\s*\/\s*/,'');
+ const find=value=>moduleInvPrefixes().filter(p=>p.prefix&&p.moduleType&&value.startsWith(String(p.prefix).trim().toUpperCase())).sort((a,b)=>b.prefix.length-a.prefix.length);
+ const matches=afterYear!==normalized?find(afterYear):find(normalized);
  return matches[0]?String(matches[0].moduleType).trim().toUpperCase():'';
 }
 function renderModuleInventory(){
@@ -525,7 +536,7 @@ function renderModuleInventory(){
   const status=b.dataset.belInvStatus;
   b.textContent=status+' ('+d.rows.filter(r=>r.status===status).length+')';b.setAttribute('aria-pressed',String(d.status===status));
  }
- const scan=bel('belInvScan');scan.dataset.status=d.status||'';scan.querySelector('span').textContent=d.status?'Skanuj moduł '+d.status:'Skanuj moduł';scan.disabled=!d.status;
+ const scan=bel('belInvScan');scan.dataset.status=d.status||'';scan.querySelector('span').textContent=d.status?'Skanuj moduł '+d.status:'Skanuj moduł';scan.disabled=!d.status||!!moduleInvRefresh;
  const root=bel('belInvRows');root.replaceChildren();
  const visible=d.rows.filter(r=>r.status===d.status);
  if(!visible.length)root.append(node('p',d.status?'Brak zeskanowanych modułów '+d.status+'.':'Wybierz OK lub NOK.','bel-empty'));
@@ -568,7 +579,7 @@ function submitModuleInvEntry(event){
  if(addModuleInvRow(serial,type,status,invEdit)){bel('belInvEntryDialog').close();invEdit=null;}
 }
 function scanModuleInventory(){
- const d=getModuleInventory();if(!d||!d.status)return;
+ const d=getModuleInventory();if(!d||!d.status||moduleInvRefresh)return;
  const owner=d.owner,startedAt=d.startedAt,status=d.status;
  if(typeof window.gpbsOpenModuleInventoryScanner!=='function'){belAlert('Skaner jest niedostępny.');return;}
  window.gpbsOpenModuleInventoryScanner(code=>{

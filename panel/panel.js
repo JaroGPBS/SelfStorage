@@ -2346,28 +2346,23 @@
       cell.className='module-prefix-empty';
       cell.textContent='Nie dodano jeszcze żadnych prefiksów.';
     }
-    for(const item of rows){
-      const tr=target.insertRow();
-      const module=td(item.moduleType);
-      module.classList.add('module-prefix-type');
-      const code=td(item.prefix);
-      code.classList.add('module-prefix-code');
-      tr.append(module,code);
-      const actions=tr.insertCell();
-      actions.className='module-prefix-actions';
-      const edit=document.createElement('button');
-      edit.className='btn mini ghost';
-      edit.type='button';
-      edit.textContent='Edytuj';
-      edit.setAttribute('aria-label','Edytuj prefiks '+item.prefix+' modułu '+item.moduleType);
-      edit.addEventListener('click',()=>editModulePrefix(item));
-      const remove=document.createElement('button');
-      remove.className='btn mini ghost module-prefix-delete';
-      remove.type='button';
-      remove.textContent='Usuń';
-      remove.setAttribute('aria-label','Usuń prefiks '+item.prefix);
-      remove.addEventListener('click',()=>removeModulePrefix(item,remove));
-      actions.append(edit,remove);
+    for(const type of types){
+      const tr=target.insertRow(),module=td(type,'module-prefix-type'),code=td('','module-prefix-code');
+      const group=document.createElement('div');group.className='module-prefix-group';
+      for(const item of rows.filter(r=>r.moduleType===type)){
+        const chip=document.createElement('span');chip.className='module-prefix-chip';
+        const edit=document.createElement('button');edit.type='button';edit.className='module-prefix-edit';edit.textContent=item.prefix;
+        edit.title='Edytuj prefiks '+item.prefix;edit.setAttribute('aria-label',edit.title);
+        edit.addEventListener('click',()=>editModulePrefix(item));
+        const remove=document.createElement('button');remove.type='button';remove.className='module-prefix-remove';remove.textContent='×';remove.title='Usuń prefiks '+item.prefix;remove.setAttribute('aria-label',remove.title);
+        remove.addEventListener('click',()=>removeModulePrefix(item,remove));
+        chip.append(edit,remove);group.append(chip);
+      }
+      code.append(group);tr.append(module,code);
+      const actions=tr.insertCell();actions.className='module-prefix-actions';
+      const add=document.createElement('button');add.type='button';add.className='btn mini ghost';add.textContent='+ Prefiks';
+      add.addEventListener('click',()=>{resetModulePrefixEditor();$('modulePrefixType').value=type;$('modulePrefixCode').focus();});
+      actions.append(add);
     }
     $('modulePrefixStatus').textContent='Typy modułów: '+types.length+
       ' · Zapisane prefiksy: '+rows.length;
@@ -2395,6 +2390,8 @@
     try{
       await post({action:'modulePrefixSave',oldPrefix,prefix,moduleType});
       resetModulePrefixEditor();
+      $('modulePrefixType').value=moduleType;
+      $('modulePrefixCode').focus();
       await refreshModulePrefixes();
       message(oldPrefix?'Zapisano zmianę prefiksu.':'Dodano prefiks '+prefix+' do modułu '+moduleType+'.','success');
     }catch(error){

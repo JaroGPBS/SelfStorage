@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.76';
+const APP_VERSION = '0.77';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -399,6 +399,19 @@ async function refreshAdminStartData() {
   return freshData;
 }
 
+window.gpbsRefreshModulePrefixes=async()=>{
+ const teamId=state.team?.id;
+ if(!teamId||!isWarehouseStaff()||!navigator.onLine)return;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+ try{
+  const response=await fetch('/api/fr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'POBIERZ_PREFIKSY_MODULOW',payload:{fresh:true}}),signal:controller.signal,cache:'no-store'});
+  const data=await response.json();
+  if(!response.ok||!data.ok||!Array.isArray(data.modulePrefixes))throw Error(data.error||'Nie udało się pobrać prefiksów.');
+  if(state.team?.id!==teamId)return;
+  state.startData={...(state.startData||{}),modulePrefixes:data.modulePrefixes};
+  saveCachedStartData(teamId,state.startData);persist();
+ }finally{clearTimeout(timer);}
+};
 function cleanScannerValue(value) {
   return String(value || '')
     .replace(/\u0000/g, '')
@@ -2276,7 +2289,7 @@ async function openCodeScanner(mode) {
   const isModuleInventory=mode==='module-inventory';
   const isPart = mode === 'part' || mode === 'supply' || isModuleInventory;
   $('scannerTitle').textContent = isModuleInventory?'Kod QR modułu':isPart ? 'Kod części' : 'Kod QR magazynu';
-  $('scannerNote').textContent = isPart
+  $('scannerNote').textContent = isModuleInventory?'Skieruj aparat na kod QR modułu.':isPart
     ? 'Skieruj aparat na kod QR lub Code128 części.'
     : 'Skieruj aparat na kod QR magazynu.';
 
