@@ -239,7 +239,7 @@ function openBellevilleEntry(){
  }else{
   const name=input('Nazwa lub indeks części','belEntryPart',{required:true,maxLength:140,autocomplete:'off'});
   if(belPlan?.lines?.length){const list=node('datalist');list.id='belPartSuggestions';for(const line of belPlan.lines.filter(x=>x.kind==='PART')){const opt=node('option');opt.value=line.displayName;list.append(opt);}name.setAttribute('list',list.id);fields.append(list);}
-  input('Ilość','belEntryQty',{required:true,type:'number',min:'1',max:'100000',step:'1',value:'1',inputMode:'numeric'});
+  input('Ilość','belEntryQty',{required:true,type:'number',min:'1',max:'100000',step:'1',value:'',inputMode:'numeric'});
  }
  bel('belEntryDialog').showModal();
 }
