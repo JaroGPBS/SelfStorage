@@ -752,9 +752,10 @@ body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden))::before{
 #screenBelleville .bel-module-modes .btn[aria-pressed="true"]{border-color:#5fafff;box-shadow:0 0 8px #5fafff50}
 #belModuleQrReader{width:100%;overflow:hidden;border-radius:8px;background:#090b0e}
 #belModuleQrReader video{max-width:100%}
-.bel-module-ocr-frame{position:relative;overflow:hidden;border-radius:8px;background:#090b0e}
-.bel-module-ocr-frame video{display:block;width:100%;height:auto}
-.bel-module-ocr-frame span{position:absolute;inset:37% 8%;border:2px solid #6be69c;border-radius:5px;pointer-events:none;box-shadow:0 0 0 100vmax #0006}
+.bel-module-ocr-frame{position:relative;overflow:hidden;border-radius:8px;background:#090b0e;height:clamp(100px,18dvh,145px)}
+.bel-module-ocr-frame video{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+.bel-module-ocr-frame span{position:absolute;inset:22% 6%;border:2px solid #6be69c;border-radius:5px;pointer-events:none;box-shadow:0 0 0 100vmax #0006}
+#screenBelleville #belModuleCapture{margin-top:5px;min-height:44px}
 #screenBelleville .bel-module-serial-preview{font-size:clamp(17px,5.4vw,25px);font-weight:400;text-align:center;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;padding:7px 0}
 #screenBelleville .bel-module-serial-preview strong,#screenBelleville .bel-transport-serial strong{font-weight:800}
 #screenBelleville #belModuleSerial{font-size:15px}

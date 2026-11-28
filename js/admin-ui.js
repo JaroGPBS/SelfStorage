@@ -1,6 +1,6 @@
 import { loadState } from './storage.js';
 import './install.js';
-import {startModuleCapture,stopModuleCapture,captureModuleOcr} from './belleville-module-scan.js?v=1';
+import {startModuleCapture,stopModuleCapture,captureModuleOcr} from './belleville-module-scan.js?v=2';
 
 function normalizeRoleLabel(value) {
   const role = String(value || '').trim().toUpperCase();

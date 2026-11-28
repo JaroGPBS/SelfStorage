@@ -66,6 +66,7 @@ export function startModuleCapture(mode,onResult,onStatus){
     el('belModuleOcrFrame').classList.remove('hidden');await video.play();
     if(!alive()){stopTracks();return;}
     ocrMode={token,onResult,onStatus};el('belModuleCapture').classList.remove('hidden');
+    el('belModuleScanDialog').scrollTop=0;
     onStatus('Ustaw sam numer seryjny w ramce i naciśnij Odczytaj.');
    }
   }catch(e){if(alive()){stopTracks();await stopQr();hideCamera();onStatus(e?.message||'Nie udało się uruchomić aparatu.');}}
@@ -82,6 +83,17 @@ export function extractModuleSerial(value){
  }
  return [...new Set(result)].length===1?result[0]:'';
 }
+// The camera preview uses object-fit:cover. Convert the visible guide back
+// to the actual sensor coordinates, including the center crop.
+function moduleOcrCrop(w,h,view,guide){
+ const scale=Math.max(view.width/w,view.height/h);
+ const offsetX=(view.width-w*scale)/2,offsetY=(view.height-h*scale)/2;
+ const left=Math.max(0,Math.floor((guide.left-view.left-offsetX)/scale));
+ const top=Math.max(0,Math.floor((guide.top-view.top-offsetY)/scale));
+ const right=Math.min(w,Math.ceil((guide.right-view.left-offsetX)/scale));
+ const bottom=Math.min(h,Math.ceil((guide.bottom-view.top-offsetY)/scale));
+ return {sx:left,sy:top,sw:right-left,sh:bottom-top};
+}
 export async function captureModuleOcr(){
  const context=ocrMode,video=el('belModuleVideo');
  if(!context||context.token!==generation||busy||!video.videoWidth||!video.videoHeight)return;
@@ -89,9 +101,10 @@ export async function captureModuleOcr(){
  const {token,onResult,onStatus}=context,alive=()=>token===generation&&el('belModuleScanDialog').open;
  let localWorker=null;
  try{
-  // Match the visible frame: 8% inset on each side, middle 26% of the video.
   const w=video.videoWidth,h=video.videoHeight;
-  const sx=Math.floor(w*.08),sy=Math.floor(h*.37),sw=Math.floor(w*.84),sh=Math.floor(h*.26);
+  const view=video.getBoundingClientRect(),guide=el('belModuleOcrFrame').querySelector('span').getBoundingClientRect();
+  const {sx,sy,sw,sh}=moduleOcrCrop(w,h,view,guide);
+  if(sw<=0||sh<=0)throw Error('Nieprawidłowa ramka OCR.');
   const canvas=document.createElement('canvas'),scale=Math.min(2,1800/sw);
   canvas.width=Math.max(1,Math.round(sw*scale));canvas.height=Math.max(1,Math.round(sh*scale));
   const ctx=canvas.getContext('2d');ctx.filter='grayscale(1) contrast(1.25)';ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
