@@ -71,18 +71,28 @@ async function mappedLines(db,lines){
       aliasId:alias?.id||null,partIds:alias?partIds.get(alias.id)||[]:[]};
   });
 }
+// Dec 28 always belongs to the final ISO week.
+function nextLoadingWeek(year,week){
+  const jan4=new Date(Date.UTC(year,0,4));
+  const firstMonday=new Date(jan4);firstMonday.setUTCDate(jan4.getUTCDate()-(jan4.getUTCDay()+6)%7);
+  const lastWeek=Math.floor((Date.UTC(year,11,28)-firstMonday.getTime())/604800000)+1;
+  return week>=lastWeek?{year:year+1,week:1}:{year,week:week+1};
+}
 export async function onRequestGet({request,env}){
   try{
     const url=new URL(request.url),mobile=url.searchParams.get('mobile')==='1';
     await session(request,env,mobile);
-    const route=String(url.searchParams.get('route')||'').trim().toUpperCase();
+    const route=String(url.searchParams.get('route')||'').trim().toUpperCase().replace(/\s+/g,'');
     const year=Number(url.searchParams.get('year')),week=Number(url.searchParams.get('week'));
     if(mobile&&(!route||route.length>60||!Number.isInteger(year)||year<2020||year>2100||!Number.isInteger(week)||week<1||week>53))
       return error('Nieprawidłowa trasa lub tydzień.');
     await ensure(env.DB);
     const sql="SELECT id,route_code AS routeCode,iso_year AS year,week_number AS week,"+
       "status,created_at AS createdAt,updated_at AS updatedAt FROM fr_loading_plans WHERE status IN ('PLANNED','IN_PROGRESS')";
-    const plans=(mobile?await env.DB.prepare(sql+' AND route_code=? COLLATE NOCASE AND iso_year=? AND week_number=? LIMIT 1').bind(route,year,week).all():
+    const includeNext=mobile&&url.searchParams.get('includeNext')==='1';
+    const next=includeNext?nextLoadingWeek(year,week):null;
+    const plans=(includeNext?await env.DB.prepare(sql+' AND route_code=? COLLATE NOCASE AND ((iso_year=? AND week_number=?) OR (iso_year=? AND week_number=?)) ORDER BY iso_year,week_number LIMIT 2').bind(route,year,week,next.year,next.week).all():
+      mobile?await env.DB.prepare(sql+' AND route_code=? COLLATE NOCASE AND iso_year=? AND week_number=? LIMIT 1').bind(route,year,week).all():
       await env.DB.prepare(sql+' ORDER BY iso_year DESC,week_number DESC,route_code COLLATE NOCASE LIMIT 300').all()).results||[];
     if(!plans.length)return workerJson({ok:true,plans:[]});
     const rows=(await env.DB.prepare(

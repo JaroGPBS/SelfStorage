@@ -130,7 +130,7 @@ function canBellevilleOperation(operation,saved=loadState()){
 const BELLEVILLE_LEGACY_SESSION_KEY='gpbs-belleville-transport-session-v1';
 const BELLEVILLE_DRAFT_PREFIX='gpbs-belleville-transport-draft-v2:';
 const bel=id=>document.getElementById(id);
-let bellevilleView='menu',belDirection='PZ',belTab='modules',belPlan=null,belPlanState='',belPlanToken=0;
+let bellevilleView='menu',belDirection='PZ',belTab='modules',belPlan=null,belPlanOptions=[],belPlanState='',belPlanToken=0,belPlanLoading=false;
 function belDraftKey(teamId){return BELLEVILLE_DRAFT_PREFIX+encodeURIComponent(String(teamId));}
 
 let belMessageResolve=null;
@@ -190,7 +190,7 @@ function clearBellevilleSession(){
   if(legacy?.teamId===teamId)sessionStorage.removeItem(BELLEVILLE_LEGACY_SESSION_KEY);
   localStorage.removeItem(belDraftKey(teamId));
  }catch(error){console.warn('Błąd zamknięcia wizyty Belleville.',error);belAlert('Nie udało się zakończyć wizyty w pamięci telefonu. Spróbuj ponownie.');return false;}
- belPlanToken++;belPlan=null;belPlanState='';return true;
+ belPlanToken++;belPlan=null;belPlanOptions=[];belPlanState='';belPlanLoading=false;return true;
 }
 function showBellevilleView(view){
  bellevilleView=view;
@@ -235,7 +235,7 @@ function startBellevilleSession(event){
  if(!route||!plate){belAlert('Wpisz numer trasy i tablicę samochodu.');return;}
  const s={teamId:String(loadState().team.id),route,plate,carrier:value('bellevilleCarrierInput'),driver:value('bellevilleDriverInput'),trailer:value('bellevilleTrailerInput').toUpperCase(),startedAt:new Date().toISOString(),
  operations:{PZ:{modules:[],parts:[],done:false},WZ:{modules:[],parts:[],done:false}}};
- if(saveBellevilleSession(s)){belPlanToken++;belPlan=null;belPlanState='';showBellevilleView('visit');}
+ if(saveBellevilleSession(s)){belPlanToken++;belPlan=null;belPlanOptions=[];belPlanState='';belPlanLoading=false;showBellevilleView('visit');}
 }
 function node(tag,text,cls){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;}
 function enterBellevilleOperation(direction){
@@ -345,18 +345,33 @@ function weekOf(date){
  const d=new Date(Date.UTC(n('year'),n('month')-1,n('day')));d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
  return {year:d.getUTCFullYear(),week:Math.ceil(((d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/86400000+1)/7)};
 }
+function chooseBellevillePlan(id){
+ const s=getBellevilleSession();if(!s||!canBellevilleOperation('WZ'))return;
+ const plan=belPlanOptions.find(p=>p.id===id);
+ if(!plan)return;
+ if(s.loadingPlanId!==plan.id){
+  s.loadingPlanId=plan.id;if(!saveBellevilleSession(s)){renderBellevillePlan();return;}
+ }
+ belPlan=plan;belPlanState='Tydzień '+plan.week+'/'+plan.year+' · '+s.route;renderBellevillePlan();
+}
 async function loadBellevillePlan(){
  const s=getBellevilleSession();if(!s||!canBellevilleOperation('WZ'))return;
- const token=++belPlanToken;belPlan=null;belPlanState='Pobieranie listy…';renderBellevillePlan();
+ const token=++belPlanToken;belPlan=null;belPlanOptions=[];belPlanLoading=true;belPlanState='Pobieranie listy…';renderBellevillePlan();
  try{
   const {year,week}=weekOf(s.startedAt);
-  const params=new URLSearchParams({mobile:'1',route:s.route,year:String(year),week:String(week)});
+  const params=new URLSearchParams({mobile:'1',route:s.route,year:String(year),week:String(week),includeNext:'1'});
   const res=await fetch('/api/fr-loading-plans?'+params,{credentials:'same-origin',cache:'no-store'});
   const data=await res.json();if(token!==belPlanToken)return;
   if(!res.ok||!data.ok)throw Error(data.error||'Nie udało się pobrać listy.');
-  belPlan=data.plans?.[0]||null;belPlanState=belPlan?'Tydzień '+week+' · '+s.route:'Brak listy załadunkowej dla tej trasy w bieżącym tygodniu.';
+  const current=getBellevilleSession();if(!current||current.teamId!==s.teamId||current.startedAt!==s.startedAt)return;
+  belPlanOptions=Array.isArray(data.plans)?data.plans:[];
+  belPlan=belPlanOptions.find(p=>p.id===current.loadingPlanId)||null;
+  if(!belPlan&&belPlanOptions.length===1&&!current.loadingPlanId){chooseBellevillePlan(belPlanOptions[0].id);}
+  if(belPlan)belPlanState='Tydzień '+belPlan.week+'/'+belPlan.year+' · '+s.route;
+  else if(belPlanOptions.length)belPlanState='Wybierz tydzień listy załadunkowej.';
+  else belPlanState='Brak listy załadunkowej dla tej trasy w tygodniu wizyty i kolejnym tygodniu.';
  }catch(e){if(token!==belPlanToken)return;belPlanState=e.message||'Nie udało się pobrać listy.';}
- renderBellevillePlan();
+ finally{if(token===belPlanToken){belPlanLoading=false;renderBellevillePlan();}}
 }
 function planProgress(){
  const s=getBellevilleSession(),op=s?.operations.WZ;if(!op||!belPlan)return [];
@@ -372,6 +387,13 @@ function renderBellevillePlan(){
  bel('belPlanCount').textContent=belPlan?done+'/'+total:'';
  bel('belPlanCount').classList.toggle('hidden',!belPlan);
  bel('belPlanStatus').textContent=belPlan?belPlanState+' • '+done+'/'+total:belPlanState;
+ const picker=bel('belPlanPicker'),select=bel('belPlanSelect');
+ picker.classList.toggle('hidden',belPlanOptions.length<2&&!(belPlanOptions.length===1&&!belPlan));
+ select.replaceChildren(new Option('Wybierz listę',''));
+ for(const p of belPlanOptions)select.append(new Option('Tydzień '+p.week+'/'+p.year+' · '+p.routeCode,p.id));
+ select.value=belPlan?.id||'';
+ bel('belPlanReload').disabled=belPlanLoading;
+ bel('belRemainingOnly').parentElement.classList.toggle('hidden',!belPlan);
  const root=bel('belPlanRows');root.replaceChildren();
  if(!belPlan)return;
  const header=node('div',null,'bel-plan-row');for(const v of ['Pozycja','Plan','Wyd.','Brak'])header.append(node('span',v));root.append(header);
@@ -814,7 +836,9 @@ document.addEventListener('DOMContentLoaded', () => {
   bel('belOperationFinish').addEventListener('click',finishBellevilleOperation);
   bel('belOther').addEventListener('click',continueBellevilleOther);
   bel('belFinalConfirm').addEventListener('click',confirmBellevilleFinish);
-  bel('belPlanOpen').addEventListener('click',()=>{renderBellevillePlan();bel('belPlanDialog').showModal();});
+  bel('belPlanOpen').addEventListener('click',()=>{renderBellevillePlan();bel('belPlanDialog').showModal();if(!belPlan&&!belPlanOptions.length&&!belPlanLoading)void loadBellevillePlan();});
+  bel('belPlanSelect').addEventListener('change',()=>{const id=bel('belPlanSelect').value;if(id)chooseBellevillePlan(id);else renderBellevillePlan();});
+  bel('belPlanReload').addEventListener('click',()=>{if(!belPlanLoading)void loadBellevillePlan();});
   bel('belRemainingOnly').addEventListener('change',renderBellevillePlan);
   bel('belSupplyTeam').addEventListener('input',()=>{bel('belSupplyTeam').value=bel('belSupplyTeam').value.toUpperCase();});
   bel('belSupplyForm').addEventListener('submit',startSupply);
