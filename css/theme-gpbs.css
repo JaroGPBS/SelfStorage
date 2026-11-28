@@ -681,3 +681,18 @@ body:has(#screenBelleville.active #belSupplyWork:not(.hidden))::before{backgroun
 #screenBelleville .bel-supply-row .pz{color:#7bd29d}#screenBelleville .bel-supply-row .wz{color:#ef9696}
 #screenBelleville .bel-supply-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 #screenBelleville .bel-supply-actions .btn{min-height:48px;margin:0}
+
+/* Compact team-supply typography; native site dialogs replaced by GPBS dialogs. */
+#screenBelleville .bel-supply-search input{font-size:17px}
+#screenBelleville .bel-supply-match{font-size:15px}
+#screenBelleville .bel-supply-match small,#screenBelleville .bel-supply-head{font-size:12px}
+#screenBelleville .bel-supply-status{font-size:13px}
+#screenBelleville .bel-supply-row,#screenBelleville .bel-supply-row button:first-child{font-size:14px}
+#screenBelleville #belSupplyFinish{font-size:clamp(14px,4vw,17px)}
+#screenBelleville #belSupplyForm .field-label,#screenBelleville #belSupplyQtyDialog .field-label{font-size:15px}
+#screenBelleville #belSupplyForm .text-input{font-size:17px}
+#screenBelleville #belSupplyQtyDialog .btn,#screenBelleville #belSupplyFinishDialog .btn,#screenBelleville #belSupplyFinishDialog p{font-size:15px}
+#screenBelleville .bel-message-dialog h3{font-size:20px;text-align:center}
+#screenBelleville .bel-message-dialog p{font-size:15px;text-align:center;margin:14px 0 16px}
+#screenBelleville .bel-message-actions{display:flex;gap:8px}
+#screenBelleville .bel-message-actions .btn{flex:1;min-width:0;margin:0;font-size:15px}

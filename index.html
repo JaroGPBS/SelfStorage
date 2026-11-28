@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="./icons/app-icon-192.png?v=8">
   <link rel="stylesheet" href="./css/app.css?v=7">
   <link rel="stylesheet" href="./css/warehouse.css?v=22">
-  <link rel="stylesheet" href="./css/theme-gpbs.css?v=12">
+  <link rel="stylesheet" href="./css/theme-gpbs.css?v=13">
   <style>
     .toast {
       top: 40%;
@@ -161,12 +161,12 @@
     }
     #gpbsPolandWorkspace[hidden] { display: none !important; }
   </style>
-  <script type="module" src="./js/app.js?v=89"></script>
+  <script type="module" src="./js/app.js?v=90"></script>
   <script type="module" src="./js/offline.js"></script>
   <script type="module" src="./js/operation-flow.js?v=2"></script>
   <script type="module" src="./js/manual-part.js?v=2"></script>
   <script type="module" src="./js/auth.js?v=3"></script>
-  <script type="module" src="./js/admin-ui.js?v=16"></script>
+  <script type="module" src="./js/admin-ui.js?v=17"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -344,6 +344,14 @@
         <dialog id="belSupplyFinishDialog" class="bel-dialog">
           <h3>Zakończenie zaopatrzenia</h3><p id="belSupplySummary"></p><p>Czy zakończyć zaopatrzenie ekipy? W tej wersji testowej dane zostaną wyczyszczone bez zmiany stanów magazynowych i bez dokumentu ZE.</p>
           <button id="belSupplyConfirm" type="button" class="btn belleville-end-session">Zakończ zaopatrzenie</button><button type="button" class="btn btn-ghost" data-bel-close="belSupplyFinishDialog">Wróć</button>
+        </dialog>
+        <dialog id="belMessageDialog" class="bel-dialog bel-message-dialog" aria-labelledby="belMessageTitle" aria-describedby="belMessageText">
+          <h3 id="belMessageTitle">GPBS Storage</h3>
+          <p id="belMessageText"></p>
+          <div class="bel-message-actions">
+            <button id="belMessageNo" type="button" class="btn btn-ghost">Nie</button>
+            <button id="belMessageYes" type="button" class="btn gpbs-menu-btn">Tak</button>
+          </div>
         </dialog>
         <dialog id="belEntryDialog" class="bel-dialog">
           <form id="belEntryForm"><h3 id="belEntryTitle"></h3><div id="belEntryFields"></div><button class="btn gpbs-menu-btn" type="submit">Dodaj</button><button class="btn btn-ghost" type="button" data-bel-close="belEntryDialog">Anuluj</button></form>
@@ -632,7 +640,7 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <div id="appVersion" style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:13px;font-weight:600;line-height:1;color:#b7c0ca;opacity:.95;pointer-events:none;user-select:none;">v0.71</div>
+  <div id="appVersion" style="position:fixed;right:10px;bottom:max(6px, env(safe-area-inset-bottom));z-index:20;font-size:13px;font-weight:600;line-height:1;color:#b7c0ca;opacity:.95;pointer-events:none;user-select:none;">v0.72</div>
 
   <script>
     (() => {

@@ -132,6 +132,24 @@ const BELLEVILLE_DRAFT_PREFIX='gpbs-belleville-transport-draft-v2:';
 const bel=id=>document.getElementById(id);
 let bellevilleView='menu',belDirection='PZ',belTab='modules',belPlan=null,belPlanState='',belPlanToken=0;
 function belDraftKey(teamId){return BELLEVILLE_DRAFT_PREFIX+encodeURIComponent(String(teamId));}
+
+let belMessageResolve=null;
+function belMessage(text,confirmation=false){
+ const dialog=bel('belMessageDialog');
+ if(dialog.open)return Promise.resolve(false);
+ bel('belMessageText').textContent=text;
+ bel('belMessageNo').classList.toggle('hidden',!confirmation);
+ bel('belMessageYes').textContent=confirmation?'Tak':'OK';
+ dialog.returnValue='no';
+ return new Promise(resolve=>{
+  belMessageResolve=resolve;
+  dialog.showModal();
+  (confirmation?bel('belMessageNo'):bel('belMessageYes')).focus();
+ });
+}
+function belAlert(text){void belMessage(text);}
+function belConfirm(text){return belMessage(text,true);}
+
 function getBellevilleSession(){
  const team=loadState()?.team;
  if(!canBelleville()||!team?.id)return null;
@@ -161,7 +179,7 @@ function saveBellevilleSession(session){
  try{
   localStorage.setItem(belDraftKey(teamId),JSON.stringify(session));
   return true;
- }catch(error){console.warn('Błąd zapisu wizyty Belleville.',error);alert('Nie udało się zapisać wizyty w trwałej pamięci telefonu. Pozycja nie została zapisana.');return false;}
+ }catch(error){console.warn('Błąd zapisu wizyty Belleville.',error);belAlert('Nie udało się zapisać wizyty w trwałej pamięci telefonu. Pozycja nie została zapisana.');return false;}
 }
 function clearBellevilleSession(){
  const teamId=String(loadState()?.team?.id||'');
@@ -171,7 +189,7 @@ function clearBellevilleSession(){
   const legacy=JSON.parse(sessionStorage.getItem(BELLEVILLE_LEGACY_SESSION_KEY)||'null');
   if(legacy?.teamId===teamId)sessionStorage.removeItem(BELLEVILLE_LEGACY_SESSION_KEY);
   localStorage.removeItem(belDraftKey(teamId));
- }catch(error){console.warn('Błąd zamknięcia wizyty Belleville.',error);alert('Nie udało się zakończyć wizyty w pamięci telefonu. Spróbuj ponownie.');return false;}
+ }catch(error){console.warn('Błąd zamknięcia wizyty Belleville.',error);belAlert('Nie udało się zakończyć wizyty w pamięci telefonu. Spróbuj ponownie.');return false;}
  belPlanToken++;belPlan=null;belPlanState='';return true;
 }
 function showBellevilleView(view){
@@ -191,6 +209,7 @@ function showBellevilleView(view){
  }else if(view==='supply'){renderSupply();}
 }
 function backBellevilleView(){
+ const message=bel('belMessageDialog');if(message?.open){message.close('no');return true;}
  const open=document.querySelector('#screenBelleville dialog[open]');if(open){open.close();return true;}
  if(bellevilleView==='menu')return false;
  showBellevilleView(bellevilleView==='operation'?'visit':'menu');return true;
@@ -209,7 +228,7 @@ function chooseBellevilleOperation(operation){
 function startBellevilleSession(event){
  event.preventDefault();if(!canBellevilleOperation('VISIT')||getBellevilleSession())return;
  const value=id=>bel(id).value.trim(),route=value('bellevilleRouteInput').toUpperCase(),plate=value('bellevillePlateInput').toUpperCase();
- if(!route||!plate){alert('Wpisz numer trasy i tablicę samochodu.');return;}
+ if(!route||!plate){belAlert('Wpisz numer trasy i tablicę samochodu.');return;}
  const s={teamId:String(loadState().team.id),route,plate,carrier:value('bellevilleCarrierInput'),driver:value('bellevilleDriverInput'),trailer:value('bellevilleTrailerInput').toUpperCase(),startedAt:new Date().toISOString(),
  operations:{PZ:{modules:[],parts:[],done:false},WZ:{modules:[],parts:[],done:false}}};
  if(saveBellevilleSession(s)){belPlanToken++;belPlan=null;belPlanState='';showBellevilleView('visit');}
@@ -240,8 +259,8 @@ function renderBellevilleRows(){
   const line=node('div',null,'bel-row');
   if(modules)line.append(node('span',row.type),node('span',row.serial),node('span',row.status,row.status.toLowerCase()));
   else line.append(node('span',row.name),node('span',String(row.qty)),node('span',''));
-  const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń pozycję');remove.onclick=()=>{
-   if(!confirm('Usunąć tę pozycję?'))return;
+  const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń pozycję');remove.onclick=async()=>{
+   if(!await belConfirm('Czy usunąć pozycję?'))return;
    const current=getBellevilleSession();if(!current)return;
    current.operations[belDirection][belTab].splice(i,1);current.operations[belDirection].done=false;
    if(saveBellevilleSession(current))renderBellevilleRows();
@@ -274,7 +293,7 @@ function saveBellevilleEntry(event){
  if(belTab==='modules'){
   const serial=bel('belEntrySerial').value.trim().toUpperCase(),type=bel('belEntryType').value.trim().toUpperCase(),status=bel('belEntryState').value;
   if(!serial||!type)return;
-  if(op.modules.some(x=>x.serial===serial)){alert('Ten numer seryjny jest już na liście.');return;}
+  if(op.modules.some(x=>x.serial===serial)){belAlert('Ten numer seryjny jest już na liście.');return;}
   op.modules.push({serial,type,status});
  }else{
   const name=bel('belEntryPart').value.trim(),qty=Number(bel('belEntryQty').value);
@@ -378,7 +397,7 @@ function getSupplyDraft(){
 }
 function saveSupplyDraft(d){
  const key=supplyKey();if(!key||!canBellevilleOperation('EKIPY')||d.owner!==String(loadState()?.team?.id))return false;
- try{localStorage.setItem(key,JSON.stringify(d));return true;}catch{alert('Nie udało się zapisać danych w pamięci telefonu.');return false;}
+ try{localStorage.setItem(key,JSON.stringify(d));return true;}catch{belAlert('Nie udało się zapisać danych w pamięci telefonu.');return false;}
 }
 function supplyCatalog(){const items=loadState()?.startData?.czesciBelleville;return Array.isArray(items)?items:[];}
 function supplyNorm(x){return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/gi,'l').toLowerCase().trim();}
@@ -425,8 +444,8 @@ function renderSupply(){
  for(const [i,l] of d.lines.entries()){
   const row=node('div',null,'bel-supply-row'),edit=node('button',l.name);edit.type='button';edit.setAttribute('aria-label','Edytuj '+l.name);edit.onclick=()=>selectSupplyPart({id:l.partId,nazwa:l.name,indeks:l.index},i);
   const qty=node('span',(l.direction==='PZ'?'+':'−')+l.qty,l.direction.toLowerCase());
-  const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń '+l.name);remove.onclick=()=>{
-   if(!confirm('Usunąć tę pozycję?'))return;
+  const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń '+l.name);remove.onclick=async()=>{
+   if(!await belConfirm('Czy usunąć pozycję?'))return;
    const current=getSupplyDraft();if(!current)return;current.lines.splice(i,1);if(saveSupplyDraft(current))renderSupply();
   };row.append(edit,qty,remove);root.append(row);
  }
@@ -466,7 +485,7 @@ function finishSupply(){
 }
 function confirmSupply(){
  const d=getSupplyDraft(),key=supplyKey();if(!d||!key)return;
- try{localStorage.removeItem(key);}catch{alert('Nie udało się zakończyć zaopatrzenia.');return;}
+ try{localStorage.removeItem(key);}catch{belAlert('Nie udało się zakończyć zaopatrzenia.');return;}
  bel('belSupplyFinishDialog').close();supplySelection=null;showBellevilleView('menu');bel('bellevilleInfo').textContent='Zaopatrzenie testowe zakończone.';bel('bellevilleInfo').classList.remove('hidden');
 }
 
@@ -645,9 +664,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-bel-enter]').forEach(b=>b.addEventListener('click',()=>enterBellevilleOperation(b.dataset.belEnter)));
   document.querySelectorAll('[data-bel-tab]').forEach(b=>b.addEventListener('click',()=>{belTab=b.dataset.belTab;renderBellevilleRows();}));
   document.querySelectorAll('[data-bel-close]').forEach(b=>b.addEventListener('click',()=>bel(b.dataset.belClose).close()));
-  document.querySelectorAll('[data-bel-ocr]').forEach(b=>b.addEventListener('click',()=>alert('OCR tablic zostanie podłączony później.')));
+  document.querySelectorAll('[data-bel-ocr]').forEach(b=>b.addEventListener('click',()=>belAlert('OCR tablic zostanie podłączony później.')));
   bel('belManual').addEventListener('click',openBellevilleEntry);
-  bel('belScan').addEventListener('click',()=>alert('GPBS Scanner zostanie podłączony później. Na razie użyj opcji Ręcznie.'));
+  bel('belScan').addEventListener('click',()=>belAlert('GPBS Scanner zostanie podłączony później. Na razie użyj opcji Ręcznie.'));
   bel('belEntryForm').addEventListener('submit',saveBellevilleEntry);
   bel('belOperationFinish').addEventListener('click',finishBellevilleOperation);
   bel('belOther').addEventListener('click',continueBellevilleOther);
@@ -663,6 +682,10 @@ document.addEventListener('DOMContentLoaded', () => {
   bel('belSupplyQtyForm').addEventListener('submit',submitSupplyQty);
   bel('belSupplyFinish').addEventListener('click',finishSupply);
   bel('belSupplyConfirm').addEventListener('click',confirmSupply);
+  bel('belMessageNo').addEventListener('click',()=>bel('belMessageDialog').close('no'));
+  bel('belMessageYes').addEventListener('click',()=>bel('belMessageDialog').close('yes'));
+  bel('belMessageDialog').addEventListener('cancel',event=>{event.preventDefault();bel('belMessageDialog').close('no');});
+  bel('belMessageDialog').addEventListener('close',()=>{const dialog=bel('belMessageDialog'),resolve=belMessageResolve;belMessageResolve=null;resolve?.(dialog.returnValue==='yes');});
   window.gpbsBellevilleBack = backBellevilleView;
   updateRoleControls();
   observeVisitScreen();
