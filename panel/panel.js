@@ -16,7 +16,7 @@
     movements:['Ruchy PZ / WZ','Historia przyjęć i wydań z zapisem ilości przed i po.'],
     users:['Użytkownicy','Role, przypisania magazynów i dostęp do systemu.'],
     frWeeklySettings:['Powiadomienia FR','Przypomnienia o cotygodniowej inwentaryzacji ekip francuskich.'],
-    modulePrefixes:['Prefiksy modułów','Mapowanie prefiksów numerów seryjnych na typ modułu.'],
+    modulePrefixes:['Katalog modułów','Grupy, typy modułów i prefiksy numerów seryjnych.'],
     cmrModuleWeights:['Wagi modułów','Wagi modułów wykorzystywane w dokumentach CMR.'],
     loadingListParts:['Części listy załadunkowej','Powiązania nazw z Excela z indeksami magazynowymi.'],
     documentEmails:['E-maile','Domyślni odbiorcy PZ, WZ i CMR w Belleville.'],
@@ -2311,109 +2311,109 @@
   }
 
 
+
+  let moduleCatalog={groups:[],types:[],prefixes:[]},moduleCatalogEdit=null;
   function resetModulePrefixEditor(){
+    moduleCatalogEdit=null;
     $('modulePrefixForm').reset();
-    $('modulePrefixOriginal').value='';
-    $('modulePrefixSave').textContent='+ Dodaj prefiks';
-    $('modulePrefixCancel').classList.add('hidden');
+    $('modulePrefixForm').classList.add('hidden');
   }
-
-  function editModulePrefix(row){
-    $('modulePrefixOriginal').value=row.prefix;
-    $('modulePrefixType').value=row.moduleType;
-    $('modulePrefixCode').value=row.prefix;
-    $('modulePrefixSave').textContent='Zapisz zmiany';
-    $('modulePrefixCancel').classList.remove('hidden');
-    $('modulePrefixType').focus();
+  function openModuleCatalogEditor(mode,group=null,type=null,prefix=null){
+    resetModulePrefixEditor();
+    moduleCatalogEdit={mode,groupId:group?.id||'',typeId:type?.id||'',oldPrefix:prefix?.prefix||''};
+    const isPrefix=mode==='prefix',isGroup=mode==='group';
+    $('moduleCatalogEditorTitle').textContent=isPrefix?(prefix?'Edytuj / przypisz prefiks':'Dodaj prefiks') : isGroup?(group?'Edytuj grupę':'Nowa grupa'):(type?'Edytuj typ modułu':'Nowy typ — '+group.name);
+    const name=$('moduleCatalogName'),code=$('modulePrefixCode'),target=$('moduleCatalogTarget');
+    $('moduleCatalogNameWrap').classList.toggle('hidden',isPrefix);name.required=!isPrefix;name.disabled=isPrefix;
+    $('moduleCatalogTargetWrap').classList.toggle('hidden',!isPrefix);target.required=isPrefix;target.disabled=!isPrefix;
+    $('moduleCatalogCodeWrap').classList.toggle('hidden',!isPrefix);code.required=isPrefix;code.disabled=!isPrefix;
+    name.value=isGroup?(group?.name||''):(type?.name||'');code.value=prefix?.prefix||'';
+    target.replaceChildren(new Option('Wybierz typ modułu',''));
+    for(const g of moduleCatalog.groups){
+      const optgroup=document.createElement('optgroup');optgroup.label=g.name;
+      for(const t of moduleCatalog.types.filter(t=>t.groupId===g.id&&Number(t.active)))optgroup.append(new Option(t.name,t.id));
+      if(optgroup.children.length)target.append(optgroup);
+    }
+    target.value=type?.id||prefix?.typeId||'';
+    $('modulePrefixForm').classList.remove('hidden');
+    (isPrefix?(target.value?code:target):name).focus();
   }
-
+  function catalogButton(label,fn,cls='btn mini ghost'){
+    const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.addEventListener('click',()=>fn(b));return b;
+  }
+  function catalogChips(items,group,type){
+    const wrap=document.createElement('div');wrap.className='module-prefix-group';
+    if(!items.length){wrap.textContent='—';return wrap;}
+    for(const p of items){
+      const chip=document.createElement('span');chip.className='module-prefix-chip';
+      const edit=catalogButton(p.prefix,()=>openModuleCatalogEditor('prefix',group,type,p),'module-prefix-edit');
+      edit.title='Edytuj / przypisz '+p.prefix;edit.disabled=!!type&&!Number(type.active);
+      const del=catalogButton('×',b=>removeModulePrefix(p,b),'module-prefix-remove');del.title='Usuń prefiks '+p.prefix;del.setAttribute('aria-label',del.title);
+      chip.append(edit,del);wrap.append(chip);
+    }
+    return wrap;
+  }
   function renderModulePrefixes(){
-    const rows=state.modulePrefixes;
-    const target=$('modulePrefixRows');
-    target.replaceChildren();
-    const datalist=$('moduleTypeChoices');
-    datalist.replaceChildren();
-    const types=[...new Set(rows.map(item=>item.moduleType))];
-    for(const type of types){
-      const option=document.createElement('option');
-      option.value=type;
-      datalist.append(option);
-    }
-    if(!rows.length){
-      const tr=target.insertRow();
-      const cell=tr.insertCell();
-      cell.colSpan=3;
-      cell.className='module-prefix-empty';
-      cell.textContent='Nie dodano jeszcze żadnych prefiksów.';
-    }
-    for(const type of types){
-      const tr=target.insertRow(),module=td(type,'module-prefix-type'),code=td('','module-prefix-code');
-      const group=document.createElement('div');group.className='module-prefix-group';
-      for(const item of rows.filter(r=>r.moduleType===type)){
-        const chip=document.createElement('span');chip.className='module-prefix-chip';
-        const edit=document.createElement('button');edit.type='button';edit.className='module-prefix-edit';edit.textContent=item.prefix;
-        edit.title='Edytuj prefiks '+item.prefix;edit.setAttribute('aria-label',edit.title);
-        edit.addEventListener('click',()=>editModulePrefix(item));
-        const remove=document.createElement('button');remove.type='button';remove.className='module-prefix-remove';remove.textContent='×';remove.title='Usuń prefiks '+item.prefix;remove.setAttribute('aria-label',remove.title);
-        remove.addEventListener('click',()=>removeModulePrefix(item,remove));
-        chip.append(edit,remove);group.append(chip);
+    const {groups,types,prefixes}=moduleCatalog,target=$('modulePrefixRows');target.replaceChildren();
+    for(const g of groups){
+      const tr=target.insertRow();tr.className='module-catalog-group-row';
+      const header=tr.insertCell();header.colSpan=3;
+      const bar=document.createElement('div');bar.className='module-catalog-group-bar';
+      const title=document.createElement('strong');title.textContent=g.name;bar.append(title);
+      bar.append(catalogButton('Edytuj grupę',()=>openModuleCatalogEditor('group',g)),catalogButton('+ Typ modułu',()=>openModuleCatalogEditor('type',g)));header.append(bar);
+      const entries=types.filter(t=>t.groupId===g.id);
+      if(!entries.length){const empty=target.insertRow().insertCell();empty.colSpan=3;empty.className='module-prefix-empty';empty.textContent='Brak typów modułów.';}
+      for(const t of entries){
+        const row=target.insertRow();if(!Number(t.active))row.className='module-catalog-archived';
+        row.append(td(t.name+(Number(t.active)?'':' · ARCHIWUM'),'module-prefix-type'));
+        const codes=row.insertCell();codes.className='module-prefix-code';codes.append(catalogChips(prefixes.filter(p=>p.typeId===t.id),g,t));
+        const actions=row.insertCell();actions.className='module-prefix-actions';
+        if(Number(t.active))actions.append(catalogButton('+ Prefiks',()=>openModuleCatalogEditor('prefix',g,t)),catalogButton('Edytuj',()=>openModuleCatalogEditor('type',g,t)));
+        actions.append(catalogButton(Number(t.active)?'Archiwizuj':'Przywróć',b=>archiveModuleType(t,b)));
       }
-      code.append(group);tr.append(module,code);
-      const actions=tr.insertCell();actions.className='module-prefix-actions';
-      const add=document.createElement('button');add.type='button';add.className='btn mini ghost';add.textContent='+ Prefiks';
-      add.addEventListener('click',()=>{resetModulePrefixEditor();$('modulePrefixType').value=type;$('modulePrefixCode').focus();});
-      actions.append(add);
     }
-    $('modulePrefixStatus').textContent='Typy modułów: '+types.length+
-      ' · Zapisane prefiksy: '+rows.length;
+    const unassigned=prefixes.filter(p=>!p.typeId);
+    if(unassigned.length){
+      const cell=target.insertRow().insertCell();cell.colSpan=3;cell.className='module-catalog-unassigned';cell.textContent='PREFIKSY DO PRZYPISANIA — zachowane dotychczasowe reguły skanera';
+      for(const p of unassigned){
+        const row=target.insertRow();row.append(td(p.moduleType,'module-prefix-type'));
+        const codes=row.insertCell();codes.className='module-prefix-code';codes.append(catalogChips([p],null,null));
+        const actions=row.insertCell();actions.append(catalogButton('Przypisz do typu',()=>openModuleCatalogEditor('prefix',null,null,p)));
+      }
+    }
+    $('modulePrefixStatus').textContent='Grupy: '+groups.length+' · Typy: '+types.filter(t=>Number(t.active)).length+' · Prefiksy: '+prefixes.length+(unassigned.length?' · Do przypisania: '+unassigned.length:'');
   }
-
   async function refreshModulePrefixes(){
-    const entries=await api('modulePrefixes');
+    const data=await api('moduleCatalog');
     if(state.view!=='modulePrefixes')return;
-    state.modulePrefixes=Array.isArray(entries)?entries:[];
-    renderModulePrefixes();
+    if(!Array.isArray(data?.groups)||!Array.isArray(data?.types)||!Array.isArray(data?.prefixes))throw Error('Nieprawidłowe dane katalogu.');
+    moduleCatalog=data;renderModulePrefixes();
   }
-
   async function saveModulePrefix(event){
-    event.preventDefault();
-    const button=$('modulePrefixSave');
-    const oldPrefix=$('modulePrefixOriginal').value.trim().toUpperCase();
-    const prefix=$('modulePrefixCode').value.trim().toUpperCase();
-    const moduleType=$('modulePrefixType').value.trim().replace(/\s+/g,' ').toUpperCase();
-    if(!/^[A-Z0-9]{2,15}$/.test(prefix)||!
-       /^[A-Z0-9][A-Z0-9 _-]{0,29}$/.test(moduleType)){
-      message('Sprawdź typ modułu i prefiks. Prefiks może zawierać tylko litery i cyfry.','error');
-      return;
-    }
+    event.preventDefault();const edit=moduleCatalogEdit;if(!edit)return;
+    const button=$('modulePrefixSave'),name=$('moduleCatalogName').value.trim().toUpperCase(),prefix=$('modulePrefixCode').value.trim().toUpperCase(),typeId=$('moduleCatalogTarget').value;
+    let payload;
+    if(edit.mode==='group')payload={action:'moduleCatalogGroupSave',groupId:edit.groupId,name};
+    else if(edit.mode==='type')payload={action:'moduleCatalogTypeSave',groupId:edit.groupId,typeId:edit.typeId,name};
+    else payload={action:'moduleCatalogPrefixSave',typeId,prefix,oldPrefix:edit.oldPrefix};
     busy(button,true);
     try{
-      await post({action:'modulePrefixSave',oldPrefix,prefix,moduleType});
-      resetModulePrefixEditor();
-      $('modulePrefixType').value=moduleType;
-      $('modulePrefixCode').focus();
-      await refreshModulePrefixes();
-      message(oldPrefix?'Zapisano zmianę prefiksu.':'Dodano prefiks '+prefix+' do modułu '+moduleType+'.','success');
-    }catch(error){
-      message(error.message||'Nie udało się zapisać prefiksu.','error');
-    }finally{busy(button,false);}
-  }
-
-  async function removeModulePrefix(item,button){
-    if(!await confirmAction({
-      title:'Usunąć prefiks '+item.prefix+'?',
-      description:'Prefiks przestanie być przypisany do typu '+item.moduleType+
-        '. Nie zmieni to stanów magazynowych ani historii.',
-      confirmLabel:'Usuń prefiks',danger:true
-    }))return;
-    busy(button,true);
-    try{
-      await post({action:'modulePrefixDelete',prefix:item.prefix});
-      if($('modulePrefixOriginal').value===item.prefix)resetModulePrefixEditor();
-      await refreshModulePrefixes();
-      message('Usunięto prefiks '+item.prefix+'.','success');
-    }catch(error){message(error.message||'Nie udało się usunąć prefiksu.','error');}
+      await post(payload);resetModulePrefixEditor();await refreshModulePrefixes();message('Zapisano katalog modułów.','success');
+      if(edit.mode==='prefix'&&!edit.oldPrefix&&state.view==='modulePrefixes'){
+        const t=moduleCatalog.types.find(t=>t.id===typeId),g=moduleCatalog.groups.find(g=>g.id===t?.groupId);
+        if(t&&g)openModuleCatalogEditor('prefix',g,t);
+      }
+    }catch(error){message(error.message||'Nie udało się zapisać katalogu.','error');}
     finally{busy(button,false);}
+  }
+  async function archiveModuleType(t,button){
+    const active=!Number(t.active);
+    if(!await confirmAction({title:active?'Przywrócić '+t.name+'?':'Archiwizować '+t.name+'?',description:'Historia i istniejące prefiksy pozostaną zachowane. Na tym etapie skaner nadal rozpoznaje zapisane prefiksy.',confirmLabel:active?'Przywróć':'Archiwizuj',danger:!active}))return;
+    busy(button,true);try{await post({action:'moduleCatalogTypeArchive',typeId:t.id,active});resetModulePrefixEditor();await refreshModulePrefixes();message('Zapisano zmianę.','success');}catch(error){message(error.message,'error');}finally{busy(button,false);}
+  }
+  async function removeModulePrefix(item,button){
+    if(!await confirmAction({title:'Usunąć prefiks '+item.prefix+'?',description:'Skaner przestanie rozpoznawać moduły na podstawie tego prefiksu. Nie zmieni to historii ani stanów.',confirmLabel:'Usuń prefiks',danger:true}))return;
+    busy(button,true);try{await post({action:'moduleCatalogPrefixDelete',prefix:item.prefix});resetModulePrefixEditor();await refreshModulePrefixes();message('Usunięto prefiks.','success');}catch(error){message(error.message,'error');}finally{busy(button,false);}
   }
   const mailTypes=['PZ','WZ','CMR'];
   let emailViewVersion=0;
@@ -2724,7 +2724,7 @@
     $('loginForm').addEventListener('submit',performLogin);
     $('frWeeklySettingsForm').addEventListener('submit',saveFrWeeklySettings);
     $('documentEmailsForm').addEventListener('submit',saveDocumentEmails);
-    for(const id of ['modulePrefixType','modulePrefixCode']){
+    for(const id of ['moduleCatalogName','modulePrefixCode']){
       const field=$(id);
       const uppercase=event=>{
         if(event.isComposing)return;
@@ -2737,6 +2737,7 @@
       field.addEventListener('input',uppercase);
       field.addEventListener('compositionend',uppercase);
     }
+    $('moduleCatalogAddGroup').addEventListener('click',()=>openModuleCatalogEditor('group'));
     $('modulePrefixForm').addEventListener('submit',saveModulePrefix);
     $('cmrModuleWeightForm').addEventListener('submit',saveCmrModuleWeight);
     $('loadingListPartAdd').addEventListener('click',()=>openLoadingPartEditor());

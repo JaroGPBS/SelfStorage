@@ -1,5 +1,6 @@
 // GPBS Storage: guarded web-panel API, independent from production /api.
 import {ensurePartIndexes} from '../../lib/pl-part-indexes.js';
+import {listModuleCatalog,mutateModuleCatalog} from '../../lib/module-catalog.js';
 import {listModulePrefixes,saveModulePrefix,deleteModulePrefix} from '../../lib/module-prefix-registry.js';
 import {listFrLoadingListCatalog,saveFrLoadingListAlias,deleteFrLoadingListAlias}
   from '../../lib/fr-loading-list-catalog.js';
@@ -506,6 +507,7 @@ async function rotateBoxQr(env,body,actor) {
 }
 
 async function queryPanel(env,view,url) {
+  if(view==='moduleCatalog')return listModuleCatalog(env.DB);
   if(view==='modulePrefixes')return listModulePrefixes(env.DB);
   if(view==='cmrModuleWeights')return listCmrModuleWeights(env.DB);
   if(view==='loadingListParts')return listFrLoadingListCatalog(env.DB);
@@ -1749,9 +1751,17 @@ async function route(request,env) {
       return respond({ok:true,...result});
     }catch(error){return fail(error.message||'Nie udało się zapisać wagi modułu.',400);}
   }
+  if(['moduleCatalogGroupSave','moduleCatalogTypeSave','moduleCatalogTypeArchive','moduleCatalogPrefixSave','moduleCatalogPrefixDelete'].includes(body?.action)){
+    if(session.role!=='ADMIN')return fail('Brak uprawnień.',403);
+    try{return respond({ok:true,...await mutateModuleCatalog(env.DB,body,session.id)});}
+    catch(error){console.error('Module catalog update failed',error?.name||'Error');return fail(error.status?error.message:/UNIQUE constraint/i.test(error.message||'')?'Taki wpis już istnieje.':'Nie udało się zapisać katalogu modułów.',error.status||(/UNIQUE constraint/i.test(error.message||'')?409:503));}
+  }
   if(['modulePrefixSave','modulePrefixDelete'].includes(body?.action)){
     if(session.role!=='ADMIN')return fail('Brak uprawnień do konfiguracji prefiksów.',403);
     try{
+      const catalogue=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='module_catalog_meta'").first();
+      if(catalogue&&await env.DB.prepare("SELECT id FROM module_catalog_meta WHERE id='seed-v1'").first())
+        return fail('Katalog modułów został zaktualizowany. Odśwież panel Admin.',409);
       const result=body.action==='modulePrefixSave'
         ?await saveModulePrefix(env.DB,body,session.id)
         :await deleteModulePrefix(env.DB,body,session.id);

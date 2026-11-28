@@ -8,9 +8,9 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=52">
+  <link rel="stylesheet" href="./panel.css?v=53">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=88" defer></script>
+  <script src="./panel.js?v=89" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -52,7 +52,7 @@
         <button data-view="indexMigration" class="nav-item" type="button"><span class="nav-symbol">⇢</span> Wymiana indeksów</button>
         <div class="side-section administrative">ADMINISTRACJA</div>
         <button data-view="users" class="nav-item" type="button"><span class="nav-symbol">♙</span> Użytkownicy</button>
-        <button data-view="modulePrefixes" class="nav-item" type="button"><span class="nav-symbol">▧</span> Prefiksy modułów</button>
+        <button data-view="modulePrefixes" class="nav-item" type="button"><span class="nav-symbol">▧</span> Katalog modułów</button>
         <button data-view="cmrModuleWeights" class="nav-item" type="button"><span class="nav-symbol">⚖</span> Wagi modułów</button>
         <button data-view="loadingListParts" class="nav-item" type="button"><span class="nav-symbol">▦</span> Części listy załadunkowej</button>
         <button data-view="frWeeklySettings" class="nav-item" type="button"><span class="nav-symbol">♧</span> Powiadomienia FR</button>
@@ -292,38 +292,25 @@
             <div id="indexMigrationFooter" class="table-footer" role="status" aria-live="polite"></div>
           </div>
         </section>
-        <section id="modulePrefixesView" class="view hidden" aria-labelledby="modulePrefixesTitle">
+        <section id="modulePrefixesView" class="view hidden" aria-label="Katalog modułów">
           <div class="table-panel module-prefix-panel">
-            <div class="table-title"><div>
-              <h2 id="modulePrefixesTitle">Identyfikacja modułów</h2>
-              <p>Przypisz prefiksy numerów seryjnych do typów modułów. Jeden typ może mieć wiele prefiksów.</p>
-            </div></div>
-            <form id="modulePrefixForm" class="module-prefix-form" autocomplete="off">
-              <input id="modulePrefixOriginal" type="hidden">
+            <div class="module-catalog-toolbar"><button id="moduleCatalogAddGroup" class="btn primary" type="button">+ Nowa grupa</button><span id="modulePrefixStatus" role="status" aria-live="polite"></span></div>
+            <form id="modulePrefixForm" class="module-prefix-form hidden" autocomplete="off">
+              <strong id="moduleCatalogEditorTitle"></strong>
               <div class="module-prefix-fields">
-                <label for="modulePrefixType">Typ modułu
-                  <input id="modulePrefixType" type="text" required list="moduleTypeChoices"
-                    maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9 _-]{0,29}"
-                    autocapitalize="characters" spellcheck="false" placeholder="Np. FM">
-                </label>
-                <datalist id="moduleTypeChoices"></datalist>
-                <label for="modulePrefixCode">Prefiks numeru seryjnego
-                  <input id="modulePrefixCode" type="text" required minlength="2" maxlength="15"
-                    pattern="[A-Za-z0-9]{2,15}" autocapitalize="characters"
-                    spellcheck="false" placeholder="Np. CQU">
-                </label>
-                <button id="modulePrefixSave" type="submit" class="btn primary">+ Dodaj prefiks</button>
-                <button id="modulePrefixCancel" type="button" class="btn ghost hidden">Anuluj edycję</button>
+                <label id="moduleCatalogNameWrap" for="moduleCatalogName">Nazwa<input id="moduleCatalogName" type="text" maxlength="30" autocapitalize="characters" spellcheck="false"></label>
+                <label id="moduleCatalogTargetWrap" for="moduleCatalogTarget">Typ modułu<select id="moduleCatalogTarget"></select></label>
+                <label id="moduleCatalogCodeWrap" for="modulePrefixCode">Prefiks numeru seryjnego<input id="modulePrefixCode" type="text" maxlength="15" autocapitalize="characters" spellcheck="false" placeholder="Np. CQU"></label>
+                <button id="modulePrefixSave" type="submit" class="btn primary">Zapisz</button>
+                <button id="modulePrefixCancel" type="button" class="btn ghost">Anuluj</button>
               </div>
-              <p class="hint module-prefix-hint">Przykład: <strong>FM</strong> → <strong>CQU</strong>, <strong>CQM</strong>. Wprowadzaj sam prefiks, bez roku i znaku „/”. Kliknij prefiks, aby go edytować, lub + Prefiks, aby dodać kolejny do tego samego typu.</p>
             </form>
             <div class="table-scroll module-prefix-table-scroll">
-              <table class="module-prefix-table" aria-label="Prefiksy numerów seryjnych">
-                <thead><tr><th>Typ modułu</th><th>Prefiks</th><th>Działania</th></tr></thead>
+              <table class="module-prefix-table module-catalog-table" aria-label="Grupy, typy i prefiksy modułów">
+                <thead><tr><th>Typ modułu</th><th>Prefiksy</th><th>Działania</th></tr></thead>
                 <tbody id="modulePrefixRows"></tbody>
               </table>
             </div>
-            <p id="modulePrefixStatus" class="module-prefix-status" role="status" aria-live="polite"></p>
           </div>
         </section>
         <section id="cmrModuleWeightsView" class="view hidden">
