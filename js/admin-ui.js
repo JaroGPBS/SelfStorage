@@ -195,7 +195,7 @@ function clearBellevilleSession(){
 function showBellevilleView(view){
  bellevilleView=view;
  bel('belMainTitle').textContent=view==='inventory'?'Inwentaryzacja':'Belleville';
- const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView',supplyForm:'belSupplyForm',supply:'belSupplyWork',inventory:'belInventoryMenu'};
+ const sections={menu:'bellevilleMenuView',form:'bellevilleTransportForm',visit:'bellevilleVisitView',operation:'bellevilleOperationView',supplyForm:'belSupplyForm',supply:'belSupplyWork',inventory:'belInventoryMenu',moduleInventory:'belModuleInventoryWork'};
  for(const [name,id] of Object.entries(sections))bel(id).classList.toggle('hidden',name!==view);
  if(view==='menu'){
   bel('belStartVisit').textContent=getBellevilleSession()?'Wznów wizytę':'Rozpocznij wizytę';
@@ -208,12 +208,14 @@ function showBellevilleView(view){
    button.textContent=(dir==='PZ'?'Przyjęcie':'Wydanie')+(s.operations[dir].done?' ✓':'');
   }
  }else if(view==='supply'){renderSupply();}
+ else if(view==='inventory'){bel('belInventoryModules').textContent=getModuleInventory()?.rows.length?'Moduły – wznów':'Moduły';}
+ else if(view==='moduleInventory'){renderModuleInventory();}
 }
 function backBellevilleView(){
  const message=bel('belMessageDialog');if(message?.open){message.close('no');return true;}
  const open=document.querySelector('#screenBelleville dialog[open]');if(open){open.close();return true;}
  if(bellevilleView==='menu')return false;
- showBellevilleView(bellevilleView==='operation'?'visit':'menu');return true;
+ showBellevilleView(bellevilleView==='operation'?'visit':bellevilleView==='moduleInventory'?'inventory':'menu');return true;
 }
 function chooseBellevilleOperation(operation){
  if(!canBellevilleOperation(operation))return;
@@ -491,6 +493,105 @@ function confirmSupply(){
  bel('belSupplyFinishDialog').close();supplySelection=null;showBellevilleView('menu');bel('bellevilleInfo').textContent='Zaopatrzenie testowe zakończone.';bel('bellevilleInfo').classList.remove('hidden');
 }
 
+
+const MODULE_INV_PREFIX='gpbs-belleville-module-inventory-v1:';
+const MODULE_INV_TYPES=['FM','LQ','RQ','XS','ODL','ODR','CU','DUO','HICU','HIDUO','HI UNO','CU RJ45','HICU RJ45','BQ CU','BQ DUO','BQ CU OUT','BQ DUO OUT','NEW GEN CU','NEW GEN DUO L','NEW GEN DUO R'];
+let invEdit=null;
+function moduleInvOwner(){return String(loadState()?.team?.id||'');}
+function moduleInvKey(){return MODULE_INV_PREFIX+encodeURIComponent(moduleInvOwner());}
+function getModuleInventory(){
+ if(!canBellevilleOperation('INVENTORY')||!moduleInvOwner())return null;
+ try{const d=JSON.parse(localStorage.getItem(moduleInvKey())||'null');return d?.owner===moduleInvOwner()&&Array.isArray(d.rows)?d:null;}catch{return null;}
+}
+function saveModuleInventory(d){
+ if(!canBellevilleOperation('INVENTORY')||!moduleInvOwner()||d.owner!==moduleInvOwner())return false;
+ try{localStorage.setItem(moduleInvKey(),JSON.stringify(d));return true;}catch{belAlert('Nie udało się zapisać inwentaryzacji w pamięci telefonu.');return false;}
+}
+function openModuleInventory(){
+ if(!canBellevilleOperation('INVENTORY'))return;
+ if(!getModuleInventory()&&!saveModuleInventory({owner:moduleInvOwner(),startedAt:new Date().toISOString(),status:null,rows:[]}))return;
+ showBellevilleView('moduleInventory');
+}
+function moduleInvSerial(x){return String(x||'').replace(/\u0000/g,'').trim().toUpperCase();}
+function moduleInvValidSerial(s){return s.length>0&&s.length<=100&&/^[A-Z0-9][A-Z0-9 ._/-]*$/.test(s)&&!s.includes('://');}
+function moduleInvPrefixes(){const p=loadState()?.startData?.modulePrefixes;return Array.isArray(p)?p:[];}
+function moduleInvType(serial){
+ const matches=moduleInvPrefixes().filter(p=>p.prefix&&p.moduleType&&serial.startsWith(String(p.prefix).toUpperCase())).sort((a,b)=>b.prefix.length-a.prefix.length);
+ return matches[0]?String(matches[0].moduleType).trim().toUpperCase():'';
+}
+function renderModuleInventory(){
+ const d=getModuleInventory();if(!d){showBellevilleView('inventory');return;}
+ for(const b of document.querySelectorAll('[data-bel-inv-status]')){
+  const status=b.dataset.belInvStatus;
+  b.textContent=status+' ('+d.rows.filter(r=>r.status===status).length+')';b.setAttribute('aria-pressed',String(d.status===status));
+ }
+ const scan=bel('belInvScan');scan.dataset.status=d.status||'';scan.querySelector('span').textContent=d.status?'Skanuj moduł '+d.status:'Skanuj moduł';scan.disabled=!d.status;
+ const root=bel('belInvRows');root.replaceChildren();
+ const visible=d.rows.filter(r=>r.status===d.status);
+ if(!visible.length)root.append(node('p',d.status?'Brak zeskanowanych modułów '+d.status+'.':'Wybierz OK lub NOK.','bel-empty'));
+ for(const r of [...visible].reverse()){
+  const line=node('div',null,'bel-row'),edit=node('button',r.serial,'bel-inv-edit');edit.type='button';edit.setAttribute('aria-label','Edytuj moduł '+r.serial);edit.onclick=()=>openModuleInvEntry(r.serial,r);
+  const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń moduł '+r.serial);remove.onclick=async()=>{
+   if(!await belConfirm('Czy usunąć pozycję?'))return;
+   const current=getModuleInventory();if(!current)return;current.rows=current.rows.filter(x=>x.serial!==r.serial);if(saveModuleInventory(current))renderModuleInventory();
+  };
+  line.append(node('span',r.type),edit,node('span',r.status,r.status.toLowerCase()),remove);root.append(line);
+ }
+}
+function selectModuleInvStatus(status){
+ const d=getModuleInventory();if(!d||!['OK','NOK'].includes(status))return;d.status=status;if(saveModuleInventory(d))renderModuleInventory();
+}
+function openModuleInvEntry(serial='',existing=null){
+ const d=getModuleInventory();if(!d)return;
+ invEdit=existing?.serial||null;
+ bel('belInvEntryTitle').textContent=existing?'Edytuj moduł':serial?'Wybierz typ modułu':'Dodaj moduł ręcznie';
+ bel('belInvSerial').value=serial;
+ const types=bel('belInvType');types.replaceChildren(new Option('Wybierz typ',''));
+ const options=[...new Set([...MODULE_INV_TYPES,...moduleInvPrefixes().map(p=>String(p.moduleType||'').trim().toUpperCase()),existing?.type].filter(Boolean))];
+ for(const type of options)types.append(new Option(type,type));
+ types.value=existing?.type||moduleInvType(serial)||'';
+ bel('belInvState').value=existing?.status||d.status||'';
+ bel('belInvEntryDialog').showModal();(serial?types:bel('belInvSerial')).focus();
+}
+function addModuleInvRow(serial,type,status,edit=null){
+ const d=getModuleInventory();if(!d||!moduleInvValidSerial(serial)||!type||!['OK','NOK'].includes(status))return false;
+ const duplicate=d.rows.find(r=>r.serial===serial&&r.serial!==edit);
+ if(duplicate){belAlert('Ten moduł jest już na liście '+duplicate.status+'.');return false;}
+ const row={serial,type,status};
+ if(edit){const i=d.rows.findIndex(r=>r.serial===edit);if(i<0)return false;d.rows[i]=row;}else d.rows.push(row);
+ d.status=status;if(!saveModuleInventory(d))return false;renderModuleInventory();return true;
+}
+function submitModuleInvEntry(event){
+ event.preventDefault();
+ const serial=moduleInvSerial(bel('belInvSerial').value),type=bel('belInvType').value,status=bel('belInvState').value;
+ if(!moduleInvValidSerial(serial)){belAlert('Nieprawidłowy numer seryjny.');return;}
+ if(addModuleInvRow(serial,type,status,invEdit)){bel('belInvEntryDialog').close();invEdit=null;}
+}
+function scanModuleInventory(){
+ const d=getModuleInventory();if(!d||!d.status)return;
+ const owner=d.owner,startedAt=d.startedAt,status=d.status;
+ if(typeof window.gpbsOpenModuleInventoryScanner!=='function'){belAlert('Skaner jest niedostępny.');return;}
+ window.gpbsOpenModuleInventoryScanner(code=>{
+  const current=getModuleInventory();if(bellevilleView!=='moduleInventory'||current?.owner!==owner||current?.startedAt!==startedAt)return;
+  const serial=moduleInvSerial(code);
+  if(!moduleInvValidSerial(serial)){belAlert('Nieprawidłowy kod QR modułu.');return;}
+  if(supplyCatalog().some(p=>(p.kody||[]).some(k=>moduleInvSerial(k)===serial))){belAlert('To kod części, nie modułu.');return;}
+  const existing=current.rows.find(r=>r.serial===serial);if(existing){belAlert('Ten moduł jest już na liście '+existing.status+'.');return;}
+  const type=moduleInvType(serial);
+  if(type){addModuleInvRow(serial,type,status);return;}
+  openModuleInvEntry(serial);
+  bel('belInvState').value=status;
+ });
+}
+async function finishModuleInventory(){
+ const d=getModuleInventory();if(!d)return;
+ const ok=d.rows.filter(r=>r.status==='OK').length,nok=d.rows.length-ok;
+ if(!await belConfirm('Zakończyć inwentaryzację testową? OK: '+ok+', NOK: '+nok+'. Dane robocze zostaną wyczyszczone. Stany D1 nie zmienią się.'))return;
+ const current=getModuleInventory();if(!current||current.startedAt!==d.startedAt||current.owner!==d.owner)return;
+ try{localStorage.removeItem(moduleInvKey());}catch{belAlert('Nie udało się zakończyć inwentaryzacji.');return;}
+ showBellevilleView('inventory');
+}
+
 function renderAdminWarehousePicker(saved) {
   const picker = ensureAdminWarehousePicker();
   const list = document.getElementById('adminWarehouseList');
@@ -688,7 +789,13 @@ document.addEventListener('DOMContentLoaded', () => {
   bel('belMessageYes').addEventListener('click',()=>bel('belMessageDialog').close('yes'));
   bel('belMessageDialog').addEventListener('cancel',event=>{event.preventDefault();bel('belMessageDialog').close('no');});
   bel('belMessageDialog').addEventListener('close',()=>{const dialog=bel('belMessageDialog'),resolve=belMessageResolve;belMessageResolve=null;resolve?.(dialog.returnValue==='yes');});
-  bel('belInventoryModules').addEventListener('click',()=>{if(canBellevilleOperation('INVENTORY'))belAlert('Inwentaryzacja modułów zostanie przygotowana w kolejnym etapie.');});
+  bel('belInventoryModules').addEventListener('click',openModuleInventory);
+  bel('belInvBack').addEventListener('click',backBellevilleView);
+  document.querySelectorAll('[data-bel-inv-status]').forEach(b=>b.addEventListener('click',()=>selectModuleInvStatus(b.dataset.belInvStatus)));
+  bel('belInvManual').addEventListener('click',()=>openModuleInvEntry());
+  bel('belInvScan').addEventListener('click',scanModuleInventory);
+  bel('belInvEntryForm').addEventListener('submit',submitModuleInvEntry);
+  bel('belInvFinish').addEventListener('click',finishModuleInventory);
   bel('belInventoryParts').addEventListener('click',()=>{if(canBellevilleOperation('INVENTORY'))belAlert('Inwentaryzacja części zostanie przygotowana w kolejnym etapie.');});
   window.gpbsBellevilleBack = backBellevilleView;
   updateRoleControls();

@@ -4,7 +4,7 @@ import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
 import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.75';
+const APP_VERSION = '0.76';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -2267,13 +2267,15 @@ async function startVisit(code) {
   }
 }
 
-let supplyScannerMatch=null;
+let supplyScannerMatch=null, inventoryScannerMatch=null;
+window.gpbsOpenModuleInventoryScanner=match=>{if(getActiveScreenId()!=='screenBelleville'||typeof match!=='function'||scannerMode)return;inventoryScannerMatch=match;void openCodeScanner('module-inventory');};
 window.gpbsOpenSupplyScanner=match=>{if(getActiveScreenId()!=='screenBelleville'||typeof match!=='function')return;supplyScannerMatch=match;void openCodeScanner('supply');};
 async function openCodeScanner(mode) {
   scannerMode = mode;
 
-  const isPart = mode === 'part' || mode === 'supply';
-  $('scannerTitle').textContent = isPart ? 'Kod części' : 'Kod QR magazynu';
+  const isModuleInventory=mode==='module-inventory';
+  const isPart = mode === 'part' || mode === 'supply' || isModuleInventory;
+  $('scannerTitle').textContent = isModuleInventory?'Kod QR modułu':isPart ? 'Kod części' : 'Kod QR magazynu';
   $('scannerNote').textContent = isPart
     ? 'Skieruj aparat na kod QR lub Code128 części.'
     : 'Skieruj aparat na kod QR magazynu.';
@@ -2285,6 +2287,12 @@ async function openCodeScanner(mode) {
     await startScanner(async code => {
       const activeMode = scannerMode;
 
+      if(activeMode==='module-inventory'){
+        const callback=inventoryScannerMatch;
+        await closeScanner();
+        if(callback)callback(code);
+        return true;
+      }
       if(activeMode==='supply'){
         const open=supplyScannerMatch?.(code);
         if(!open){showToast('Nie rozpoznano jednoznacznie kodu części. Zeskanuj ponownie.',true);return false;}
@@ -2325,7 +2333,7 @@ async function closeScanner() {
   }
 
   scannerMode = null;
-  supplyScannerMatch=null;
+  supplyScannerMatch=null;inventoryScannerMatch=null;
   $('scannerModal').classList.remove('show');
   $('scannerModal').setAttribute('aria-hidden', 'true');
 }

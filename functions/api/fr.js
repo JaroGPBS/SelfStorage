@@ -582,6 +582,8 @@ async function action(db,user,body){
     const warehouses=await mobileWarehouses(db,user);
     const bellevilleAccess=user.role!=='EKIPA'&&(user.features?.pz!==false||user.features?.wz!==false)&&
       (isOwnerAdmin(user)||warehouses.some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')));
+    const inventoryAccess=user.role!=='EKIPA'&&user.features?.inventory!==false&&(isOwnerAdmin(user)||warehouses.some(w=>String(w.nazwa||'').toLowerCase().includes('belleville')));
+    const modulePrefixes=inventoryAccess&&await db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='module_serial_prefixes'").first()?(await db.prepare('SELECT prefix,module_type AS moduleType FROM module_serial_prefixes ORDER BY length(prefix) DESC').all()).results||[]:[];
     const bellevilleParts=bellevilleAccess?[...new Map(catalog.map(p=>[p.id,p])).values()].map(p=>({
       id:p.id,nazwa:p.name,indeks:p.new_index||p.part_number||p.id,sap:p.sap_number||'',
       kody:[...new Set([p.id,p.part_number,p.sap_number,p.source_code,p.old_index,p.new_index].filter(Boolean).map(entryCode))]
@@ -589,6 +591,7 @@ async function action(db,user,body){
     return {ok:true,ekipa:mobileIdentity(user),
       samochod:car?.registration_number||'',
       ...(bellevilleAccess?{czesciBelleville:bellevilleParts}:{}),
+      ...(inventoryAccess?{modulePrefixes}:{}),
       wersjaKataloguBox:BOX_CATALOG_VERSION+'-'+(()=>{
         let hash=2166136261;
         const ids=activeBoxItems.map(x=>x.part_id).sort().join('|');

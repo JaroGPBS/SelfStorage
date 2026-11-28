@@ -716,3 +716,22 @@ body:has(#screenBelleville.active #belSupplyWork:not(.hidden))::before{backgroun
 /* Slightly squarer mobile navigation and dialog buttons; no sizing changes. */
 body:not(.gpbs-market-pl) .instruction-link-btn{border-radius:9px}
 #screenBelleville .bel-dialog .btn{border-radius:10px}
+
+/* Single-scan module inventory, no extra header. */
+#screenBelleville:has(#belModuleInventoryWork:not(.hidden))>.bel-main-head{display:none}
+body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden)) .app-shell{display:flex;flex-direction:column}
+body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden)) .app-header,body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden)) .app-signature{display:none!important}
+body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden)) .app-main{height:auto;flex:1;min-height:0;padding:4px 0 23px!important}
+body:has(#screenBelleville.active #belModuleInventoryWork:not(.hidden))::before{background:linear-gradient(180deg,rgba(7,9,11,.76),rgba(7,9,11,.86)),url("../images/warehouse-background.jpg?v=2") center/cover no-repeat}
+#screenBelleville #belInvBack{flex:0 0 44px;width:44px;min-height:44px;display:grid;place-items:center;padding:5px}
+#screenBelleville #belInvFinish{flex:1;font-size:clamp(13px,3.8vw,16px)}
+#screenBelleville .bel-inv-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0}
+#screenBelleville .bel-inv-tabs .btn{min-height:44px;margin:0;padding:6px;font-size:16px;background:#20242a;border:1px solid var(--line)}
+#screenBelleville .bel-inv-tabs [data-bel-inv-status="OK"]{color:#7bd29d}
+#screenBelleville .bel-inv-tabs [data-bel-inv-status="NOK"]{color:#ef9696}
+#screenBelleville .bel-inv-tabs [data-bel-inv-status="OK"][aria-pressed="true"]{border:2px solid #45cf77;background:#20462f;box-shadow:0 0 9px #45cf7740}
+#screenBelleville .bel-inv-tabs [data-bel-inv-status="NOK"][aria-pressed="true"]{border:2px solid #ff5050;background:#522629;box-shadow:0 0 9px #ff505040}
+#screenBelleville #belInvRows .bel-row{font-size:14px}
+#screenBelleville #belInvRows .bel-inv-edit{font-size:inherit;color:var(--text);text-align:left;overflow-wrap:anywhere;min-width:0}
+#screenBelleville #belInvScan[data-status="OK"]{border-color:#45cf77;box-shadow:0 0 9px #45cf7740}
+#screenBelleville #belInvScan[data-status="NOK"]{border-color:#ff5050;box-shadow:0 0 9px #ff505040}
