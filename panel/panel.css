@@ -1835,3 +1835,16 @@ tr:hover td{background:#ffffff04}
 #modulePrefixesView .btn.catalog-edit{color:var(--catalog-edit-ink);background:var(--catalog-edit-bg);border-color:var(--catalog-edit-border)}
 #modulePrefixesView .btn.catalog-archive{color:var(--catalog-archive-ink);background:var(--catalog-archive-bg);border-color:var(--catalog-archive-border)}
 #modulePrefixesView .btn:is(.catalog-add,.catalog-edit,.catalog-archive):hover{filter:brightness(.93)}
+
+/* Module catalogue modal: fixed group/type and existing prefixes, shared themes. */
+#moduleCatalogDialog .modal-inner{padding:22px}
+#moduleCatalogDialog .modal-heading h2{font-size:calc(20px + var(--admin-font-delta,0px));margin:0 0 14px}
+#moduleCatalogDialog .module-catalog-context{display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface2);border:1px solid var(--edge);border-radius:8px;padding:12px}
+#moduleCatalogDialog .module-catalog-context div{display:flex;flex-direction:column;gap:5px;min-width:0}
+#moduleCatalogDialog .module-catalog-context span{color:var(--mute);font-size:12px}
+#moduleCatalogDialog .module-catalog-context strong{color:var(--white);overflow-wrap:anywhere}
+#moduleCatalogDialog .module-catalog-existing-chip{display:inline-block;border:1px solid var(--edge);background:var(--surface2);color:var(--white);border-radius:6px;padding:4px 8px;font-weight:650}
+#moduleCatalogDialog .module-prefix-group{color:var(--mute)}
+#moduleCatalogDialog input,#moduleCatalogDialog select{width:100%}
+#moduleCatalogDialog .dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+#moduleCatalogDialogError{margin:12px 0 0}

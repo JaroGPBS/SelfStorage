@@ -2313,30 +2313,47 @@
 
 
   let moduleCatalog={groups:[],types:[],prefixes:[]},moduleCatalogEdit=null;
+  let moduleCatalogSaving=false;
   function resetModulePrefixEditor(){
+    if(moduleCatalogSaving)return;
     moduleCatalogEdit=null;
+    const dialog=$('moduleCatalogDialog');if(dialog.open)dialog.close();
     $('modulePrefixForm').reset();
-    $('modulePrefixForm').classList.add('hidden');
+    $('moduleCatalogDialogError').classList.add('hidden');
   }
   function openModuleCatalogEditor(mode,group=null,type=null,prefix=null){
+    if(moduleCatalogSaving)return;
     resetModulePrefixEditor();
-    moduleCatalogEdit={mode,groupId:group?.id||'',typeId:type?.id||'',oldPrefix:prefix?.prefix||''};
     const isPrefix=mode==='prefix',isGroup=mode==='group';
-    $('moduleCatalogEditorTitle').textContent=isPrefix?(prefix?'Edytuj / przypisz prefiks':'Dodaj prefiks') : isGroup?(group?'Edytuj grupę':'Nowa grupa'):(type?'Edytuj typ modułu':'Nowy typ — '+group.name);
+    const fixedType=isPrefix&&!!type;
+    const unassigned=isPrefix&&!type;
+    moduleCatalogEdit={mode,groupId:group?.id||'',typeId:type?.id||'',oldPrefix:prefix?.prefix||''};
+    $('moduleCatalogEditorTitle').textContent=isPrefix?(prefix?(fixedType?'Edytuj prefiks':'Przypisz prefiks'):'Dodaj prefiks') : isGroup?(group?'Edytuj grupę':'Nowa grupa'):(type?'Edytuj typ modułu':'Nowy typ — '+group.name);
     const name=$('moduleCatalogName'),code=$('modulePrefixCode'),target=$('moduleCatalogTarget');
     $('moduleCatalogNameWrap').classList.toggle('hidden',isPrefix);name.required=!isPrefix;name.disabled=isPrefix;
-    $('moduleCatalogTargetWrap').classList.toggle('hidden',!isPrefix);target.required=isPrefix;target.disabled=!isPrefix;
+    $('moduleCatalogTargetWrap').classList.toggle('hidden',!unassigned);target.required=unassigned;target.disabled=!unassigned;
     $('moduleCatalogCodeWrap').classList.toggle('hidden',!isPrefix);code.required=isPrefix;code.disabled=!isPrefix;
+    $('moduleCatalogCodeLabel').textContent=prefix?'Prefiks':'Nowy prefiks';
+    $('moduleCatalogContext').classList.toggle('hidden',!fixedType);
+    $('moduleCatalogContextGroup').textContent=group?.name||'';
+    $('moduleCatalogContextType').textContent=type?.name||'';
+    $('moduleCatalogExistingWrap').classList.toggle('hidden',!fixedType);
+    const existing=$('moduleCatalogExisting');existing.replaceChildren();
+    if(fixedType){
+      for(const p of moduleCatalog.prefixes.filter(p=>p.typeId===type.id)){
+        const chip=document.createElement('span');chip.className='module-catalog-existing-chip';chip.textContent=p.prefix;existing.append(chip);
+      }
+      if(!existing.children.length)existing.textContent='Brak przypisanych prefiksów';
+    }
     name.value=isGroup?(group?.name||''):(type?.name||'');code.value=prefix?.prefix||'';
     target.replaceChildren(new Option('Wybierz typ modułu',''));
-    for(const g of moduleCatalog.groups){
+    if(unassigned)for(const g of moduleCatalog.groups){
       const optgroup=document.createElement('optgroup');optgroup.label=g.name;
       for(const t of moduleCatalog.types.filter(t=>t.groupId===g.id&&Number(t.active)))optgroup.append(new Option(t.name,t.id));
       if(optgroup.children.length)target.append(optgroup);
     }
-    target.value=type?.id||prefix?.typeId||'';
-    $('modulePrefixForm').classList.remove('hidden');
-    (isPrefix?(target.value?code:target):name).focus();
+    $('moduleCatalogDialog').showModal();
+    (isPrefix?(fixedType?code:target):name).focus();
   }
   function catalogButton(label,fn,cls='btn mini ghost'){
     const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.addEventListener('click',()=>fn(b));return b;
@@ -2392,21 +2409,22 @@
     moduleCatalog=data;renderModulePrefixes();
   }
   async function saveModulePrefix(event){
-    event.preventDefault();const edit=moduleCatalogEdit;if(!edit)return;
-    const button=$('modulePrefixSave'),name=$('moduleCatalogName').value.trim().toUpperCase(),prefix=$('modulePrefixCode').value.trim().toUpperCase(),typeId=$('moduleCatalogTarget').value;
+    event.preventDefault();const edit=moduleCatalogEdit;if(!edit||moduleCatalogSaving)return;
+    const button=$('modulePrefixSave'),name=$('moduleCatalogName').value.trim().toUpperCase(),prefix=$('modulePrefixCode').value.trim().toUpperCase(),typeId=edit.typeId||$('moduleCatalogTarget').value;
+    const errorBox=$('moduleCatalogDialogError');errorBox.classList.add('hidden');
     let payload;
     if(edit.mode==='group')payload={action:'moduleCatalogGroupSave',groupId:edit.groupId,name};
     else if(edit.mode==='type')payload={action:'moduleCatalogTypeSave',groupId:edit.groupId,typeId:edit.typeId,name};
     else payload={action:'moduleCatalogPrefixSave',typeId,prefix,oldPrefix:edit.oldPrefix};
-    busy(button,true);
+    moduleCatalogSaving=true;busy(button,true);busy($('modulePrefixCancel'),true);
     try{
-      await post(payload);resetModulePrefixEditor();await refreshModulePrefixes();message('Zapisano katalog modułów.','success');
-      if(edit.mode==='prefix'&&!edit.oldPrefix&&state.view==='modulePrefixes'){
-        const t=moduleCatalog.types.find(t=>t.id===typeId),g=moduleCatalog.groups.find(g=>g.id===t?.groupId);
-        if(t&&g)openModuleCatalogEditor('prefix',g,t);
-      }
-    }catch(error){message(error.message||'Nie udało się zapisać katalogu.','error');}
-    finally{busy(button,false);}
+      await post(payload);
+    }catch(error){
+      errorBox.textContent=error.message||'Nie udało się zapisać katalogu.';errorBox.classList.remove('hidden');return;
+    }finally{moduleCatalogSaving=false;busy(button,false);busy($('modulePrefixCancel'),false);}
+    resetModulePrefixEditor();
+    try{await refreshModulePrefixes();message('Zapisano katalog modułów.','success');}
+    catch(error){message('Zapisano, ale nie udało się odświeżyć listy. Odśwież panel.','error');}
   }
   async function archiveModuleType(t,button){
     const active=!Number(t.active);
@@ -2747,6 +2765,7 @@
     $('loadingListPartSearch').addEventListener('input',renderLoadingPartChoices);
     $('loadingListPartCancel').addEventListener('click',()=>$('loadingListPartDialog').close());
     $('modulePrefixCancel').addEventListener('click',resetModulePrefixEditor);
+    $('moduleCatalogDialog').addEventListener('cancel',event=>{event.preventDefault();resetModulePrefixEditor();});
     $('superPinForm').addEventListener('submit',submitSuperAdminCredential);
     $('superPasswordForm').addEventListener('submit',submitSuperAdminCredential);
     $('logoutBtn').addEventListener('click',performLogout);

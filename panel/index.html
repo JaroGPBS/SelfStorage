@@ -8,9 +8,9 @@
   <meta name="referrer" content="no-referrer">
   <title>GPBS Storage - Admin</title>
   <link rel="icon" href="/icons/app-icon-192.png?v=8">
-  <link rel="stylesheet" href="./panel.css?v=54">
+  <link rel="stylesheet" href="./panel.css?v=55">
   <script src="./qrcode.min.js?v=1" defer></script>
-  <script src="./panel.js?v=90" defer></script>
+  <script src="./panel.js?v=91" defer></script>
 </head>
 <body>
   <div class="login-wrap" id="loginWrap">
@@ -295,16 +295,6 @@
         <section id="modulePrefixesView" class="view hidden" aria-label="Katalog modułów">
           <div class="table-panel module-prefix-panel">
             <div class="module-catalog-toolbar"><button id="moduleCatalogAddGroup" class="btn primary" type="button">+ Nowa grupa</button><span id="modulePrefixStatus" role="status" aria-live="polite"></span></div>
-            <form id="modulePrefixForm" class="module-prefix-form hidden" autocomplete="off">
-              <strong id="moduleCatalogEditorTitle"></strong>
-              <div class="module-prefix-fields">
-                <label id="moduleCatalogNameWrap" for="moduleCatalogName">Nazwa<input id="moduleCatalogName" type="text" maxlength="30" autocapitalize="characters" spellcheck="false"></label>
-                <label id="moduleCatalogTargetWrap" for="moduleCatalogTarget">Typ modułu<select id="moduleCatalogTarget"></select></label>
-                <label id="moduleCatalogCodeWrap" for="modulePrefixCode">Prefiks numeru seryjnego<input id="modulePrefixCode" type="text" maxlength="15" autocapitalize="characters" spellcheck="false" placeholder="Np. CQU"></label>
-                <button id="modulePrefixSave" type="submit" class="btn primary">Zapisz</button>
-                <button id="modulePrefixCancel" type="button" class="btn ghost">Anuluj</button>
-              </div>
-            </form>
             <div class="table-scroll module-prefix-table-scroll">
               <table class="module-prefix-table module-catalog-table" aria-label="Grupy, typy i prefiksy modułów">
                 <thead><tr><th>Typ modułu</th><th>Prefiksy</th><th>Działania</th></tr></thead>
@@ -587,6 +577,24 @@
         <button id="doneGeneratedPins" type="button" class="btn ghost">Zamknij</button>
       </div>
     </div>
+  </dialog>
+  <dialog id="moduleCatalogDialog" class="modal" aria-labelledby="moduleCatalogEditorTitle">
+    <form id="modulePrefixForm" class="modal-inner" autocomplete="off">
+      <div class="modal-heading"><div><h2 id="moduleCatalogEditorTitle">Dodaj prefiks</h2></div></div>
+      <div id="moduleCatalogContext" class="module-catalog-context hidden">
+        <div><span>Grupa</span><strong id="moduleCatalogContextGroup"></strong></div>
+        <div><span>Typ modułu</span><strong id="moduleCatalogContextType"></strong></div>
+      </div>
+      <div id="moduleCatalogExistingWrap" class="hidden"><label>Przypisane prefiksy</label><div id="moduleCatalogExisting" class="module-prefix-group"></div></div>
+      <div id="moduleCatalogNameWrap"><label for="moduleCatalogName">Nazwa</label><input id="moduleCatalogName" type="text" maxlength="30" autocapitalize="characters" spellcheck="false"></div>
+      <div id="moduleCatalogTargetWrap" class="hidden"><label for="moduleCatalogTarget">Typ modułu</label><select class="select" id="moduleCatalogTarget"></select></div>
+      <div id="moduleCatalogCodeWrap" class="hidden"><label for="modulePrefixCode" id="moduleCatalogCodeLabel">Nowy prefiks</label><input id="modulePrefixCode" type="text" maxlength="15" minlength="2" pattern="[A-Za-z0-9]{2,15}" autocapitalize="characters" spellcheck="false" placeholder="Np. CDD"></div>
+      <p id="moduleCatalogDialogError" class="message error hidden" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="modulePrefixCancel" type="button" class="btn ghost">Anuluj</button>
+        <button id="modulePrefixSave" type="submit" class="btn primary">Zapisz</button>
+      </div>
+    </form>
   </dialog>
   <dialog id="confirmDialog" class="modal confirm-dialog" aria-labelledby="confirmTitle" aria-describedby="confirmDescription">
     <div class="modal-inner">
