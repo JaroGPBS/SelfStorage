@@ -18,7 +18,7 @@ async function authorized(request,env,warehouseId){
   if(!WH.test(warehouseId))return {error:fail('Nieprawidłowy magazyn.',400)};
   const user=await verifyWorkerSession(request,env);
   if(!user)return {error:fail('Sesja wygasła. Zaloguj się ponownie.',401)};
-  if(!user.apps?.mobile||!ROLES.has(user.role))return {error:fail('Brak uprawnień do operacji magazynowych.',403)};
+  if(!user.apps?.mobile||!user.markets?.PL)return {error:fail('Brak uprawnień do operacji magazynowych.',403)};
   if(!user.warehouses.some(w=>w.id===warehouseId))
     return {error:fail('Brak dostępu do wybranego magazynu.',403)};
   const warehouse=await env.DB.prepare(

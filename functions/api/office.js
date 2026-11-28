@@ -10,7 +10,7 @@ import {frenchBoxDocuments,frenchBoxDocumentLines} from '../../lib/fr-office-mov
 import {readFrBoxOfficeParts,activeBoxCatalogItems} from '../../lib/fr-box-office-stock.js';
 import {getPhotoObject,readPhotoResponse} from '../../lib/pl-r2-photos.js';
 
-const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER','EKIPA']);
+const ALLOWED=new Set(['ADMIN','KIEROWNIK','KOORDYNATOR','MAGAZYNIER']);
 const WAREHOUSE=/^[A-Z0-9-]{2,50}$/;
 const PART=/^[A-Za-z0-9_-]{1,100}$/;
 const SESSION=/^PL-SES-[a-f0-9-]{36}$/;

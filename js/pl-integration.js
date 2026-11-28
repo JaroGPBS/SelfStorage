@@ -117,7 +117,7 @@ async function activatePolishWorkspace() {
   workspace.hidden = false;
 }
 
-function chooseOwnerMarket() {
+function chooseOwnerMarket(user) {
   return new Promise(resolve => {
     const backdrop = document.createElement('div');
     backdrop.id = 'gpbsOwnerMarketChoice';
@@ -128,7 +128,7 @@ function chooseOwnerMarket() {
     heading.textContent = 'Wybierz rynek';
     heading.style.margin = '0 0 8px';
     const hint = document.createElement('p');
-    hint.textContent = 'ADMIN · JJ';
+    hint.textContent = String(user?.nickname||'');
     hint.style.margin = '0 0 20px';
     const buttons = document.createElement('div');
     buttons.style.cssText = 'display:flex;gap:10px';
@@ -160,8 +160,8 @@ export async function tryPolishLogin(pin) {
   }
   // Only the protected JJ owner chooses the market. All other accounts
   // retain their existing login and warehouse restrictions.
-  if (String(body.user?.nickname || '').trim().toUpperCase() === 'JJ') {
-    const choice = await chooseOwnerMarket();
+  if (body.user?.markets?.PL&&body.user?.markets?.FR) {
+    const choice = await chooseOwnerMarket(body.user);
     if (choice === 'FR') {
       setMarket(null);
       return false;
@@ -171,6 +171,7 @@ export async function tryPolishLogin(pin) {
     setMarket(null);
     return false;
   }
+  if(!body.user?.markets?.PL)throw Error('Brak dostępu do rynku polskiego lub francuskiego.');
   await activatePolishWorkspace();
   setMarket('PL');
   return true;

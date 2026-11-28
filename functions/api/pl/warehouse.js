@@ -24,7 +24,7 @@ export async function onRequestGet({request,env}) {
     return failure('Nie można zweryfikować dostępu.',503);
   }
   if(!user)return failure('Sesja wygasła. Zaloguj się ponownie.',401);
-  if(!user.apps?.mobile||!STOCK_ROLES.has(user.role))return failure('Ta rola nie ma dostępu do modułu magazynowego.',403);
+  if(!user.apps?.mobile||!user.markets?.PL)return failure('Brak dostępu do aplikacji mobilnej lub rynku PL.',403);
 
   const url=new URL(request.url);
   const warehouseId=url.searchParams.get('warehouse')||'';

@@ -526,7 +526,7 @@
             message(error.message||'Nie udało się zmienić dostępu.','error');
           }finally{
             controls.forEach(control=>{
-              control.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+              control.disabled=Boolean(state.showArchives||user.owner_protected||!user.active||control.dataset.roleLocked==='1');
             });
           }
         });
@@ -539,11 +539,13 @@
         const cell=td('');cell.className='app-access-cell';
         const input=document.createElement('input');
         input.type='checkbox';input.className='app-access-check';
-        input.checked=Boolean(user[app.field]);
-        input.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+        const lockedOffice=app.key==='office'&&user.role_code==='EKIPA';
+        input.checked=!lockedOffice&&Boolean(user[app.field]);
+        input.dataset.roleLocked=lockedOffice?'1':'0';
+        input.disabled=Boolean(state.showArchives||user.owner_protected||!user.active||lockedOffice);
         input.setAttribute('aria-label',user.name+': dostęp do '+app.name);
         input.title=user.owner_protected?'Główny administrator ma stały dostęp do obu aplikacji':
-          'Zmień dostęp do '+app.name;
+          lockedOffice?'Ekipa nie ma dostępu do Office.':'Zmień dostęp do '+app.name;
         input.addEventListener('click',event=>event.stopPropagation());
         input.addEventListener('change',async event=>{
           event.stopPropagation();
@@ -556,13 +558,14 @@
             const result=await post({action:'setUserApps',userId:user.id,apps});
             user.app_mobile=Number(result.apps.mobile);
             user.app_office=Number(result.apps.office);
+            input.checked=Boolean(result.apps[app.key]);
             message('Zapisano dostęp użytkownika '+user.name+' do aplikacji.','info');
           }catch(error){
             input.checked=previous;
             message(error.message||'Nie udało się zmienić dostępu.','error');
           }finally{
             controls.forEach(control=>{
-              control.disabled=Boolean(state.showArchives||user.owner_protected||!user.active);
+              control.disabled=Boolean(state.showArchives||user.owner_protected||!user.active||control.dataset.roleLocked==='1');
             });
           }
         });

@@ -1850,7 +1850,7 @@ async function route(request,env) {
       }else{
         if(!validAppAccess(body.apps))
           return fail('Nieprawidłowe uprawnienia aplikacji.',400);
-        apps=body.apps;
+        apps={...body.apps,office:user.role_code==='EKIPA'?false:body.apps.office};
       }
       await ensureAccessTable(env.DB);
       await env.DB.batch([

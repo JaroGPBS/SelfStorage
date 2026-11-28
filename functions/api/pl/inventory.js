@@ -28,7 +28,7 @@ async function allowed(request,env,warehouseId) {
     return {error:fail('Nieprawidłowy magazyn.',400)};
   const user = await verifyWorkerSession(request,env);
   if(!user)return {error:fail('Sesja wygasła. Zaloguj się ponownie.',401)};
-  if(!user.apps?.mobile||!ALLOWED_ROLES.has(user.role)||user.features?.inventory===false)
+  if(!user.apps?.mobile||!user.markets?.PL||user.features?.inventory===false)
     return {error:fail('Ta rola lub przypisane uprawnienia nie pozwalają prowadzić inwentaryzacji.',403)};
   if(!user.warehouses.some(w=>w.id===warehouseId))
     return {error:fail('Brak uprawnień do tego magazynu.',403)};

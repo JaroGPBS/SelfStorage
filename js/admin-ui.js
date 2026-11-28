@@ -114,6 +114,18 @@ function startWarehouseFromPicker(code) {
   confirmButton.click();
 }
 
+function canBelleville(saved=loadState()){
+ const team=saved?.team;
+ return !!team?.id&&normalizeRoleLabel(team.rola)!=='EKIPA'&&
+  (normalizeRoleLabel(team.rola)==='ADMIN'&&String(team.nazwa||'').toUpperCase()==='JJ'||
+   saved.startData?.magazyny?.some(w=>String(w.nazwa||w.name||'').toLowerCase().includes('belleville')));
+}
+function canBellevilleOperation(operation,saved=loadState()){
+ if(!canBelleville(saved))return false;
+ const features=saved.team.features||{};
+ return operation==='PZ'?features.pz!==false:operation==='WZ'?features.wz!==false:
+  operation==='EKIPY'?(features.pz!==false||features.wz!==false):false;
+}
 const BELLEVILLE_SESSION_STORAGE_KEY = 'gpbs-belleville-transport-session-v1';
 let bellevilleSession = null;
 let bellevilleView = 'menu';
@@ -121,7 +133,7 @@ let bellevilleTargetOperation = null;
 
 function getBellevilleSession() {
   const team = loadState()?.team;
-  if (normalizeRoleLabel(team?.rola) !== 'ADMIN' || !team?.id) return null;
+  if (!canBelleville() || !team?.id) return null;
   const teamId = String(team.id);
   if (bellevilleSession?.teamId === teamId) return bellevilleSession;
 
@@ -204,7 +216,7 @@ function enterBellevilleOperation(operation) {
 }
 
 function chooseBellevilleOperation(operation) {
-  if (normalizeRoleLabel(loadState()?.team?.rola) !== 'ADMIN') return;
+  if (!canBellevilleOperation(operation)) return;
   const info = document.getElementById('bellevilleInfo');
   info?.classList.add('hidden');
   if (operation === 'EKIPY') {
@@ -226,7 +238,7 @@ function chooseBellevilleOperation(operation) {
 
 function startBellevilleSession(event) {
   event.preventDefault();
-  if (normalizeRoleLabel(loadState()?.team?.rola) !== 'ADMIN') return;
+  if (!canBellevilleOperation(bellevilleTargetOperation)) return;
   if (bellevilleTargetOperation !== 'PZ' && bellevilleTargetOperation !== 'WZ') return;
   const routeInput = document.getElementById('bellevilleRouteInput');
   const plateInput = document.getElementById('bellevillePlateInput');
@@ -271,7 +283,8 @@ function finishBellevilleSession() {
 
 function openBellevilleScreen() {
   const saved = loadState();
-  if (normalizeRoleLabel(saved?.team?.rola) !== 'ADMIN') return;
+  if (!canBelleville(saved)) return;
+  document.querySelectorAll('#screenBelleville .belleville-option').forEach(button=>button.classList.toggle('hidden',!canBellevilleOperation(button.dataset.bellevilleOperation,saved)));
 
   document.querySelectorAll('.screen').forEach(screen => {
     screen.classList.toggle('active', screen.id === 'screenBelleville');
@@ -301,24 +314,27 @@ function renderAdminWarehousePicker(saved) {
   bellevilleBtn.className = 'btn gpbs-menu-btn admin-warehouse-btn';
   bellevilleBtn.textContent = 'Belleville';
   bellevilleBtn.addEventListener('click', openBellevilleScreen);
-  list.appendChild(bellevilleBtn);
+  if(canBelleville(saved))list.appendChild(bellevilleBtn);
 
   for (const warehouse of warehouses) {
-    if (warehouse.nazwa.trim().toUpperCase() === 'BELLEVILLE' && !warehouse.kod) continue;
+    if (warehouse.nazwa.toUpperCase().includes('BELLEVILLE')) continue;
 
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'btn gpbs-menu-btn admin-warehouse-btn';
-    const hasCode = Boolean(String(warehouse.kod || '').trim());
-    button.textContent = hasCode
-      ? warehouse.nazwa
-      : `${warehouse.nazwa} — brak kodu`;
-    button.disabled = !hasCode;
+    const owner=String(saved?.team?.nazwa||'').toUpperCase()==='JJ'&&normalizeRoleLabel(saved?.team?.rola)==='ADMIN';
+    const isBox=['FR-PARIS','FR-TOULOUSE'].includes(warehouse.id);
+    const canReadBox=isBox&&saved?.team?.features?.stocks!==false;
+    const hasCode = owner&&Boolean(String(warehouse.kod || '').trim());
+    button.textContent = warehouse.nazwa;
+    button.disabled = !hasCode&&!canReadBox;
 
     if (hasCode) {
       button.addEventListener('click', () => startWarehouseFromPicker(warehouse.kod));
+    } else if(canReadBox){
+      button.addEventListener('click',()=>{document.getElementById('boxStockEntryBtn')?.click();document.querySelector('[data-box-stock-warehouse="'+warehouse.id+'"]')?.click();});
     } else {
-      button.title = 'Magazyn jest aktywny, ale nie ma jeszcze przypisanego kodu.';
+      button.title = 'Obsługa mobilna tego magazynu nie jest jeszcze dostępna.';
     }
 
     list.appendChild(button);
@@ -336,7 +352,8 @@ function updateWarehouseControls(saved, role) {
   const picker = ensureAdminWarehousePicker();
   if (!screenWarehouse || !scanArea || !scanTitle || !scannerButton || !manualDetails || !picker) return;
 
-  const isAdmin = role === 'ADMIN';
+  const isAdmin = Boolean(saved?.team?.id)&&role!=='EKIPA';
+  const owner=role==='ADMIN'&&String(saved?.team?.nazwa||'').toUpperCase()==='JJ';
   screenWarehouse.classList.toggle('admin-warehouse-mode', isAdmin);
   picker.classList.toggle('hidden', !isAdmin);
   scanTitle.style.display = isAdmin ? 'none' : '';
@@ -353,6 +370,7 @@ function updateWarehouseControls(saved, role) {
     scannerButton.style.color = '#dce2e8';
     scannerButton.style.fontSize = '14px';
     renderAdminWarehousePicker(saved);
+    scannerButton.classList.toggle('hidden',!owner);
   } else {
     scannerButton.style.minHeight = '';
     scannerButton.style.marginTop = '';
@@ -373,7 +391,7 @@ function updateRoleControls() {
   const saved = loadState();
   const rawRole = String(saved?.team?.rola || '').trim().toUpperCase();
   const role = normalizeRoleLabel(rawRole);
-  const canInventory = role === 'KOORDYNATOR' || role === 'ADMIN';
+  const canInventory = Boolean(saved?.team?.id)&&role!=='EKIPA'&&saved?.team?.features?.inventory!==false;
 
   if (roleLabel && role) {
     roleLabel.textContent = role;
@@ -387,7 +405,7 @@ function updateRoleControls() {
     inventoryBtn.classList.toggle('hidden', !canInventory);
     const description = inventoryBtn.querySelector('small');
     if (description) {
-      description.textContent = 'Dla koordynatora i administratora';
+      description.textContent = 'Inwentaryzacja magazynu';
     }
   }
 

@@ -2,9 +2,9 @@ import { api } from './api.js?v=4';
 import { loadState, saveState, clearState } from './storage.js';
 import { startScanner, stopScanner } from './scanner.js';
 import { getDeviceId } from './device.js';
-import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=25';
+import { tryPolishLogin, resumePolishSession, handlePolishSystemBack } from './pl-integration.js?v=26';
 
-const APP_VERSION = '0.63';
+const APP_VERSION = '0.64';
 // TEMPORARY: preview FR crew screens without completing first vehicle inventory.
 // D1 still verifies first inventory before stock-changing writes.
 // Set to false when restoring the mandatory first-inventory flow.
@@ -381,15 +381,19 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function isWarehouseStaff(team = state.team) {
+  return Boolean(team?.id)&&String(team.rola||'').toUpperCase()!=='EKIPA';
+}
 function isAdminTeam(team = state.team) {
   return String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
 }
 
 async function refreshAdminStartData() {
-  if (!state.team?.id || !isAdminTeam()) return null;
+  if (!state.team?.id || !isWarehouseStaff()) return null;
 
   const freshData = await api.getStartData(state.team.id, true);
   state.startData = freshData;
+  if(freshData.ekipa?.id===state.team.id)state.team={...state.team,...freshData.ekipa};
   saveCachedStartData(state.team.id, freshData);
   persist();
   return freshData;
@@ -503,8 +507,9 @@ function updateInitialInventoryAccess(){
   if(confirm)confirm.disabled=locked;
   const boxStockButton=$('boxStockEntryBtn');
   if(boxStockButton){
-    boxStockButton.classList.toggle('hidden',!crew||!state.team?.id||
-      (!TEMP_FR_CREW_PREVIEW_MODE&&(locked||!plate||firstInventoryRequired!==false)));
+    const hasBox=state.startData?.magazyny?.some(w=>['FR-PARIS','FR-TOULOUSE'].includes(w.id));
+    boxStockButton.classList.toggle('hidden',!state.team?.id||state.team.features?.stocks===false||
+      (crew?(!TEMP_FR_CREW_PREVIEW_MODE&&(locked||!plate||firstInventoryRequired!==false)):!hasBox));
   }
   const carButton=$('vehicleStatePreBtn');
   if(carButton){
@@ -514,7 +519,7 @@ function updateInitialInventoryAccess(){
   }
 }
 async function checkRestoredVehicleInventory(){
-  if(!state.team?.id||isAdminTeam()||!state.team.samochod)return;
+  if(!state.team?.id||isWarehouseStaff()||!state.team.samochod)return;
   const teamId=state.team.id,plate=state.team.samochod;
   try{
     const data=await api.getVehicleSyncMeta(teamId,state.team.nazwa||'',DEVICE_ID);
@@ -557,7 +562,8 @@ function toggleBoxStockSearch(){
   }
 }
 function openBoxStock(){
-  if(!state.team||String(state.team.rola||'').trim().toUpperCase()!=='EKIPA')return;
+  if(!state.team||state.team.features?.stocks===false)return;
+  if(isWarehouseStaff()&&!state.startData?.magazyny?.some(w=>['FR-PARIS','FR-TOULOUSE'].includes(w.id)))return;
   ++boxStockRequestId;
   boxStockWarehouseId=null;
   boxStockParts=[];
@@ -566,7 +572,7 @@ function openBoxStock(){
   $('boxStockError').classList.add('hidden');
   $('boxStockError').textContent='';
   document.querySelectorAll('[data-box-stock-warehouse]').forEach(btn=>
-    btn.classList.remove('active'));
+    {btn.classList.remove('active');btn.hidden=isWarehouseStaff()&&!state.startData?.magazyny?.some(w=>w.id===btn.dataset.boxStockWarehouse);});
   showScreen('screenBoxStock');
 }
 function closeBoxStock(){
@@ -607,7 +613,8 @@ function renderBoxStockRows(){
     (unknown?' · — oznacza brak potwierdzonego stanu':'');
 }
 async function selectBoxStock(warehouseId){
-  if(!['FR-PARIS','FR-TOULOUSE'].includes(warehouseId)||!state.team)return;
+  if(!['FR-PARIS','FR-TOULOUSE'].includes(warehouseId)||!state.team||state.team.features?.stocks===false)return;
+  if(isWarehouseStaff()&&!state.startData?.magazyny?.some(w=>w.id===warehouseId))return;
   const ticket=++boxStockRequestId;
   boxStockWarehouseId=warehouseId;
   boxStockParts=[];
@@ -723,7 +730,7 @@ function renderVisit() {
   updateCrewPlateBadges();
 
   const role = String(state.team?.rola || '').trim().toUpperCase();
-  const canInventory = ['KIEROWNIK', 'KOORDYNATOR', 'ADMIN'].includes(role);
+  const canInventory = state.team?.features?.inventory!==false&&role!=='EKIPA';
   $('inventoryBtn').classList.toggle('hidden', !canInventory);
 
   const showDraft = Boolean(
@@ -1094,7 +1101,7 @@ function syncVehicleStateInBackground() {
 }
 
 async function refreshTeamDataInBackground(teamId) {
-  if (!teamId || isAdminTeam() || !navigator.onLine) return;
+  if (!teamId || isWarehouseStaff() || !navigator.onLine) return;
 
   // Najpierw świeża konfiguracja/lista części. Stan auta rusza dopiero później,
   // żeby dwa cięższe zapytania nie konkurowały podczas samego logowania.
@@ -2128,7 +2135,7 @@ async function login() {
     }
     const loginResult = await api.login(pin);
     const team = {...loginResult.ekipa, samochod:loginResult.samochod||''};
-    const adminLogin = String(team?.rola || '').trim().toUpperCase() === 'ADMIN';
+    const adminLogin = isWarehouseStaff(team);
 
     let startData = null;
 
@@ -3111,7 +3118,7 @@ async function init() {
       refreshTeamDataInBackground(state.team.id);
     }
   } else if (state.team) {
-    if (isAdminTeam()) {
+    if (isWarehouseStaff()) {
       if (navigator.onLine) {
         setLoading(true, 'Pobieranie aktualnych danych administratora…');
         try {

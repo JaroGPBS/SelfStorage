@@ -296,6 +296,8 @@ async function startVisit(db,user,data){
     }
   }
   if(!warehouse)throw Error('Nieznany lub nieaktywny kod magazynu.');
+  if(!await canUseFrWarehouse(db,user,warehouse.warehouse_id))throw Error('Brak dostępu do tego magazynu.');
+  if(user.features?.pz===false&&user.features?.wz===false)throw Error('Brak uprawnień do przyjęć i wydań.');
   const car=await operationalVehicle(db,user);
   if(!car)throw Error('Najpierw wpisz numer rejestracyjny samochodu.');
   if(user.role!=='ADMIN'&&!await hasCrewVehicleInventory(db,user.id,car.id))
@@ -331,6 +333,9 @@ async function saveSession(db,user,data){
   if(!visit||visit.user_id!==user.id||visit.status!=='ACTIVE')
     throw Error('Wizyta nie jest aktywna.');
   if(visit.warehouse_id!==clean(data.idMagazynu))throw Error('Nieprawidłowy magazyn.');
+  if(!await canUseFrWarehouse(db,user,visit.warehouse_id))throw Error('Brak dostępu do tego magazynu.');
+  if((data.pobranie||[]).length&&user.features?.wz===false)throw Error('Brak uprawnień do wydań.');
+  if((data.zwrot||[]).length&&user.features?.pz===false)throw Error('Brak uprawnień do przyjęć.');
   // An already open visit cannot write to a deactivated or archived warehouse.
   const enabled=await db.prepare('SELECT active FROM warehouses WHERE id=?')
     .bind(visit.warehouse_id).first();
@@ -537,11 +542,24 @@ async function updateVehicleStock(db,user,data){
     ostatniaInwentaryzacja:inventory?new Date().toISOString():undefined,
     wersjaStanuAuta:await crewStockVersion(db,user.id)};
 }
+// Warehouse employees use their real D1 grants. Crews retain the shared BOX workflow.
+async function mobileWarehouses(db,user){
+ const owner=isOwnerAdmin(user),crew=user.role==='EKIPA';
+ const sql="SELECT w.id,w.name,q.code FROM warehouses w LEFT JOIN fr_warehouse_qr q ON q.warehouse_id=w.id WHERE w.country_code='FR' AND w.active=1";
+ const rows=owner||crew?await db.prepare(sql).all():await db.prepare(sql+" AND EXISTS (SELECT 1 FROM user_warehouse_access a WHERE a.warehouse_id=w.id AND a.user_id=?)").bind(user.id).all();
+ return (rows.results||[]).filter(w=>!crew||BOX_WAREHOUSES.has(w.id)).map(w=>({id:w.id,nazwa:w.name,kodQr:w.code||'',aktywny:true,gotowy:Boolean(w.code)||String(w.name).toLowerCase().includes('belleville')}));
+}
+async function canUseFrWarehouse(db,user,id){
+ if(isOwnerAdmin(user))return true;
+ if(user.role==='EKIPA')return BOX_WAREHOUSES.has(id);
+ return !!await db.prepare("SELECT 1 FROM user_warehouse_access a JOIN warehouses w ON w.id=a.warehouse_id WHERE a.user_id=? AND w.id=? AND w.active=1 AND w.country_code='FR'").bind(user.id,id).first();
+}
+function mobileIdentity(user){return {id:user.id,nazwa:user.nickname,rola:user.role,features:user.features};}
 async function action(db,user,body){
   const type=entryCode(body.action),data=body.payload||{};
   if(type==='LOGIN'){
     const car=await vehicle(db,user.id);
-    return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
+    return {ok:true,ekipa:mobileIdentity(user),
       samochod:car?.registration_number||'',
       inwentaryzacjaWykonana:car?await hasCrewVehicleInventory(db,user.id,car.id):false};
   }
@@ -561,7 +579,7 @@ async function action(db,user,body){
     if(boxList.some(x=>!x)||boxList.length!==activeBoxItems.length)
       throw Error('Lista części BOX jest niekompletna. Skontaktuj się z administratorem.');
     const car=await vehicle(db,user.id);
-    return {ok:true,ekipa:{id:user.id,nazwa:user.nickname,rola:user.role},
+    return {ok:true,ekipa:mobileIdentity(user),
       samochod:car?.registration_number||'',
       wersjaKataloguBox:BOX_CATALOG_VERSION+'-'+(()=>{
         let hash=2166136261;
@@ -573,14 +591,12 @@ async function action(db,user,body){
         return hash.toString(16);
       })(),
       czesci:boxList,
-      magazyny:(await db.prepare(
-        "SELECT w.id,w.name,q.code FROM fr_warehouse_qr q JOIN warehouses w ON w.id=q.warehouse_id "+
-        "WHERE w.country_code='FR' AND w.active=1"
-      ).all()).results.map(w=>({id:w.id,nazwa:w.name,kodQr:w.code,aktywny:true,gotowy:true})),
+      magazyny:await mobileWarehouses(db,user),
       ustawienia:{logowanieOfflineDni:0,autoSynchronizacja:true,whatsappAlert:false}};
   }
   if(type==='POBIERZ_STANY_BOX'){
     const boxId=clean(data.magazynId);
+    if(user.features?.stocks===false||!await canUseFrWarehouse(db,user,boxId))throw Error('Brak dostępu do stanów tego magazynu.');
     if(!BOX_WAREHOUSES.has(boxId))
       throw Error('Wybierz Box Paryż lub Box Tuluza.');
     const enabled=await db.prepare(
@@ -631,8 +647,13 @@ export async function onRequestPost({request,env}){
   }catch{return fail('Błędne dane JSON.',400);}
   try{
     const user=await verifyWorkerSession(request,env);
-    if(!user||!user.apps?.mobile||!user.markets?.FR||!['EKIPA','ADMIN'].includes(user.role))
-      return fail('Brak dostępu do francuskiego magazynu. Zaloguj się ponownie.',401);
+    if(!user)return fail('Sesja wygasła. Zaloguj się ponownie.',401);
+    if(!user.apps?.mobile||!user.markets?.FR)return fail('Brak dostępu do aplikacji mobilnej lub rynku francuskiego.',403);
+    const operation=entryCode(body.action);
+    // The existing vehicle-based write API is a different workflow from the
+    // future warehouse employee transport API. Never write fictitious car stock.
+    if(user.role!=='EKIPA'&&!isOwnerAdmin(user)&&!['LOGIN','POBIERZ_DANE_STARTOWE','POBIERZ_STANY_BOX','PING'].includes(operation))
+      return fail('Ta operacja należy do trybu samochodowego. Obsługa magazyniera jest przygotowywana.',403);
     await ensureSchema(env.DB);
     if(['POBIERZ_DANE_STARTOWE','SKAN_MAGAZYNU'].includes(entryCode(body.action)))
       await ensureFrenchBoxSetup(env.DB);
