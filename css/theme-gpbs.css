@@ -163,7 +163,7 @@ body:has(#screenLogin.active)::before {
   min-height: clamp(62px, 8dvh, 72px);
   margin-top: 18px;
   border: 1px solid rgba(255, 45, 45, .96);
-  border-radius: 18px;
+  border-radius: 13px;
   color: #f7f7f7;
   background:
     linear-gradient(180deg, rgba(39, 43, 48, .97), rgba(18, 21, 25, .99));
@@ -511,7 +511,7 @@ body:has(#screenBelleville.active) .app-signature {
 
 #screenVisit #finishVisitBtn {
   min-height: 62px;
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #e45b5b, #c83e3e);
   box-shadow:
     0 12px 28px rgba(0, 0, 0, .25),
@@ -712,3 +712,7 @@ body:has(#screenBelleville.active #belSupplyWork:not(.hidden))::before{backgroun
   box-shadow:0 0 0 2px rgba(79,142,232,.25),0 0 12px rgba(79,142,232,.18);
 }
 #screenBelleville .bel-supply-search .bel-ocr{color:#a7caff;border-left-color:rgba(126,176,248,.34)}
+
+/* Slightly squarer mobile navigation and dialog buttons; no sizing changes. */
+body:not(.gpbs-market-pl) .instruction-link-btn{border-radius:9px}
+#screenBelleville .bel-dialog .btn{border-radius:10px}
