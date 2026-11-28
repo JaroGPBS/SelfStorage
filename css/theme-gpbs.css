@@ -633,7 +633,11 @@ body:has(#screenBelleville.active #bellevilleOperationView:not(.hidden)) .app-si
 #screenBelleville .bel-list-head{font-size:11px;color:var(--muted);padding:3px 4px;flex-shrink:0}
 #screenBelleville .bel-rows{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
 #screenBelleville .bel-row{padding:3px 4px;border-bottom:1px solid var(--line);font-size:13px;min-height:34px}
-#screenBelleville .bel-row span:first-child{overflow-wrap:anywhere}
+#screenBelleville .bel-list-head.bel-modules-grid,#screenBelleville .bel-rows.bel-modules-grid .bel-row{grid-template-columns:64px minmax(0,1fr) 42px 32px;text-align:left}
+#screenBelleville .bel-row span:first-child,#screenBelleville .bel-rows.bel-modules-grid .bel-row span:nth-child(2){min-width:0;overflow-wrap:anywhere;text-align:left}
+#screenBelleville .bel-rows.bel-modules-grid .bel-row span:nth-child(2){font-variant-numeric:tabular-nums}
+#screenBelleville .bel-list-head.bel-modules-grid{overflow-y:hidden;scrollbar-gutter:stable}
+#screenBelleville .bel-rows.bel-modules-grid{scrollbar-gutter:stable}
 #screenBelleville .bel-row .ok{color:#7bd29d}#screenBelleville .bel-row .nok{color:#ef9696}
 #screenBelleville .bel-row button{color:#ef9696;background:transparent;min-height:32px;font-size:20px;padding:0}
 #screenBelleville .bel-empty{font-size:13px;text-align:center;padding:18px 4px}

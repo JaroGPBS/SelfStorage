@@ -232,12 +232,12 @@ function renderBellevilleRows(){
  }
  const modules=belTab==='modules';
  bel('belScan').querySelector('span').textContent=modules?'Skanuj moduł':'Skanuj część';
- const header=bel('belListHead');header.replaceChildren(...(modules?['Numer seryjny','Typ','Stan','']:['Nazwa / indeks części','Ilość','','']).map(v=>node('span',v)));
- const rows=bel('belRows');rows.replaceChildren();
+ const header=bel('belListHead');header.classList.toggle('bel-modules-grid',modules);header.replaceChildren(...(modules?['Typ','Numer seryjny','Stan','']:['Nazwa / indeks części','Ilość','','']).map(v=>node('span',v)));
+ const rows=bel('belRows');rows.classList.toggle('bel-modules-grid',modules);rows.replaceChildren();
  if(!op[belTab].length)rows.append(node('p',modules?'Brak modułów. Dodaj ręcznie pozycje testowe.':'Brak części. Dodaj ręcznie pozycje testowe.','bel-empty'));
  for(const [i,row] of op[belTab].entries()){
   const line=node('div',null,'bel-row');
-  if(modules)line.append(node('span',row.serial),node('span',row.type),node('span',row.status,row.status.toLowerCase()));
+  if(modules)line.append(node('span',row.type),node('span',row.serial),node('span',row.status,row.status.toLowerCase()));
   else line.append(node('span',row.name),node('span',String(row.qty)),node('span',''));
   const remove=node('button','×');remove.type='button';remove.setAttribute('aria-label','Usuń pozycję');remove.onclick=()=>{
    if(!confirm('Usunąć tę pozycję?'))return;
